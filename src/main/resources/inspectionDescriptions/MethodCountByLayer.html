@@ -1,0 +1,45 @@
+<html>
+<body>
+<p>
+    Reports classes that exceed the allowed number of methods for their architectural layer.
+</p>
+
+<p>
+    This inspection helps detect classes whose size and responsibility have grown beyond
+    what is appropriate for their role, such as controllers, services, or utility classes.
+</p>
+
+<p>
+    Different layers have different complexity budgets.
+    Exceeding these limits often indicates mixed responsibilities, missing abstractions,
+    or logic that should be extracted into dedicated workflows or components.
+</p>
+
+<p>
+    See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information.
+</p>
+
+<p>
+    Example of a violation:
+</p>
+
+<pre><code>
+// Controller exceeding its method limit
+public class OrderController {
+
+    public void create() {}
+    public void update() {}
+    public void delete() {}
+    public void list() {}
+}
+</code></pre>
+
+<!-- tooltip end -->
+
+<p>
+    This inspection enforces bounded complexity per layer and promotes
+    single-responsibility and compositional design.
+</p>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+<html>
+<body>
+<p>
+    Reports class names that violate explicit and meaningful naming conventions.
+</p>
+
+<p>
+    This inspection helps detect generic, abbreviated, or misleading class names that obscure
+    intent and weaken architectural clarity.
+</p>
+
+<p>
+    Banned suffixes such as <code>Manager</code>, <code>Helper</code>, and <code>Impl</code> are flagged,
+    as they often hide responsibility instead of expressing it.
+    Shortened or abbreviated class names are also reported to encourage self-descriptive design.
+</p>
+
+<p>
+    See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information.
+</p>
+
+<p>
+    Example of violations:
+</p>
+
+<pre><code>
+// Generic and banned suffix
+public class UserManager {
+}
+
+// Abbreviated and unclear
+public class AuthSvc {
+}
+</code></pre>
+
+<!-- tooltip end -->
+
+<p>
+    Clear naming establishes architectural intent and reduces the need for additional documentation.
+    This inspection promotes domain-driven and intention-revealing class names.
+</p>
+
+</body>
+</html>

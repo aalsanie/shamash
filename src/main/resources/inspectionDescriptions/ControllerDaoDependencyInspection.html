@@ -1,0 +1,50 @@
+<html>
+<body>
+
+<p>
+    Reports when a controller directly depends on a DAO class.
+</p>
+
+<p>
+    Controllers act as entry points to the application and should delegate all
+    business and persistence concerns to services. A direct dependency on a DAO
+    couples the controller layer to the persistence layer and violates layered
+    architecture principles.
+</p>
+
+<p>
+    This inspection helps enforce architectural boundaries by ensuring that
+    controllers depend only on services or higher-level abstractions.
+</p>
+
+<pre><code>
+// Forbidden: Controller depends directly on DAO
+package io.example.controller;
+
+import io.example.dao.UserDao;
+
+public class UserController {
+    private final UserDao userDao;
+}
+</code></pre>
+
+<pre><code>
+// Allowed: Controller depends on Service
+package io.example.controller;
+
+import io.example.service.UserService;
+
+public class UserController {
+    private final UserService userService;
+}
+</code></pre>
+
+<!-- tooltip end -->
+
+<p>
+    This rule is part of Shamash architectural enforcement and supports maintainable
+    layer separation in large codebases.
+</p>
+
+</body>
+</html>
