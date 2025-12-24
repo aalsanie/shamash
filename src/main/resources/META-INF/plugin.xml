@@ -1,0 +1,90 @@
+<idea-plugin>
+    <id>io.shamash</id>
+    <name>Shamash</name>
+    <vendor email="a.aalsanie@shamash.dev">Ahmad</vendor>
+
+    <description>
+        Shamash reveals hidden structure, responsibility, and architectural truth.
+    </description>
+
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <localInspection
+                language="JAVA"
+                shortName="ControllerDaoDependencyInspection"
+                displayName="Controller → DAO dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.ControllerDaoDependencyInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ControllerDaoDependencyInspection"
+                displayName="Controller → DAO dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.ControllerPublicMethodInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ControllerDaoDependencyInspection"
+                displayName="Controller → DAO dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.DeadCodeInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ControllerDaoDependencyInspection"
+                displayName="Controller → DAO dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.MethodCountInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="NamingConventionInspection"
+                displayName="Naming Convention"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.NamingConventionInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ServiceControllerDependencyInspection"
+                displayName="Service → Controller dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.PackageRootInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ServiceControllerDependencyInspection"
+                displayName="Service → Controller dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.PrivateMethodInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ServiceControllerDependencyInspection"
+                displayName="Service → Controller dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.ServiceControllerDependencyInspection"/>
+
+        <localInspection
+                language="JAVA"
+                shortName="ServiceControllerDependencyInspection"
+                displayName="Service → Controller dependency"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.UtilityClassInspection"/>
+
+    </extensions>
+
+    <actions>
+
+    </actions>
+</idea-plugin>
