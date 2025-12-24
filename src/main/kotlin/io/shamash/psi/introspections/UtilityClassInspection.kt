@@ -1,64 +1,54 @@
 package io.shamash.psi.introspections
 
-import com.intellij.psi.util.PsiUtil
-
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
+import io.shamash.psi.fixes.MakeClassFinalFix
+import io.shamash.psi.fixes.MakeMethodsStaticFix
+import io.shamash.psi.fixes.RemoveSpringStereotypeFix
+import io.shamash.psi.util.*
+import io.shamash.psi.util.ShamashMessages.msg
 
 class UtilityClassInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(
         holder: ProblemsHolder,
         isOnTheFly: Boolean
-    ): PsiElementVisitor {
+    ): PsiElementVisitor = object : JavaElementVisitor() {
 
-        return object : JavaElementVisitor() {
+        override fun visitClass(psiClass: PsiClass) {
+            if (!psiClass.isConcreteClass()) return
+            if (!psiClass.isUtilityCandidate()) return
 
-            override fun visitClass(psiClass: PsiClass) {
-                if (psiClass.isInterface || psiClass.isEnum) return
-                if (psiClass.name == null) return
-
-                val isUtilityCandidate =
-                    psiClass.name!!.endsWith("Util") ||
-                            psiClass.name!!.endsWith("Helper") ||
-                            io.shamash.psi.util.PsiUtil.isFinalWithPrivateConstructor(psiClass)
-
-                if (!isUtilityCandidate) return
-
-                // Rule 1: must be final
+            psiClass.nameIdentifier?.let { id ->
                 if (!psiClass.hasModifierProperty(PsiModifier.FINAL)) {
                     holder.registerProblem(
-                        psiClass.nameIdentifier ?: return,
-                        "Shamash: Utility class must be final"
+                        id,
+                        msg("Utility class must be final"),
+                        MakeClassFinalFix()
                     )
                 }
 
-                // Rule 2: no non-static fields
-                psiClass.fields
-                    .filter { !it.hasModifierProperty(PsiModifier.STATIC) }
-                    .forEach {
-                        holder.registerProblem(
-                            it.nameIdentifier ?: return,
-                            "Shamash: Utility class must not have instance fields"
-                        )
-                    }
-
-                // Rule 3: all methods static
-                psiClass.methods
-                    .filter { !it.isConstructor }
-                    .filter { !it.hasModifierProperty(PsiModifier.STATIC) }
-                    .forEach {
-                        holder.registerProblem(
-                            it.nameIdentifier ?: return,
-                            "Shamash: Utility class methods must be static"
-                        )
-                    }
-
-                // Rule 4: no DI annotations
-                if (io.shamash.psi.util.PsiUtil.hasSpringStereotype(psiClass)) {
+                if (!psiClass.hasOnlyStaticFields()) {
                     holder.registerProblem(
-                        psiClass.nameIdentifier ?: return,
-                        "Shamash: Utility class must not be a managed component"
+                        id,
+                        msg("Utility class must not have instance fields"),
+                        MakeMethodsStaticFix()
+                    )
+                }
+
+                if (!psiClass.hasOnlyStaticMethods()) {
+                    holder.registerProblem(
+                        id,
+                        msg("Utility class methods must be static"),
+                        MakeMethodsStaticFix()
+                    )
+                }
+
+                if (PsiUtil.hasSpringStereotype(psiClass)) {
+                    holder.registerProblem(
+                        id,
+                        msg("Utility class must not be a managed component"),
+                        RemoveSpringStereotypeFix()
                     )
                 }
             }

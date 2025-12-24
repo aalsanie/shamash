@@ -3,30 +3,30 @@ package io.shamash.psi.introspections
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
 import io.shamash.psi.architecture.LayerDetector
-import io.shamash.psi.architecture.Layer
+import io.shamash.psi.architecture.LayerRules
+import io.shamash.psi.fixes.RemovePrivateModifierFix
+import io.shamash.psi.util.ShamashMessages.msg
 
 class PrivateMethodInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(
         holder: ProblemsHolder,
         isOnTheFly: Boolean
-    ): PsiElementVisitor {
+    ) = object : JavaElementVisitor() {
 
-        return object : JavaElementVisitor() {
+        override fun visitMethod(method: PsiMethod) {
+            if (!method.hasModifierProperty(PsiModifier.PRIVATE)) return
 
-            override fun visitMethod(method: PsiMethod) {
-                if (!method.hasModifierProperty(PsiModifier.PRIVATE)) return
+            val psiClass = method.containingClass ?: return
+            val layer = LayerDetector.detect(psiClass)
 
-                val psiClass = method.containingClass ?: return
-                val layer = LayerDetector.detect(psiClass)
+            if (LayerRules.allowsPrivateMethods(layer)) return
 
-                if (layer in listOf(Layer.CONTROLLER, Layer.SERVICE, Layer.DAO)) {
-                    holder.registerProblem(
-                        method.nameIdentifier ?: return,
-                        "Shamash: private methods not allowed in $layer"
-                    )
-                }
-            }
+            holder.registerProblem(
+                method.nameIdentifier ?: return,
+                msg("Private methods are not allowed in $layer layers"),
+                RemovePrivateModifierFix()
+            )
         }
     }
 }

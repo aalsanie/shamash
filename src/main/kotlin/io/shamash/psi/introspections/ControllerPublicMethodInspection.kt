@@ -2,6 +2,9 @@ package io.shamash.psi.introspections
 
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
+import io.shamash.psi.architecture.ControllerRules
+import io.shamash.psi.fixes.RemovePublicModifierFix
+import io.shamash.psi.util.ShamashMessages.msg
 
 class ControllerPublicMethodInspection
     : AbstractBaseJavaLocalInspectionTool() {
@@ -12,23 +15,14 @@ class ControllerPublicMethodInspection
     ) = object : JavaElementVisitor() {
 
         override fun visitClass(psiClass: PsiClass) {
-            val file = psiClass.containingFile as? PsiJavaFile ?: return
-            if (!file.packageName.contains(".controller.")) return
-
-            val publicMethods =
-                psiClass.methods.filter {
-                    it.hasModifierProperty(PsiModifier.PUBLIC) &&
-                            !it.isConstructor
-                }
-
-            if (publicMethods.size > 1) {
-                publicMethods.drop(1).forEach {
+            ControllerRules.excessPublicMethods(psiClass)
+                .forEach {
                     holder.registerProblem(
                         it.nameIdentifier ?: return,
-                        "Shamash: Controller must expose only one public endpoint"
+                        msg("Controller must expose only one public endpoint"),
+                        RemovePublicModifierFix()
                     )
                 }
-            }
         }
     }
 }

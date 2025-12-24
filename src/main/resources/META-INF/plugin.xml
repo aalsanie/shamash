@@ -1,90 +1,117 @@
 <idea-plugin>
     <id>io.shamash</id>
     <name>Shamash</name>
-    <vendor email="a.aalsanie@shamash.dev">Ahmad</vendor>
+
+    <vendor email="a.aalsanie@outlook.com">
+        Ahmad
+    </vendor>
 
     <description>
-        Shamash reveals hidden structure, responsibility, and architectural truth.
+        <![CDATA[
+        Shamash enforces clean architecture, explicit design, and structural integrity
+        in Java codebases using PSI inspections.
+        ]]>
     </description>
 
     <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+
+        <!-- Architecture / Dependency rules -->
+        <applicationService
+            serviceImplementation="io.shamash.psi.settings.ShamashSettings"/>
+
+
         <localInspection
                 language="JAVA"
-                shortName="ControllerDaoDependencyInspection"
-                displayName="Controller → DAO dependency"
+                shortName="ControllerDaoDependency"
+                displayName="Controller must not depend on DAO"
                 groupName="Shamash Architecture"
                 enabledByDefault="true"
                 implementationClass="io.shamash.psi.introspections.ControllerDaoDependencyInspection"/>
 
         <localInspection
                 language="JAVA"
-                shortName="ControllerDaoDependencyInspection"
-                displayName="Controller → DAO dependency"
+                shortName="ServiceControllerDependency"
+                displayName="Service must not depend on Controller"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.ServiceControllerDependencyInspection"/>
+
+
+        <!-- Controller rules -->
+
+        <localInspection
+                language="JAVA"
+                shortName="ControllerPublicMethodCount"
+                displayName="Controller must expose a single public endpoint"
                 groupName="Shamash Architecture"
                 enabledByDefault="true"
                 implementationClass="io.shamash.psi.introspections.ControllerPublicMethodInspection"/>
 
-        <localInspection
-                language="JAVA"
-                shortName="ControllerDaoDependencyInspection"
-                displayName="Controller → DAO dependency"
-                groupName="Shamash Architecture"
-                enabledByDefault="true"
-                implementationClass="io.shamash.psi.introspections.DeadCodeInspection"/>
+
+        <!-- Layer & structure rules -->
 
         <localInspection
                 language="JAVA"
-                shortName="ControllerDaoDependencyInspection"
-                displayName="Controller → DAO dependency"
+                shortName="MethodCountByLayer"
+                displayName="Layer method count limit"
                 groupName="Shamash Architecture"
                 enabledByDefault="true"
                 implementationClass="io.shamash.psi.introspections.MethodCountInspection"/>
 
         <localInspection
                 language="JAVA"
-                shortName="NamingConventionInspection"
-                displayName="Naming Convention"
-                groupName="Shamash Architecture"
-                enabledByDefault="true"
-                implementationClass="io.shamash.psi.introspections.NamingConventionInspection"/>
-
-        <localInspection
-                language="JAVA"
-                shortName="ServiceControllerDependencyInspection"
-                displayName="Service → Controller dependency"
-                groupName="Shamash Architecture"
-                enabledByDefault="true"
-                implementationClass="io.shamash.psi.introspections.PackageRootInspection"/>
-
-        <localInspection
-                language="JAVA"
-                shortName="ServiceControllerDependencyInspection"
-                displayName="Service → Controller dependency"
+                shortName="PrivateMethodInForbiddenLayer"
+                displayName="Private methods forbidden in core layers"
                 groupName="Shamash Architecture"
                 enabledByDefault="true"
                 implementationClass="io.shamash.psi.introspections.PrivateMethodInspection"/>
 
-        <localInspection
-                language="JAVA"
-                shortName="ServiceControllerDependencyInspection"
-                displayName="Service → Controller dependency"
-                groupName="Shamash Architecture"
-                enabledByDefault="true"
-                implementationClass="io.shamash.psi.introspections.ServiceControllerDependencyInspection"/>
+
+        <!-- Utility & naming rules -->
 
         <localInspection
                 language="JAVA"
-                shortName="ServiceControllerDependencyInspection"
-                displayName="Service → Controller dependency"
+                shortName="UtilityClassRules"
+                displayName="Utility class structure rules"
                 groupName="Shamash Architecture"
                 enabledByDefault="true"
                 implementationClass="io.shamash.psi.introspections.UtilityClassInspection"/>
 
+        <localInspection
+                language="JAVA"
+                shortName="NamingConvention"
+                displayName="Naming convention enforcement"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.NamingConventionInspection"/>
+
+
+        <!-- Package & boundaries -->
+
+        <localInspection
+                language="JAVA"
+                shortName="PackageRoot"
+                displayName="Package root enforcement"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.PackageRootInspection"/>
+
+
+        <!-- Dead code -->
+
+        <localInspection
+                language="JAVA"
+                shortName="DeadCode"
+                displayName="Unused class or method"
+                groupName="Shamash Architecture"
+                enabledByDefault="true"
+                implementationClass="io.shamash.psi.introspections.DeadCodeInspection"/>
+
     </extensions>
 
     <actions>
-
+        <!-- Intentionally empty for now -->
     </actions>
 </idea-plugin>

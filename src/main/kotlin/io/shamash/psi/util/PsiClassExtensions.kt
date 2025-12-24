@@ -1,6 +1,7 @@
 package io.shamash.psi.util
 
 import com.intellij.psi.*
+import io.shamash.psi.util.PsiUtil.isFinalWithPrivateConstructor
 
 /**
  * Low-level PSI facts about a PsiClass.
@@ -41,3 +42,29 @@ fun PsiClass.referencedClasses(): List<PsiClass> =
         .mapNotNull { it.resolve() }
         .filterIsInstance<PsiClass>()
 
+fun PsiClass.isConcreteClass(): Boolean =
+    !isInterface && !isEnum && name != null
+
+fun PsiClass.isUtilityCandidate(): Boolean =
+    name!!.endsWith("Util") ||
+            name!!.endsWith("Helper") ||
+            isFinalWithPrivateConstructor()
+
+fun PsiClass.hasOnlyStaticFields(): Boolean =
+    fields.all { it.hasModifierProperty(PsiModifier.STATIC) }
+
+fun PsiClass.hasOnlyStaticMethods(): Boolean =
+    methods
+        .filterNot { it.isConstructor }
+        .all { it.hasModifierProperty(PsiModifier.STATIC) }
+
+fun PsiClass.isFinalWithPrivateConstructor(): Boolean {
+    if (!hasModifierProperty(PsiModifier.FINAL)) return false
+
+    val constructors = constructors
+    if (constructors.isEmpty()) return false
+
+    return constructors.all {
+        it.hasModifierProperty(PsiModifier.PRIVATE)
+    }
+}

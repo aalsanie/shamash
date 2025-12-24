@@ -2,7 +2,8 @@ package io.shamash.psi.introspections
 
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
-import io.shamash.psi.util.PsiDependencyUtil.dependsOnPackage
+import io.shamash.psi.architecture.*
+import io.shamash.psi.util.ShamashMessages.msg
 
 class ServiceControllerDependencyInspection
     : AbstractBaseJavaLocalInspectionTool() {
@@ -13,13 +14,19 @@ class ServiceControllerDependencyInspection
     ) = object : JavaElementVisitor() {
 
         override fun visitClass(psiClass: PsiClass) {
-            val file = psiClass.containingFile as? PsiJavaFile ?: return
-            if (!file.packageName.contains(".service.")) return
+            val layer = LayerDetector.detect(psiClass)
+            if (layer != Layer.SERVICE) return
 
-            if (psiClass.dependsOnPackage(".controller.")) {
+            if (!LayerRules.isDependencyAllowed(layer, Layer.CONTROLLER)
+                && DependencyQueries.violatesLayerDependency(
+                    psiClass,
+                    layer,
+                    Layer.CONTROLLER
+                )
+            ) {
                 holder.registerProblem(
                     psiClass.nameIdentifier ?: return,
-                    "Shamash: Service must not depend on Controller"
+                    msg("Services must not depend on controllers")
                 )
             }
         }

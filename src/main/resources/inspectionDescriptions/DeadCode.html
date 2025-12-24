@@ -1,0 +1,43 @@
+<html>
+<body>
+<p>
+    Reports classes and methods that appear to be unused and have no incoming references.
+</p>
+
+<p>
+    This inspection helps detect dead code that is not referenced anywhere in the project,
+    excluding known entry points such as framework-managed components or application entry methods.
+</p>
+
+<p>
+    Unused classes and methods increase cognitive load, obscure the true structure of the system,
+    and often remain after incomplete refactoring or abandoned features.
+</p>
+
+<p>
+    See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information.
+</p>
+
+<p>
+    Example of a violation:
+</p>
+
+<pre><code>
+// Unused class
+public class LegacyCalculator {
+
+    public int add(int a, int b) {
+        return a + b;
+    }
+}
+</code></pre>
+
+<!-- tooltip end -->
+
+<p>
+    This inspection supports safe cleanup by highlighting code that can be removed or reviewed,
+    helping keep the codebase minimal, intentional, and maintainable.
+</p>
+
+</body>
+</html>

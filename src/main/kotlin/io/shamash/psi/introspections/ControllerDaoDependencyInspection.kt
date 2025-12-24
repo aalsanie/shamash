@@ -2,24 +2,27 @@ package io.shamash.psi.introspections
 
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
-import io.shamash.psi.util.PsiDependencyUtil.dependsOnPackage
+import io.shamash.psi.architecture.DependencyQueries
+import io.shamash.psi.architecture.Layer
+import io.shamash.psi.architecture.LayerDetector
+import io.shamash.psi.util.ShamashMessages.msg
 
-class ControllerDaoDependencyInspection
-    : AbstractBaseJavaLocalInspectionTool() {
+class ControllerDaoDependencyInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(
         holder: ProblemsHolder,
         isOnTheFly: Boolean
-    ) = object : JavaElementVisitor() {
+    ): PsiElementVisitor = object : JavaElementVisitor() {
 
         override fun visitClass(psiClass: PsiClass) {
-            val file = psiClass.containingFile as? PsiJavaFile ?: return
-            if (!file.packageName.contains(".controller.")) return
-
-            if (psiClass.dependsOnPackage(".dao.")) {
+            if (
+                LayerDetector.detect(psiClass) == Layer.CONTROLLER &&
+                DependencyQueries.dependsOnPackage(psiClass, ".dao")
+            ) {
                 holder.registerProblem(
                     psiClass.nameIdentifier ?: return,
-                    "Shamash: Controller must not depend on DAO"
+                    msg("Controller must not depend on DAO"),
+                    ProblemHighlightType.GENERIC_ERROR_OR_WARNING
                 )
             }
         }

@@ -20,7 +20,9 @@ object PsiUtil {
             "org.springframework.stereotype.Component",
             "org.springframework.stereotype.Service",
             "org.springframework.stereotype.Repository",
-            "org.springframework.stereotype.Controller"
+            "org.springframework.stereotype.Controller",
+            "org.springframework.web.bind.annotation.RestController",
+            "org.springframework.context.annotation.Configuration"
         )
 
         return forbiddenAnnotations.any { psiClass.hasAnnotation(it) }

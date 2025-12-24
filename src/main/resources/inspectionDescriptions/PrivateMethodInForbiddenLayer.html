@@ -1,0 +1,44 @@
+<html>
+<body>
+<p>
+    Reports private methods declared in architectural layers where encapsulation is discouraged.
+</p>
+
+<p>
+    This inspection helps detect hidden logic in controllers, services, and data access layers,
+    where behavior should remain explicit and externally visible to preserve clarity and
+    maintainability.
+</p>
+
+<p>
+    Private methods in these layers often indicate responsibilities that should be extracted
+    into dedicated utility or workflow classes.
+</p>
+
+<p>
+    See https://plugins.jetbrains.com/docs/intellij/inspections.html#descriptions for more information.
+</p>
+
+<p>
+    Example of a violation:
+</p>
+
+<pre><code>
+// Private method inside a service (discouraged)
+public class OrderService {
+
+    private void recalculateTotals() {
+        // hidden behavior
+    }
+}
+</code></pre>
+
+<!-- tooltip end -->
+
+<p>
+    This inspection enforces explicit behavior at architectural boundaries and promotes
+    single-responsibility design.
+</p>
+
+</body>
+</html>
