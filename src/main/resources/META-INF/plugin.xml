@@ -9,7 +9,7 @@
     <description>
         <![CDATA[
         Shamash enforces clean architecture, explicit design, and structural integrity
-        in Java codebases using PSI inspections.
+        in Java codebases using PSI inspections, ASM and logging.
         ]]>
     </description>
 
