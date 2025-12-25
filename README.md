@@ -78,7 +78,6 @@ I rely on three main technologies to refactor code:
 - Hybrid inspections: Planned
 - Runtime logging cleanup: Planned
 
-Current release: **0.1.0**
 [Change-log](./CHANGELOG.md)
 
 ---
