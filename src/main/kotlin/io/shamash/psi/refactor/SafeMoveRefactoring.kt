@@ -17,34 +17,38 @@ object SafeMoveRefactoring {
      * - Updates package declaration
      * - Fixes imports and references
      * - Supports undo / redo
-     * - Can create the target package directory under the file's source root
+     * - Creates the target package directory under the file's source root (if missing)
+     *
+     * Returns true if a refactoring run was started, false otherwise.
      */
     fun moveToPackage(
         project: Project,
         file: PsiJavaFile,
-        targetPackageFqn: String
-    ) {
-        val targetDir = findOrCreatePackageDir(project, file, targetPackageFqn) ?: return
+        targetPackageFqn: String,
+        askUserToCreate: Boolean = true
+    ): Boolean {
+        val targetDir = findOrCreatePackageDir(project, file, targetPackageFqn, askUserToCreate)
+            ?: return false
 
-        WriteCommandAction.writeCommandAction(project)
-            .withName("Shamash: Move to $targetPackageFqn")
-            .run<RuntimeException> {
-                MoveFilesOrDirectoriesProcessor(
-                    project,
-                    arrayOf(file),
-                    targetDir,
-                    /* searchInComments = */ true,
-                    /* searchInNonJavaFiles = */ true,
-                    /* moveCallback = */ null,
-                    /* prepareSuccessfulCallback = */ null
-                ).run()
-            }
+        // Important: don't wrap processors in WriteCommandAction; they own their command/write.
+        MoveFilesOrDirectoriesProcessor(
+            project,
+            arrayOf(file),
+            targetDir,
+            /* searchInComments = */ true,
+            /* searchInNonJavaFiles = */ true,
+            /* moveCallback = */ null,
+            /* prepareSuccessfulCallback = */ null
+        ).run()
+
+        return true
     }
 
     private fun findOrCreatePackageDir(
         project: Project,
         file: PsiJavaFile,
-        targetPackageFqn: String
+        targetPackageFqn: String,
+        askUserToCreate: Boolean
     ): PsiDirectory? {
         val vFile = file.virtualFile ?: return null
         val fileIndex = ProjectRootManager.getInstance(project).fileIndex
@@ -53,12 +57,18 @@ object SafeMoveRefactoring {
         val psiManager = PsiManager.getInstance(project)
         val sourceRootDir = psiManager.findDirectory(sourceRoot) ?: return null
 
-        // Creates if missing
-        return PackageUtil.findOrCreateDirectoryForPackage(
-            project,
-            targetPackageFqn,
-            sourceRootDir,
-            /* askUserToCreate = */ true
-        )
+        var targetDir: PsiDirectory? = null
+
+        // Package creation touches PSI/VFS => must be in write command.
+        WriteCommandAction.runWriteCommandAction(project) {
+            targetDir = PackageUtil.findOrCreateDirectoryForPackage(
+                project,
+                targetPackageFqn,
+                sourceRootDir,
+                /* askUserToCreate = */ askUserToCreate
+            )
+        }
+
+        return targetDir?.takeIf { it.isValid && it.isWritable }
     }
 }
