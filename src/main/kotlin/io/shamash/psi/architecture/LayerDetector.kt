@@ -18,38 +18,46 @@ object LayerDetector {
 
     fun detect(psiClass: PsiClass): Layer {
         val qName = psiClass.qualifiedName ?: return Layer.OTHER
+        val name = psiClass.name.orEmpty()
 
         return when {
-            isController(psiClass, qName) -> Layer.CONTROLLER
-            isService(psiClass, qName) -> Layer.SERVICE
-            isDao(psiClass, qName) -> Layer.DAO
+            isController(psiClass, qName, name) -> Layer.CONTROLLER
+            isService(psiClass, qName, name) -> Layer.SERVICE
+            isDao(psiClass, qName, name) -> Layer.DAO
             qName.contains(Layer.WORKFLOW.packageMarker!!) -> Layer.WORKFLOW
-            isUtil(psiClass, qName) -> Layer.UTIL
+            isUtil(psiClass, qName, name) -> Layer.UTIL
             hasMainMethod(psiClass) -> Layer.CLI
             else -> Layer.OTHER
         }
     }
 
-    private fun isController(psiClass: PsiClass, qName: String): Boolean =
+    private fun isController(psiClass: PsiClass, qName: String, name: String): Boolean =
         psiClass.hasAnnotation("org.springframework.stereotype.Controller") ||
                 psiClass.hasAnnotation("org.springframework.web.bind.annotation.RestController") ||
-                qName.contains(Layer.CONTROLLER.packageMarker!!)
+                qName.contains(Layer.CONTROLLER.packageMarker!!) ||
+                name.endsWith("Controller")
 
-    private fun isService(psiClass: PsiClass, qName: String): Boolean =
+    private fun isService(psiClass: PsiClass, qName: String, name: String): Boolean =
         psiClass.hasAnnotation("org.springframework.stereotype.Service") ||
-                qName.contains(Layer.SERVICE.packageMarker!!)
+                qName.contains(Layer.SERVICE.packageMarker!!) ||
+                name.endsWith("Service")
 
-    private fun isDao(psiClass: PsiClass, qName: String): Boolean =
+    private fun isDao(psiClass: PsiClass, qName: String, name: String): Boolean =
         psiClass.hasAnnotation("org.springframework.stereotype.Repository") ||
-                qName.contains(Layer.DAO.packageMarker!!)
+                qName.contains(Layer.DAO.packageMarker!!) ||
+                name.endsWith("Dao") ||
+                name.endsWith("Repository")
 
-    private fun isUtil(psiClass: PsiClass, qName: String): Boolean =
+    private fun isUtil(psiClass: PsiClass, qName: String, name: String): Boolean =
         qName.contains(Layer.UTIL.packageMarker!!) ||
-                psiClass.name?.endsWith("Util") == true
+                name.endsWith("Util")
 
     private fun hasMainMethod(psiClass: PsiClass): Boolean =
         psiClass.methods.any {
-            it.name == "main" &&
-                    it.hasModifierProperty(PsiModifier.STATIC)
+            it.name == "main" && it.hasModifierProperty(PsiModifier.STATIC)
         }
+
+    fun hasControllerStereotype(psiClass: PsiClass): Boolean =
+        psiClass.hasAnnotation("org.springframework.stereotype.Controller") ||
+                psiClass.hasAnnotation("org.springframework.web.bind.annotation.RestController")
 }

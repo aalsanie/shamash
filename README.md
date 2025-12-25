@@ -1,6 +1,12 @@
+<p align="center">
+  <img src="assets/shamash_logo.png" alt="Shamash Logo" width="180"/>
+</p>
+
+
 # Shamash
 
-Shamash is an IntelliJ IDEA plugin that enforces clean architecture, explicit design, and structural integrity in Java codebases.
+Shamash is an architectural refactoring engine that enforces clean architecture,
+explicit design, and structural integrity in Java codebases.
 
 It reveals hidden structure, responsibility, and architectural truth by detecting violations early.
 
