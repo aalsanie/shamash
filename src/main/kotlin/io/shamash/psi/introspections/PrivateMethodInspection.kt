@@ -4,6 +4,7 @@ import com.intellij.codeInspection.*
 import com.intellij.psi.*
 import io.shamash.psi.architecture.LayerDetector
 import io.shamash.psi.architecture.LayerRules
+import io.shamash.psi.fixes.ExportToServiceFix
 import io.shamash.psi.fixes.RemovePrivateModifierFix
 import io.shamash.psi.util.ShamashMessages.msg
 
@@ -25,7 +26,8 @@ class PrivateMethodInspection : AbstractBaseJavaLocalInspectionTool() {
             holder.registerProblem(
                 method.nameIdentifier ?: return,
                 msg("Private methods are not allowed in $layer layers"),
-                RemovePrivateModifierFix()
+                RemovePrivateModifierFix(),
+                ExportToServiceFix()
             )
         }
     }

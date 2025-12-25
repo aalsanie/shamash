@@ -3,6 +3,7 @@ package io.shamash.psi.introspections
 import com.intellij.codeInspection.*
 import com.intellij.psi.*
 import io.shamash.psi.architecture.*
+import io.shamash.psi.fixes.DeleteElementFix
 import io.shamash.psi.util.ShamashMessages.msg
 
 class ServiceControllerDependencyInspection
@@ -26,7 +27,8 @@ class ServiceControllerDependencyInspection
             ) {
                 holder.registerProblem(
                     psiClass.nameIdentifier ?: return,
-                    msg("Services must not depend on controllers")
+                    msg("Services must not depend on controllers"),
+                    DeleteElementFix()
                 )
             }
         }
