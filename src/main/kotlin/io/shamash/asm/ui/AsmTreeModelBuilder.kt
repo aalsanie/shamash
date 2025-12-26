@@ -44,6 +44,8 @@ object AsmTreeModelBuilder {
         return projectNode
     }
 
+    //external libraries count including jdk, spring bla bla etc.. "I'm bored!" but we shouldn't be concerned
+    //TODO: if we are? then we add it as a feature to Shamash 2.0
     fun buildExternalBucketsNode(index: AsmIndex): DefaultMutableTreeNode {
         val root = DefaultMutableTreeNode("External Buckets")
 
@@ -53,15 +55,28 @@ object AsmTreeModelBuilder {
             return root
         }
 
-        // Count how many edges point to each bucket id (bucket ids are stored as references).
-        val countsByBucketId: Map<String, Int> =
-            buckets.associate { bucket ->
-                val count = index.references.values.count { refs -> refs.contains(bucket.id) }
-                bucket.id to count
+        // Count edges from project classes -> bucket (based on internal names)
+        val projectSet = index.classes.keys
+        val countsByBucketId = linkedMapOf<String, Int>()
+
+        for ((_, refs) in index.references) {
+            for (ref in refs) {
+                if (ref in projectSet) continue
+                val bucket = ExternalBucketResolver.bucketForInternalName(ref)
+                countsByBucketId[bucket.id] = (countsByBucketId[bucket.id] ?: 0) + 1
             }
+        }
+
+        // Ensure every known bucket appears even if its count is 0
+        for (b in buckets) {
+            countsByBucketId.putIfAbsent(b.id, 0)
+        }
 
         buckets
-            .sortedByDescending { countsByBucketId[it.id] ?: 0 }
+            .sortedWith(
+                compareByDescending<ExternalBucketResolver.Bucket> { countsByBucketId[it.id] ?: 0 }
+                    .thenBy { it.displayName }
+            )
             .forEach { bucket ->
                 val c = countsByBucketId[bucket.id] ?: 0
                 root.add(DefaultMutableTreeNode("${bucket.displayName} ($c)"))
