@@ -21,21 +21,13 @@ class RunAsmScanAction : AnAction("Shamash: Run ASM Scan") {
                 val index = AsmIndexService.getInstance(project).rescan(indicator)
 
                 val total = index.classes.size
-                val deps = index.classes.values.sumOf { it.referencedInternalNames.size }
+                val deps = index.references.values.sumOf { it.size }
 
                 if (total == 0 && deps == 0) {
                     notify(
                         project,
                         "ASM scan found no bytecode",
-                        """
-                        Indexed 0 classes. Captured 0 bytecode references.
-
-                        Shamash ASM scans compiled .class files (module output directories).
-                        Your project likely hasn’t been built yet.
-
-                        Build the project (Build → Build Project) or run tests, then run the scan again.
-                        """.trimIndent(),
-                        NotificationType.WARNING
+                        "No compiled class files were found. Build the project (Build → Build Project), then run the ASM scan again."
                     )
                     return
                 }
@@ -43,22 +35,16 @@ class RunAsmScanAction : AnAction("Shamash: Run ASM Scan") {
                 notify(
                     project,
                     "ASM scan complete",
-                    "Indexed $total classes. Captured $deps bytecode references.",
-                    NotificationType.INFORMATION
+                    "Indexed $total classes. Captured $deps bytecode references."
                 )
             }
         }.queue()
     }
 
-    private fun notify(
-        project: com.intellij.openapi.project.Project,
-        title: String,
-        content: String,
-        type: NotificationType
-    ) {
+    private fun notify(project: com.intellij.openapi.project.Project, title: String, content: String) {
         NotificationGroupManager.getInstance()
             .getNotificationGroup("Shamash")
-            .createNotification(title, content, type)
+            .createNotification(title, content, NotificationType.INFORMATION)
             .notify(project)
     }
 }

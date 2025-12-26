@@ -1,4 +1,4 @@
-package io.shamash.io.shamash
+package io.shamash
 
 class ShamashPlugin {
 }

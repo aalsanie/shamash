@@ -35,6 +35,7 @@ class AsmIndexService(private val project: Project) {
         val index = AsmScanner.scan(project, scope)
 
         latest = index
+        project.messageBus.syncPublisher(AsmIndexListener.TOPIC).indexUpdated(index)
         logStats(index, scope)
         return index
     }
@@ -68,6 +69,7 @@ class AsmIndexService(private val project: Project) {
             }
         )
     }
+
 
     companion object {
         private val LOG = Logger.getInstance(AsmIndexService::class.java)

@@ -1,17 +1,14 @@
 package io.shamash.asm.scan
 
-import com.intellij.openapi.compiler.CompilerPaths
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.JarFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VfsUtilCore
 import java.io.File
 
-/**
- * ASM-1 (Option B): locate module output directories + dependency jars.
- */
 object ClassFileLocator {
 
     fun collectSources(project: Project): List<ClassFileSource> {
@@ -23,7 +20,6 @@ object ClassFileLocator {
             collectModuleDependencyJars(module, sources)
         }
 
-        // De-dup by path (same jar can appear on multiple modules).
         return sources
             .distinctBy { it.path }
             .sortedBy { it.displayName }
@@ -33,11 +29,13 @@ object ClassFileLocator {
         module: com.intellij.openapi.module.Module,
         out: MutableList<ClassFileSource>
     ) {
-        val mainOut = CompilerPaths.getModuleOutputPath(module, /* forTests = */ false)
-        val testOut = CompilerPaths.getModuleOutputPath(module, /* forTests = */ true)
+        val ext = CompilerModuleExtension.getInstance(module) ?: return
 
-        listOfNotNull(mainOut, testOut)
-            .map { File(it) }
+        val mainOutVf = ext.compilerOutputPath
+        val testOutVf = ext.compilerOutputPathForTests
+
+        listOfNotNull(mainOutVf, testOutVf)
+            .map { File(it.path) }
             .filter { it.exists() && it.isDirectory }
             .forEach { dir ->
                 out += ClassFileSource.Directory(
@@ -73,7 +71,6 @@ object ClassFileLocator {
     }
 
     private fun toLocalJarFile(root: VirtualFile): File? {
-        // In IntelliJ, library class roots might be a jar root (jar://...!/)
         val localJarVf = JarFileSystem.getInstance().getVirtualFileForJar(root) ?: root
         return try {
             VfsUtilCore.virtualToIoFile(localJarVf)
