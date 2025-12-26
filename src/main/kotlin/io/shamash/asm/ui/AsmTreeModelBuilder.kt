@@ -16,7 +16,7 @@ import javax.swing.tree.DefaultMutableTreeNode
 object AsmTreeModelBuilder {
 
     fun buildRoot(index: AsmIndex): DefaultMutableTreeNode {
-        val root = DefaultMutableTreeNode("Shamash ASM")
+        val root = DefaultMutableTreeNode("Shamash scan")
         root.add(buildProjectNode(index))
         root.add(buildExternalBucketsNode(index))
         return root

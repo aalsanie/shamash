@@ -20,7 +20,7 @@
         <notificationGroup id="Shamash" displayType="BALLOON" isLogByDefault="true"/>
 
         <toolWindow id="Shamash" anchor="right" icon="/icons/pluginIcon.svg"
-                    factoryClass="io.shamash.asm.ui.AsmDashboardToolWindowFactory"/>
+                    factoryClass="io.shamash.asm.ui.AsmDashboardToolWindowsFactory"/>
 
         <!-- Architecture / Dependency rules -->
         <applicationService

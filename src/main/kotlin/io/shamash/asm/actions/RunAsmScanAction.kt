@@ -11,12 +11,12 @@ import io.shamash.asm.service.AsmIndexService
 /**
  * Dev/debug action: build the ASM index and emit a short summary.
  */
-class RunAsmScanAction : AnAction("Shamash: Run ASM Scan") {
+class RunAsmScanAction : AnAction("Shamash: Run Scan") {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
-        object : Task.Backgroundable(project, "Shamash ASM Scan", false) {
+        object : Task.Backgroundable(project, "Shamash scan", false) {
             override fun run(indicator: ProgressIndicator) {
                 val index = AsmIndexService.getInstance(project).rescan(indicator)
 

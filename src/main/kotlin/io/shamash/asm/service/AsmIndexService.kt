@@ -58,7 +58,7 @@ class AsmIndexService(private val project: Project) {
 
         LOG.info(
             buildString {
-                append("Shamash ASM scan complete. ")
+                append("Shamash scan complete. ")
                 append("scope=$scope, ")
                 append("projectClasses=$classCount, ")
                 append("bytecodeRefs(total)=$totalReferences, ")
