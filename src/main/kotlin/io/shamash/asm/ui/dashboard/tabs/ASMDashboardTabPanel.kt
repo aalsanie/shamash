@@ -28,15 +28,18 @@ import io.shamash.asm.service.AsmIndexListener
  */
 class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(true, true), Disposable {
 
-    private val header = JBLabel("No ASM index yet. Run a scan.")
+    private val header = JBLabel("No Shamash index yet. Run a Shamash scan.")
 
-    // Existing index tree (kept as a separate tab)
+    // Tab hierarchy (main tab)
+    private val hierarchyTab = AsmHierarchyTabPanel(project)
+
+    // Tab tree
     private val treeRoot = DefaultMutableTreeNode("Shamash")
     private val treeModel = DefaultTreeModel(treeRoot)
     private val tree = Tree(treeModel)
 
-    // Tab A
-    private val hierarchyTab = AsmHierarchyTabPanel(project)
+    // Tab hotspots
+    private val hotspotsTab = AsmHotspotsTabPanel(project)
 
     private val tabs = JBTabbedPane()
 
@@ -59,10 +62,13 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
             }
         })
 
+        // here we add tabs and names "Wohooo!" lets keep it clean ? TODO: maybe move the labels out
         tabs.addTab("Hierarchy", hierarchyTab)
-        tabs.addTab("Index", JPanel(BorderLayout()).apply {
+        tabs.addTab("Tree", JPanel(BorderLayout()).apply {
             add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER)
         })
+        tabs.addTab("Hotspots", hotspotsTab)
+
 
         setContent(
             JPanel(BorderLayout()).apply {
@@ -74,7 +80,7 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
         val tb = createToolbar()
         setToolbar(tb.component)
 
-        // If a scan already happened in this project session, show it.
+        // if a scan already happened in this project session, show it
         AsmIndexService.getInstance(project).getLatest()?.let { render(it) }
     }
 
@@ -94,28 +100,30 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
         val totalRefs = index.references.values.sumOf { it.size }
         val buckets = index.externalBuckets.size
 
+        // TODO: Make shamash run scan triggered dynamically when dashboard is open Shamash 2.0
         header.text =
-            "Indexed $totalClasses classes. Captured $totalRefs bytecode references. External buckets: $buckets."
+            "Indexed $totalClasses classes. Captured $totalRefs bytecode references. External buckets: $buckets." +
+                    "If 0 bytecode captured navigate to: Tools -> Press Shamash: Run scan"
 
-        // Update Tab A
+        // update index main tab hierarchy
         hierarchyTab.onIndexUpdated(index)
 
-        // Update Index tab tree (existing behavior)
+        // update index tab tree (existing behavior)
         treeRoot.removeAllChildren()
         treeRoot.add(AsmTreeModelBuilder.buildProjectNode(index))
         treeRoot.add(AsmTreeModelBuilder.buildExternalBucketsNode(index))
         treeModel.reload()
-
-        // Root
         tree.expandRow(0)
+        // update index tab hotspot
+        hotspotsTab.onIndexUpdated(index)
 
-        // Expand "Project", collapse "External"
+        // expand collapse toggle in tree view tab
         if (tree.rowCount > 1) tree.expandRow(1)
         if (tree.rowCount > 2) tree.collapseRow(2)
     }
 
     private inner class RescanAction :
-        AnAction("Analyze", "Scan module outputs + dependency jars (build ASM index)", ShamashIcons.PLUGIN) {
+        AnAction("Analyze", "Scan module outputs + dependency jars (build Shamash index)", ShamashIcons.PLUGIN) {
 
         override fun actionPerformed(e: AnActionEvent) {
             object : Task.Backgroundable(project, "Shamash scan", false) {
@@ -143,6 +151,6 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
     }
 
     override fun dispose() {
-        TODO("Not yet implemented")
+        //TODO("I have no idea if we need to clean anything but let's assume we don't for now!")
     }
 }

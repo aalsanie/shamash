@@ -2,27 +2,30 @@ package io.shamash.asm.scan
 
 import io.shamash.asm.model.AsmClassInfo
 import io.shamash.asm.model.AsmMethodInfo
+import io.shamash.asm.model.AsmOrigin
 import io.shamash.asm.util.AsmTypeUtil
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.Handle
-import org.objectweb.asm.Label
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.Type
+import org.objectweb.asm.*
 import org.objectweb.asm.signature.SignatureReader
 import org.objectweb.asm.signature.SignatureVisitor
 
 /**
  * Collects:
+ * - main search dashboard tab
  * - hierarchy (super + interfaces)
  * - methods
  * - referenced class internal names
+ * - hotspot
  */
 class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
 
+    //hierarchy & search main dashboard tab
     private var name: String? = null
     private var access: Int = 0
     private var superName: String? = null
     private var interfaces: List<String> = emptyList()
+    //hotspot tab
+    private var fieldCount: Int = 0
+    private var instructionCount: Int = 0
 
     private val methods = mutableListOf<AsmMethodInfo>()
     private val references = mutableSetOf<String>()
@@ -77,6 +80,7 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
         signature: String?,
         value: Any?
     ) = super.visitField(access, name, descriptor, signature, value)?.also {
+        fieldCount++   // NEW
         descriptor?.let { d -> references.addAll(AsmTypeUtil.internalNamesFromDescriptor(d)) }
         signature?.let { collectFromSignature(it) }
         when (value) {
@@ -90,7 +94,9 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
         descriptor: String?,
         signature: String?,
         exceptions: Array<out String>?
-    ) = super.visitMethod(access, name, descriptor, signature, exceptions)?.also { mv ->
+    ): MethodVisitor? {
+        val mv = super.visitMethod(access, name, descriptor, signature, exceptions) ?: return null
+
         if (name != null && descriptor != null) {
             methods.add(AsmMethodInfo(name, descriptor, access))
             references.addAll(AsmTypeUtil.internalNamesFromMethodDescriptor(descriptor))
@@ -98,26 +104,34 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
         exceptions?.forEach { references.add(it) }
         signature?.let { collectFromSignature(it) }
 
-        return object : org.objectweb.asm.MethodVisitor(Opcodes.ASM9, mv) {
+        // wrap mv to count "instructions" deterministically and collect refs hidden in bytecode.
+        return object : MethodVisitor(Opcodes.ASM9, mv) {
+
+            private fun bump() { instructionCount++ }
+
+            override fun visitInsn(opcode: Int) { bump(); super.visitInsn(opcode) }
+            override fun visitIntInsn(opcode: Int, operand: Int) { bump(); super.visitIntInsn(opcode, operand) }
+            override fun visitVarInsn(opcode: Int, `var`: Int) { bump(); super.visitVarInsn(opcode, `var`) }
+            override fun visitJumpInsn(opcode: Int, label: Label?) { bump(); super.visitJumpInsn(opcode, label) }
+            override fun visitIincInsn(`var`: Int, increment: Int) { bump(); super.visitIincInsn(`var`, increment) }
+            override fun visitTableSwitchInsn(min: Int, max: Int, dflt: Label?, vararg labels: Label?) { bump(); super.visitTableSwitchInsn(min, max, dflt, *labels) }
+            override fun visitLookupSwitchInsn(dflt: Label?, keys: IntArray?, labels: Array<out Label>?) { bump(); super.visitLookupSwitchInsn(dflt, keys, labels) }
 
             override fun visitTypeInsn(opcode: Int, type: String?) {
+                bump()
                 type?.let { references.add(it) }
                 super.visitTypeInsn(opcode, type)
             }
 
             override fun visitFieldInsn(opcode: Int, owner: String?, name: String?, descriptor: String?) {
+                bump()
                 owner?.let { references.add(it) }
                 descriptor?.let { references.addAll(AsmTypeUtil.internalNamesFromDescriptor(it)) }
                 super.visitFieldInsn(opcode, owner, name, descriptor)
             }
 
-            override fun visitMethodInsn(
-                opcode: Int,
-                owner: String?,
-                name: String?,
-                descriptor: String?,
-                isInterface: Boolean
-            ) {
+            override fun visitMethodInsn(opcode: Int, owner: String?, name: String?, descriptor: String?, isInterface: Boolean) {
+                bump()
                 owner?.let { references.add(it) }
                 descriptor?.let { references.addAll(AsmTypeUtil.internalNamesFromMethodDescriptor(it)) }
                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface)
@@ -129,6 +143,7 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
                 bootstrapMethodHandle: Handle?,
                 vararg bootstrapMethodArguments: Any?
             ) {
+                bump()
                 descriptor?.let { references.addAll(AsmTypeUtil.internalNamesFromMethodDescriptor(it)) }
                 bootstrapMethodHandle?.owner?.let { references.add(it) }
                 bootstrapMethodArguments.forEach { arg ->
@@ -141,13 +156,13 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
             }
 
             override fun visitLdcInsn(value: Any?) {
-                when (value) {
-                    is Type -> references.add(value.internalName)
-                }
+                bump()
+                if (value is Type) references.add(value.internalName)
                 super.visitLdcInsn(value)
             }
 
             override fun visitMultiANewArrayInsn(descriptor: String?, numDimensions: Int) {
+                bump()
                 descriptor?.let { references.addAll(AsmTypeUtil.internalNamesFromDescriptor(it)) }
                 super.visitMultiANewArrayInsn(descriptor, numDimensions)
             }
@@ -159,10 +174,11 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
         }
     }
 
+
     fun toClassInfo(
         originPath: String,
         originDisplayName: String,
-        origin: io.shamash.asm.model.AsmOrigin
+        origin: AsmOrigin
     ): AsmClassInfo? {
         val n = name ?: return null
         val cleanedRefs = references
@@ -170,6 +186,7 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
             .filterNot { it == n }
             .toSet()
 
+        // Don't dare and add module name here! asm scanner decorates it!
         return AsmClassInfo(
             internalName = n,
             access = access,
@@ -179,7 +196,9 @@ class CollectingClassVisitor : ClassVisitor(Opcodes.ASM9) {
             referencedInternalNames = cleanedRefs,
             origin = origin,
             originPath = originPath,
-            originDisplayName = originDisplayName
+            originDisplayName = originDisplayName,
+            fieldCount = fieldCount,
+            instructionCount = instructionCount
         )
     }
 
