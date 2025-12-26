@@ -8,28 +8,25 @@
 
 # Shamash
 
-Shamash is an architectural refactoring intellij plugin that enforces clean architecture.
+Shamash is a refactoring tool that enforces clean architecture.
 
 
 ### What It Offers?
-- Architectural Dashboard - Tools → Samash Dashboard (All reports are exportable)
+- Architectural Dashboard - reports are exportable
   - Hierarchy tab: search panel of project's hierarchical structure
   - Tree tab: view of project's hierarchical structure
   - Hotspots tab: dynamic analysis that shows architectural violations
   - Findings: displays severity/violations
-- PSI inspections - displayed as warning in problems tab with fixes
-  - violations of clean code
-  - violations of clean architecture
-- ASM bytecode scan - Tools → Shamash: run scan
-
-
-### Levels of Operations
+- PSI static analysis
 - ASM bytecode analysis
-- PSI for static analysis
-- Logging-based cleanup (hybrid runtime signal)
+- Logging based cleanup (hyprid runtime signal)
 
-All inspections are deterministic, reversible, and framework-aware where necessary.
-The plugin offers dashboards, fixes, inspection etc...
+
+### Building Blocks
+- Kotlin
+- Gradle
+- ASM 
+- PSI
 
 ## License
 
