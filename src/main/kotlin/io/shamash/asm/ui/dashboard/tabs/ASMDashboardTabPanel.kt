@@ -41,6 +41,9 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
     // Tab hotspots
     private val hotspotsTab = AsmHotspotsTabPanel(project)
 
+    //Tab findings
+    private val findingsTab = AsmFindingsTabPanel(project)
+
     private val tabs = JBTabbedPane()
 
     init {
@@ -62,12 +65,13 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
             }
         })
 
-        // here we add tabs and names "Wohooo!" lets keep it clean ? TODO: maybe move the labels out
+        // here we add tabs and names "Wohooo!" lets keep it clean ? TODO: export them strings!
         tabs.addTab("Hierarchy", hierarchyTab)
         tabs.addTab("Tree", JPanel(BorderLayout()).apply {
             add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER)
         })
         tabs.addTab("Hotspots", hotspotsTab)
+        tabs.addTab("Findings", findingsTab)
 
 
         setContent(
@@ -105,17 +109,20 @@ class AsmDashboardPanel(private val project: Project) : SimpleToolWindowPanel(tr
             "Indexed $totalClasses classes. Captured $totalRefs bytecode references. External buckets: $buckets." +
                     "If 0 bytecode captured navigate to: Tools -> Press Shamash: Run scan"
 
-        // update index main tab hierarchy
+        // update main tab hierarchy
         hierarchyTab.onIndexUpdated(index)
 
-        // update index tab tree (existing behavior)
+        // update tab tree
         treeRoot.removeAllChildren()
         treeRoot.add(AsmTreeModelBuilder.buildProjectNode(index))
         treeRoot.add(AsmTreeModelBuilder.buildExternalBucketsNode(index))
         treeModel.reload()
         tree.expandRow(0)
-        // update index tab hotspot
+        // update tab hotspot
         hotspotsTab.onIndexUpdated(index)
+        //update tab findings
+        findingsTab.onIndexUpdated(index)
+
 
         // expand collapse toggle in tree view tab
         if (tree.rowCount > 1) tree.expandRow(1)

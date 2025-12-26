@@ -121,9 +121,16 @@ object AsmScanner {
                 originDisplayName = source.displayName,
                 origin = source.origin
             ) ?: return
+            val moduleName =
+                if (source.origin == io.shamash.asm.model.AsmOrigin.MODULE_OUTPUT) {
+                    source.displayName.substringBefore(":").trim().ifBlank { null }
+                } else null
 
-            // First one wins (prefer module output over dependency jar if duplicates show up).
-            val existing = out[info.internalName]
+            val decorated = if (moduleName != null && info.moduleName != moduleName) {
+                info.copy(moduleName = moduleName)
+            } else info
+
+            val existing = out[decorated.internalName]
             if (existing == null || existing.origin != io.shamash.asm.model.AsmOrigin.MODULE_OUTPUT) {
                 out[info.internalName] = info
             }

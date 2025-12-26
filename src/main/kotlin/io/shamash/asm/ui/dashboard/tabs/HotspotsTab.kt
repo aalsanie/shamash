@@ -15,9 +15,12 @@ import com.intellij.util.ui.ListTableModel
 import io.shamash.asm.model.AsmClassInfo
 import io.shamash.asm.model.AsmIndex
 import io.shamash.asm.scan.ExternalBucketResolver
+import io.shamash.asm.ui.dashboard.export.ExportUtil
+import io.shamash.asm.ui.dashboard.export.HotspotsExport
 import org.objectweb.asm.Opcodes
 import java.awt.BorderLayout
 import java.awt.FlowLayout
+import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JPanel
 import javax.swing.ListSelectionModel
@@ -52,6 +55,9 @@ class AsmHotspotsTabPanel(private val project: Project) : JPanel(BorderLayout())
     private val modeBox = JComboBox(Mode.entries.toTypedArray())
     private val projectOnlyEdges = JBCheckBox("Project-only edges", true)
     private val excludeJdkFromFan = JBCheckBox("Exclude JDK from fan-out", true)
+    private val exportJsonBtn = JButton("Export JSON")
+    private val exportXmlBtn = JButton("Export XML")
+
 
     private val header = JBLabel("Run scan to compute hotspots. Hint: higher score = hotter (worse).")
 
@@ -99,6 +105,8 @@ class AsmHotspotsTabPanel(private val project: Project) : JPanel(BorderLayout())
             add(header, BorderLayout.SOUTH)
         }
 
+
+
         val bottom = JPanel(BorderLayout()).apply {
             add(JBLabel("Evidence / Explanation"), BorderLayout.NORTH)
             add(ScrollPaneFactory.createScrollPane(details), BorderLayout.CENTER)
@@ -107,6 +115,8 @@ class AsmHotspotsTabPanel(private val project: Project) : JPanel(BorderLayout())
         add(top, BorderLayout.NORTH)
         add(ScrollPaneFactory.createScrollPane(table), BorderLayout.CENTER)
         add(bottom, BorderLayout.SOUTH)
+        exportJsonBtn.addActionListener { exportHotspots(ExportUtil.Format.JSON) }
+        exportXmlBtn.addActionListener { exportHotspots(ExportUtil.Format.XML) }
 
         modeBox.addActionListener { recomputeAndRender() }
         projectOnlyEdges.addActionListener { recomputeAndRender() }
@@ -133,6 +143,12 @@ class AsmHotspotsTabPanel(private val project: Project) : JPanel(BorderLayout())
                 navigateToSource(row.internal)
             }
         })
+
+        val exportBar = JPanel(FlowLayout(FlowLayout.LEFT, 8, 6)).apply {
+            add(exportJsonBtn)
+            add(exportXmlBtn)
+        }
+        add(exportBar, BorderLayout.SOUTH)
     }
 
     fun onIndexUpdated(newIndex: AsmIndex) {
@@ -368,5 +384,34 @@ class AsmHotspotsTabPanel(private val project: Project) : JPanel(BorderLayout())
 
     private fun <T> col(name: String, get: (Row) -> T) = object : ColumnInfo<Row, T>(name) {
         override fun valueOf(item: Row): T = get(item)
+    }
+
+    private fun exportHotspots(format: ExportUtil.Format) {
+        val rows = model.items.toList()
+        if (rows.isEmpty()) return
+
+        val mode = (modeBox.selectedItem as Mode).name
+
+        val exportRows = rows.map { r ->
+            HotspotsExport.HotspotRow(
+                fqcn = r.fqcn,
+                score = r.score,
+                depth = r.depth,
+                methods = r.methods,
+                publicMethods = r.publicMethods,
+                fields = r.fields,
+                instructions = r.instructions,
+                fanOut = r.fanOut,
+                fanIn = r.fanIn,
+                reason = r.reason
+            )
+        }
+
+        HotspotsExport.exportView(
+            project = project,
+            format = format,
+            mode = mode,
+            rows = exportRows
+        )
     }
 }

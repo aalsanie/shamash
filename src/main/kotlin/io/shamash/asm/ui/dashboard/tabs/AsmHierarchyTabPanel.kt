@@ -21,12 +21,15 @@ import com.intellij.ui.treeStructure.Tree
 import io.shamash.asm.model.AsmClassInfo
 import io.shamash.asm.model.AsmIndex
 import io.shamash.asm.model.AsmOrigin
+import io.shamash.asm.ui.dashboard.export.ExportUtil
+import io.shamash.asm.ui.dashboard.export.HierarchyExport
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.DefaultListModel
+import javax.swing.JButton
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.event.DocumentEvent
@@ -50,11 +53,15 @@ import javax.swing.tree.DefaultTreeModel
  */
 class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()) {
 
-    // ---------- UI ----------
+    // ui controls
     private val searchField = SearchTextField(false).apply {
         textEditor.emptyText.text =
             "Search class (fqcn / simple / CamelHumps), e.g. OrderSvc, com.foo.OrderService"
     }
+
+    private val exportJsonBtn = JButton("Export JSON")
+    private val exportXmlBtn = JButton("Export XML")
+
 
     private val includeLibrariesToggle = JBCheckBox("Include libraries", true)
 
@@ -134,6 +141,7 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
                 add(transitiveToggle)
             }
 
+
             val north = JPanel(BorderLayout()).apply {
                 add(header, BorderLayout.NORTH)
                 add(controls, BorderLayout.SOUTH)
@@ -148,6 +156,19 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
             secondComponent = right
         }
         add(splitter, BorderLayout.CENTER)
+        exportJsonBtn.addActionListener { exportHierarchy(ExportUtil.Format.JSON) }
+        exportXmlBtn.addActionListener { exportHierarchy(ExportUtil.Format.XML) }
+
+        val exportBar = JPanel(BorderLayout()).apply {
+            border = com.intellij.util.ui.JBUI.Borders.empty(6, 8)
+            val row = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+                add(exportJsonBtn)
+                add(exportXmlBtn)
+            }
+            add(row, BorderLayout.WEST)
+        }
+        add(exportBar, BorderLayout.SOUTH)
+
 
         // Speed search in tree
         TreeSpeedSearch(hierarchyTree) { path ->
@@ -543,5 +564,27 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
                 }
             }
         }
+    }
+
+    private fun exportHierarchy(format: ExportUtil.Format) {
+        val internal = selectedInternal ?: return
+        val info = classesByInternal[internal] ?: return
+
+        val superChain = computeSuperChainInternal(internal).map { it.replace('/', '.') }
+        val ifaces = info.interfaceInternalNames.distinct().sorted().map { it.replace('/', '.') }
+
+        val direct = subclassesOf[internal].orEmpty()
+        val subs = if (transitiveToggle.isSelected) computeTransitiveSubclasses(internal) else direct
+        val subList = subs.asSequence().sorted().map { it.replace('/', '.') }.toList()
+
+        HierarchyExport.exportSnapshot(
+            project = project,
+            format = format,
+            info = info,
+            transitiveSubtypes = transitiveToggle.isSelected,
+            superChainFqcn = superChain,
+            interfacesFqcn = ifaces,
+            subtypesFqcn = subList
+        )
     }
 }
