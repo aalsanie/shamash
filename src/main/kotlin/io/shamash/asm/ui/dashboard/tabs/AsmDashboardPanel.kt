@@ -54,19 +54,22 @@ class AsmDashboardPanel(
     Disposable {
     private val header = JBLabel("No Shamash index yet. Run a Shamash scan.")
 
-    // Tab hierarchy (main tab)
-    private val hierarchyTab = AsmHierarchyTabPanel(project)
+    // Tab search (main tab)
+    private val searchTab = AsmSearchTabPanel(project)
 
-    // Tab tree
+    // Tab hierarchy tree
     private val treeRoot = DefaultMutableTreeNode("Shamash")
     private val treeModel = DefaultTreeModel(treeRoot)
-    private val tree = Tree(treeModel)
+    private val treeTab = Tree(treeModel)
 
     // Tab hotspots
     private val hotspotsTab = AsmHotspotsTabPanel(project)
 
     // Tab findings
     private val findingsTab = AsmFindingsTabPanel(project)
+
+    // Tab report
+    private val report = AsmReportTabPanel(project)
 
     private val tabs = JBTabbedPane()
 
@@ -93,16 +96,16 @@ class AsmDashboardPanel(
             },
         )
 
-        // here we add tabs and names "Wohooo!" lets keep it clean ? TODO: export them strings!
-        tabs.addTab("Hierarchy", hierarchyTab)
+        tabs.addTab("Search", searchTab)
         tabs.addTab(
-            "Tree",
+            "Hierarchy",
             JPanel(BorderLayout()).apply {
-                add(ScrollPaneFactory.createScrollPane(tree), BorderLayout.CENTER)
+                add(ScrollPaneFactory.createScrollPane(treeTab), BorderLayout.CENTER)
             },
         )
         tabs.addTab("Hotspots", hotspotsTab)
         tabs.addTab("Findings", findingsTab)
+        tabs.addTab("Report", report)
 
         setContent(
             JPanel(BorderLayout()).apply {
@@ -110,6 +113,7 @@ class AsmDashboardPanel(
                 add(tabs, BorderLayout.CENTER)
             },
         )
+        findingsTab.setReportSink(report)
 
         val tb = createToolbar()
         setToolbar(tb.component)
@@ -135,29 +139,28 @@ class AsmDashboardPanel(
         val totalClasses = index.classes.size
         val totalRefs = index.references.values.sumOf { it.size }
         val buckets = index.externalBuckets.size
-
-        // TODO: Make shamash run scan triggered dynamically when dashboard is open Shamash 2.0
         header.text =
             "Indexed $totalClasses classes. Captured $totalRefs bytecode references. External buckets: $buckets." +
             "If 0 bytecode captured navigate to: Tools -> Press Shamash: Run scan"
 
         // update main tab hierarchy
-        hierarchyTab.onIndexUpdated(index)
+        searchTab.onIndexUpdated(index)
 
         // update tab tree
         treeRoot.removeAllChildren()
         treeRoot.add(AsmTreeModelBuilder.buildProjectNode(index))
         treeRoot.add(AsmTreeModelBuilder.buildExternalBucketsNode(index))
         treeModel.reload()
-        tree.expandRow(0)
+        treeTab.expandRow(0)
         // update tab hotspot
         hotspotsTab.onIndexUpdated(index)
         // update tab findings
         findingsTab.onIndexUpdated(index)
-
+        // update tab report
+        report.onIndexUpdated(index)
         // expand collapse toggle in tree view tab
-        if (tree.rowCount > 1) tree.expandRow(1)
-        if (tree.rowCount > 2) tree.collapseRow(2)
+        if (treeTab.rowCount > 1) treeTab.expandRow(1)
+        if (treeTab.rowCount > 2) treeTab.collapseRow(2)
     }
 
     private inner class RescanAction :
@@ -174,15 +177,15 @@ class AsmDashboardPanel(
 
     private inner class ExpandAllAction : AnAction("Expand All", "Expand all nodes (Index tab)", AllIcons.Actions.Expandall) {
         override fun actionPerformed(e: AnActionEvent) {
-            for (i in 0 until tree.rowCount) tree.expandRow(i)
+            for (i in 0 until treeTab.rowCount) treeTab.expandRow(i)
         }
     }
 
     private inner class CollapseAllAction :
         AnAction("Collapse All", "Collapse all nodes (Index tab)", AllIcons.Actions.Collapseall) {
         override fun actionPerformed(e: AnActionEvent) {
-            for (i in tree.rowCount downTo 1) tree.collapseRow(i)
-            tree.expandRow(0)
+            for (i in treeTab.rowCount downTo 1) treeTab.collapseRow(i)
+            treeTab.expandRow(0)
         }
     }
 

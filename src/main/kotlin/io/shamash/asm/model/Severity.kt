@@ -18,19 +18,34 @@
  */
 package io.shamash.asm.model
 
-/**
- * severity levels for Shamash findings.
- */
 enum class Severity(
-    val rank: Int,
     val label: String,
+    val rank: Int,
 ) {
-    CRITICAL(0, "Critical"),
-    HIGH(1, "High"),
-    MEDIUM(2, "Medium"),
-    LOW(3, "Low"),
-    INFO(4, "Info"),
+    CRITICAL("CRITICAL", 0),
+    HIGH("HIGH", 1),
+    MEDIUM("MEDIUM", 2),
+    LOW("LOW", 3),
+    INFO("INFO", 4),
+    NONE("NONE", 5),
     ;
 
-    override fun toString(): String = label
+    companion object {
+        fun fromLabel(raw: String?): Severity {
+            val s = raw?.trim()?.uppercase() ?: return NONE
+            return entries.firstOrNull { it.label == s } ?: NONE
+        }
+
+        /**
+         * Deterministically maps a numeric score (e.g., from hotspots or metrics)
+         * into a severity tier.
+         */
+        fun fromScore(score: Int): Severity =
+            when {
+                score >= 300 -> CRITICAL
+                score >= 220 -> HIGH
+                score >= 160 -> MEDIUM
+                else -> LOW
+            }
+    }
 }

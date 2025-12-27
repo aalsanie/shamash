@@ -45,8 +45,7 @@ object ExportUtil {
         val descriptor = FileSaverDescriptor(title, description, format.ext)
         val dialog = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
 
-        // user chooses the location (root base path) TODO: find a better place to save
-        val wrapper = dialog.save(Paths.get(""), suggestedFileName) ?: return
+        val wrapper = dialog.save(Paths.get("./shamash_reports/").normalize().toAbsolutePath(), suggestedFileName) ?: return
 
         try {
             val file = wrapper.file
@@ -57,7 +56,34 @@ object ExportUtil {
         }
     }
 
-    private fun notify(
+    /**
+     * [saveWithDialog] that allows exporting formats outside JSON/XML (e.g. standalone HTML).
+     */
+    fun saveWithDialogExt(
+        project: Project,
+        title: String,
+        description: String,
+        extension: String,
+        suggestedFileName: String,
+        content: String,
+    ) {
+        val ext = extension.trimStart('.').ifBlank { "html" }
+        val descriptor = FileSaverDescriptor(title, description, ext)
+        val dialog = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
+
+        // TODO: add a service to locate shamash_reports or create one in project directory. this should be replaced in 3 places for now: html, json and xml reports
+        val wrapper = dialog.save(Paths.get("./shamash_reports/").normalize().toAbsolutePath(), suggestedFileName) ?: return
+
+        try {
+            val file = wrapper.file
+            FileUtil.writeToFile(file, content, Charsets.UTF_8)
+            notify(project, "Export complete", "Saved to: ${file.absolutePath}", NotificationType.INFORMATION)
+        } catch (t: Throwable) {
+            notify(project, "Export failed", t.message ?: t::class.java.simpleName, NotificationType.ERROR)
+        }
+    }
+
+    fun notify(
         project: Project,
         title: String,
         content: String,

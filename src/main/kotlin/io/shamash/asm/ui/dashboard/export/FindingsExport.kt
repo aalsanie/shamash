@@ -65,7 +65,7 @@ object FindingsExport {
             )
 
         val dialog = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
-        val wrapper = dialog.save(Paths.get(""), "findings.${format.ext}") ?: return
+        val wrapper = dialog.save(Paths.get("./shamash_reports/").normalize().toAbsolutePath(), "findings.${format.ext}") ?: return
 
         try {
             val file = wrapper.file

@@ -8,11 +8,11 @@
 
 # Shamash
 
-Shamash is an architectural refactoring tool (currently: intellij plugin) that enforces clean architecture.
+Shamash is a refactoring tool that enforces clean architecture.
 
 
 ### What It Offers?
-- Architectural Dashboard - Tools → Samash Dashboard (All reports are exportable)
+- Architectural Dashboard (reports are exportable)
   - Hierarchy tab: search panel of project's hierarchical structure
   - Tree tab: view of project's hierarchical structure
   - Hotspots tab: dynamic analysis that shows architectural violations
@@ -20,7 +20,7 @@ Shamash is an architectural refactoring tool (currently: intellij plugin) that e
 - PSI inspections - displayed as warning in problems tab with fixes
   - violations of clean code
   - violations of clean architecture
-- ASM bytecode scan - Tools → Shamash: run scan
+- ASM bytecode scan
 
 
 ### Levels of Operations

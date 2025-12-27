@@ -134,6 +134,10 @@ class AsmFindingsTabPanel(
     private var asmFindings: List<Finding> = emptyList()
     private var psiFindings: List<Finding> = emptyList()
 
+    // cached combined findings, used by report tab
+    private var lastAllFindings: List<Finding> = emptyList()
+    private var reportSink: AsmReportTabPanel? = null
+
     init {
         val top =
             JPanel(BorderLayout()).apply {
@@ -273,7 +277,12 @@ class AsmFindingsTabPanel(
     }
 
     private fun applyFiltersAndRender() {
-        val all = asmFindings + psiFindings
+        val all =
+            (asmFindings + psiFindings).sortedWith(
+                compareBy<Finding>({ it.severity.rank }, { it.id }, { it.fqcn ?: "" }, { it.title }),
+            )
+        lastAllFindings = all
+        reportSink?.onAllFindingsUpdated(all)
         val rows = all.map { f -> toRow(f) }
 
         val includeSources =
@@ -431,13 +440,7 @@ class AsmFindingsTabPanel(
                 return (m * 3) + (pm * 2) + (f * 2) + ins + (fout * 2) + (fin * 2) + (depth - 1)
             }
 
-            fun severityForGod(score: Int): Severity =
-                when {
-                    score >= 300 -> Severity.CRITICAL
-                    score >= 220 -> Severity.HIGH
-                    score >= 160 -> Severity.MEDIUM
-                    else -> Severity.LOW
-                }
+            fun severityForGod(score: Int): Severity = Severity.fromScore(score)
 
             fun severityForDepth(depth: Int): Severity =
                 when {
@@ -616,7 +619,7 @@ class AsmFindingsTabPanel(
                             severity = Severity.MEDIUM,
                             fqcn = fqcn,
                             module = moduleName,
-                            message = "Class name ends with banned suffix: $suffix",
+                            message = "Class name ends with banned suffix.",
                             evidence = mapOf("name" to (psiClass.name ?: "")),
                         )
                 }
@@ -715,6 +718,14 @@ class AsmFindingsTabPanel(
             }
 
             return out
+        }
+    }
+
+    fun setReportSink(report: AsmReportTabPanel) {
+        reportSink = report
+        // If findings already exist, push immediately.
+        if (lastAllFindings.isNotEmpty()) {
+            report.onAllFindingsUpdated(lastAllFindings)
         }
     }
 }

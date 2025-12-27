@@ -69,7 +69,7 @@ import javax.swing.tree.DefaultTreeModel
  *
  * Deterministic + driven entirely by AsmIndex.
  */
-class AsmHierarchyTabPanel(
+class AsmSearchTabPanel(
     private val project: Project,
 ) : JPanel(BorderLayout()) {
     // ui controls
