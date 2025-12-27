@@ -22,14 +22,18 @@ import com.intellij.openapi.project.Project
 import java.nio.charset.StandardCharsets
 
 /**
- * Builds a single-file standalone HTML for the graph view:
+ * Builds a single-file standalone XHTML (XML-safe) HTML for the graph view:
  * - inlines cytoscape.min.js from resources
- * - inlines graph JSON as a JS const
+ * - inlines graph JSON as a JS string then JSON.parse()
  * - renders on load
  *
- * No external assets / no CDN.
+ * Why XHTML?
+ * Some renderers/parsers treat exported HTML as XML. XML fails at "<!DOCTYPE ...>" with:
+ *   StartTag: invalid element name (line 1 col 2)
+ * XHTML avoids that permanently by being well-formed.
  */
 object GraphHtmlBuilder {
+
     fun buildStandaloneHtml(
         project: Project,
         graphJson: String,
@@ -41,39 +45,122 @@ object GraphHtmlBuilder {
         val graphJsonEscaped = jsStringLiteral(graphJson)
 
         return buildString {
-            appendLine("<!DOCTYPE html>")
-            appendLine("<html lang=\"en\">")
+            // NOTE: no <!DOCTYPE> on purpose (XML parsers choke on it).
+            appendLine("<html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en\">")
             appendLine("<head>")
             appendLine("  <meta charset=\"utf-8\" />")
             appendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />")
             appendLine("  <title>Shamash Graph</title>")
             appendLine("  <style>")
             appendLine(
-                "    html, body { height: 100%; margin: 0; background: #0f1115; color: #d6d6d6; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }",
-            )
-            appendLine(
-                "    #topbar { display:flex; align-items:center; gap:12px; padding:10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }",
-            )
-            appendLine("    #brand { font-weight: 700; letter-spacing: 0.4px; }")
-            appendLine("    #score { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }")
-            appendLine("    .pill { padding:4px 10px; border-radius:999px; font-size:12px; background: rgba(255,255,255,0.06); }")
-            appendLine("    .pill strong { margin-right: 6px; }")
-            appendLine("    #controls { margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }")
-            appendLine("    label { font-size: 12px; opacity: 0.9; user-select:none; }")
-            appendLine("    input[type=checkbox] { vertical-align: middle; }")
-            appendLine(
-                "    #layoutSel { background: rgba(255,255,255,0.07); color:#d6d6d6; border:1px solid rgba(255,255,255,0.14); padding:4px 8px; border-radius:10px; }",
-            )
-            appendLine("    #main { height: calc(100% - 48px); display:flex; }")
-            appendLine("    #cy { flex: 1; }")
-            appendLine("    #side { width: 360px; border-left: 1px solid rgba(255,255,255,0.08); padding: 10px; overflow:auto; }")
-            appendLine("    #side h3 { margin: 6px 0 10px; }")
-            appendLine("    #kv { font-size: 12px; line-height: 1.5; }")
-            appendLine("    #kv .k { opacity: 0.75; }")
-            appendLine("    #kv .v { margin-left: 6px; word-break: break-word; }")
-            appendLine("    a { color: #8ab4ff; }")
-            appendLine(
-                "    #err { display:none; position:fixed; left:12px; bottom:12px; max-width: 70vw; background: rgba(255,60,60,0.12); border:1px solid rgba(255,60,60,0.35); padding:10px 12px; border-radius:10px; font-size:12px; white-space:pre-wrap; }",
+                """
+                html, body {
+                  height: 100%;
+                  margin: 0;
+                  background: #0f1115;
+                  color: #d6d6d6;
+                  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+                }
+
+                #topbar {
+                  display: flex;
+                  align-items: center;
+                  gap: 12px;
+                  padding: 10px 12px;
+                  border-bottom: 1px solid rgba(255,255,255,0.08);
+                }
+
+                #brand {
+                  font-weight: 700;
+                  letter-spacing: 0.4px;
+                  flex: 0 0 auto;
+                }
+
+                /* Keep pills in a stable left-to-right order without wrapping layout weirdness */
+                #score {
+                  display: flex;
+                  gap: 8px;
+                  align-items: center;
+                  flex-wrap: nowrap;
+                  overflow-x: auto;
+                  overflow-y: hidden;
+                  min-width: 0;
+                  padding-bottom: 2px;
+                }
+
+                .pill {
+                  display: inline-flex;
+                  align-items: baseline;
+                  gap: 6px;
+                  padding: 4px 10px;
+                  border-radius: 999px;
+                  font-size: 12px;
+                  background: rgba(255,255,255,0.06);
+                  flex: 0 0 auto;
+                  white-space: nowrap;
+                }
+                .pill strong { opacity: 0.9; }
+                .pill .val { opacity: 0.95; }
+
+                #controls {
+                  margin-left: auto;
+                  display: flex;
+                  gap: 10px;
+                  align-items: center;
+                  flex-wrap: wrap;
+                  flex: 0 0 auto;
+                }
+
+                label { font-size: 12px; opacity: 0.9; user-select: none; }
+                input[type=checkbox] { vertical-align: middle; }
+
+                #layoutSel {
+                  background: rgba(255,255,255,0.07);
+                  color: #d6d6d6;
+                  border: 1px solid rgba(255,255,255,0.14);
+                  padding: 4px 8px;
+                  border-radius: 10px;
+                }
+
+                #main {
+                  height: calc(100% - 48px);
+                  display: flex;
+                }
+
+                #cy {
+                  flex: 1;
+                  min-width: 0;
+                }
+
+                #side {
+                  width: 360px;
+                  border-left: 1px solid rgba(255,255,255,0.08);
+                  padding: 10px;
+                  overflow: auto;
+                }
+
+                #side h3 { margin: 6px 0 10px; }
+                #kv { font-size: 12px; line-height: 1.5; }
+                #kv .k { opacity: 0.75; }
+                #kv .v { margin-left: 6px; }
+
+                a { color: #8ab4ff; }
+
+                #err {
+                  display: none;
+                  position: fixed;
+                  left: 12px;
+                  bottom: 12px;
+                  max-width: 70vw;
+                  background: rgba(255,60,60,0.12);
+                  border: 1px solid rgba(255,60,60,0.35);
+                  padding: 10px 12px;
+                  border-radius: 10px;
+                  font-size: 12px;
+                  white-space: pre-wrap;
+                  z-index: 9999;
+                }
+                """.trimIndent(),
             )
             appendLine("  </style>")
             appendLine("</head>")
@@ -83,10 +170,10 @@ object GraphHtmlBuilder {
             appendLine("    <div id=\"score\"></div>")
             appendLine("    <div id=\"controls\">")
             appendLine("      <label><input id=\"onlyViol\" type=\"checkbox\" /> Only violations</label>")
-            appendLine("      <label><input id=\"hideJdk\" type=\"checkbox\" checked /> Hide JDK</label>")
-            appendLine("      <label><input id=\"projOnly\" type=\"checkbox\" checked /> Project-only</label>")
+            appendLine("      <label><input id=\"hideJdk\" type=\"checkbox\" checked=\"checked\" /> Hide JDK</label>")
+            appendLine("      <label><input id=\"projOnly\" type=\"checkbox\" checked=\"checked\" /> Project-only</label>")
             appendLine("      <select id=\"layoutSel\">")
-            appendLine("        <option value=\"cose\" selected>cose</option>")
+            appendLine("        <option value=\"cose\" selected=\"selected\">cose</option>")
             appendLine("        <option value=\"breadthfirst\">breadthfirst</option>")
             appendLine("      </select>")
             appendLine("    </div>")
@@ -96,7 +183,7 @@ object GraphHtmlBuilder {
             appendLine("    <div id=\"side\">")
             appendLine("      <h3>Details</h3>")
             appendLine("      <div id=\"kv\">Click a node…</div>")
-            appendLine("      <hr style=\"border:0;border-top:1px solid rgba(255,255,255,0.08); margin: 12px 0;\"/>")
+            appendLine("      <hr style=\"border:0;border-top:1px solid rgba(255,255,255,0.08); margin: 12px 0;\" />")
             appendLine("      <div style=\"font-size:12px;opacity:0.85;\">Standalone export generated by Shamash.</div>")
             appendLine("    </div>")
             appendLine("  </div>")
@@ -107,231 +194,389 @@ object GraphHtmlBuilder {
             appendLine(cytoscape)
             appendLine("  </script>")
 
-            // App JS (clean + robust)
+            // App
             appendLine("  <script>")
             appendLine(
                 """
                 (function () {
-                  const errBox = document.getElementById('err');
-                  const showErr = (msg, e) => {
-                    console.error(msg, e || '');
-                    errBox.style.display = 'block';
-                    errBox.textContent = msg + (e ? ("\n" + (e.stack || e.message || String(e))) : "");
-                  };
+                  "use strict";
 
-                  let GRAPH_JSON;
-                  try {
-                    GRAPH_JSON = JSON.parse($graphJsonEscaped);
-                  } catch (e) {
-                    showErr("Failed to parse GRAPH_JSON", e);
-                    return;
+                  function showErr(msg) {
+                    var el = document.getElementById("err");
+                    if (!el) return;
+                    el.style.display = "block";
+                    el.textContent = msg;
                   }
 
-                  let cy = null;
+                  function safeParseGraph() {
+                    try {
+                      return JSON.parse($graphJsonEscaped);
+                    } catch (e) {
+                      showErr("Failed to parse GRAPH_JSON: " + (e && e.message ? e.message : String(e)));
+                      return { nodes: [], edges: [], meta: {}, score: {} };
+                    }
+                  }
+
+                  var GRAPH_JSON = safeParseGraph();
+                  var cy = null;
 
                   function sevColor(sev) {
-                    if (sev === 'ERROR') return '#ff4d4d';
-                    if (sev === 'WARN') return '#ffb020';
-                    if (sev === 'INFO') return '#65a9ff';
-                    return '#9aa4b2';
+                    if (sev === "ERROR") return "#ff4d4d";
+                    if (sev === "WARN") return "#ffb020";
+                    if (sev === "INFO") return "#65a9ff";
+                    return "#9aa4b2";
+                  }
+
+                  function wrapFqcn(s) {
+                    var str = (s == null) ? "" : String(s);
+                    return str.split(".").join(".\u200B").split("$").join("$\u200B");
+                  }
+
+                  function clampInt(n, lo, hi) {
+                    var x = parseInt(n, 10);
+                    if (isNaN(x)) x = 0;
+                    if (x < lo) x = lo;
+                    if (x > hi) x = hi;
+                    return x;
+                  }
+
+                  function fmtInt(n) {
+                    var x = parseInt(n, 10);
+                    if (isNaN(x)) x = 0;
+                    return String(x);
+                  }
+
+                  function fmtPct(n) {
+                    var x = parseFloat(n);
+                    if (isNaN(x)) x = 0;
+                    // keep it clean: whole percent
+                    return String(Math.round(x)) + "%";
+                  }
+
+                  // overall     = overallScore%
+                  // structural  = 100 - structuralScore
+                  // complexity  = 100 - complexityScore
+                  // coupling    = 100 - couplingScore
+                  // layering    = 100 - layeringScore
+                  function scoreValue(scoreObj, field, invert) {
+                    if (!scoreObj) return 0;
+                    var v = scoreObj[field];
+                    var x = parseFloat(v);
+                    if (isNaN(x)) x = 0;
+                    if (invert) x = 100 - x;
+                    // no percent for inverted ones
+                    return clampInt(x, 0, 100);
+                  }
+
+                  function clearEl(el) {
+                    while (el && el.firstChild) el.removeChild(el.firstChild);
+                  }
+
+                  function pillEl(k, vText) {
+                    var sp = document.createElement("span");
+                    sp.className = "pill";
+
+                    var st = document.createElement("strong");
+                    st.textContent = k;
+
+                    var val = document.createElement("span");
+                    val.className = "val";
+                    val.textContent = vText;
+
+                    sp.appendChild(st);
+                    sp.appendChild(val);
+                    return sp;
+                  }
+
+                  function renderScore(score) {
+                    var el = document.getElementById("score");
+                    if (!el) return;
+                    clearEl(el);
+
+                    if (!score) return;
+
+                    // support both naming styles if you ever change backend:
+                    var overallRaw = (score.overallScore != null) ? score.overallScore : score.overall;
+                    var structuralRaw = (score.structuralScore != null) ? score.structuralScore : score.structural;
+                    var complexityRaw = (score.complexityScore != null) ? score.complexityScore : score.complexity;
+                    var couplingRaw = (score.couplingScore != null) ? score.couplingScore : score.coupling;
+                    var layeringRaw = (score.layeringScore != null) ? score.layeringScore : score.layering;
+
+                    // overall is shown as percent
+                    el.appendChild(pillEl("overall clean architecture:", fmtPct(overallRaw)));
+
+                    el.appendChild(pillEl("structural", fmtInt(100 - clampInt(structuralRaw, 0, 100))));
+                    el.appendChild(pillEl("complexity", fmtInt(100 - clampInt(complexityRaw, 0, 100))));
+                    el.appendChild(pillEl("coupling", fmtInt(100 - clampInt(couplingRaw, 0, 100))));
+                    el.appendChild(pillEl("layering", fmtInt(100 - clampInt(layeringRaw, 0, 100))));
+                  }
+
+                  function addDetailRow(parent, k, v) {
+                    var row = document.createElement("div");
+
+                    var ks = document.createElement("span");
+                    ks.className = "k";
+                    ks.textContent = k + ":";
+
+                    var vs = document.createElement("span");
+                    vs.className = "v";
+                    vs.textContent = (v == null) ? "" : String(v);
+
+                    row.appendChild(ks);
+                    row.appendChild(vs);
+                    parent.appendChild(row);
+                  }
+
+                  function renderDetails(n) {
+                    var kv = document.getElementById("kv");
+                    if (!kv) return;
+
+                    clearEl(kv);
+                    if (!n) {
+                      kv.textContent = "Click a node…";
+                      return;
+                    }
+
+                    addDetailRow(kv, "fqcn", n.fqcn || "");
+                    addDetailRow(kv, "module", n.module || "");
+                    addDetailRow(kv, "origin", n.origin || "");
+                    addDetailRow(kv, "layer", n.layer || "");
+                    addDetailRow(kv, "sevMax", n.sevMax || "NONE");
+                    addDetailRow(kv, "findings", n.findingCount || 0);
+                    addDetailRow(kv, "fanIn", n.fanIn || 0);
+                    addDetailRow(kv, "fanOut", n.fanOut || 0);
+                    addDetailRow(kv, "depth", n.depth || 0);
+                    addDetailRow(kv, "godScore", n.godScore || 0);
                   }
 
                   function nodeMinSize(n) {
-                    const g = n.godScore || 0;
-                    const f = n.fanOut || 0;
-                    const base = 18;
-                    const bump = Math.min(28, Math.floor((g / 8) + (f / 15)));
+                    // Keep stable minimum size but allow label-sized boxes.
+                    var g = n.godScore || 0;
+                    var f = n.fanOut || 0;
+                    var base = 26;
+                    var bump = Math.min(40, Math.floor((g / 6) + (f / 10)));
                     return base + bump;
                   }
 
                   function weightOpacity(w) {
-                    const ww = Math.max(1, Math.min(20, w || 1));
-                    return Math.max(0.08, Math.min(0.6, ww / 25.0));
-                  }
-
-                  // Insert ZWSP after '.' and '$' so wrap can break long FQCNs.
-                  function wrapFqcn(s) {
-                    return (s || '')
-                      .replaceAll('.', '.\u200B')
-                      .replaceAll('$', '$\u200B');
-                  }
-
-                  function renderScore(score) {
-                    const el = document.getElementById('score');
-                    if (!score) { el.innerHTML = ''; return; }
-                    const pill = (k, v) => `<span class="pill"><strong>${'$'}{k}</strong>${'$'}{v}</span>`;
-                    el.innerHTML = [
-                      pill('overall clean solution%', score.overall),
-                      pill('structural', score.structural),
-                      pill('layering', score.layering),
-                      pill('coupling', score.coupling),
-                      pill('complexity', score.complexity)
-                    ].join('');
-                  }
-
-                  function renderDetails(n) {
-                    const kv = document.getElementById('kv');
-                    if (!n) { kv.textContent = 'Click a node…'; return; }
-                    const rows = [];
-                    const add = (k, v) => rows.push(`<div><span class="k">${'$'}{k}:</span><span class="v">${'$'}{v}</span></div>`);
-                    add('fqcn', n.fqcn);
-                    add('module', n.module || '');
-                    add('origin', n.origin || '');
-                    add('layer', n.layer || '');
-                    add('sevMax', n.sevMax || 'NONE');
-                    add('findings', n.findingCount || 0);
-                    add('fanIn', n.fanIn || 0);
-                    add('fanOut', n.fanOut || 0);
-                    add('depth', n.depth || 0);
-                    add('godScore', n.godScore || 0);
-                    kv.innerHTML = rows.join('');
+                    var ww = Math.max(1, Math.min(20, w || 1));
+                    return Math.max(0.10, Math.min(0.75, ww / 18.0));
                   }
 
                   function buildElements(graph, opts) {
-                    const onlyViol = opts.onlyViol;
-                    const hideJdk  = opts.hideJdk;
-                    const projOnly = opts.projOnly;
+                    var onlyViol = !!opts.onlyViol;
+                    var hideJdk = !!opts.hideJdk;
+                    var projOnly = !!opts.projOnly;
 
-                    const nodes = [];
-                    const keep = new Set();
+                    var nodes = [];
+                    var edges = [];
+                    var keep = {};
 
-                    for (const n of (graph.nodes || [])) {
+                    var ns = graph && graph.nodes ? graph.nodes : [];
+                    for (var i = 0; i < ns.length; i++) {
+                      var n = ns[i] || {};
                       if (onlyViol && (n.findingCount || 0) <= 0) continue;
-                      if (hideJdk && n.origin === 'JDK') continue;
-                      if (projOnly && n.origin !== 'PROJECT') continue;
+                      if (hideJdk && n.origin === "JDK") continue;
+                      if (projOnly && n.origin !== "PROJECT") continue;
 
-                      keep.add(n.id);
+                      if (n.id == null) continue;
+
+                      keep[n.id] = true;
+
                       nodes.push({
                         data: {
-                          ...n,
-                          // keep full fqcn for details; label is wrapped fqcn for rendering
-                          label: wrapFqcn(n.fqcn),
-                          _minSize: nodeMinSize(n)
+                          // keep all original fields
+                          id: n.id,
+                          fqcn: n.fqcn || "",
+                          module: n.module,
+                          origin: n.origin,
+                          layer: n.layer,
+                          sevMax: n.sevMax,
+                          findingCount: n.findingCount,
+                          fanIn: n.fanIn,
+                          fanOut: n.fanOut,
+                          depth: n.depth,
+                          godScore: n.godScore,
+                          label: wrapFqcn(n.fqcn || n.id)
                         }
                       });
                     }
 
-                    const edges = [];
-                    for (const e of (graph.edges || [])) {
-                      if (!keep.has(e.source) || !keep.has(e.target)) continue;
-                      edges.push({ data: { ...e } });
+                    var es = graph && graph.edges ? graph.edges : [];
+                    for (var j = 0; j < es.length; j++) {
+                      var e = es[j] || {};
+                      if (!keep[e.source] || !keep[e.target]) continue;
+                      edges.push({ data: e });
                     }
 
                     return nodes.concat(edges);
                   }
 
+                  function fitReadable() {
+                    if (!cy) return;
+                    cy.fit(cy.elements(), 120);
+
+                    // If it ends up too zoomed-out, zoom in a bit to readable level.
+                    // (breadthfirst tends to produce a wide layout)
+                    var z = cy.zoom();
+                    if (z < 0.35) {
+                      cy.zoom(0.35);
+                      cy.center();
+                    }
+                  }
+
                   function applyLayout(name) {
                     if (!cy) return;
 
-                    const layout = cy.layout({
-                      name: name || 'cose',
-                      animate: false,
-                      fit: true,
-                      padding: 80,
+                    var layoutName = name || "cose";
+                    var layout;
 
-                      // spread out more
-                      nodeRepulsion: 1200000,
-                      idealEdgeLength: 160,
-                      nodeOverlap: 40,
-                      gravity: 0.25,
-                      numIter: 1500,
+                    if (layoutName === "breadthfirst") {
+                      layout = cy.layout({
+                        name: "breadthfirst",
+                        directed: true,
+                        padding: 140,
+                        spacingFactor: 1.8,
+                        avoidOverlap: true,
+                        nodeDimensionsIncludeLabels: true,
+                        animate: false,
+                        fit: true
+                      });
+                    } else {
+                      // Strong anti-overlap COSE tuning
+                      layout = cy.layout({
+                        name: "cose",
+                        animate: false,
+                        fit: true,
+                        padding: 140,
 
-                      avoidOverlap: true,
-                      nodeDimensionsIncludeLabels: true
-                    });
+                        // Spread things out
+                        idealEdgeLength: 240,
+                        nodeRepulsion: 2200000,
+                        nodeOverlap: 50,
+                        componentSpacing: 220,
+                        edgeElasticity: 0.20,
+                        gravity: 0.12,
+
+                        // More iterations = more stable separation
+                        numIter: 2600,
+                        initialTemp: 900,
+                        coolingFactor: 0.985,
+                        minTemp: 1.0,
+
+                        // overlap helpers
+                        avoidOverlap: true,
+                        nodeDimensionsIncludeLabels: true,
+                        randomize: true,
+                        refresh: 20
+                      });
+                    }
 
                     layout.run();
+                    // After layout, enforce a readable fit (esp breadthfirst)
+                    setTimeout(fitReadable, 0);
                   }
 
                   function setGraph(graph) {
                     renderScore(graph.score);
 
-                    const opts = {
-                      onlyViol: document.getElementById('onlyViol').checked,
-                      hideJdk:  document.getElementById('hideJdk').checked,
-                      projOnly: document.getElementById('projOnly').checked
+                    var opts = {
+                      onlyViol: document.getElementById("onlyViol").checked,
+                      hideJdk: document.getElementById("hideJdk").checked,
+                      projOnly: document.getElementById("projOnly").checked
                     };
 
-                    const els = buildElements(graph, opts);
+                    var els = buildElements(graph, opts);
+
+                    if (cy) {
+                      cy.destroy();
+                      cy = null;
+                    }
 
                     cy = cytoscape({
-                      container: document.getElementById('cy'),
+                      container: document.getElementById("cy"),
                       elements: els,
+                      minZoom: 0.08,
+                      maxZoom: 3.0,
+                      wheelSensitivity: 0.20,
                       style: [
                         {
-                          selector: 'node',
+                          selector: "node",
                           style: {
-                            'background-color': (ele) => sevColor(ele.data('sevMax')),
-                            'label': 'data(label)',
-                            'color': '#d6d6d6',
+                            "background-color": function (ele) { return sevColor(ele.data("sevMax")); },
+                            "shape": "round-rectangle",
 
-                            'font-size': 10,
-                            'text-wrap': 'wrap',
-                            'text-max-width': 280,
+                            "label": "data(label)",
+                            "color": "#d6d6d6",
 
-                            'shape': 'round-rectangle',
+                            // wrapping for FQCN
+                            "text-wrap": "wrap",
+                            "text-max-width": 360,
+                            "font-size": 10,
+                            "text-valign": "center",
+                            "text-halign": "center",
 
-                            // KEY FIX: size nodes to label so long FQCN doesn't spill outside tiny nodes
-                            'width': 'label',
-                            'height': 'label',
-                            'padding': 10,
+                            // label-sized node with minimum size (prevents overlap/illegible tiny nodes)
+                            "width": "label",
+                            "height": "label",
+                            "padding": 10,
+                            "min-width": function (ele) { return nodeMinSize(ele.data()); },
+                            "min-height": function (ele) { return nodeMinSize(ele.data()); },
 
-                            // Keep your scoring-based minimum size
-                            'min-width':  (ele) => ele.data('_minSize') || 18,
-                            'min-height': (ele) => ele.data('_minSize') || 18,
-
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-
-                            'border-color': 'rgba(255,255,255,0.18)',
-                            'border-width': 1
+                            "border-color": "rgba(255,255,255,0.18)",
+                            "border-width": 1
                           }
                         },
                         {
-                          selector: 'edge',
+                          selector: "edge",
                           style: {
-                            'curve-style': 'bezier',
-                            'target-arrow-shape': 'triangle',
-                            'target-arrow-color': 'rgba(180,190,205,0.6)',
-                            'line-color': 'rgba(180,190,205,0.35)',
-                            'width': 1.2,
-                            'opacity': (ele) => weightOpacity(ele.data('weight'))
+                            "curve-style": "bezier",
+                            "target-arrow-shape": "triangle",
+                            "target-arrow-color": "rgba(180,190,205,0.65)",
+                            "line-color": "rgba(180,190,205,0.40)",
+                            "width": 1.3,
+                            "opacity": function (ele) { return weightOpacity(ele.data("weight")); }
                           }
                         },
-                        { selector: 'node:selected', style: { 'border-color': '#8ab4ff', 'border-width': 2 } }
+                        {
+                          selector: "node:selected",
+                          style: {
+                            "border-color": "#8ab4ff",
+                            "border-width": 2
+                          }
+                        }
                       ]
                     });
 
-                    cy.on('tap', 'node', (evt) => {
-                      const data = evt.target.data();
+                    cy.on("tap", "node", function (evt) {
+                      var data = evt.target.data();
                       renderDetails(data);
                       if (window._shamashNodeClick) {
                         try { window._shamashNodeClick(data.id); } catch (e) {}
                       }
                     });
 
-                    applyLayout(document.getElementById('layoutSel').value);
+                    applyLayout(document.getElementById("layoutSel").value);
                   }
 
                   function hookControls() {
-                    const rerender = () => setGraph(GRAPH_JSON);
-                    document.getElementById('onlyViol').addEventListener('change', rerender);
-                    document.getElementById('hideJdk').addEventListener('change', rerender);
-                    document.getElementById('projOnly').addEventListener('change', rerender);
-                    document.getElementById('layoutSel').addEventListener('change', (e) => applyLayout(e.target.value));
+                    var rerender = function () { setGraph(GRAPH_JSON); };
+                    document.getElementById("onlyViol").addEventListener("change", rerender);
+                    document.getElementById("hideJdk").addEventListener("change", rerender);
+                    document.getElementById("projOnly").addEventListener("change", rerender);
+                    document.getElementById("layoutSel").addEventListener("change", function (e) {
+                      applyLayout(e.target.value);
+                    });
                   }
 
-                  try {
-                    hookControls();
-                    setGraph(GRAPH_JSON);
-                  } catch (e) {
-                    showErr("Graph runtime error", e);
-                  }
+                  hookControls();
+                  setGraph(GRAPH_JSON);
 
-                  window.setGraph = (jsonObj) => {
+                  // For JCEF live updates: setGraph(<object>)
+                  window.setGraph = function (jsonObj) {
                     GRAPH_JSON.nodes = jsonObj.nodes;
                     GRAPH_JSON.edges = jsonObj.edges;
-                    GRAPH_JSON.meta  = jsonObj.meta;
+                    GRAPH_JSON.meta = jsonObj.meta;
                     GRAPH_JSON.score = jsonObj.score;
                     setGraph(GRAPH_JSON);
                   };
@@ -339,7 +584,6 @@ object GraphHtmlBuilder {
                 """.trimIndent(),
             )
             appendLine("  </script>")
-
             appendLine("</body>")
             appendLine("</html>")
         }
