@@ -8,8 +8,8 @@
 
 # Shamash
 
-Shamash is a refactoring tool that enforces clean architecture.
-
+Shamash is a refactoring/reporting tool that enforces clean architecture (operates on java codebases).
+Deterministic & Fast (relies on bytecode for analysis using ASM).
 
 ### What It Offers?
 - Architectural Dashboard (reports are exportable)
@@ -20,16 +20,51 @@ Shamash is a refactoring tool that enforces clean architecture.
 - PSI inspections - displayed as warning in problems tab with fixes
   - violations of clean code
   - violations of clean architecture
-- ASM bytecode scan
+- ASM bytecode scan, a complete hierarchical tree view
 
+### How to use
+- Download the plugin from intellij marketplace or build locally
+- Run shamash scan from your left hand side or using 
+  - Tools → Shamash: run scan
+  - Tools → Shamash dashboard
+- Open the dashboard and see your codebase reports including
+  - overall architecture score 
+  - graphs and reports of current hierarchy, issues and fixes
 
-### Levels of Operations
-- ASM bytecode analysis
+### Local Setup
+To build
+```shell
+./gradlew clean buildplugin
+```
+To run
+```shell
+gradlew.bat spotlessApply --stacktrace
+gradlew clean runIde
+```
+
+To verify plugin
+```shell
+./gradlew runPluginVerifier
+```
+
+- ASM for bytecode analysis
 - PSI for static analysis
-- Logging-based cleanup (hybrid runtime signal)
+- Logging-based for cleanup actions (hybrid runtime signal)
 
 All inspections are deterministic, reversible, and framework-aware where necessary.
-The plugin offers dashboards, fixes, inspection etc...
+
+### Demo
+<p align="center">
+  <img src="assets/demo-final-one.png" alt="Shamash Logo" width="180"/>
+  <img src="assets/demo-final-five.png" alt="Shamash Logo" width="180"/>
+  <img src="assets/demo-final-two.png" alt="Shamash Logo" width="180"/>
+  <br>
+  <img src="assets/demo-final-three.png" alt="Shamash Logo" width="180"/>
+  <img src="assets/demo-final-four.png" alt="Shamash Logo" width="180"/>
+  <br>
+  <img src="assets/demo-final.png" alt="Shamash Logo" width="180"/>
+</p>
+
 
 ## License
 

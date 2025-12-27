@@ -140,7 +140,7 @@ class AsmDashboardPanel(
         val totalRefs = index.references.values.sumOf { it.size }
         val buckets = index.externalBuckets.size
         header.text = "Indexed $totalClasses classes. Captured $totalRefs bytecode references. " +
-                "External buckets: $buckets."
+            "External buckets: $buckets."
 
         // update main tab hierarchy
         searchTab.onIndexUpdated(index)

@@ -24,7 +24,7 @@ plugins {
 }
 
 group = "io.shamash"
-version = "0.2.0"
+version = "0.3.0"
 
 repositories {
     gradlePluginPortal()
@@ -38,14 +38,19 @@ dependencies {
 
 intellij {
     version.set("2023.3")
-    type.set("IC") // IntelliJ Community
+    type.set("IC")
     plugins.set(listOf("java"))
 }
 
 tasks {
     patchPluginXml {
         sinceBuild.set("233")
-        untilBuild.set("241.*")
+    }
+}
+
+tasks {
+    runPluginVerifier {
+        ideVersions.set(listOf("2023.3", "2024.1", "2024.2", "2024.3"))
     }
 }
 

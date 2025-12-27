@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets
  * XHTML avoids that permanently by being well-formed.
  */
 object GraphHtmlBuilder {
-
     fun buildStandaloneHtml(
         project: Project,
         graphJson: String,
