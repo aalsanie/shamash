@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0]
+### Added
+- Shamash Dashboard
+  - Findings and violations
+  - Hierarchy tree
+  - Search capabilities
+  - Reports
+- Exportable `xml` and `json` violations and fixes reports
+- Exportable `html` os overall architecture score
+- ASM / PSI hybrid scans
+### Fixed
+- Compatibility issues with 24.x.x.x intellij version
+
 ## [0.2.0]
 ### Added
 - Actionable quick-fix infrastructure across PSI inspections.

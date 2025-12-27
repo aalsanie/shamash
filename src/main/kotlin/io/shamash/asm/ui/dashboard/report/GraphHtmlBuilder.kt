@@ -76,6 +76,13 @@ object GraphHtmlBuilder {
                   flex: 0 0 auto;
                 }
 
+                #zoomText {
+                  font-size: 12px;
+                  opacity: 0.78;
+                  white-space: nowrap;
+                  flex: 0 0 auto;
+                }
+
                 /* Keep pills in a stable left-to-right order without wrapping layout weirdness */
                 #score {
                   display: flex;
@@ -167,6 +174,7 @@ object GraphHtmlBuilder {
             appendLine("<body>")
             appendLine("  <div id=\"topbar\">")
             appendLine("    <div id=\"brand\">SHAMASH</div>")
+            appendLine("    <div id=\"zoomText\">Tip: zoom in/out with touchpad</div>")
             appendLine("    <div id=\"score\"></div>")
             appendLine("    <div id=\"controls\">")
             appendLine("      <label><input id=\"onlyViol\" type=\"checkbox\" /> Only violations</label>")
@@ -249,23 +257,7 @@ object GraphHtmlBuilder {
                   function fmtPct(n) {
                     var x = parseFloat(n);
                     if (isNaN(x)) x = 0;
-                    // keep it clean: whole percent
                     return String(Math.round(x)) + "%";
-                  }
-
-                  // overall     = overallScore%
-                  // structural  = 100 - structuralScore
-                  // complexity  = 100 - complexityScore
-                  // coupling    = 100 - couplingScore
-                  // layering    = 100 - layeringScore
-                  function scoreValue(scoreObj, field, invert) {
-                    if (!scoreObj) return 0;
-                    var v = scoreObj[field];
-                    var x = parseFloat(v);
-                    if (isNaN(x)) x = 0;
-                    if (invert) x = 100 - x;
-                    // no percent for inverted ones
-                    return clampInt(x, 0, 100);
                   }
 
                   function clearEl(el) {
@@ -295,16 +287,13 @@ object GraphHtmlBuilder {
 
                     if (!score) return;
 
-                    // support both naming styles if you ever change backend:
                     var overallRaw = (score.overallScore != null) ? score.overallScore : score.overall;
                     var structuralRaw = (score.structuralScore != null) ? score.structuralScore : score.structural;
                     var complexityRaw = (score.complexityScore != null) ? score.complexityScore : score.complexity;
                     var couplingRaw = (score.couplingScore != null) ? score.couplingScore : score.coupling;
                     var layeringRaw = (score.layeringScore != null) ? score.layeringScore : score.layering;
 
-                    // overall is shown as percent
                     el.appendChild(pillEl("overall clean architecture:", fmtPct(overallRaw)));
-
                     el.appendChild(pillEl("structural", fmtInt(100 - clampInt(structuralRaw, 0, 100))));
                     el.appendChild(pillEl("complexity", fmtInt(100 - clampInt(complexityRaw, 0, 100))));
                     el.appendChild(pillEl("coupling", fmtInt(100 - clampInt(couplingRaw, 0, 100))));
@@ -350,7 +339,6 @@ object GraphHtmlBuilder {
                   }
 
                   function nodeMinSize(n) {
-                    // Keep stable minimum size but allow label-sized boxes.
                     var g = n.godScore || 0;
                     var f = n.fanOut || 0;
                     var base = 26;
@@ -385,7 +373,6 @@ object GraphHtmlBuilder {
 
                       nodes.push({
                         data: {
-                          // keep all original fields
                           id: n.id,
                           fqcn: n.fqcn || "",
                           module: n.module,
@@ -416,8 +403,6 @@ object GraphHtmlBuilder {
                     if (!cy) return;
                     cy.fit(cy.elements(), 120);
 
-                    // If it ends up too zoomed-out, zoom in a bit to readable level.
-                    // (breadthfirst tends to produce a wide layout)
                     var z = cy.zoom();
                     if (z < 0.35) {
                       cy.zoom(0.35);
@@ -443,28 +428,21 @@ object GraphHtmlBuilder {
                         fit: true
                       });
                     } else {
-                      // Strong anti-overlap COSE tuning
                       layout = cy.layout({
                         name: "cose",
                         animate: false,
                         fit: true,
                         padding: 140,
-
-                        // Spread things out
                         idealEdgeLength: 240,
                         nodeRepulsion: 2200000,
                         nodeOverlap: 50,
                         componentSpacing: 220,
                         edgeElasticity: 0.20,
                         gravity: 0.12,
-
-                        // More iterations = more stable separation
                         numIter: 2600,
                         initialTemp: 900,
                         coolingFactor: 0.985,
                         minTemp: 1.0,
-
-                        // overlap helpers
                         avoidOverlap: true,
                         nodeDimensionsIncludeLabels: true,
                         randomize: true,
@@ -473,7 +451,6 @@ object GraphHtmlBuilder {
                     }
 
                     layout.run();
-                    // After layout, enforce a readable fit (esp breadthfirst)
                     setTimeout(fitReadable, 0);
                   }
 
@@ -505,24 +482,18 @@ object GraphHtmlBuilder {
                           style: {
                             "background-color": function (ele) { return sevColor(ele.data("sevMax")); },
                             "shape": "round-rectangle",
-
                             "label": "data(label)",
                             "color": "#d6d6d6",
-
-                            // wrapping for FQCN
                             "text-wrap": "wrap",
                             "text-max-width": 360,
                             "font-size": 10,
                             "text-valign": "center",
                             "text-halign": "center",
-
-                            // label-sized node with minimum size (prevents overlap/illegible tiny nodes)
                             "width": "label",
                             "height": "label",
                             "padding": 10,
                             "min-width": function (ele) { return nodeMinSize(ele.data()); },
                             "min-height": function (ele) { return nodeMinSize(ele.data()); },
-
                             "border-color": "rgba(255,255,255,0.18)",
                             "border-width": 1
                           }
@@ -572,7 +543,6 @@ object GraphHtmlBuilder {
                   hookControls();
                   setGraph(GRAPH_JSON);
 
-                  // For JCEF live updates: setGraph(<object>)
                   window.setGraph = function (jsonObj) {
                     GRAPH_JSON.nodes = jsonObj.nodes;
                     GRAPH_JSON.edges = jsonObj.edges;
