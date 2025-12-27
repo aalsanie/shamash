@@ -1,5 +1,7 @@
 # Changelog
-
+## [0.4.0]
+### Fixed
+- Support latest IDE
 ## [0.3.0]
 ### Added
 - Shamash Dashboard
