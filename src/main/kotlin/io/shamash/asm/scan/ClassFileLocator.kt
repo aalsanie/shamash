@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.asm.scan
 
 import com.intellij.openapi.module.ModuleManager
@@ -5,12 +23,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.CompilerModuleExtension
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.JarFileSystem
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
 import java.io.File
 
 object ClassFileLocator {
-
     fun collectSources(project: Project): List<ClassFileSource> {
         val sources = mutableListOf<ClassFileSource>()
 
@@ -27,7 +44,7 @@ object ClassFileLocator {
 
     private fun collectModuleOutputs(
         module: com.intellij.openapi.module.Module,
-        out: MutableList<ClassFileSource>
+        out: MutableList<ClassFileSource>,
     ) {
         val ext = CompilerModuleExtension.getInstance(module) ?: return
 
@@ -38,19 +55,21 @@ object ClassFileLocator {
             .map { File(it.path) }
             .filter { it.exists() && it.isDirectory }
             .forEach { dir ->
-                out += ClassFileSource.Directory(
-                    displayName = "${module.name}: ${dir.name}",
-                    path = dir.absolutePath
-                )
+                out +=
+                    ClassFileSource.Directory(
+                        displayName = "${module.name}: ${dir.name}",
+                        path = dir.absolutePath,
+                    )
             }
     }
 
     private fun collectModuleDependencyJars(
         module: com.intellij.openapi.module.Module,
-        out: MutableList<ClassFileSource>
+        out: MutableList<ClassFileSource>,
     ) {
         val roots: Array<VirtualFile> =
-            ModuleRootManager.getInstance(module)
+            ModuleRootManager
+                .getInstance(module)
                 .orderEntries()
                 .withoutSdk()
                 .withoutModuleSourceEntries()
@@ -63,10 +82,11 @@ object ClassFileLocator {
             if (!jarFile.exists() || !jarFile.isFile) continue
             if (!jarFile.name.endsWith(".jar")) continue
 
-            out += ClassFileSource.Jar(
-                displayName = jarFile.name,
-                path = jarFile.absolutePath
-            )
+            out +=
+                ClassFileSource.Jar(
+                    displayName = jarFile.name,
+                    path = jarFile.absolutePath,
+                )
         }
     }
 

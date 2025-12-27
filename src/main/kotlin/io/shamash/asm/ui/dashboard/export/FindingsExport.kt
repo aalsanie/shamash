@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.asm.ui.dashboard.export
 
 import com.intellij.notification.NotificationGroupManager
@@ -12,8 +30,12 @@ import java.nio.charset.Charset
 import java.nio.file.Paths
 
 object FindingsExport {
-
-    enum class Format(val ext: String) { JSON("json"), XML("xml") }
+    enum class Format(
+        val ext: String,
+    ) {
+        JSON("json"),
+        XML("xml"),
+    }
 
     private const val SCHEMA = "shamash.findings.v1"
 
@@ -22,23 +44,25 @@ object FindingsExport {
         findings: List<Finding>,
         format: Format,
         defaultBaseName: String = "shamash-findings",
-        charset: Charset = Charsets.UTF_8
+        charset: Charset = Charsets.UTF_8,
     ) {
         if (findings.isEmpty()) {
             notify(project, "Nothing to export", "No findings available yet. Run scan first.", NotificationType.WARNING)
             return
         }
 
-        val content = when (format) {
-            Format.JSON -> findingsToJson(findings)
-            Format.XML -> findingsToXml(findings)
-        }
+        val content =
+            when (format) {
+                Format.JSON -> findingsToJson(findings)
+                Format.XML -> findingsToXml(findings)
+            }
 
-        val descriptor = FileSaverDescriptor(
-            "Export Shamash Findings",
-            "Export findings (all severities).",
-            format.ext
-        )
+        val descriptor =
+            FileSaverDescriptor(
+                "Export Shamash Findings",
+                "Export findings (all severities).",
+                format.ext,
+            )
 
         val dialog = FileChooserFactory.getInstance().createSaveFileDialog(descriptor, project)
         val wrapper = dialog.save(Paths.get(""), "findings.${format.ext}") ?: return
@@ -50,7 +74,7 @@ object FindingsExport {
                 project,
                 "Export complete",
                 "Saved ${findings.size} findings to: ${file.absolutePath}",
-                NotificationType.INFORMATION
+                NotificationType.INFORMATION,
             )
         } catch (t: Throwable) {
             notify(project, "Export failed", t.message ?: t::class.java.simpleName, NotificationType.ERROR)
@@ -91,7 +115,8 @@ object FindingsExport {
         sb.append("""<shamashFindings schema="$SCHEMA" count="${sorted.size}">""").append('\n')
 
         for (f in sorted) {
-            sb.append("  <finding")
+            sb
+                .append("  <finding")
                 .append(""" id="${xmlAttr(f.id)}"""")
                 .append(""" title="${xmlAttr(f.title)}"""")
                 .append(""" severity="${xmlAttr(f.severity.label)}"""")
@@ -104,9 +129,12 @@ object FindingsExport {
             sb.append("    <message>").append(xmlText(f.message)).append("</message>\n")
 
             sb.append("    <evidence>\n")
-            for (k in f.evidence.keys.map { it.toString() }.sorted()) {
+            for (k in f.evidence.keys
+                .map { it.toString() }
+                .sorted()) {
                 val v = f.evidence[k]
-                sb.append("""      <entry key="${xmlAttr(k)}">""")
+                sb
+                    .append("""      <entry key="${xmlAttr(k)}">""")
                     .append(xmlText(evidenceValueToString(v)))
                     .append("</entry>\n")
             }
@@ -120,30 +148,29 @@ object FindingsExport {
 
     // ----------------- helpers -----------------
 
-    private fun stableSort(findings: List<Finding>): List<Finding> {
-        return findings.sortedWith(
+    private fun stableSort(findings: List<Finding>): List<Finding> =
+        findings.sortedWith(
             compareBy<Finding>(
                 { it.severity.rank },
                 { it.id },
                 { it.fqcn ?: "" },
-                { it.title }
-            )
+                { it.title },
+            ),
         )
-    }
 
-    private fun evidenceValueToString(v: Any?): String {
-        return when (v) {
+    private fun evidenceValueToString(v: Any?): String =
+        when (v) {
             null -> "null"
             is String -> v
             is Number, is Boolean -> v.toString()
-            is Map<*, *> -> v.entries.joinToString(prefix = "{", postfix = "}") { (k, vv) ->
-                "${k.toString()}=${evidenceValueToString(vv)}"
-            }
+            is Map<*, *> ->
+                v.entries.joinToString(prefix = "{", postfix = "}") { (k, vv) ->
+                    "$k=${evidenceValueToString(vv)}"
+                }
             is Iterable<*> -> v.joinToString(prefix = "[", postfix = "]") { evidenceValueToString(it) }
             is Array<*> -> v.joinToString(prefix = "[", postfix = "]") { evidenceValueToString(it) }
             else -> v.toString()
         }
-    }
 
     private fun jsonStr(s: String): String {
         val sb = StringBuilder(s.length + 2)
@@ -162,13 +189,17 @@ object FindingsExport {
         return sb.toString()
     }
 
-    private fun jsonAny(v: Any?): String {
-        return when (v) {
+    private fun jsonAny(v: Any?): String =
+        when (v) {
             null -> "null"
             is String -> jsonStr(v)
             is Number, is Boolean -> v.toString()
             is Map<*, *> -> {
-                val keys = v.keys.filterNotNull().map { it.toString() }.sorted()
+                val keys =
+                    v.keys
+                        .filterNotNull()
+                        .map { it.toString() }
+                        .sorted()
                 buildString {
                     append('{')
                     var first = true
@@ -184,17 +215,25 @@ object FindingsExport {
             is Array<*> -> v.joinToString(prefix = "[", postfix = "]") { jsonAny(it) }
             else -> jsonStr(v.toString())
         }
-    }
 
     private fun xmlAttr(s: String): String =
-        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            .replace("\"", "&quot;").replace("'", "&apos;")
+        s
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
 
-    private fun xmlText(s: String): String =
-        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    private fun xmlText(s: String): String = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    private fun notify(project: Project, title: String, content: String, type: NotificationType) {
-        NotificationGroupManager.getInstance()
+    private fun notify(
+        project: Project,
+        title: String,
+        content: String,
+        type: NotificationType,
+    ) {
+        NotificationGroupManager
+            .getInstance()
             .getNotificationGroup("Shamash")
             .createNotification(title, content, type)
             .notify(project)

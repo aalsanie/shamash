@@ -16,31 +16,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.psi.fixes
+package io.shamash.asm.ui
 
-import com.intellij.codeInspection.LocalQuickFix
-import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import com.intellij.psi.PsiClass
-import com.intellij.refactoring.RefactoringFactory
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.ui.content.ContentFactory
+import io.shamash.asm.ui.dashboard.tabs.AsmDashboardPanel
 
-class RenameClassFix(
-    private val reason: String,
-) : LocalQuickFix {
-    override fun getName(): String = "Rename class ($reason)"
-
-    override fun getFamilyName(): String = "Shamash naming fixes"
-
-    override fun applyFix(
+class AsmDashboardToolWindowsFactory :
+    ToolWindowFactory,
+    DumbAware {
+    override fun createToolWindowContent(
         project: Project,
-        descriptor: ProblemDescriptor,
+        toolWindow: ToolWindow,
     ) {
-        val psiClass = descriptor.psiElement?.parent as? PsiClass ?: return
-        if (!psiClass.isValid) return
-
-        val factory = RefactoringFactory.getInstance(project)
-        factory
-            .createRename(psiClass, psiClass.name ?: return, false, false)
-            .run()
+        val panel = AsmDashboardPanel(project)
+        val content = ContentFactory.getInstance().createContent(panel, null, false)
+        Disposer.register(content, panel)
+        toolWindow.contentManager.addContent(content)
     }
 }

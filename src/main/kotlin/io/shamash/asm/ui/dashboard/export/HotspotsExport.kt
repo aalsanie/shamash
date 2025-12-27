@@ -1,9 +1,26 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.asm.ui.dashboard.export
 
 import com.intellij.openapi.project.Project
 
 object HotspotsExport {
-
     private const val SCHEMA = "shamash.hotspots.v1"
 
     data class HotspotRow(
@@ -16,23 +33,24 @@ object HotspotsExport {
         val instructions: Int,
         val fanOut: Int,
         val fanIn: Int,
-        val reason: String
+        val reason: String,
     )
 
     fun exportView(
         project: Project,
         format: ExportUtil.Format,
         mode: String,
-        rows: List<HotspotRow>
+        rows: List<HotspotRow>,
     ) {
         if (rows.isEmpty()) return
 
         val suggested = "shamash-hotspots-$mode.${format.ext}"
 
-        val content = when (format) {
-            ExportUtil.Format.JSON -> toJson(schema = SCHEMA, mode = mode, rows = rows)
-            ExportUtil.Format.XML -> toXml(schema = SCHEMA, mode = mode, rows = rows)
-        }
+        val content =
+            when (format) {
+                ExportUtil.Format.JSON -> toJson(schema = SCHEMA, mode = mode, rows = rows)
+                ExportUtil.Format.XML -> toXml(schema = SCHEMA, mode = mode, rows = rows)
+            }
 
         ExportUtil.saveWithDialog(
             project = project,
@@ -40,17 +58,23 @@ object HotspotsExport {
             description = "Export current hotspots view (mode=$mode).",
             format = format,
             suggestedFileName = suggested,
-            content = content
+            content = content,
         )
     }
 
-    private fun toJson(schema: String, mode: String, rows: List<HotspotRow>): String {
-        fun jsonStr(s: String): String = "\"" + s
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t") + "\""
+    private fun toJson(
+        schema: String,
+        mode: String,
+        rows: List<HotspotRow>,
+    ): String {
+        fun jsonStr(s: String): String =
+            "\"" +
+                s
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t") + "\""
 
         return buildString {
             append("{")
@@ -78,9 +102,18 @@ object HotspotsExport {
         }
     }
 
-    private fun toXml(schema: String, mode: String, rows: List<HotspotRow>): String {
-        fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            .replace("\"", "&quot;").replace("'", "&apos;")
+    private fun toXml(
+        schema: String,
+        mode: String,
+        rows: List<HotspotRow>,
+    ): String {
+        fun esc(s: String) =
+            s
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;")
 
         return buildString {
             append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')

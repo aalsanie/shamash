@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.asm.scan
 
 import com.intellij.openapi.project.Project
@@ -15,13 +33,18 @@ import java.util.jar.JarFile
  * - ALL_SOURCES: scan outputs + dependency jars (can be huge).
  */
 object AsmScanner {
-
-    fun scan(project: Project, scope: ScanScope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS): AsmIndex {
+    fun scan(
+        project: Project,
+        scope: ScanScope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS,
+    ): AsmIndex {
         val sources = ClassFileLocator.collectSources(project)
         return scan(sources, scope)
     }
 
-    fun scan(sources: List<ClassFileSource>, scope: ScanScope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS): AsmIndex {
+    fun scan(
+        sources: List<ClassFileSource>,
+        scope: ScanScope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS,
+    ): AsmIndex {
         val out = linkedMapOf<String, AsmClassInfo>()
 
         val dirs = sources.filterIsInstance<ClassFileSource.Directory>()
@@ -45,7 +68,7 @@ object AsmScanner {
 
         return AsmIndex(
             classes = out.toMap(),
-            externalBuckets = externalBuckets
+            externalBuckets = externalBuckets,
         )
     }
 
@@ -65,12 +88,13 @@ object AsmScanner {
 
     private fun scanDirectory(
         source: ClassFileSource.Directory,
-        out: MutableMap<String, AsmClassInfo>
+        out: MutableMap<String, AsmClassInfo>,
     ) {
         val root = File(source.path)
         if (!root.isDirectory) return
 
-        root.walkTopDown()
+        root
+            .walkTopDown()
             .filter { it.isFile && it.extension.equals("class", ignoreCase = true) }
             .forEach { file ->
                 if (file.name == "module-info.class" || file.name == "package-info.class") return@forEach
@@ -82,7 +106,7 @@ object AsmScanner {
 
     private fun scanJar(
         source: ClassFileSource.Jar,
-        out: MutableMap<String, AsmClassInfo>
+        out: MutableMap<String, AsmClassInfo>,
     ) {
         val jarFile = File(source.path)
         if (!jarFile.isFile) return
@@ -109,26 +133,35 @@ object AsmScanner {
     private fun parseClass(
         input: InputStream,
         source: ClassFileSource,
-        out: MutableMap<String, AsmClassInfo>
+        out: MutableMap<String, AsmClassInfo>,
     ) {
         try {
             val reader = ClassReader(input)
             val visitor = CollectingClassVisitor()
             reader.accept(visitor, ClassReader.SKIP_FRAMES)
 
-            val info = visitor.toClassInfo(
-                originPath = source.path,
-                originDisplayName = source.displayName,
-                origin = source.origin
-            ) ?: return
+            val info =
+                visitor.toClassInfo(
+                    originPath = source.path,
+                    originDisplayName = source.displayName,
+                    origin = source.origin,
+                ) ?: return
             val moduleName =
                 if (source.origin == io.shamash.asm.model.AsmOrigin.MODULE_OUTPUT) {
-                    source.displayName.substringBefore(":").trim().ifBlank { null }
-                } else null
+                    source.displayName
+                        .substringBefore(":")
+                        .trim()
+                        .ifBlank { null }
+                } else {
+                    null
+                }
 
-            val decorated = if (moduleName != null && info.moduleName != moduleName) {
-                info.copy(moduleName = moduleName)
-            } else info
+            val decorated =
+                if (moduleName != null && info.moduleName != moduleName) {
+                    info.copy(moduleName = moduleName)
+                } else {
+                    info
+                }
 
             val existing = out[decorated.internalName]
             if (existing == null || existing.origin != io.shamash.asm.model.AsmOrigin.MODULE_OUTPUT) {

@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.psi.fixes
 
 import com.intellij.codeInspection.LocalQuickFix
@@ -6,7 +24,19 @@ import com.intellij.ide.util.PackageUtil
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.psi.*
+import com.intellij.psi.JavaDirectoryService
+import com.intellij.psi.JavaPsiFacade
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiDirectory
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.PsiModifier
+import com.intellij.psi.PsiReferenceExpression
+import com.intellij.psi.PsiThisExpression
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
@@ -15,11 +45,14 @@ import io.shamash.psi.architecture.LayerDetector
 import io.shamash.psi.refactor.TargetPackageResolver
 
 class ExportToServiceFix : LocalQuickFix {
-
     override fun getName(): String = "Export method to Service"
+
     override fun getFamilyName(): String = "Shamash architecture fixes"
 
-    override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
+    override fun applyFix(
+        project: Project,
+        descriptor: ProblemDescriptor,
+    ) {
         val method = resolveMethod(descriptor) ?: return
         if (!method.isValid || method.isConstructor) return
         if (!method.hasModifierProperty(PsiModifier.PRIVATE)) return
@@ -27,18 +60,16 @@ class ExportToServiceFix : LocalQuickFix {
         val containingClass = method.containingClass ?: return
         val javaFile = method.containingFile as? PsiJavaFile ?: return
 
-        // Only meaningful for forbidden-layer private methods.
         val layer = LayerDetector.detect(containingClass)
         if (layer !in setOf(Layer.CONTROLLER, Layer.SERVICE, Layer.DAO)) return
 
         val root = TargetPackageResolver.resolveRoot(javaFile) ?: return
         val servicePkg = TargetPackageResolver.resolveLayerPackage(root, Layer.SERVICE)
 
-        WriteCommandAction.writeCommandAction(project)
+        WriteCommandAction
+            .writeCommandAction(project)
             .withName("Shamash: Export ${method.name} to service")
             .run<RuntimeException> {
-
-                // Safety: do not export if it captures instance state from containing class.
                 if (capturesContainingInstanceState(method, containingClass)) return@run
 
                 val serviceClassName = guessServiceClassName(containingClass.name ?: "Service")
@@ -46,8 +77,9 @@ class ExportToServiceFix : LocalQuickFix {
 
                 val targetDir = findOrCreatePackageDir(project, javaFile, servicePkg) ?: return@run
 
-                val serviceClass = findOrCreateServiceClass(project, targetDir, serviceFqn, serviceClassName)
-                    ?: return@run
+                val serviceClass =
+                    findOrCreateServiceClass(project, targetDir, serviceFqn, serviceClassName)
+                        ?: return@run
 
                 val serviceFieldName = ensureServiceField(containingClass, serviceClass)
 
@@ -55,7 +87,6 @@ class ExportToServiceFix : LocalQuickFix {
 
                 rewriteLocalCallSitesToService(containingClass, method, serviceFieldName)
 
-                // Finally delete original method (rule satisfied).
                 method.delete()
             }
     }
@@ -68,10 +99,12 @@ class ExportToServiceFix : LocalQuickFix {
         }
     }
 
-    private fun capturesContainingInstanceState(method: PsiMethod, containingClass: PsiClass): Boolean {
+    private fun capturesContainingInstanceState(
+        method: PsiMethod,
+        containingClass: PsiClass,
+    ): Boolean {
         val body = method.body ?: return false
 
-        // If it references non-static fields/methods from the containing class, it is not safe to export.
         val refs = PsiTreeUtil.collectElementsOfType(body, PsiReferenceExpression::class.java)
         for (ref in refs) {
             val resolved = ref.resolve() ?: continue
@@ -80,14 +113,18 @@ class ExportToServiceFix : LocalQuickFix {
                 is PsiField -> {
                     if (resolved.containingClass == containingClass &&
                         !resolved.hasModifierProperty(PsiModifier.STATIC)
-                    ) return true
+                    ) {
+                        return true
+                    }
                 }
 
                 is PsiMethod -> {
                     if (resolved == method) continue
                     if (resolved.containingClass == containingClass &&
                         !resolved.hasModifierProperty(PsiModifier.STATIC)
-                    ) return true
+                    ) {
+                        return true
+                    }
                 }
             }
         }
@@ -100,19 +137,19 @@ class ExportToServiceFix : LocalQuickFix {
     }
 
     private fun guessServiceClassName(containingName: String): String {
-        // Controller -> Service name mapping (best effort, deterministic)
-        val base = containingName
-            .removeSuffix("Controller")
-            .removeSuffix("Resource")
-            .removeSuffix("Endpoint")
-            .ifBlank { containingName }
+        val base =
+            containingName
+                .removeSuffix("Controller")
+                .removeSuffix("Resource")
+                .removeSuffix("Endpoint")
+                .ifBlank { containingName }
         return if (base.endsWith("Service")) base else "${base}Service"
     }
 
     private fun findOrCreatePackageDir(
         project: Project,
         file: PsiJavaFile,
-        targetPackageFqn: String
+        targetPackageFqn: String,
     ): PsiDirectory? {
         val vFile = file.virtualFile ?: return null
         val fileIndex = ProjectRootManager.getInstance(project).fileIndex
@@ -125,7 +162,8 @@ class ExportToServiceFix : LocalQuickFix {
             project,
             targetPackageFqn,
             sourceRootDir,
-            /* askUserToCreate = */ true
+            // askUserToCreate =
+            true,
         )
     }
 
@@ -133,7 +171,7 @@ class ExportToServiceFix : LocalQuickFix {
         project: Project,
         targetDir: PsiDirectory,
         serviceFqn: String,
-        serviceClassName: String
+        serviceClassName: String,
     ): PsiClass? {
         val facade = JavaPsiFacade.getInstance(project)
         val existing = facade.findClass(serviceFqn, GlobalSearchScope.projectScope(project))
@@ -142,12 +180,16 @@ class ExportToServiceFix : LocalQuickFix {
         return JavaDirectoryService.getInstance().createClass(targetDir, serviceClassName)
     }
 
-    private fun ensureServiceField(containingClass: PsiClass, serviceClass: PsiClass): String {
+    private fun ensureServiceField(
+        containingClass: PsiClass,
+        serviceClass: PsiClass,
+    ): String {
         // Reuse if already present
-        val existing = containingClass.fields.firstOrNull { field ->
-            val type = field.type
-            type is PsiClassType && type.resolve() == serviceClass
-        }
+        val existing =
+            containingClass.fields.firstOrNull { field ->
+                val type = field.type
+                type is PsiClassType && type.resolve() == serviceClass
+            }
         if (existing != null) return existing.name
 
         val serviceClassName = serviceClass.name ?: return "service"
@@ -168,14 +210,18 @@ class ExportToServiceFix : LocalQuickFix {
         return fieldName
     }
 
-    private fun ensureServiceMethod(serviceClass: PsiClass, original: PsiMethod) {
+    private fun ensureServiceMethod(
+        serviceClass: PsiClass,
+        original: PsiMethod,
+    ) {
         // Avoid duplicates by signature name+param types.
-        val already = serviceClass.methods.any { m ->
-            m.name == original.name && m.parameterList.parametersCount == original.parameterList.parametersCount &&
+        val already =
+            serviceClass.methods.any { m ->
+                m.name == original.name && m.parameterList.parametersCount == original.parameterList.parametersCount &&
                     m.parameterList.parameters.zip(original.parameterList.parameters).all { (a, b) ->
                         a.type.presentableText == b.type.presentableText
                     }
-        }
+            }
         if (already) return
 
         val copied = original.copy() as PsiMethod
@@ -190,17 +236,15 @@ class ExportToServiceFix : LocalQuickFix {
     private fun rewriteLocalCallSitesToService(
         containingClass: PsiClass,
         method: PsiMethod,
-        serviceFieldName: String
+        serviceFieldName: String,
     ) {
         val factory = JavaPsiFacade.getElementFactory(containingClass.project)
 
-        // Private method should only be referenced within same class, but we handle whatever we find.
         val refs = ReferencesSearch.search(method).findAll()
         for (ref in refs) {
             val call = PsiTreeUtil.getParentOfType(ref.element, PsiMethodCallExpression::class.java) ?: continue
 
-            // Replace "foo(a,b)" with "service.foo(a,b)"
-            val argsText = call.argumentList.text // "(a, b)"
+            val argsText = call.argumentList.text
             val newExprText = "$serviceFieldName.${method.name}$argsText"
             val newExpr = factory.createExpressionFromText(newExprText, call)
 

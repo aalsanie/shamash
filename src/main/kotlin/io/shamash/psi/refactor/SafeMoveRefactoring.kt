@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.psi.refactor
 
 import com.intellij.ide.util.PackageUtil
@@ -10,7 +28,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.refactoring.move.moveFilesOrDirectories.MoveFilesOrDirectoriesProcessor
 
 object SafeMoveRefactoring {
-
     /**
      * Moves a Java file into the given target package using IntelliJ refactoring APIs.
      *
@@ -25,20 +42,25 @@ object SafeMoveRefactoring {
         project: Project,
         file: PsiJavaFile,
         targetPackageFqn: String,
-        askUserToCreate: Boolean = true
+        askUserToCreate: Boolean = true,
     ): Boolean {
-        val targetDir = findOrCreatePackageDir(project, file, targetPackageFqn, askUserToCreate)
-            ?: return false
+        val targetDir =
+            findOrCreatePackageDir(project, file, targetPackageFqn, askUserToCreate)
+                ?: return false
 
         // Important: don't wrap processors in WriteCommandAction; they own their command/write.
         MoveFilesOrDirectoriesProcessor(
             project,
             arrayOf(file),
             targetDir,
-            /* searchInComments = */ true,
-            /* searchInNonJavaFiles = */ true,
-            /* moveCallback = */ null,
-            /* prepareSuccessfulCallback = */ null
+            // searchInComments =
+            true,
+            // searchInNonJavaFiles =
+            true,
+            // moveCallback =
+            null,
+            // prepareSuccessfulCallback =
+            null,
         ).run()
 
         return true
@@ -48,7 +70,7 @@ object SafeMoveRefactoring {
         project: Project,
         file: PsiJavaFile,
         targetPackageFqn: String,
-        askUserToCreate: Boolean
+        askUserToCreate: Boolean,
     ): PsiDirectory? {
         val vFile = file.virtualFile ?: return null
         val fileIndex = ProjectRootManager.getInstance(project).fileIndex
@@ -61,12 +83,14 @@ object SafeMoveRefactoring {
 
         // Package creation touches PSI/VFS => must be in write command.
         WriteCommandAction.runWriteCommandAction(project) {
-            targetDir = PackageUtil.findOrCreateDirectoryForPackage(
-                project,
-                targetPackageFqn,
-                sourceRootDir,
-                /* askUserToCreate = */ askUserToCreate
-            )
+            targetDir =
+                PackageUtil.findOrCreateDirectoryForPackage(
+                    project,
+                    targetPackageFqn,
+                    sourceRootDir,
+                    // askUserToCreate =
+                    askUserToCreate,
+                )
         }
 
         return targetDir?.takeIf { it.isValid && it.isWritable }

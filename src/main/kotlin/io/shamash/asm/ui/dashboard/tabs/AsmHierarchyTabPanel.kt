@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.asm.ui.dashboard.tabs
 
 import com.intellij.icons.AllIcons
@@ -51,65 +69,71 @@ import javax.swing.tree.DefaultTreeModel
  *
  * Deterministic + driven entirely by AsmIndex.
  */
-class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()) {
-
+class AsmHierarchyTabPanel(
+    private val project: Project,
+) : JPanel(BorderLayout()) {
     // ui controls
-    private val searchField = SearchTextField(false).apply {
-        textEditor.emptyText.text =
-            "Search class (fqcn / simple / CamelHumps), e.g. OrderSvc, com.foo.OrderService"
-    }
+    private val searchField =
+        SearchTextField(false).apply {
+            textEditor.emptyText.text =
+                "Search class (fqcn / simple / CamelHumps), e.g. OrderSvc, com.foo.OrderService"
+        }
 
     private val exportJsonBtn = JButton("Export JSON")
     private val exportXmlBtn = JButton("Export XML")
 
-
     private val includeLibrariesToggle = JBCheckBox("Include libraries", true)
 
     private val resultsModel = DefaultListModel<SearchHit>()
-    private val resultsList = JBList(resultsModel).apply {
-        visibleRowCount = 12
-        cellRenderer = object : ColoredListCellRenderer<SearchHit>() {
-            override fun customizeCellRenderer(
-                list: JList<out SearchHit>,
-                value: SearchHit,
-                index: Int,
-                selected: Boolean,
-                hasFocus: Boolean
-            ) {
-                icon = when (value.origin) {
-                    AsmOrigin.MODULE_OUTPUT -> AllIcons.Nodes.Class
-                    AsmOrigin.DEPENDENCY_JAR -> AllIcons.Nodes.PpLib
-                }
+    private val resultsList =
+        JBList(resultsModel).apply {
+            visibleRowCount = 12
+            cellRenderer =
+                object : ColoredListCellRenderer<SearchHit>() {
+                    override fun customizeCellRenderer(
+                        list: JList<out SearchHit>,
+                        value: SearchHit,
+                        index: Int,
+                        selected: Boolean,
+                        hasFocus: Boolean,
+                    ) {
+                        icon =
+                            when (value.origin) {
+                                AsmOrigin.MODULE_OUTPUT -> AllIcons.Nodes.Class
+                                AsmOrigin.DEPENDENCY_JAR -> AllIcons.Nodes.PpLib
+                            }
 
-                append(value.simpleName, SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES)
-                append("  ", SimpleTextAttributes.REGULAR_ATTRIBUTES)
+                        append(value.simpleName, SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES)
+                        append("  ", SimpleTextAttributes.REGULAR_ATTRIBUTES)
 
-                if (value.packageName.isNotEmpty()) {
-                    append(value.packageName, SimpleTextAttributes.GRAYED_ATTRIBUTES)
-                } else {
-                    append("(default package)", SimpleTextAttributes.GRAYED_ATTRIBUTES)
-                }
+                        if (value.packageName.isNotEmpty()) {
+                            append(value.packageName, SimpleTextAttributes.GRAYED_ATTRIBUTES)
+                        } else {
+                            append("(default package)", SimpleTextAttributes.GRAYED_ATTRIBUTES)
+                        }
 
-                value.moduleName?.let {
-                    append("  ", SimpleTextAttributes.REGULAR_ATTRIBUTES)
-                    append("[$it]", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES)
+                        value.moduleName?.let {
+                            append("  ", SimpleTextAttributes.REGULAR_ATTRIBUTES)
+                            append("[$it]", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES)
+                        }
+                    }
                 }
-            }
         }
-    }
 
-    private val selectedLabel = JBLabel("No class selected.").apply {
-        foreground = com.intellij.ui.JBColor.GRAY
-    }
+    private val selectedLabel =
+        JBLabel("No class selected.").apply {
+            foreground = com.intellij.ui.JBColor.GRAY
+        }
 
     private val transitiveToggle = JBCheckBox("Transitive subtypes", false)
 
     private val treeModel = DefaultTreeModel(DefaultMutableTreeNode(NodeMessage("No class selected.")))
-    private val hierarchyTree = Tree(treeModel).apply {
-        cellRenderer = HierarchyTreeRenderer()
-        isRootVisible = true
-        showsRootHandles = true
-    }
+    private val hierarchyTree =
+        Tree(treeModel).apply {
+            cellRenderer = HierarchyTreeRenderer()
+            isRootVisible = true
+            showsRootHandles = true
+        }
 
     // ---------- data (updated on index refresh) ----------
     private var index: AsmIndex? = null
@@ -120,55 +144,65 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
     private var selectedInternal: String? = null
 
     init {
-        val left = JPanel(BorderLayout()).apply {
-            val top = JPanel(BorderLayout()).apply {
-                add(searchField, BorderLayout.CENTER)
-            }
-            val toggles = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-                add(includeLibrariesToggle)
-            }
-            add(top, BorderLayout.NORTH)
-            add(toggles, BorderLayout.CENTER)
-            add(ScrollPaneFactory.createScrollPane(resultsList), BorderLayout.SOUTH)
-            preferredSize = Dimension(380, 200)
-        }
-
-        val right = JPanel(BorderLayout()).apply {
-            val header = JPanel(BorderLayout()).apply {
-                add(selectedLabel, BorderLayout.CENTER)
-            }
-            val controls = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-                add(transitiveToggle)
+        val left =
+            JPanel(BorderLayout()).apply {
+                val top =
+                    JPanel(BorderLayout()).apply {
+                        add(searchField, BorderLayout.CENTER)
+                    }
+                val toggles =
+                    JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+                        add(includeLibrariesToggle)
+                    }
+                add(top, BorderLayout.NORTH)
+                add(toggles, BorderLayout.CENTER)
+                add(ScrollPaneFactory.createScrollPane(resultsList), BorderLayout.SOUTH)
+                preferredSize = Dimension(380, 200)
             }
 
+        val right =
+            JPanel(BorderLayout()).apply {
+                val header =
+                    JPanel(BorderLayout()).apply {
+                        add(selectedLabel, BorderLayout.CENTER)
+                    }
+                val controls =
+                    JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+                        add(transitiveToggle)
+                    }
 
-            val north = JPanel(BorderLayout()).apply {
-                add(header, BorderLayout.NORTH)
-                add(controls, BorderLayout.SOUTH)
+                val north =
+                    JPanel(BorderLayout()).apply {
+                        add(header, BorderLayout.NORTH)
+                        add(controls, BorderLayout.SOUTH)
+                    }
+
+                add(north, BorderLayout.NORTH)
+                add(ScrollPaneFactory.createScrollPane(hierarchyTree), BorderLayout.CENTER)
             }
 
-            add(north, BorderLayout.NORTH)
-            add(ScrollPaneFactory.createScrollPane(hierarchyTree), BorderLayout.CENTER)
-        }
-
-        val splitter = Splitter(false, 0.38f).apply {
-            firstComponent = left
-            secondComponent = right
-        }
+        val splitter =
+            Splitter(false, 0.38f).apply {
+                firstComponent = left
+                secondComponent = right
+            }
         add(splitter, BorderLayout.CENTER)
         exportJsonBtn.addActionListener { exportHierarchy(ExportUtil.Format.JSON) }
         exportXmlBtn.addActionListener { exportHierarchy(ExportUtil.Format.XML) }
 
-        val exportBar = JPanel(BorderLayout()).apply {
-            border = com.intellij.util.ui.JBUI.Borders.empty(6, 8)
-            val row = JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
-                add(exportJsonBtn)
-                add(exportXmlBtn)
+        val exportBar =
+            JPanel(BorderLayout()).apply {
+                border =
+                    com.intellij.util.ui.JBUI.Borders
+                        .empty(6, 8)
+                val row =
+                    JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
+                        add(exportJsonBtn)
+                        add(exportXmlBtn)
+                    }
+                add(row, BorderLayout.WEST)
             }
-            add(row, BorderLayout.WEST)
-        }
         add(exportBar, BorderLayout.SOUTH)
-
 
         // Speed search in tree
         TreeSpeedSearch(hierarchyTree) { path ->
@@ -184,11 +218,13 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         }
 
         // ---------- listeners ----------
-        searchField.textEditor.document.addDocumentListener(object : DocumentAdapter() {
-            override fun textChanged(e: DocumentEvent) {
-                updateSearchResults(searchField.text.orEmpty())
-            }
-        })
+        searchField.textEditor.document.addDocumentListener(
+            object : DocumentAdapter() {
+                override fun textChanged(e: DocumentEvent) {
+                    updateSearchResults(searchField.text.orEmpty())
+                }
+            },
+        )
 
         // Enter = choose first result if available
         searchField.textEditor.addActionListener {
@@ -211,33 +247,37 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
             showClass(hit.internalName)
         }
 
-        resultsList.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                if (e.clickCount != 2) return
-                val hit = resultsList.selectedValue ?: return
-                showClass(hit.internalName)
-                navigateIfInProject(hit.internalName)
-            }
-        })
+        resultsList.addMouseListener(
+            object : MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) {
+                    if (e.clickCount != 2) return
+                    val hit = resultsList.selectedValue ?: return
+                    showClass(hit.internalName)
+                    navigateIfInProject(hit.internalName)
+                }
+            },
+        )
 
         transitiveToggle.addActionListener {
             selectedInternal?.let { rebuildTree(it) }
         }
 
-        hierarchyTree.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                if (e.clickCount != 2) return
-                val path = hierarchyTree.selectionPath ?: return
-                val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
-                val obj = node.userObject
-                if (obj is NodeClassRef) {
-                    if (classesByInternal.containsKey(obj.internalName)) {
-                        showClass(obj.internalName)
-                        navigateIfInProject(obj.internalName)
+        hierarchyTree.addMouseListener(
+            object : MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) {
+                    if (e.clickCount != 2) return
+                    val path = hierarchyTree.selectionPath ?: return
+                    val node = path.lastPathComponent as? DefaultMutableTreeNode ?: return
+                    val obj = node.userObject
+                    if (obj is NodeClassRef) {
+                        if (classesByInternal.containsKey(obj.internalName)) {
+                            showClass(obj.internalName)
+                            navigateIfInProject(obj.internalName)
+                        }
                     }
                 }
-            }
-        })
+            },
+        )
     }
 
     fun onIndexUpdated(newIndex: AsmIndex) {
@@ -253,23 +293,27 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         subclassesOf = tmp.mapValues { it.value.toSet() }
 
         // Precompute search hits once per scan (fast UI)
-        allHits = classesByInternal.values.map { info ->
-            SearchHit(
-                internalName = info.internalName,
-                fqcn = info.fqcn,
-                simpleName = info.fqcn.substringAfterLast('.'),
-                packageName = info.fqcn.substringBeforeLast('.', missingDelimiterValue = ""),
-                moduleName = info.moduleName,
-                origin = info.origin
-            )
-        }
+        allHits =
+            classesByInternal.values.map { info ->
+                SearchHit(
+                    internalName = info.internalName,
+                    fqcn = info.fqcn,
+                    simpleName = info.fqcn.substringAfterLast('.'),
+                    packageName = info.fqcn.substringBeforeLast('.', missingDelimiterValue = ""),
+                    moduleName = info.moduleName,
+                    origin = info.origin,
+                )
+            }
 
         updateSearchResults(searchField.text.orEmpty())
 
         // keep selection stable across rescans if possible
         selectedInternal?.let { internal ->
-            if (classesByInternal.containsKey(internal)) rebuildTree(internal)
-            else clearSelection("Selected class is no longer indexed.")
+            if (classesByInternal.containsKey(internal)) {
+                rebuildTree(internal)
+            } else {
+                clearSelection("Selected class is no longer indexed.")
+            }
         }
     }
 
@@ -290,8 +334,8 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
                     simpleName = internal.substringAfterLast('/'),
                     packageName = internal.replace('/', '.').substringBeforeLast('.', missingDelimiterValue = ""),
                     moduleName = info?.moduleName,
-                    origin = info?.origin ?: AsmOrigin.MODULE_OUTPUT
-                )
+                    origin = info?.origin ?: AsmOrigin.MODULE_OUTPUT,
+                ),
             )
             return
         }
@@ -299,12 +343,11 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         val matcher = NameUtil.buildMatcher(q).build()
         val allowLibs = includeLibrariesToggle.isSelected
 
-        fun match(hit: SearchHit): Boolean {
-            return matcher.matches(hit.simpleName) ||
-                    matcher.matches(hit.fqcn) ||
-                    hit.simpleName.contains(q, ignoreCase = true) ||
-                    hit.fqcn.contains(q, ignoreCase = true)
-        }
+        fun match(hit: SearchHit): Boolean =
+            matcher.matches(hit.simpleName) ||
+                matcher.matches(hit.fqcn) ||
+                hit.simpleName.contains(q, ignoreCase = true) ||
+                hit.fqcn.contains(q, ignoreCase = true)
 
         fun score(hit: SearchHit): Int {
             val fq = hit.fqcn
@@ -319,16 +362,16 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
             }
         }
 
-        allHits.asSequence()
+        allHits
+            .asSequence()
             .filter { allowLibs || it.origin == AsmOrigin.MODULE_OUTPUT }
             .filter { match(it) }
             .map { it to score(it) }
             .sortedWith(
                 compareBy<Pair<SearchHit, Int>> { it.second }
                     .thenBy { it.first.simpleName.length }
-                    .thenBy { it.first.fqcn }
-            )
-            .take(250)
+                    .thenBy { it.first.fqcn },
+            ).take(250)
             .forEach { (hit, _) -> resultsModel.addElement(hit) }
     }
 
@@ -349,9 +392,10 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
 
         if (!cleaned.contains('.') && !cleaned.contains('/')) {
             val simple = cleaned
-            val hit = classesByInternal.keys.firstOrNull { internal ->
-                internal.endsWith("/$simple") || internal.endsWith("$$simple")
-            }
+            val hit =
+                classesByInternal.keys.firstOrNull { internal ->
+                    internal.endsWith("/$simple") || internal.endsWith("$$simple")
+                }
             if (hit != null) return hit
         }
 
@@ -369,13 +413,16 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
     }
 
     private fun rebuildTree(internal: String) {
-        val info = classesByInternal[internal] ?: run {
-            clearSelection("Not indexed: ${internal.replace('/', '.')}")
-            return
-        }
+        val info =
+            classesByInternal[internal] ?: run {
+                clearSelection("Not indexed: ${internal.replace('/', '.')}")
+                return
+            }
 
         selectedLabel.text = "${info.fqcn}   •   ${info.originDisplayName}${info.moduleName?.let { "   •   module=$it" } ?: ""}"
-        selectedLabel.foreground = com.intellij.ui.JBColor.foreground()
+        selectedLabel.foreground =
+            com.intellij.ui.JBColor
+                .foreground()
 
         val root = DefaultMutableTreeNode(NodeHeader(info.fqcn, internal))
 
@@ -395,14 +442,18 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         // Subtypes
         val direct = subclassesOf[internal].orEmpty()
         val subs =
-            if (transitiveToggle.isSelected) computeTransitiveSubclasses(internal)
-            else direct
+            if (transitiveToggle.isSelected) {
+                computeTransitiveSubclasses(internal)
+            } else {
+                direct
+            }
 
         val subTitle =
-            if (transitiveToggle.isSelected)
+            if (transitiveToggle.isSelected) {
                 "Subtypes (transitive ${subs.size}, direct ${direct.size})"
-            else
+            } else {
                 "Subtypes (direct ${subs.size})"
+            }
 
         val subNode = DefaultMutableTreeNode(NodeSection(subTitle))
         val maxShow = 2000
@@ -436,7 +487,10 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         treeModel.reload()
     }
 
-    private fun classNode(internal: String, forceInterfaceIcon: Boolean = false): DefaultMutableTreeNode {
+    private fun classNode(
+        internal: String,
+        forceInterfaceIcon: Boolean = false,
+    ): DefaultMutableTreeNode {
         val fqcn = internal.replace('/', '.')
         val info = classesByInternal[internal]
         return DefaultMutableTreeNode(
@@ -445,8 +499,8 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
                 fqcn = fqcn,
                 origin = info?.origin,
                 moduleName = info?.moduleName,
-                forceInterfaceIcon = forceInterfaceIcon
-            )
+                forceInterfaceIcon = forceInterfaceIcon,
+            ),
         )
     }
 
@@ -485,9 +539,11 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
     // ---------- Navigation ----------
     private fun navigateIfInProject(internal: String) {
         val fqcn = internal.replace('/', '.')
-        val psiClass = JavaPsiFacade.getInstance(project)
-            .findClass(fqcn, GlobalSearchScope.projectScope(project))
-            ?: return
+        val psiClass =
+            JavaPsiFacade
+                .getInstance(project)
+                .findClass(fqcn, GlobalSearchScope.projectScope(project))
+                ?: return
 
         val vf = psiClass.containingFile?.virtualFile ?: return
         OpenFileDescriptor(project, vf, psiClass.textOffset).navigate(true)
@@ -500,19 +556,28 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         val simpleName: String,
         val packageName: String,
         val moduleName: String?,
-        val origin: AsmOrigin
+        val origin: AsmOrigin,
     )
 
-    private data class NodeHeader(val text: String, val internalName: String)
-    private data class NodeSection(val text: String)
-    private data class NodeMessage(val text: String)
+    private data class NodeHeader(
+        val text: String,
+        val internalName: String,
+    )
+
+    private data class NodeSection(
+        val text: String,
+    )
+
+    private data class NodeMessage(
+        val text: String,
+    )
 
     private data class NodeClassRef(
         val internalName: String,
         val fqcn: String,
         val origin: AsmOrigin?,
         val moduleName: String?,
-        val forceInterfaceIcon: Boolean
+        val forceInterfaceIcon: Boolean,
     )
 
     private class HierarchyTreeRenderer : ColoredTreeCellRenderer() {
@@ -523,7 +588,7 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
             expanded: Boolean,
             leaf: Boolean,
             row: Int,
-            hasFocus: Boolean
+            hasFocus: Boolean,
         ) {
             val node = value as? DefaultMutableTreeNode ?: return
             val obj = node.userObject
@@ -545,11 +610,12 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
                     val simple = obj.fqcn.substringAfterLast('.')
                     val pkg = obj.fqcn.substringBeforeLast('.', missingDelimiterValue = "")
 
-                    icon = when {
-                        obj.forceInterfaceIcon -> AllIcons.Nodes.Interface
-                        obj.origin == AsmOrigin.DEPENDENCY_JAR -> AllIcons.Nodes.PpLib
-                        else -> AllIcons.Nodes.Class
-                    }
+                    icon =
+                        when {
+                            obj.forceInterfaceIcon -> AllIcons.Nodes.Interface
+                            obj.origin == AsmOrigin.DEPENDENCY_JAR -> AllIcons.Nodes.PpLib
+                            else -> AllIcons.Nodes.Class
+                        }
 
                     append(simple, SimpleTextAttributes.REGULAR_ATTRIBUTES)
                     if (pkg.isNotEmpty()) {
@@ -571,11 +637,20 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
         val info = classesByInternal[internal] ?: return
 
         val superChain = computeSuperChainInternal(internal).map { it.replace('/', '.') }
-        val ifaces = info.interfaceInternalNames.distinct().sorted().map { it.replace('/', '.') }
+        val ifaces =
+            info.interfaceInternalNames
+                .distinct()
+                .sorted()
+                .map { it.replace('/', '.') }
 
         val direct = subclassesOf[internal].orEmpty()
         val subs = if (transitiveToggle.isSelected) computeTransitiveSubclasses(internal) else direct
-        val subList = subs.asSequence().sorted().map { it.replace('/', '.') }.toList()
+        val subList =
+            subs
+                .asSequence()
+                .sorted()
+                .map { it.replace('/', '.') }
+                .toList()
 
         HierarchyExport.exportSnapshot(
             project = project,
@@ -584,7 +659,7 @@ class AsmHierarchyTabPanel(private val project: Project) : JPanel(BorderLayout()
             transitiveSubtypes = transitiveToggle.isSelected,
             superChainFqcn = superChain,
             interfacesFqcn = ifaces,
-            subtypesFqcn = subList
+            subtypesFqcn = subList,
         )
     }
 }

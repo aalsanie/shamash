@@ -1,3 +1,21 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.shamash.asm.ui
 
 import io.shamash.asm.model.AsmIndex
@@ -14,7 +32,6 @@ import javax.swing.tree.DefaultMutableTreeNode
  *    - bucket (count)
  */
 object AsmTreeModelBuilder {
-
     fun buildRoot(index: AsmIndex): DefaultMutableTreeNode {
         val root = DefaultMutableTreeNode("Shamash scan")
         root.add(buildProjectNode(index))
@@ -44,8 +61,8 @@ object AsmTreeModelBuilder {
         return projectNode
     }
 
-    //external libraries count including jdk, spring bla bla etc.. "I'm bored!" but we shouldn't be concerned
-    //TODO: if we are? then we add it as a feature to Shamash 2.0
+    // external libraries count including jdk, spring bla bla etc.. "I'm bored!" but we shouldn't be concerned
+    // TODO: if we are? then we add it as a feature to Shamash 2.0
     fun buildExternalBucketsNode(index: AsmIndex): DefaultMutableTreeNode {
         val root = DefaultMutableTreeNode("External Buckets")
 
@@ -75,9 +92,8 @@ object AsmTreeModelBuilder {
         buckets
             .sortedWith(
                 compareByDescending<ExternalBucketResolver.Bucket> { countsByBucketId[it.id] ?: 0 }
-                    .thenBy { it.displayName }
-            )
-            .forEach { bucket ->
+                    .thenBy { it.displayName },
+            ).forEach { bucket ->
                 val c = countsByBucketId[bucket.id] ?: 0
                 root.add(DefaultMutableTreeNode("${bucket.displayName} ($c)"))
             }
@@ -85,7 +101,10 @@ object AsmTreeModelBuilder {
         return root
     }
 
-    private fun addToPackageTree(root: DefaultMutableTreeNode, fqcn: String) {
+    private fun addToPackageTree(
+        root: DefaultMutableTreeNode,
+        fqcn: String,
+    ) {
         val parts = fqcn.split('.')
         if (parts.isEmpty()) return
 
@@ -100,7 +119,10 @@ object AsmTreeModelBuilder {
         current.add(DefaultMutableTreeNode(parts.last()))
     }
 
-    private fun findChild(parent: DefaultMutableTreeNode, name: String): DefaultMutableTreeNode? {
+    private fun findChild(
+        parent: DefaultMutableTreeNode,
+        name: String,
+    ): DefaultMutableTreeNode? {
         val e = parent.children()
         while (e.hasMoreElements()) {
             val n = e.nextElement() as? DefaultMutableTreeNode ?: continue

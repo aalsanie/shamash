@@ -1,5 +1,5 @@
-@rem
-@rem Copyright 2015 the original author or authors.
+@
+@rem Copyright © 2025-2026 | Author: @aalsanie
 @rem
 @rem Licensed under the Apache License, Version 2.0 (the "License");
 @rem you may not use this file except in compliance with the License.
@@ -15,13 +15,7 @@
 @rem
 
 @if "%DEBUG%" == "" @echo off
-@rem ##########################################################################
-@rem
-@rem  Gradle startup script for Windows
-@rem
-@rem ##########################################################################
 
-@rem Set local scope for the variables with windows NT shell
 if "%OS%"=="Windows_NT" setlocal
 
 set DIRNAME=%~dp0

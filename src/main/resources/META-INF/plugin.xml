@@ -8,8 +8,7 @@
 
     <description>
         <![CDATA[
-        Shamash enforces clean architecture, explicit design, and structural integrity
-        in Java codebases using PSI inspections, ASM and logging.
+        Shamash is a refactoring tool that enforces clean architecture.
         ]]>
     </description>
 

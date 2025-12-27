@@ -8,7 +8,7 @@
 
 # Shamash
 
-Shamash is an architectural refactoring intellij plugin that enforces clean architecture.
+Shamash is an architectural refactoring tool (currently: intellij plugin) that enforces clean architecture.
 
 
 ### What It Offers?
