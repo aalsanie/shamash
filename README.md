@@ -65,9 +65,7 @@ All inspections are deterministic, reversible, and framework-aware where necessa
 
 
 ## License
-
-[LICENSE.md](LICENSE.md)
+[LICENSE](LICENSE.md)
 
 ## Changelog
-
-[Change-log](./CHANGELOG.md)
+[CHANGELOG](./CHANGELOG.md)
