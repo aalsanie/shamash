@@ -24,7 +24,7 @@ plugins {
 }
 
 group = "io.shamash"
-version = "0.3.0"
+version = "0.4.0"
 
 repositories {
     gradlePluginPortal()
@@ -45,6 +45,7 @@ intellij {
 tasks {
     patchPluginXml {
         sinceBuild.set("233")
+        untilBuild.set("252.*")
     }
 }
 
