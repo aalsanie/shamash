@@ -1,6 +1,6 @@
 /*
  *
- * shamash is an architectural refactoring tool (currently: intellij plugin) that enforces clean architecture.
+ * shamash is an architectural refactoring tool that enforces clean architecture.
  *
  * Copyright © 2025-2026 | Author: @aalsanie
  *
@@ -17,48 +17,65 @@
  * limitations under the License.
  */
 
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     kotlin("jvm") version "1.9.23"
-    id("org.jetbrains.intellij") version "1.17.3"
+    id("org.jetbrains.intellij.platform") version "2.10.5"
     id("com.diffplug.spotless") version "8.1.0"
 }
 
 group = "io.shamash"
-version = "0.4.0"
+version = "0.40.1"
 
 repositories {
-    gradlePluginPortal()
     mavenCentral()
+
+    intellijPlatform {
+        defaultRepositories()
+    }
 }
 
 dependencies {
     implementation("org.ow2.asm:asm:9.7.1")
     implementation("org.ow2.asm:asm-util:9.7.1")
-}
 
-intellij {
-    version.set("2023.3")
-    type.set("IC")
-    plugins.set(listOf("java"))
-}
+    intellijPlatform {
+        intellijIdea("2024.2")
 
-tasks {
-    patchPluginXml {
-        sinceBuild.set("233")
-        untilBuild.set("252.*")
+        bundledPlugin("com.intellij.java")
     }
 }
 
-tasks {
-    runPluginVerifier {
-        ideVersions.set(listOf("2023.3", "2024.1", "2024.2", "2024.3"))
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+intellijPlatform {
+
+    pluginConfiguration {
+
+        ideaVersion {
+            sinceBuild = "233"
+            untilBuild = "252.*"
+        }
+    }
+
+    pluginVerification {
+        ides {
+            create(IntelliJPlatformType.IntellijIdea, "2024.2")
+            create(IntelliJPlatformType.IntellijIdea, "2024.3")
+            create(IntelliJPlatformType.IntellijIdea, "2025.2")
+        }
     }
 }
 
 spotless {
     kotlin {
         ktlint()
-
         licenseHeaderFile(rootProject.file("spotless/HEADER.kt"), "package ")
     }
 

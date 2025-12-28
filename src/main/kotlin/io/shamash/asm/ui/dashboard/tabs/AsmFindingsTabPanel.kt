@@ -31,6 +31,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.table.TableView
+import com.intellij.util.Processor
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
@@ -603,17 +604,18 @@ class AsmFindingsTabPanel(
             val scope = GlobalSearchScope.projectScope(project)
 
             val query = AllClassesSearch.search(scope, project)
-            for (psiClass in query) {
-                val fqcn = psiClass.qualifiedName ?: continue
 
-                val moduleName =
-                    com.intellij.openapi.module.ModuleUtilCore
-                        .findModuleForPsiElement(psiClass)
-                        ?.name
+            query.forEach(
+                Processor { psiClass ->
+                    val fqcn = psiClass.qualifiedName ?: return@Processor true
 
-                (NamingRules.bannedSuffix(psiClass)).let { suffix ->
-                    out +=
-                        Finding(
+                    val moduleName =
+                        com.intellij.openapi.module.ModuleUtilCore
+                            .findModuleForPsiElement(psiClass)
+                            ?.name
+
+                    NamingRules.bannedSuffix(psiClass).let {
+                        out += Finding(
                             id = "PSI:NAMING_BANNED_SUFFIX",
                             title = "Banned suffix",
                             severity = Severity.MEDIUM,
@@ -622,11 +624,10 @@ class AsmFindingsTabPanel(
                             message = "Class name ends with banned suffix.",
                             evidence = mapOf("name" to (psiClass.name ?: "")),
                         )
-                }
+                    }
 
-                if (NamingRules.isAbbreviated(psiClass)) {
-                    out +=
-                        Finding(
+                    if (NamingRules.isAbbreviated(psiClass)) {
+                        out += Finding(
                             id = "PSI:NAMING_ABBREVIATED",
                             title = "Abbreviated class name",
                             severity = Severity.LOW,
@@ -635,87 +636,11 @@ class AsmFindingsTabPanel(
                             message = "Class name looks abbreviated and may hurt readability.",
                             evidence = mapOf("name" to (psiClass.name ?: "")),
                         )
-                }
-
-                val expected = LayerDetector.detect(psiClass)
-                val forbiddenSvcToCtrl = LayerRules.serviceMustNotDependOnController(psiClass)
-                if (forbiddenSvcToCtrl) {
-                    out +=
-                        Finding(
-                            id = "PSI:LAYER_SERVICE_DEPENDS_ON_CONTROLLER",
-                            title = "Service depends on Controller",
-                            severity = Severity.HIGH,
-                            fqcn = fqcn,
-                            module = moduleName,
-                            message = "Service should not depend on Controller.",
-                            evidence = mapOf("expectedLayer" to expected.name),
-                        )
-                }
-
-                val forbiddenCtrlToDao = LayerRules.controllerMustNotDependOnDao(psiClass)
-                if (forbiddenCtrlToDao) {
-                    out +=
-                        Finding(
-                            id = "PSI:LAYER_CONTROLLER_DEPENDS_ON_DAO",
-                            title = "Controller depends on DAO",
-                            severity = Severity.HIGH,
-                            fqcn = fqcn,
-                            module = moduleName,
-                            message = "Controller should not depend on DAO directly.",
-                            evidence = mapOf("expectedLayer" to expected.name),
-                        )
-                }
-
-                val publicCount = ControllerRules.excessPublicMethods(psiClass).size
-                if (publicCount > 0) {
-                    out +=
-                        Finding(
-                            id = "PSI:CONTROLLER_PUBLIC_METHODS",
-                            title = "Controller has too many public methods",
-                            severity = if (publicCount >= 10) Severity.HIGH else Severity.MEDIUM,
-                            fqcn = fqcn,
-                            module = moduleName,
-                            message = "Controller exposes many public methods (count=$publicCount).",
-                            evidence = mapOf("publicMethods" to publicCount),
-                        )
-                }
-
-                if (DeadCodeRules.isUnusedClass(psiClass)) {
-                    out +=
-                        Finding(
-                            id = "PSI:DEAD_UNUSED_CLASS",
-                            title = "Unused class",
-                            severity = Severity.MEDIUM,
-                            fqcn = fqcn,
-                            module = moduleName,
-                            message = "Class appears unused (based on references search).",
-                            evidence = emptyMap(),
-                        )
-                }
-
-                // unused methods findings
-                val methods =
-                    psiClass.methods
-                        .asSequence()
-                        .filter { it.name != "<init>" }
-                        .take(200)
-                        .toList()
-
-                for (m in methods) {
-                    if (DeadCodeRules.isUnusedMethod(m)) {
-                        out +=
-                            Finding(
-                                id = "PSI:DEAD_UNUSED_METHOD",
-                                title = "Unused method",
-                                severity = Severity.LOW,
-                                fqcn = fqcn,
-                                module = moduleName,
-                                message = "Method appears unused: ${m.name}${m.parameterList.text}",
-                                evidence = mapOf("method" to m.name),
-                            )
                     }
+
+                    true // keep processing next result
                 }
-            }
+            )
 
             return out
         }

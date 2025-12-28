@@ -2,8 +2,13 @@
 
 
 ## [unreleased]
+
+## [0.5.0]
 ### Removed
 - Remove deprecated TreeSearch and use installTreeSpeedSearch for search tab
+### Updated
+- update gradle to 8.13
+- remove deprecated methods/classes
 
 ## [0.4.0]
 ### Fixed
