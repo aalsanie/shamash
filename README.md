@@ -7,7 +7,6 @@
 # Shamash
 
 A bytecode aware codebase scanner, architectural dashboard for JVM projects.
-and a tool to enforce clean architecture.
 
 ### What It Offers?
 - Bytecode inspection
