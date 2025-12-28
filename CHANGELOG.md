@@ -3,7 +3,7 @@
 
 ## [unreleased]
 
-## [0.41.0]
+## [0.41.1]
 ### Removed
 - Remove deprecated TreeSearch and use installTreeSpeedSearch for search tab
 ### Updated
