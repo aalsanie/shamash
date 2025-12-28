@@ -52,16 +52,8 @@ gradlew clean runIde
 
 All inspections are deterministic, reversible, and framework-aware where necessary.
 
-### Demo
-<p align="center">
-  <img src="assets/demo-final-one.png" alt="Shamash Logo" width="180"/>
-  <img src="assets/demo-final-five.png" alt="Shamash Logo" width="180"/>
-  <img src="assets/demo-final-two.png" alt="Shamash Logo" width="180"/>
-  <br>
-  <img src="assets/demo-final-three.png" alt="Shamash Logo" width="180"/>
-  <img src="assets/demo-final-four.png" alt="Shamash Logo" width="180"/>
-  <br>
-  <img src="assets/demo-final.png" alt="Shamash Logo" width="180"/>
+<p align="left">
+  <img src="assets/demo-final-four.png" alt="Shamash demo" width="180"/>
 </p>
 
 
