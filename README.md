@@ -6,19 +6,20 @@
 
 # Shamash
 
-Shamash is a refactoring/reporting tool that enforces clean architecture (operates on java codebases).
-Deterministic & Fast (relies on bytecode for analysis using ASM).
+A bytecode aware codebase scanner, architectural dashboard for JVM projects.
+and a tool to enforce clean architecture.
 
 ### What It Offers?
-- Architectural Dashboard (reports are exportable)
-  - Hierarchy tab: search panel of project's hierarchical structure
-  - Tree tab: view of project's hierarchical structure
-  - Hotspots tab: dynamic analysis that shows architectural violations
+- Bytecode inspection
+- Dependency / call graph analysis
+- Dead code / deprecation / shadow usage detection
+- JVM internals visibility
+- Architectural Dashboard
+  - Hierarchy: search panel of project's hierarchical structure
+  - Hotspots: dynamic analysis that shows architectural violations
   - Findings: displays severity/violations
-- PSI inspections - displayed as warning in problems tab with fixes
-  - violations of clean code
-  - violations of clean architecture
-- ASM bytecode scan, a complete hierarchical tree view
+  - violations of clean code - strict rules/strategy/scoring to avoid false positive
+  - violations of clean architecture - strict rules/strategy/scoring to avoid false positive
 
 ### How to use
 - Download the plugin from intellij marketplace or build locally
@@ -45,10 +46,6 @@ To run
 gradlew.bat spotlessApply --stacktrace
 gradlew clean runIde
 ```
-
-- ASM for bytecode analysis
-- PSI for static analysis
-- Logging-based for cleanup actions (hybrid runtime signal)
 
 All inspections are deterministic, reversible, and framework-aware where necessary.
 

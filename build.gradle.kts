@@ -27,7 +27,7 @@ plugins {
 }
 
 group = "io.shamash"
-version = "0.40.1"
+version = "0.41.1"
 
 repositories {
     mavenCentral()

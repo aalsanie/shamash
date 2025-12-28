@@ -8,7 +8,8 @@
 
     <description>
         <![CDATA[
-        Shamash is a refactoring tool that enforces clean architecture.
+        A bytecode aware codebase scanner, architectural dashboard for JVM projects.
+        and a tool to enforce clean architecture.
         ]]>
     </description>
 
