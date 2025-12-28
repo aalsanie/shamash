@@ -31,7 +31,7 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SearchTextField
 import com.intellij.ui.SimpleTextAttributes
-import com.intellij.ui.TreeSpeedSearch
+import com.intellij.ui.TreeUIHelper
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
@@ -192,9 +192,7 @@ class AsmSearchTabPanel(
 
         val exportBar =
             JPanel(BorderLayout()).apply {
-                border =
-                    com.intellij.util.ui.JBUI.Borders
-                        .empty(6, 8)
+                border = com.intellij.util.ui.JBUI.Borders.empty(6, 8)
                 val row =
                     JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
                         add(exportJsonBtn)
@@ -204,18 +202,21 @@ class AsmSearchTabPanel(
             }
         add(exportBar, BorderLayout.SOUTH)
 
-        // Speed search in tree
-        TreeSpeedSearch(hierarchyTree) { path ->
-            val node = path.lastPathComponent as? DefaultMutableTreeNode
-            val obj = node?.userObject
-            when (obj) {
-                is NodeHeader -> obj.text
-                is NodeSection -> obj.text
-                is NodeClassRef -> obj.fqcn
-                is NodeMessage -> obj.text
-                else -> obj?.toString() ?: ""
-            }
-        }
+        TreeUIHelper.getInstance().installTreeSpeedSearch(
+            hierarchyTree,
+            { path ->
+                val node = path.lastPathComponent as? DefaultMutableTreeNode
+                val obj = node?.userObject
+                when (obj) {
+                    is NodeHeader -> obj.text
+                    is NodeSection -> obj.text
+                    is NodeClassRef -> obj.fqcn
+                    is NodeMessage -> obj.text
+                    else -> obj?.toString() ?: ""
+                }
+            },
+            true,
+        )
 
         // ---------- listeners ----------
         searchField.textEditor.document.addDocumentListener(
@@ -345,9 +346,9 @@ class AsmSearchTabPanel(
 
         fun match(hit: SearchHit): Boolean =
             matcher.matches(hit.simpleName) ||
-                matcher.matches(hit.fqcn) ||
-                hit.simpleName.contains(q, ignoreCase = true) ||
-                hit.fqcn.contains(q, ignoreCase = true)
+                    matcher.matches(hit.fqcn) ||
+                    hit.simpleName.contains(q, ignoreCase = true) ||
+                    hit.fqcn.contains(q, ignoreCase = true)
 
         fun score(hit: SearchHit): Int {
             val fq = hit.fqcn
@@ -419,10 +420,9 @@ class AsmSearchTabPanel(
                 return
             }
 
-        selectedLabel.text = "${info.fqcn}   •   ${info.originDisplayName}${info.moduleName?.let { "   •   module=$it" } ?: ""}"
-        selectedLabel.foreground =
-            com.intellij.ui.JBColor
-                .foreground()
+        selectedLabel.text =
+            "${info.fqcn}   •   ${info.originDisplayName}${info.moduleName?.let { "   •   module=$it" } ?: ""}"
+        selectedLabel.foreground = com.intellij.ui.JBColor.foreground()
 
         val root = DefaultMutableTreeNode(NodeHeader(info.fqcn, internal))
 

@@ -1,4 +1,10 @@
 # Changelog
+
+
+## [unreleased]
+### Removed
+- Remove deprecated TreeSearch and use installTreeSpeedSearch for search tab
+
 ## [0.4.0]
 ### Fixed
 - Support latest IDE

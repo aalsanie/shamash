@@ -30,19 +30,20 @@ Deterministic & Fast (relies on bytecode for analysis using ASM).
   - graphs and reports of current hierarchy, issues and fixes
 
 ### Local Setup
+To verify
+```shell
+./gradlew runPluginVerifier
+```
+
 To build
 ```shell
+
 ./gradlew clean buildplugin
 ```
 To run
 ```shell
 gradlew.bat spotlessApply --stacktrace
 gradlew clean runIde
-```
-
-To verify plugin
-```shell
-./gradlew runPluginVerifier
 ```
 
 - ASM for bytecode analysis
