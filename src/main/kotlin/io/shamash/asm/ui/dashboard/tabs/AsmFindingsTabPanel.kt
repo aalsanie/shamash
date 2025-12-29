@@ -42,11 +42,6 @@ import io.shamash.asm.model.Severity
 import io.shamash.asm.scan.ExternalBucketResolver
 import io.shamash.asm.ui.dashboard.export.FindingsExport
 import io.shamash.asm.ui.dashboard.export.FindingsExport.exportAllFindings
-import io.shamash.psi.architecture.ControllerRules
-import io.shamash.psi.architecture.DeadCodeRules
-import io.shamash.psi.architecture.LayerDetector
-import io.shamash.psi.architecture.LayerRules
-import io.shamash.psi.architecture.NamingRules
 import org.objectweb.asm.Opcodes
 import java.awt.BorderLayout
 import java.awt.FlowLayout
@@ -614,32 +609,11 @@ class AsmFindingsTabPanel(
                             .findModuleForPsiElement(psiClass)
                             ?.name
 
-                    NamingRules.bannedSuffix(psiClass).let {
-                        out += Finding(
-                            id = "PSI:NAMING_BANNED_SUFFIX",
-                            title = "Banned suffix",
-                            severity = Severity.MEDIUM,
-                            fqcn = fqcn,
-                            module = moduleName,
-                            message = "Class name ends with banned suffix.",
-                            evidence = mapOf("name" to (psiClass.name ?: "")),
-                        )
-                    }
-
-                    if (NamingRules.isAbbreviated(psiClass)) {
-                        out += Finding(
-                            id = "PSI:NAMING_ABBREVIATED",
-                            title = "Abbreviated class name",
-                            severity = Severity.LOW,
-                            fqcn = fqcn,
-                            module = moduleName,
-                            message = "Class name looks abbreviated and may hurt readability.",
-                            evidence = mapOf("name" to (psiClass.name ?: "")),
-                        )
-                    }
+                    // TODO: we need to poulate findings with proper finding from
+                    //  asm layer which is preferable
 
                     true // keep processing next result
-                }
+                },
             )
 
             return out

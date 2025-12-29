@@ -40,6 +40,8 @@ repositories {
 dependencies {
     implementation("org.ow2.asm:asm:9.7.1")
     implementation("org.ow2.asm:asm-util:9.7.1")
+    implementation("com.networknt:json-schema-validator:1.5.9")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
 
     intellijPlatform {
         intellijIdea("2024.2")

@@ -2,6 +2,34 @@
 
 
 ## [unreleased]
+## [1.0.0]
+### Added
+- Configurable architecture engine
+- Configurable code structure engine
+- Configurable fixes engine
+- Added Exception suppression complete production ready
+- Complete Role coverage build class→role mapping across source globs cache it per project
+- Glob: scope globs + exception fileGlob
+- Complete exception matching (fileGlob + role + annotations + expiry enforcement)
+- Complete exporters JSON + SARIF + xml, + html
+- Baseline mode & complete Kotlin support
+- Complete UI layer
+- Make the plugin complete
+- Show violations instantly as you type and can point to exact code + quick fixes → that’s valuable.
+- Complete refactoring and auto fixing
+- Team configurable rules via our json/yaml schema through rule DSL
+- Indexing + accurate suppressions + exportable reports.
+- CLI runner produces SARIF/JSON/HTML.
+- A minimal CI integration (GitHub Actions template) that uploads SARIF to code scanning.
+- A PSI dashboard that consumes exported artifacts.
+
+### Removed
+- Removed opinionated inspections and fixes and descriptions
+- Removed legacy architecture module
+- Removed static inspections and fixes
+
+### Fixed
+- Fixed `facts.classToRole` only includes roles for classes found in the current file.
 
 ## [0.41.1]
 ### Removed

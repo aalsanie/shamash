@@ -6,20 +6,18 @@
 
 # Shamash
 
-A bytecode aware codebase scanner, architectural dashboard for JVM projects.
-and a tool to enforce clean architecture.
+A JVM Architectural engine helps you shape a clean, maintainable, reliable and scalable architecture.
 
 ### What It Offers?
+- Configurable architecture engine
+- code structure rule engine
+- Bytecode aware codebase scanner
 - Bytecode inspection
 - Dependency / call graph analysis
 - Dead code / deprecation / shadow usage detection
 - JVM internals visibility
 - Architectural Dashboard
-  - Hierarchy: search panel of project's hierarchical structure
-  - Hotspots: dynamic analysis that shows architectural violations
-  - Findings: displays severity/violations
-  - violations of clean code - strict rules/strategy/scoring to avoid false positive
-  - violations of clean architecture - strict rules/strategy/scoring to avoid false positive
+- Instant IDE feedback and exportable reports
 
 ### How to use
 - Download the plugin from intellij marketplace or build locally

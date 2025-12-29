@@ -192,7 +192,9 @@ class AsmSearchTabPanel(
 
         val exportBar =
             JPanel(BorderLayout()).apply {
-                border = com.intellij.util.ui.JBUI.Borders.empty(6, 8)
+                border =
+                    com.intellij.util.ui.JBUI.Borders
+                        .empty(6, 8)
                 val row =
                     JPanel(FlowLayout(FlowLayout.LEFT, 8, 0)).apply {
                         add(exportJsonBtn)
@@ -346,9 +348,9 @@ class AsmSearchTabPanel(
 
         fun match(hit: SearchHit): Boolean =
             matcher.matches(hit.simpleName) ||
-                    matcher.matches(hit.fqcn) ||
-                    hit.simpleName.contains(q, ignoreCase = true) ||
-                    hit.fqcn.contains(q, ignoreCase = true)
+                matcher.matches(hit.fqcn) ||
+                hit.simpleName.contains(q, ignoreCase = true) ||
+                hit.fqcn.contains(q, ignoreCase = true)
 
         fun score(hit: SearchHit): Int {
             val fq = hit.fqcn
@@ -422,7 +424,9 @@ class AsmSearchTabPanel(
 
         selectedLabel.text =
             "${info.fqcn}   •   ${info.originDisplayName}${info.moduleName?.let { "   •   module=$it" } ?: ""}"
-        selectedLabel.foreground = com.intellij.ui.JBColor.foreground()
+        selectedLabel.foreground =
+            com.intellij.ui.JBColor
+                .foreground()
 
         val root = DefaultMutableTreeNode(NodeHeader(info.fqcn, internal))
 

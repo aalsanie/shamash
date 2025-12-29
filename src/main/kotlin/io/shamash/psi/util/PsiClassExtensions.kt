@@ -35,22 +35,6 @@ fun PsiClass.hasPrivateMethods(): Boolean = this.methods.any { it.hasModifierPro
 
 fun PsiClass.publicMethodCount(): Int = this.methods.count { it.hasModifierProperty(PsiModifier.PUBLIC) }
 
-fun PsiClass.isController(): Boolean =
-    this.annotations.any {
-        it.qualifiedName?.endsWith("Controller") == true
-    }
-
-fun PsiClass.isService(): Boolean =
-    this.annotations.any {
-        it.qualifiedName?.endsWith("Service") == true
-    }
-
-fun PsiClass.isDao(): Boolean =
-    this.annotations.any {
-        it.qualifiedName?.endsWith("Repository") == true ||
-            it.qualifiedName?.endsWith("Dao") == true
-    }
-
 fun PsiClass.packageName(): String = (this.containingFile as? PsiJavaFile)?.packageName ?: ""
 
 fun PsiClass.referencedClasses(): List<PsiClass> =
