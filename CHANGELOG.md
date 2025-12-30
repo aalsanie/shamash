@@ -19,9 +19,12 @@
 - Complete refactoring and auto fixing
 - Team configurable rules via our json/yaml schema through rule DSL
 - Indexing + accurate suppressions + exportable reports.
-- CLI runner produces SARIF/JSON/HTML.
+- CLI runner produces SARIF/JSON/HTML/XML.
 - A minimal CI integration (GitHub Actions template) that uploads SARIF to code scanning.
 - A PSI dashboard that consumes exported artifacts.
+- Baseline complete support
+- Export layer
+- Scan layer runner
 
 ### Removed
 - Removed opinionated inspections and fixes and descriptions
