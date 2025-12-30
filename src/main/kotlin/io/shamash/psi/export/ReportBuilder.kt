@@ -1,0 +1,160 @@
+/*
+ * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.shamash.psi.export
+
+import io.shamash.psi.engine.Finding
+import io.shamash.psi.export.schema.v1.model.ExportedFinding
+import io.shamash.psi.export.schema.v1.model.ExportedReport
+import io.shamash.psi.export.schema.v1.model.ProjectMetadata
+import io.shamash.psi.export.schema.v1.model.ToolMetadata
+import java.nio.file.Path
+
+/**
+ * Builds a schema v1 ExportedReport from engine findings.
+ *
+ * Responsibilities:
+ * - Run a deterministic preprocessing pipeline.
+ * - Normalize base path and exported file paths.
+ * - Map internal Finding to exported schema model.
+ * - Compute stable fingerprints baseline-ready.
+ * - Enforce ordering at the export boundary.
+ */
+class ReportBuilder(
+    private val findingPreprocessors: List<FindingPreprocessor> = emptyList(),
+) {
+    fun build(
+        projectBasePath: Path,
+        projectName: String,
+        toolName: String,
+        toolVersion: String,
+        findings: List<Finding>,
+        generatedAtEpochMillis: Long,
+    ): ExportedReport {
+        val normalizedBasePath = PathNormalizer.normalizeBasePath(projectBasePath)
+
+        val preprocessedFindings =
+            applyPreprocessors(
+                projectBasePath = projectBasePath,
+                findings = findings,
+            )
+
+        val exportedFindings =
+            preprocessedFindings
+                .asSequence()
+                .map { toExportedFinding(projectBasePath, it) }
+                .sortedWith(EXPORTED_FINDING_COMPARATOR)
+                .toList()
+
+        return ExportedReport(
+            tool =
+                ToolMetadata(
+                    name = toolName,
+                    version = toolVersion,
+                    schemaVersion = SCHEMA_VERSION,
+                    generatedAtEpochMillis = generatedAtEpochMillis,
+                ),
+            project =
+                ProjectMetadata(
+                    name = projectName,
+                    basePath = normalizedBasePath,
+                ),
+            findings = exportedFindings,
+        )
+    }
+
+    private fun applyPreprocessors(
+        projectBasePath: Path,
+        findings: List<Finding>,
+    ): List<Finding> {
+        if (findingPreprocessors.isEmpty()) return findings
+
+        var current: List<Finding> = findings
+        for (preprocessor in findingPreprocessors) {
+            current = preprocessor.process(projectBasePath, current)
+        }
+        return current
+    }
+
+    private fun toExportedFinding(
+        projectBasePath: Path,
+        finding: Finding,
+    ): ExportedFinding {
+        val filePath = PathNormalizer.toProjectRelativeNormalizedPath(projectBasePath, finding.filePath)
+        val fingerprint = FindingFingerprint.sha256Hex(finding, filePath)
+
+        return ExportedFinding(
+            ruleId = finding.ruleId,
+            message = finding.message,
+            severity = finding.severity,
+            filePath = filePath,
+            classFqn = normalizeOptional(finding.classFqn),
+            memberName = normalizeOptional(finding.memberName),
+            fingerprint = fingerprint,
+        )
+    }
+
+    private fun normalizeOptional(value: String?): String? {
+        val v = value?.trim()
+        return if (v.isNullOrEmpty()) null else v
+    }
+
+    private companion object {
+        private const val SCHEMA_VERSION = "v1"
+
+        private val EXPORTED_FINDING_COMPARATOR: Comparator<ExportedFinding> =
+            Comparator { a, b ->
+                val fileCmp = a.filePath.compareTo(b.filePath)
+                if (fileCmp != 0) return@Comparator fileCmp
+
+                val ruleCmp = a.ruleId.compareTo(b.ruleId)
+                if (ruleCmp != 0) return@Comparator ruleCmp
+
+                val sevCmp = severityRank(a).compareTo(severityRank(b))
+                if (sevCmp != 0) return@Comparator sevCmp
+
+                val classCmp = (a.classFqn ?: "").compareTo(b.classFqn ?: "")
+                if (classCmp != 0) return@Comparator classCmp
+
+                val memberCmp = (a.memberName ?: "").compareTo(b.memberName ?: "")
+                if (memberCmp != 0) return@Comparator memberCmp
+
+                val msgCmp = a.message.compareTo(b.message)
+                if (msgCmp != 0) return@Comparator msgCmp
+
+                a.fingerprint.compareTo(b.fingerprint)
+            }
+
+        private fun severityRank(f: ExportedFinding): Int =
+            when (f.severity.name) {
+                "ERROR" -> 0
+                "WARNING" -> 1
+                else -> 2
+            }
+    }
+}
+
+/**
+ * Official hook point for baseline and exception suppression.
+ */
+fun interface FindingPreprocessor {
+    fun process(
+        projectBasePath: Path,
+        findings: List<Finding>,
+    ): List<Finding>
+}
