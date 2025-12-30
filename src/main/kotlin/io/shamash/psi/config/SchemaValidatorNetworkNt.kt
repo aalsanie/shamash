@@ -34,7 +34,6 @@ import java.lang.reflect.Method
  *
  */
 object SchemaValidatorNetworkNt : SchemaValidator {
-
     private val mapper: ObjectMapper = ObjectMapper()
 
     private val schema: JsonSchema by lazy(LazyThreadSafetyMode.PUBLICATION) {
@@ -144,7 +143,6 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     }
 
     private fun extractBestEffortPath(msg: ValidationMessage): String {
-
         val instanceLocation = reflectToString(msg, "getInstanceLocation")
         if (instanceLocation.isNotBlank()) return instanceLocation
 
@@ -163,11 +161,15 @@ object SchemaValidatorNetworkNt : SchemaValidator {
         return if (!m.isNullOrBlank()) m else "Schema validation error"
     }
 
-    private fun reflectToString(target: Any, methodName: String): String {
+    private fun reflectToString(
+        target: Any,
+        methodName: String,
+    ): String {
         val value =
             try {
-                val m: Method = target.javaClass.methods.firstOrNull { it.name == methodName && it.parameterCount == 0 }
-                    ?: return ""
+                val m: Method =
+                    target.javaClass.methods.firstOrNull { it.name == methodName && it.parameterCount == 0 }
+                        ?: return ""
                 val r = m.invoke(target) ?: return ""
                 r.toString()
             } catch (_: Throwable) {

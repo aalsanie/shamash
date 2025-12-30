@@ -1,0 +1,4 @@
+<idea-plugin>
+    <!-- Kotlin-specific extensions can be added later.
+         Keeping this file allows optional dependency without warnings. -->
+</idea-plugin>

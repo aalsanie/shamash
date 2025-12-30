@@ -45,7 +45,7 @@ dependencies {
 
     intellijPlatform {
         intellijIdea("2024.2")
-
+        bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
     }
 }

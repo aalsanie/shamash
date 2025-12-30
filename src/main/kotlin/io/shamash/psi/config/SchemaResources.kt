@@ -30,9 +30,8 @@ object SchemaResources {
 
     fun openReferenceYaml(): InputStream = openRequired(REFERENCE_YML)
 
-    private fun openRequired(resourcePath: String): InputStream {
-        return requireNotNull(SchemaResources::class.java.getResourceAsStream(resourcePath)) {
+    private fun openRequired(resourcePath: String): InputStream =
+        requireNotNull(SchemaResources::class.java.getResourceAsStream(resourcePath)) {
             "Missing resource: $resourcePath"
         }
-    }
 }

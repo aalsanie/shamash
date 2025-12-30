@@ -13,6 +13,7 @@
     </description>
 
     <depends>com.intellij.modules.java</depends>
+    <depends optional="true" config-file="shamash-kotlin.xml">org.jetbrains.kotlin</depends>
 
     <extensions defaultExtensionNs="com.intellij">
 
