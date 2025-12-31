@@ -45,10 +45,8 @@ class NamingBannedSuffixesRule : EngineRule {
 
         fun endsWithBanned(name: String): String? {
             val n = if (caseSensitive) name else name.lowercase()
-            return bannedRaw.firstOrNull { suf ->
-                val s = if (caseSensitive) suf else suf.lowercase()
-                n.endsWith(s)
-            }
+            val idx = banned.indexOfFirst { suf -> n.endsWith(suf) }
+            return if (idx >= 0) bannedRaw[idx] else null // return original suffix for messaging
         }
 
         val sev = RuleUtil.severity(rule)
@@ -72,6 +70,12 @@ class NamingBannedSuffixesRule : EngineRule {
                         filePath = filePath,
                         severity = sev,
                         classFqn = c.fqName,
+                        data =
+                            mapOf(
+                                "suffix" to bad,
+                                "elementKind" to "class",
+                                "applyTo" to applyTo,
+                            ),
                     )
             }
         }
@@ -88,6 +92,12 @@ class NamingBannedSuffixesRule : EngineRule {
                         severity = sev,
                         classFqn = m.containingClassFqn,
                         memberName = m.name,
+                        data =
+                            mapOf(
+                                "suffix" to bad,
+                                "elementKind" to "method",
+                                "applyTo" to applyTo,
+                            ),
                     )
             }
         }
@@ -104,6 +114,12 @@ class NamingBannedSuffixesRule : EngineRule {
                         severity = sev,
                         classFqn = f.containingClassFqn,
                         memberName = f.name,
+                        data =
+                            mapOf(
+                                "suffix" to bad,
+                                "elementKind" to "field",
+                                "applyTo" to applyTo,
+                            ),
                     )
             }
         }

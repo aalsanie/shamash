@@ -265,7 +265,7 @@ object FactExtractor {
                             containingClassFqn = fromClassFqn,
                             name = node.name,
                             typeFqn = normalizeFactType(node.type),
-                            visibility = visibilityOf(node.javaPsi as PsiElement?),
+                            visibility = visibilityOf(node.javaPsi),
                             isStatic = isStatic,
                             isFinal = isFinal,
                             annotationsFqns = anns,

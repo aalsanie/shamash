@@ -70,6 +70,12 @@ class PackagesRolePlacementRule : EngineRule {
                         filePath = filePath,
                         severity = sev,
                         classFqn = c.fqName,
+                        data =
+                            mapOf(
+                                "role" to role,
+                                "actualPackage" to c.packageName,
+                                "allowed" to allowed.joinToString("|") { it.pattern },
+                            ),
                     )
             }
         }

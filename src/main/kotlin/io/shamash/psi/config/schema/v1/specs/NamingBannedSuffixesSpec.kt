@@ -37,6 +37,7 @@ class NamingBannedSuffixesSpec : RuleSpec {
 
         // required
         // banned suffix list
+        @Suppress("UNUSED_VARIABLE")
         val banned =
             RuleValidationHelpers.requireStringList(
                 p,
@@ -44,6 +45,10 @@ class NamingBannedSuffixesSpec : RuleSpec {
                 rulePath,
                 errors,
             ) ?: return errors
+
+        if (RuleValidationHelpers.requireStringList(p, "banned", rulePath, errors) == null) {
+            return errors
+        }
 
         // optional
         // restrict to roles

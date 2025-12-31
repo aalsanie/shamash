@@ -43,7 +43,7 @@ object FindingsExport {
         project: Project,
         findings: List<Finding>,
         format: Format,
-        defaultBaseName: String = "shamash-findings",
+        defaultBaseName: String = "shamash-asm-findings",
         charset: Charset = Charsets.UTF_8,
     ) {
         if (findings.isEmpty()) {

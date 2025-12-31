@@ -2,7 +2,6 @@
 
 
 ## [unreleased]
-## [1.0.0]
 ### Added
 - Configurable architecture engine
 - Configurable code structure engine

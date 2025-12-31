@@ -119,7 +119,17 @@ class ShamashPsiEngine {
                 rawFindings
             }
 
-        return normalizeAndSort(suppressed)
+        val inlineSuppressed =
+            try {
+                InlineSuppressor.apply(suppressed, file)
+            } catch (e: ProcessCanceledException) {
+                throw e
+            } catch (t: Throwable) {
+                log.warn("Inline suppression failed for $filePath; returning findings without inline suppression.", t)
+                suppressed
+            }
+
+        return normalizeAndSort(inlineSuppressed)
     }
 
     private fun normalizeFilePath(file: PsiFile): String {

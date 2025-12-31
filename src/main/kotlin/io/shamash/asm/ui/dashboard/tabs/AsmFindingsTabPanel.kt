@@ -610,7 +610,7 @@ class AsmFindingsTabPanel(
                             ?.name
 
                     // TODO: we need to poulate findings with proper finding from
-                    //  asm layer which is preferable
+                    //  asm layer
 
                     true // keep processing next result
                 },

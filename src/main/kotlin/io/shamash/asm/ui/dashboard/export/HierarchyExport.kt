@@ -92,7 +92,7 @@ object HierarchyExport {
             append("{")
             append("\"schema\":").append(jsonStr(schema)).append(',')
             append("\"selected\":").append(jsonStr(info.fqcn)).append(',')
-            append("\"module\":").append(if (info.moduleName == null) "null" else jsonStr(info.moduleName!!)).append(',')
+            append("\"module\":").append(if (info.moduleName == null) "null" else jsonStr(info.moduleName)).append(',')
             append("\"origin\":").append(jsonStr(info.originDisplayName)).append(',')
             append("\"transitiveSubtypes\":").append(transitiveSubtypes).append(',')
             append("\"superChain\":").append(jsonArr(superChain)).append(',')

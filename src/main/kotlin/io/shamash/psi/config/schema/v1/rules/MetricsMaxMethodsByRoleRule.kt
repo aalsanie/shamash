@@ -64,6 +64,12 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
                         filePath = filePath,
                         severity = sev,
                         classFqn = cls,
+                        data =
+                            mapOf(
+                                "role" to role,
+                                "max" to max.toString(),
+                                "actual" to countConstructors.toString(),
+                            ),
                     )
             }
         }

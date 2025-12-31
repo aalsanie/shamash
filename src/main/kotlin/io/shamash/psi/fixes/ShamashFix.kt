@@ -16,22 +16,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.psi.util
-
-import com.intellij.psi.PsiElement
+package io.shamash.psi.fixes
 
 /**
- * PSI safety helpers.
+ * A fix that can be surfaced in Shamash dashboard and IDE intentions.
  */
+interface ShamashFix {
+    val id: String
+    val title: String
 
-object PsiSafety {
-    inline fun PsiElement.safe(block: () -> Unit) {
-        try {
-            if (this.isValid) {
-                block()
-            }
-        } catch (_: Throwable) {
-            // Intentionally ignored
-        }
-    }
+    /**
+     * Whether the fix can run now (finding might be stale).
+     */
+    fun isApplicable(): Boolean
+
+    /**
+     * Apply the fix. Implementation must use write actions where needed.
+     */
+    fun apply()
 }

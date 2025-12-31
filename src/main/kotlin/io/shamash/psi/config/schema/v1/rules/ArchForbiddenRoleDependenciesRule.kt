@@ -82,6 +82,15 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
                     filePath = filePath,
                     severity = sev,
                     classFqn = d.fromClassFqn,
+                    data =
+                        mapOf(
+                            "fromRole" to fromRole,
+                            "toRole" to toRole,
+                            "fromClassFqn" to d.fromClassFqn,
+                            "toTypeFqn" to d.toTypeFqn,
+                            "kind" to d.kind.name,
+                            "detail" to (d.detail ?: ""),
+                        ),
                 )
         }
 

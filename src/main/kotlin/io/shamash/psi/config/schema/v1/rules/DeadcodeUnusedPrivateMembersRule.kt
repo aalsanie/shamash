@@ -73,6 +73,10 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                                 severity = sev,
                                 classFqn = classFqn,
                                 memberName = field.name,
+                                data =
+                                    mapOf(
+                                        "memberKind" to "method",
+                                    ),
                             )
                     }
                 }
@@ -97,6 +101,10 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                                 severity = sev,
                                 classFqn = classFqn,
                                 memberName = m.name,
+                                data =
+                                    mapOf(
+                                        "memberKind" to "method",
+                                    ),
                             )
                     }
                 }

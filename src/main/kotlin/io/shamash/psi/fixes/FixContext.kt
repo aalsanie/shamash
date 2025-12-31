@@ -16,34 +16,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.psi.engine
+package io.shamash.psi.fixes
 
-import com.intellij.psi.PsiFile
-import io.shamash.psi.config.schema.v1.model.Rule
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
-import io.shamash.psi.facts.model.v1.FactsIndex
 
-interface EngineRule {
-    val id: String
-
-    fun evaluate(
-        file: PsiFile,
-        facts: FactsIndex,
-        rule: Rule,
-        config: ShamashPsiConfigV1,
-    ): List<Finding>
-}
-
-data class Finding(
-    val ruleId: String,
-    val message: String,
-    val filePath: String,
-    val severity: FindingSeverity,
-    val classFqn: String? = null,
-    val memberName: String? = null,
-    val data: Map<String, String> = emptyMap(),
-    val startOffset: Int? = null,
-    val endOffset: Int? = null,
+/**
+ * Context passed from UI (dashboard / toolwindow / intentions) into fix providers.
+ */
+data class FixContext(
+    val project: Project,
+    /** The config used to produce the findings (optional). */
+    val config: ShamashPsiConfigV1? = null,
+    /** If known, the config file being used. Enables config-edit fixes. */
+    val configFile: VirtualFile? = null,
 )
-
-enum class FindingSeverity { ERROR, WARNING, INFO }
