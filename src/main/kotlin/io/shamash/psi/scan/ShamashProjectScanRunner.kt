@@ -24,12 +24,13 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
-import io.shamash.psi.baseline.BaselineConfig
+import io.shamash.psi.config.ConfigValidation
 import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.engine.Finding
 import io.shamash.psi.engine.ShamashPsiEngine
 import io.shamash.psi.export.ShamashPsiReportExportService
 import io.shamash.psi.export.schema.v1.model.ExportedReport
+import java.io.Reader
 import java.nio.file.Path
 
 /**
@@ -47,6 +48,7 @@ class ShamashProjectScanRunner(
         val exportedReport: ExportedReport?,
         val outputDir: Path?,
         val baselineWritten: Boolean,
+        val configErrors: List<io.shamash.psi.config.ValidationError> = emptyList(),
     )
 
     /**
@@ -56,21 +58,22 @@ class ShamashProjectScanRunner(
      */
     fun scanProject(
         project: Project,
-        config: ShamashPsiConfigV1,
-        exportReports: Boolean,
-        toolName: String,
-        toolVersion: String,
-        generatedAtEpochMillis: Long = System.currentTimeMillis(),
+        configReader: Reader,
+        options: ShamashScanOptions,
     ): ScanResult {
-        val options =
-            ShamashScanOptions(
-                exportReports = exportReports,
-                baseline = BaselineConfig.Off,
-                toolName = toolName,
-                toolVersion = toolVersion,
-                generatedAtEpochMillis = generatedAtEpochMillis,
+        ProgressManager.checkCanceled()
+
+        val res = ConfigValidation.loadAndValidateV1(configReader)
+        if (!res.ok || res.config == null) {
+            return ScanResult(
+                findings = emptyList(),
+                exportedReport = null,
+                outputDir = null,
+                baselineWritten = false,
+                configErrors = res.errors,
             )
-        return scanProject(project, config, options)
+        }
+        return scanProject(project, res.config, options)
     }
 
     /**

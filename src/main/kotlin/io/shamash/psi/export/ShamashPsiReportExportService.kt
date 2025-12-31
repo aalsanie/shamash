@@ -23,15 +23,17 @@ import io.shamash.psi.baseline.BaselineCoordinator
 import io.shamash.psi.baseline.BaselineMode
 import io.shamash.psi.engine.Finding
 import io.shamash.psi.export.schema.v1.model.ExportedReport
+import java.nio.file.Files
 import java.nio.file.Path
 
 /**
  * Exports Shamash reports to `<projectRoot>/shamash` and optionally applies / generates a baseline.
  *
  * This class wires:
- * - output directory resolution,
+ * - output directory resolution + normalization,
  * - baseline load/suppress,
- * - export orchestration,
+ * - finding preprocessing,
+ * - export orchestration (ALL formats by default),
  * - baseline generation/merge.
  */
 class ShamashPsiReportExportService(
@@ -43,6 +45,14 @@ class ShamashPsiReportExportService(
         val baselineWritten: Boolean,
     )
 
+    /**
+     * Primary entrypoint.
+     *
+     * - Exports ALL formats by default (JSON/SARIF/XML/HTML).
+     * - Applies preprocessors in order:
+     *   1) exceptionsPreprocessor (if present)
+     *   2) baselinePreprocessor (if baseline USE and baseline exists)
+     */
     fun export(
         projectBasePath: Path,
         projectName: String,
@@ -53,8 +63,10 @@ class ShamashPsiReportExportService(
         exceptionsPreprocessor: FindingPreprocessor? = null,
         generatedAtEpochMillis: Long = System.currentTimeMillis(),
     ): ExportResult {
-        val outputDir = ExportPathResolver.resolveAndEnsureOutputDir(projectBasePath)
+        val outputDir = ExportOutputLayout.normalizeOutputDir(projectBasePath, null)
+        Files.createDirectories(outputDir)
 
+        // baseline fingerprints: only needed for USE mode
         val baselineFingerprints =
             when (baseline.mode) {
                 BaselineMode.USE -> baselineCoordinator.loadBaselineFingerprints(outputDir)
@@ -62,12 +74,25 @@ class ShamashPsiReportExportService(
                 BaselineMode.OFF -> emptySet()
             }
 
-        val baselinePreprocessor = baselineCoordinator.createSuppressionPreprocessor(baselineFingerprints)
+        // baseline preprocessor: suppresses findings present in baseline
+        val baselinePreprocessor: FindingPreprocessor? =
+            baselineCoordinator.createSuppressionPreprocessor(baselineFingerprints)
 
+        // explicitly use FindingPreprocessors as the canonical adapter point.
+        val preprocessors = ArrayList<FindingPreprocessor>(2)
+
+        if (exceptionsPreprocessor != null) {
+            preprocessors.add(exceptionsPreprocessor)
+        }
+        if (baselinePreprocessor != null) {
+            preprocessors.add(baselinePreprocessor)
+        }
+
+        // build report and export in ALL formats by default.
         val orchestrator =
-            DefaultExportPipelineFactory.create(
-                exceptionsPreprocessor = exceptionsPreprocessor,
-                baselinePreprocessor = baselinePreprocessor,
+            ExportOrchestrator(
+                reportBuilder = ReportBuilder(preprocessors),
+                exporters = Exporters.createAll(),
             )
 
         val report =
@@ -81,6 +106,7 @@ class ShamashPsiReportExportService(
                 generatedAtEpochMillis = generatedAtEpochMillis,
             )
 
+        // writes baseline.json
         val baselineWritten =
             if (baseline.mode == BaselineMode.GENERATE) {
                 val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, findings)

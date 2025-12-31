@@ -21,6 +21,7 @@ package io.shamash.psi.config
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
@@ -172,6 +173,8 @@ object SchemaValidatorNetworkNt : SchemaValidator {
                         ?: return ""
                 val r = m.invoke(target) ?: return ""
                 r.toString()
+            } catch (e: ProcessCanceledException) {
+                throw e
             } catch (_: Throwable) {
                 ""
             }

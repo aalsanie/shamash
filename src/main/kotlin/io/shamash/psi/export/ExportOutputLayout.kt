@@ -24,13 +24,17 @@ import java.nio.file.Path
  * Single source of truth for exported artifact names and layout.
  */
 object ExportOutputLayout {
+    const val DEFAULT_DIR_NAME: String = ".shamash"
     const val JSON_FILE_NAME: String = "shamash-report.json"
     const val SARIF_FILE_NAME: String = "shamash-report.sarif.json"
     const val XML_FILE_NAME: String = "shamash-report.xml"
     const val HTML_FILE_NAME: String = "shamash-report.html"
 
-    /**
-     * Reports are written into this directory.
-     */
-    fun normalizeOutputDir(outputDir: Path): Path = outputDir
+    fun normalizeOutputDir(
+        projectBasePath: Path,
+        outputDir: Path?,
+    ): Path {
+        val base = outputDir ?: projectBasePath.resolve(DEFAULT_DIR_NAME)
+        return base.normalize()
+    }
 }

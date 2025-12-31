@@ -18,10 +18,8 @@
  */
 package io.shamash.psi.engine
 
-import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiModifierListOwner
-import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.util.PsiTreeUtil
 
 /**
@@ -215,8 +213,8 @@ internal object InlineSuppressor {
 
             if (tokens.isEmpty()) continue
 
-            // If directive is on the very first non-empty line, treat it as file-wide.
-            // Users can still do element-scoped suppression by placing directive near declaration.
+            // If a directive is on the very first non-empty line, treat it as file-wide.
+            // Users can still do element-scoped suppression by placing a directive near declaration.
             if (i == 0) {
                 fileWide.addAll(tokens)
             } else {

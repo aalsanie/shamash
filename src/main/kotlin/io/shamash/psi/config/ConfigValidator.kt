@@ -91,6 +91,30 @@ object ConfigValidator {
             if (ex.suppress.isEmpty()) errors += err("$base.suppress", "suppress must contain at least one ruleId")
             if (ex.suppress.any { it.isBlank() }) errors += err("$base.suppress", "suppress must not contain blank values")
 
+            val knownRuleIds = RuleSpecRegistryV1.allIds()
+
+            ex.suppress.forEachIndexed { j, rid ->
+                if (!knownRuleIds.contains(rid)) {
+                    when (config.project.validation.unknownRuleId) {
+                        UnknownRuleIdPolicyV1.IGNORE -> Unit
+                        UnknownRuleIdPolicyV1.WARN ->
+                            errors +=
+                                ValidationError(
+                                    "$base.suppress[$j]",
+                                    "Unknown ruleId '$rid' in exception suppress list",
+                                    ValidationSeverity.WARNING,
+                                )
+                        UnknownRuleIdPolicyV1.ERROR ->
+                            errors +=
+                                ValidationError(
+                                    "$base.suppress[$j]",
+                                    "Unknown ruleId '$rid' in exception suppress list",
+                                    ValidationSeverity.ERROR,
+                                )
+                    }
+                }
+            }
+
             // expiresOn: optional YYYY-MM-DD
             ex.expiresOn?.let {
                 try {

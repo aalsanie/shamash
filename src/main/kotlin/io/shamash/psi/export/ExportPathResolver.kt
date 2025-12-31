@@ -29,8 +29,6 @@ import java.nio.file.Path
  * - The directory is created if it does not already exist.
  */
 object ExportPathResolver {
-    private const val OUTPUT_DIR_NAME: String = "shamash"
-
     /**
      * Returns the output directory `<projectRoot>/shamash` and ensures it exists.
      *
@@ -41,7 +39,7 @@ object ExportPathResolver {
      */
     fun resolveAndEnsureOutputDir(projectRoot: Path): Path {
         val normalizedRoot = normalizeProjectRoot(projectRoot)
-        val outputDir = normalizedRoot.resolve(OUTPUT_DIR_NAME).normalize()
+        val outputDir = normalizedRoot.resolve(ExportOutputLayout.DEFAULT_DIR_NAME).normalize()
 
         try {
             Files.createDirectories(outputDir)
