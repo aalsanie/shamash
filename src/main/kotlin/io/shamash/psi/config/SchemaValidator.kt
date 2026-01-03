@@ -28,6 +28,6 @@ interface SchemaValidator {
     fun validate(raw: Any?): List<ValidationError>
 
     companion object {
-        const val SCHEMA_RESOURCE: String = SchemaResources.SCHEMA_JSON
+        const val SCHEMA_RESOURCE: String = ProjectLayout.SCHEMA_JSON
     }
 }

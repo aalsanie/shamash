@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shamash://psi/schema/v1/shamash-psi.schema.json",
+  "title": "Shamash PSI Config Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "project",
+    "roles",
+    "rules",
+    "exceptions"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/roleDef"
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ruleDef"
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exceptionDef"
+      }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": [
+        "ERROR",
+        "WARNING",
+        "INFO"
+      ]
+    },
+    "globList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "regexList": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rootPackage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "value"
+          ],
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "explicit"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "sourceGlobs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "include",
+            "exclude"
+          ],
+          "properties": {
+            "include": {
+              "$ref": "#/$defs/globList"
+            },
+            "exclude": {
+              "$ref": "#/$defs/globList"
+            }
+          }
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unknownRuleId": {
+              "type": "string",
+              "enum": [
+                "warn",
+                "error",
+                "ignore",
+                "WARN",
+                "ERROR",
+                "IGNORE"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "roleDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priority",
+        "match"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "match": {
+          "$ref": "#/$defs/matcher"
+        }
+      }
+    },
+    "matcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "anyOf"
+          ],
+          "properties": {
+            "anyOf": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/matcher"
+              }
+            }
+          }
+        },
+        {
+          "required": [
+            "allOf"
+          ],
+          "properties": {
+            "allOf": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/matcher"
+              }
+            }
+          }
+        },
+        {
+          "required": [
+            "not"
+          ],
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/matcher"
+            }
+          }
+        },
+        {
+          "required": [
+            "annotation"
+          ],
+          "properties": {
+            "annotation": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "annotationPrefix"
+          ],
+          "properties": {
+            "annotationPrefix": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "packageRegex"
+          ],
+          "properties": {
+            "packageRegex": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "packageContainsSegment"
+          ],
+          "properties": {
+            "packageContainsSegment": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "classNameRegex"
+          ],
+          "properties": {
+            "classNameRegex": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "classNameEndsWith"
+          ],
+          "properties": {
+            "classNameEndsWith": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "classNameEndsWithAny"
+          ],
+          "properties": {
+            "classNameEndsWithAny": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "required": [
+            "hasMainMethod"
+          ],
+          "properties": {
+            "hasMainMethod": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "required": [
+            "implements"
+          ],
+          "properties": {
+            "implements": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "extends"
+          ],
+          "properties": {
+            "extends": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "ruleScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "includeRoles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludeRoles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "includePackages": {
+          "$ref": "#/$defs/regexList"
+        },
+        "excludePackages": {
+          "$ref": "#/$defs/regexList"
+        },
+        "includeGlobs": {
+          "$ref": "#/$defs/globList"
+        },
+        "excludeGlobs": {
+          "$ref": "#/$defs/globList"
+        }
+      }
+    },
+    "ruleDef": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "enabled",
+        "severity"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "scope": {
+          "$ref": "#/$defs/ruleScope"
+        }
+      }
+    },
+    "exceptionDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "reason",
+        "match",
+        "suppress"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expiresOn": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "match": {
+          "$ref": "#/$defs/exceptionMatch"
+        },
+        "suppress": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "exceptionMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "fileGlob": {
+          "type": "string",
+          "minLength": 1
+        },
+        "packageRegex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classNameRegex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "methodNameRegex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fieldNameRegex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hasAnnotation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hasAnnotationPrefix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

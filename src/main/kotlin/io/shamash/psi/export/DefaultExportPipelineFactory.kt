@@ -27,7 +27,7 @@ object DefaultExportPipelineFactory {
     /**
      * This method intentionally depends only on exporter-layer types.
      * callers plugin UI, CLI, inspection integration are responsible for building preprocessors
-     * using their available engine/config context.
+     * using their available engine/schema context.
      */
     fun create(
         exceptionsPreprocessor: FindingPreprocessor? = null,

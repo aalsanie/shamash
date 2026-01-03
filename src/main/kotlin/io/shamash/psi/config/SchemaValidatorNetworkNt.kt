@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
@@ -33,6 +34,8 @@ import java.lang.reflect.Method
  * Structural validation of PSI YAML (parsed to Map/List primitives)
  * against JSON Schema stored in resources.
  *
+ * NOTE: Despite the name, this validator does NOT perform network I/O.
+ * It uses networknt-json-schema (the library), not the network.
  */
 object SchemaValidatorNetworkNt : SchemaValidator {
     private val mapper: ObjectMapper = ObjectMapper()
@@ -44,9 +47,13 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     }
 
     override fun validate(raw: Any?): List<ValidationError> {
+        ProgressManager.checkCanceled()
+
         val node: JsonNode =
             try {
                 toJsonNode(raw)
+            } catch (e: ProcessCanceledException) {
+                throw e
             } catch (e: Exception) {
                 return listOf(
                     ValidationError(
@@ -57,9 +64,13 @@ object SchemaValidatorNetworkNt : SchemaValidator {
                 )
             }
 
+        ProgressManager.checkCanceled()
+
         val messages: Set<ValidationMessage> =
             try {
                 schema.validate(node)
+            } catch (e: ProcessCanceledException) {
+                throw e
             } catch (e: Exception) {
                 return listOf(
                     ValidationError(
@@ -80,6 +91,7 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     }
 
     private fun loadSchema(schemaStream: InputStream): JsonSchema {
+        ProgressManager.checkCanceled()
         val schemaNode: JsonNode = mapper.readTree(schemaStream)
         val factory: JsonSchemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
         return factory.getSchema(schemaNode)
@@ -98,9 +110,7 @@ object SchemaValidatorNetworkNt : SchemaValidator {
             }
             is List<*> -> {
                 val arr = JsonNodeFactory.instance.arrayNode()
-                for (item in value) {
-                    arr.add(toJsonNode(item))
-                }
+                for (item in value) arr.add(toJsonNode(item))
                 arr
             }
             is String -> JsonNodeFactory.instance.textNode(value)
@@ -116,7 +126,6 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     private fun ValidationMessage.toValidationError(): ValidationError {
         val rawPath: String = extractBestEffortPath(this)
         val cleanedPath: String = cleanJsonPath(rawPath)
-
         val msg: String = extractBestEffortMessage(this)
 
         return ValidationError(
@@ -127,7 +136,6 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     }
 
     private fun cleanJsonPath(raw: String): String {
-        // networknt historically used "$.a.b[0]" (and sometimes "#/a/b" style via locations)
         val trimmed = raw.trim()
         if (trimmed.isEmpty()) return ""
 
@@ -137,13 +145,15 @@ object SchemaValidatorNetworkNt : SchemaValidator {
                 .removePrefix("$")
                 .trim()
 
-        val hashPtrCleaned =
-            if (dollarCleaned.startsWith("#/")) dollarCleaned.removePrefix("#/") else dollarCleaned
-
-        return hashPtrCleaned
+        return if (dollarCleaned.startsWith("#/")) {
+            dollarCleaned.removePrefix("#/")
+        } else {
+            dollarCleaned
+        }
     }
 
     private fun extractBestEffortPath(msg: ValidationMessage): String {
+        // networknt versions differ; use reflection for best compatibility
         val instanceLocation = reflectToString(msg, "getInstanceLocation")
         if (instanceLocation.isNotBlank()) return instanceLocation
 
@@ -153,7 +163,6 @@ object SchemaValidatorNetworkNt : SchemaValidator {
         val schemaLocation = reflectToString(msg, "getSchemaLocation")
         if (schemaLocation.isNotBlank()) return schemaLocation
 
-        // stringify the whole message dont crash
         return ""
     }
 
@@ -166,19 +175,17 @@ object SchemaValidatorNetworkNt : SchemaValidator {
         target: Any,
         methodName: String,
     ): String {
-        val value =
-            try {
-                val m: Method =
-                    target.javaClass.methods.firstOrNull { it.name == methodName && it.parameterCount == 0 }
-                        ?: return ""
-                val r = m.invoke(target) ?: return ""
-                r.toString()
-            } catch (e: ProcessCanceledException) {
-                throw e
-            } catch (_: Throwable) {
-                ""
-            }
-
-        return value
+        return try {
+            val m: Method =
+                target.javaClass.methods.firstOrNull {
+                    it.name == methodName && it.parameterCount == 0
+                } ?: return ""
+            val r = m.invoke(target) ?: return ""
+            r.toString()
+        } catch (e: ProcessCanceledException) {
+            throw e
+        } catch (_: Throwable) {
+            ""
+        }
     }
 }

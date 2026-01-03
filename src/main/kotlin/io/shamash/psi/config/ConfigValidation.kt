@@ -49,7 +49,7 @@ object ConfigValidation {
             try {
                 ConfigLoader.bindV1(raw)
             } catch (e: Exception) {
-                return Result(null, listOf(ValidationError("", "Failed to bind config: ${e.message}")))
+                return Result(null, listOf(ValidationError("", "Failed to bind schema: ${e.message}")))
             }
 
         val semantic = ConfigValidator.validateSemantic(typed)

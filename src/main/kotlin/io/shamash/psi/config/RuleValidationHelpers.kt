@@ -111,7 +111,12 @@ internal object RuleValidationHelpers {
                 return null
             }
         if (list.isEmpty() || list.any { it.isBlank() }) {
-            errors += err("$path.$key", "Field '$key' must be a non-empty list of non-empty strings")
+            errors +=
+                err(
+                    "$path.$key",
+                    "Field '$key' " +
+                        "must be a non-empty list of non-empty strings",
+                )
             return null
         }
         return list
@@ -159,7 +164,7 @@ internal object RuleValidationHelpers {
                 errors += err("$path.$key[$i]", "Each item must be an object")
             } else {
                 @Suppress("UNCHECKED_CAST")
-                out += (m.entries.associate { it.key.toString() to it.value } as Map<String, Any?>)
+                out += (m.entries.associate { it.key.toString() to it.value })
             }
         }
         return out

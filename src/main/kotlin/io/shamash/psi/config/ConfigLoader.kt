@@ -41,7 +41,7 @@ object ConfigLoader {
         Load(
             LoadSettings
                 .builder()
-                .setLabel("shamash-psi-config")
+                .setLabel("shamash-psi.schema")
                 .build(),
         )
 
@@ -121,11 +121,54 @@ object ConfigLoader {
 
             val scope = (rm["scope"] as? Map<*, *>)?.toStringKeyMap()?.let { bindScope(it) }
 
-            val params =
-                rm
-                    .filterKeys { it != "enabled" && it != "severity" && it != "scope" }
+            /*
+             * Rule parameters:
+             *
+             * The v1 model uses Rule.params (Map<String, Any?>).
+             *
+             * We support two authoring styles for backwards-compatibility:
+             *  1) Preferred: rule-specific settings nested under "params"
+             *       rules:
+             *         some.rule:
+             *           enabled: true
+             *           severity: WARNING
+             *           params:
+             *             banned: ["Service"]
+             *
+             *  2) Legacy/inline: rule-specific settings as direct properties of the rule object
+             *       rules:
+             *         some.rule:
+             *           enabled: true
+             *           severity: WARNING
+             *           banned: ["Service"]
+             *
+             * We merge inline properties with nested "params". If the same key exists in both,
+             * the nested params value wins (it's more explicit).
+             */
+            val inlineParams: Map<String, Any?> =
+                rm.filterKeys { it != "enabled" && it != "severity" && it != "scope" && it != "params" }
 
-            out[ruleId] = Rule(enabled = enabled, severity = severity, scope = scope, params = params)
+            val nestedParams: Map<String, Any?> =
+                when (val p = rm["params"]) {
+                    null -> emptyMap()
+                    is Map<*, *> -> p.toStringKeyMap()
+                    else -> error("rules.$ruleId.params must be an object/map")
+                }
+
+            val mergedParams =
+                if (nestedParams.isEmpty()) {
+                    inlineParams
+                } else if (inlineParams.isEmpty()) {
+                    nestedParams
+                } else {
+                    // nested params override inline keys
+                    LinkedHashMap<String, Any?>(inlineParams.size + nestedParams.size).apply {
+                        putAll(inlineParams)
+                        putAll(nestedParams)
+                    }
+                }
+
+            out[ruleId] = Rule(enabled = enabled, severity = severity, scope = scope, params = mergedParams)
         }
         return out
     }

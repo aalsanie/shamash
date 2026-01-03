@@ -16,22 +16,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.psi.settings
+package io.shamash.psi.ui.settings
 
 import com.intellij.openapi.components.PersistentStateComponent
+import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
+import com.intellij.openapi.project.Project
 
+@Service(Service.Level.PROJECT)
 @State(
-    name = "ShamashSettings",
-    storages = [Storage("shamash.xml")],
+    name = "ShamashPsiSettings",
+    storages = [Storage("shamash-psi.xml")],
 )
-class ShamashSettings : PersistentStateComponent<ShamashSettings.State> {
+class ShamashPsiSettingsState(
+    private val project: Project,
+) : PersistentStateComponent<ShamashPsiSettingsState.State> {
     data class State(
-        var rootPackage: String = "io.shamash",
+        var configPath: String? = null,
+        var exportDirOverride: String? = null,
+        var baselineMode: String = "OFF", // OFF | USE | GENERATE: string to avoid enum classpath issues
+        var openToolWindowOnScan: Boolean = true,
     )
 
-    private var state = State()
+    private var state: State = State()
 
     override fun getState(): State = state
 
@@ -40,9 +48,6 @@ class ShamashSettings : PersistentStateComponent<ShamashSettings.State> {
     }
 
     companion object {
-        fun getInstance(): ShamashSettings =
-            com.intellij.openapi.application.ApplicationManager
-                .getApplication()
-                .getService(ShamashSettings::class.java)
+        fun getInstance(project: Project): ShamashPsiSettingsState = project.getService(ShamashPsiSettingsState::class.java)
     }
 }

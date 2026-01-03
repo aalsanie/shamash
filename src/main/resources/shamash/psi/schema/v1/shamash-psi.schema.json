@@ -7,52 +7,33 @@
   "required": ["version", "project", "roles", "rules", "exceptions"],
   "properties": {
     "version": { "type": "integer", "const": 1 },
-
     "project": { "$ref": "#/$defs/project" },
-
     "roles": {
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/roleDef" }
     },
-
     "rules": {
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/ruleDef" }
     },
-
     "exceptions": {
       "type": "array",
       "items": { "$ref": "#/$defs/exceptionDef" }
     }
   },
-
   "$defs": {
-    "severity": {
-      "type": "string",
-      "enum": ["ERROR", "WARNING", "INFO"]
-    },
-
+    "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"] },
     "globList": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
-
     "regexList": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
-
     "project": {
-      "validation": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "unknownRuleId": { "type": "string", "enum": ["warn", "error", "ignore"] }
-        }
-      },
       "type": "object",
       "additionalProperties": false,
-      "required": ["rootPackage", "sourceGlobs"],
       "properties": {
         "rootPackage": {
           "type": "object",
@@ -71,10 +52,16 @@
             "include": { "$ref": "#/$defs/globList" },
             "exclude": { "$ref": "#/$defs/globList" }
           }
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unknownRuleId": { "type": "string", "enum": ["ERROR", "IGNORE", "WARN", "error", "ignore", "warn"] }
+          }
         }
       }
     },
-
     "roleDef": {
       "type": "object",
       "additionalProperties": false,
@@ -85,32 +72,52 @@
         "match": { "$ref": "#/$defs/matcher" }
       }
     },
-
     "matcher": {
       "type": "object",
       "additionalProperties": false,
+      "properties": {
+        "anyOf": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/matcher" }
+        },
+        "allOf": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/matcher" }
+        },
+        "not": { "$ref": "#/$defs/matcher" },
+        "annotation": { "type": "string", "minLength": 1 },
+        "annotationPrefix": { "type": "string", "minLength": 1 },
+        "packageRegex": { "type": "string", "minLength": 1 },
+        "packageContainsSegment": { "type": "string", "minLength": 1 },
+        "classNameRegex": { "type": "string", "minLength": 1 },
+        "classNameEndsWith": { "type": "string", "minLength": 1 },
+        "classNameEndsWithAny": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "hasMainMethod": { "type": "boolean" },
+        "implements": { "type": "string", "minLength": 1 },
+        "extends": { "type": "string", "minLength": 1 }
+      },
       "oneOf": [
-        { "required": ["anyOf"], "properties": { "anyOf": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/matcher" } } } },
-        { "required": ["allOf"], "properties": { "allOf": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/matcher" } } } },
-        { "required": ["not"],   "properties": { "not":   { "$ref": "#/$defs/matcher" } } },
-
-        { "required": ["annotation"], "properties": { "annotation": { "type": "string", "minLength": 1 } } },
-        { "required": ["annotationPrefix"], "properties": { "annotationPrefix": { "type": "string", "minLength": 1 } } },
-
-        { "required": ["packageRegex"], "properties": { "packageRegex": { "type": "string", "minLength": 1 } } },
-        { "required": ["packageContainsSegment"], "properties": { "packageContainsSegment": { "type": "string", "minLength": 1 } } },
-
-        { "required": ["classNameRegex"], "properties": { "classNameRegex": { "type": "string", "minLength": 1 } } },
-        { "required": ["classNameEndsWith"], "properties": { "classNameEndsWith": { "type": "string", "minLength": 1 } } },
-        { "required": ["classNameEndsWithAny"], "properties": { "classNameEndsWithAny": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } } },
-
-        { "required": ["hasMainMethod"], "properties": { "hasMainMethod": { "type": "boolean" } } },
-
-        { "required": ["implements"], "properties": { "implements": { "type": "string", "minLength": 1 } } },
-        { "required": ["extends"], "properties": { "extends": { "type": "string", "minLength": 1 } } }
+        { "required": ["anyOf"] },
+        { "required": ["allOf"] },
+        { "required": ["not"] },
+        { "required": ["annotation"] },
+        { "required": ["annotationPrefix"] },
+        { "required": ["packageRegex"] },
+        { "required": ["packageContainsSegment"] },
+        { "required": ["classNameRegex"] },
+        { "required": ["classNameEndsWith"] },
+        { "required": ["classNameEndsWithAny"] },
+        { "required": ["hasMainMethod"] },
+        { "required": ["implements"] },
+        { "required": ["extends"] }
       ]
     },
-
     "ruleScope": {
       "type": "object",
       "additionalProperties": false,
@@ -123,7 +130,6 @@
         "excludeGlobs": { "$ref": "#/$defs/globList" }
       }
     },
-
     "ruleDef": {
       "type": "object",
       "additionalProperties": true,
@@ -134,7 +140,6 @@
         "scope": { "$ref": "#/$defs/ruleScope" }
       }
     },
-
     "exceptionDef": {
       "type": "object",
       "additionalProperties": false,
@@ -151,7 +156,6 @@
         }
       }
     },
-
     "exceptionMatch": {
       "type": "object",
       "additionalProperties": false,

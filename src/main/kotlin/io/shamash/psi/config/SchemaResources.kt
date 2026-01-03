@@ -21,17 +21,14 @@ package io.shamash.psi.config
 import java.io.InputStream
 
 object SchemaResources {
-    private const val BASE: String = "/shamash/psi/schema/v1"
+    fun openSchemaJson(): InputStream = openRequired(ProjectLayout.SCHEMA_JSON)
 
-    const val SCHEMA_JSON: String = "$BASE/shamash-psi.schema.json"
-    const val REFERENCE_YML: String = "$BASE/shamash-psi.reference.yml"
-
-    fun openSchemaJson(): InputStream = openRequired(SCHEMA_JSON)
-
-    fun openReferenceYaml(): InputStream = openRequired(REFERENCE_YML)
+    fun openReferenceYaml(): InputStream = openRequired(ProjectLayout.REFERENCE_YML)
 
     private fun openRequired(resourcePath: String): InputStream =
         requireNotNull(SchemaResources::class.java.getResourceAsStream(resourcePath)) {
             "Missing resource: $resourcePath"
         }
+
+    fun openEmptyYaml(): InputStream = openRequired("${ProjectLayout.BASE}/empty.yaml")
 }

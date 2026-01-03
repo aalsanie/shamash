@@ -37,7 +37,7 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
         val actual = f.data["actual"]?.toIntOrNull() ?: return emptyList()
         val fixes = mutableListOf<ShamashFix>()
 
-        // Config-edit fix (only if the config file is known)
+        // Config-edit fix (only if the schema file is known)
         val cfgVf = ctx.configFile
         if (cfgVf != null) {
             fixes += IncreaseMaxInConfigFix(ctx.project, cfgVf, role, actual)
@@ -51,8 +51,8 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
         private val role: String,
         private val newMax: Int,
     ) : ShamashFix {
-        override val id: String = "metrics.config.max.$role.$newMax"
-        override val title: String = "Set max methods for role '$role' to $newMax (config)"
+        override val id: String = "metrics.schema.max.$role.$newMax"
+        override val title: String = "Set max methods for role '$role' to $newMax (schema)"
 
         override fun isApplicable(): Boolean = cfg.isValid
 

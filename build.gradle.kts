@@ -18,20 +18,24 @@
  */
 
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     kotlin("jvm") version "1.9.23"
     id("org.jetbrains.intellij.platform") version "2.10.5"
     id("com.diffplug.spotless") version "8.1.0"
+    id("org.jetbrains.kotlinx.kover") version "0.9.4"
 }
 
 group = "io.shamash"
 version = "0.41.1"
 
+kotlin {
+    jvmToolchain(17)
+}
+
 repositories {
     mavenCentral()
-
     intellijPlatform {
         defaultRepositories()
     }
@@ -45,23 +49,26 @@ dependencies {
 
     intellijPlatform {
         intellijIdea("2024.2")
-        bundledPlugin("org.jetbrains.kotlin")
+
         bundledPlugin("com.intellij.java")
+        bundledPlugin("org.jetbrains.kotlin")
+
+        testFramework(TestFrameworkType.Platform)
     }
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation(kotlin("test"))
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+tasks.test {
+    maxHeapSize = "2g"
 }
 
 intellijPlatform {
-
     pluginConfiguration {
-
         ideaVersion {
-            sinceBuild = "233"
+            // 2024.2 is 242.* (so 242 is the correct baseline)
+            sinceBuild = "242"
             untilBuild = "252.*"
         }
     }

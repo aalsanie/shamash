@@ -39,8 +39,14 @@ import java.time.LocalDate
  * - role (class role)
  * - hasAnnotation / hasAnnotationPrefix (class or member, best-effort)
  * - expiresOn (if expired, suppression is NOT applied)
+ *
+ * Suppress list supports:
+ * - explicit rule ids
+ * - "*" or "all" to suppress any rule
  */
 internal object ExceptionSuppressor {
+    private val WILDCARD_SUPPRESS: Set<String> = setOf("*", "all")
+
     fun apply(
         findings: List<Finding>,
         config: ShamashPsiConfigV1,
@@ -54,7 +60,10 @@ internal object ExceptionSuppressor {
 
         return findings.filterNot { f ->
             config.shamashExceptions.any { ex ->
-                if (!ex.suppress.contains(f.ruleId)) return@any false
+                val suppressesThisRule =
+                    ex.suppress.any { token -> token == f.ruleId || token in WILDCARD_SUPPRESS }
+
+                if (!suppressesThisRule) return@any false
 
                 // expiry enforcement
                 ex.expiresOn?.let { dateStr ->

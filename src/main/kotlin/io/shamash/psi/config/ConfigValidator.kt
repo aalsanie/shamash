@@ -29,12 +29,15 @@ import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
 object ConfigValidator {
+    // These are reserved "match everything" tokens in exception suppress lists.
+    private val WILDCARD_SUPPRESS: Set<String> = setOf("*", "all")
+
     fun validateSemantic(config: ShamashPsiConfigV1): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
         // Version check
         if (config.version != 1) {
-            errors += ValidationError("version", "Unsupported config version: ${config.version}", ValidationSeverity.ERROR)
+            errors += ValidationError("version", "Unsupported schema version: ${config.version}", ValidationSeverity.ERROR)
             return errors
         }
 
@@ -51,19 +54,12 @@ object ConfigValidator {
             ruleDef.scope?.includePackages?.forEachIndexed { i, rx -> compileRegex(rx, "$rulePath.scope.includePackages[$i]", errors) }
             ruleDef.scope?.excludePackages?.forEachIndexed { i, rx -> compileRegex(rx, "$rulePath.scope.excludePackages[$i]", errors) }
 
-            // We treat globs as strings; compile/validate later where globber is chosen.
-            // Here we just ensure non-empty.
+            // Globs: keep semantic checks minimal (non-empty).
             ruleDef.scope?.includeGlobs?.forEachIndexed { i, g ->
-                if (g.isBlank()) {
-                    errors +=
-                        err("$rulePath.scope.includeGlobs[$i]", "glob must be non-empty")
-                }
+                if (g.isBlank()) errors += err("$rulePath.scope.includeGlobs[$i]", "glob must be non-empty")
             }
             ruleDef.scope?.excludeGlobs?.forEachIndexed { i, g ->
-                if (g.isBlank()) {
-                    errors +=
-                        err("$rulePath.scope.excludeGlobs[$i]", "glob must be non-empty")
-                }
+                if (g.isBlank()) errors += err("$rulePath.scope.excludeGlobs[$i]", "glob must be non-empty")
             }
 
             if (!ruleDef.enabled) return@forEach
@@ -94,6 +90,9 @@ object ConfigValidator {
             val knownRuleIds = RuleSpecRegistryV1.allIds()
 
             ex.suppress.forEachIndexed { j, rid ->
+                // Allow reserved wildcard tokens.
+                if (rid in WILDCARD_SUPPRESS) return@forEachIndexed
+
                 if (!knownRuleIds.contains(rid)) {
                     when (config.project.validation.unknownRuleId) {
                         UnknownRuleIdPolicyV1.IGNORE -> Unit
@@ -119,9 +118,7 @@ object ConfigValidator {
             ex.expiresOn?.let {
                 try {
                     LocalDate.parse(it)
-                } catch (
-                    _: DateTimeParseException,
-                ) {
+                } catch (_: DateTimeParseException) {
                     errors += err("$base.expiresOn", "Invalid date, expected YYYY-MM-DD")
                 }
             }

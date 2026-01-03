@@ -6,11 +6,12 @@
 
 # Shamash
 
-A JVM Architectural engine helps you shape a clean, maintainable, reliable and scalable architecture.
+A JVM Architectural engine helps you shape a clean, maintainable and scalable architecture.
+You own the narrative you define your architecture rules
 
 ### What It Offers?
 - Configurable architecture engine
-- code structure rule engine
+- Code structure rule engine
 - Bytecode aware codebase scanner
 - Bytecode inspection
 - Dependency / call graph analysis
@@ -20,13 +21,17 @@ A JVM Architectural engine helps you shape a clean, maintainable, reliable and s
 - Instant IDE feedback and exportable reports
 
 ### How to use
-- Download the plugin from intellij marketplace or build locally
-- Run shamash scan from your left hand side or using 
-  - Tools → Shamash: run scan
-  - Tools → Shamash dashboard
-- Open the dashboard and see your codebase reports including
+- Download the plugin from intellij marketplace or build locally (Future milestone: CLI: under development)
+- Open Shamash ASM - left hand panel: for bytecode analysis and export findings
+  - Press Shamash logo to analyze and view finding, hierarchy, analysis, and more.
+- Open Shamash PSI - left hand panel: to configure your architecture and export findings
+  - create your psi.yml using ui or manually
+  - validate your rules
+  - run a scan and analyze your architecture
+- Open either dashboards and export your codebase reports including
   - overall architecture score 
-  - graphs and reports of current hierarchy, issues and fixes
+  - graphs and reports of current hierarchy, issues and analysis
+  - exports of all PSI findings, violations and fixes
 
 ### Local Setup
 To verify
@@ -41,7 +46,7 @@ To build
 ```
 To run
 ```shell
-gradlew.bat spotlessApply --stacktrace
+gradlew.bat spotlessApply
 gradlew clean runIde
 ```
 

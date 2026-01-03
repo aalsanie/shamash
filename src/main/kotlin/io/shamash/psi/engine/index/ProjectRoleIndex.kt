@@ -42,7 +42,7 @@ import io.shamash.psi.util.GlobMatcher
  *
  * Cache:
  * - CachedValue invalidated by PsiModificationTracker.MODIFICATION_COUNT
- * - Also re-built if config's role matcher definitions change (by keying cache per config fingerprint).
+ * - Also re-built if schema's role matcher definitions change (by keying cache per schema fingerprint).
  */
 class ProjectRoleIndex private constructor(
     private val project: Project,
@@ -54,7 +54,7 @@ class ProjectRoleIndex private constructor(
             project.getUserData(KEY) ?: ProjectRoleIndex(project).also { project.putUserData(KEY, it) }
     }
 
-    // Cache is per config fingerprint
+    // Cache is per schema fingerprint
     // changes in roles/sourceGlobs rebuild immediately.
     private val cacheByFingerprint = mutableMapOf<String, CachedValue<ProjectRoleIndexSnapshot>>()
 

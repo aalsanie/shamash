@@ -18,8 +18,10 @@
  */
 package io.shamash.psi.engine
 
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiModifierListOwner
+import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 
 /**
@@ -27,7 +29,12 @@ import com.intellij.psi.util.PsiTreeUtil
  *
  * Supported formats:
  *  - Line comment directive: // shamash:ignore <ruleId>|all
+ *    - Directive on the first non-empty line is treated as file-wide suppression.
+ *    - Directive can appear on the same line as the declaration or up to 2 lines above it.
+ *
  *  - Kotlin annotation: @Suppress("shamash:<ruleId>") or @Suppress("shamash:all")
+ *    - Works without Kotlin PSI dependency: scans up to 3 lines above the declaration.
+ *
  *  - Java annotation: @SuppressWarnings("shamash:<ruleId>") or @SuppressWarnings("shamash:all")
  */
 internal object InlineSuppressor {
@@ -40,8 +47,8 @@ internal object InlineSuppressor {
     ): List<Finding> {
         if (findings.isEmpty()) return findings
 
-        // Fast file-level suppression via scanning text once.
-        val commentDirectives = parseCommentDirectives(file.text)
+        val text = file.text ?: return findings
+        val commentDirectives = parseCommentDirectives(text)
         val fileWideSuppressed: Set<String> = commentDirectives.fileWide
         val hasFileWideAll = fileWideSuppressed.contains("all")
 
@@ -49,14 +56,15 @@ internal object InlineSuppressor {
         for (f in findings) {
             if (hasFileWideAll || fileWideSuppressed.contains(f.ruleId)) continue
 
-            val anchorOffset = f.startOffset ?: locateAnchorOffset(file, f)
+            val anchorOffset =
+                f.startOffset
+                    ?: locateAnchorOffset(file, f)
+                    ?: guessAnchorOffsetFromText(text, f)
+
             val anchorLine = anchorOffset?.let { commentDirectives.lineOfOffset(it) }
+            if (anchorLine != null && commentDirectives.isSuppressedAtLine(anchorLine, f.ruleId)) continue
 
-            if (anchorLine != null) {
-                if (commentDirectives.isSuppressedAtLine(anchorLine, f.ruleId)) continue
-            }
-
-            if (isSuppressedByAnnotation(file, f)) continue
+            if (isSuppressedByAnnotation(file, text, f, anchorOffset, commentDirectives)) continue
 
             out += f
         }
@@ -66,15 +74,17 @@ internal object InlineSuppressor {
 
     private fun isSuppressedByAnnotation(
         file: PsiFile,
+        fileText: String,
         f: Finding,
+        anchorOffset: Int?,
+        commentDirectives: CommentDirectives,
     ): Boolean {
-        val element = findTargetElement(file, f) ?: return false
+        val element = findTargetElement(file, f)
 
-        // Java-style annotations (PsiModifierListOwner)
+        // --- Java-style: PSI annotations when available (also works for Kotlin light classes sometimes) ---
         val owner = element as? PsiModifierListOwner
         if (owner != null) {
-            val modifierList = owner.modifierList
-            val annotations = modifierList?.annotations.orEmpty()
+            val annotations = owner.modifierList?.annotations.orEmpty()
             for (ann in annotations) {
                 val qName = ann.qualifiedName ?: continue
                 if (qName.endsWith("Suppress") || qName.endsWith("SuppressWarnings")) {
@@ -86,27 +96,25 @@ internal object InlineSuppressor {
             }
         }
 
-        // Kotlin-style annotations without depending on Kotlin PSI:
-        // scan up to 3 lines above the declaration for @Suppress("shamash:...")
-        val vf = file.virtualFile
-        val isKotlin = vf?.extension?.lowercase() == "kt"
-        if (isKotlin) {
-            val doc =
-                com.intellij.psi.PsiDocumentManager
-                    .getInstance(file.project)
-                    .getDocument(file) ?: return false
-            val off = element.textRange?.startOffset ?: return false
-            val line = doc.getLineNumber(off)
-            val fromLine = maxOf(0, line - 3)
-            val start = doc.getLineStartOffset(fromLine)
-            val end = doc.getLineStartOffset(line)
-            val window = doc.text.substring(start, end)
-            if (window.contains("@Suppress(\"${TOKEN_PREFIX}all\"") || window.contains("@Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"")) {
-                return true
-            }
-        }
+        // --- Kotlin-style: do NOT rely on Document; use file text window (works in tests + non-physical PSI) ---
+        val isKotlin = file.virtualFile?.extension?.lowercase() == "kt"
+        if (!isKotlin) return false
 
-        return false
+        val declOffset =
+            element?.textRange?.startOffset
+                ?: anchorOffset
+                ?: return false
+
+        val declLine = commentDirectives.lineOfOffset(declOffset)
+        val fromLine = maxOf(0, declLine - 3)
+
+        val window = commentDirectives.linesWindow(fromLine, declLine)
+
+        // Accept both @Suppress("shamash:...") and @kotlin.Suppress("shamash:...")
+        return window.contains("@Suppress(\"${TOKEN_PREFIX}all\"") ||
+            window.contains("@Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"") ||
+            window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}all\"") ||
+            window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"")
     }
 
     private fun locateAnchorOffset(
@@ -114,45 +122,78 @@ internal object InlineSuppressor {
         f: Finding,
     ): Int? {
         val element = findTargetElement(file, f) ?: return null
+        if (element === file) return null
         return element.textRange?.startOffset
     }
 
     private fun findTargetElement(
         file: PsiFile,
         f: Finding,
-    ): com.intellij.psi.PsiElement? {
-        val member = f.memberName
+    ): PsiElement? {
         val clsFqn = f.classFqn
+        val member = f.memberName
 
-        if (clsFqn.isNullOrBlank() && member.isNullOrBlank()) return file
+        if (clsFqn.isNullOrBlank() && member.isNullOrBlank()) return null
 
-        val simpleClassName = clsFqn?.substringAfterLast('.')
-        val named = PsiTreeUtil.findChildrenOfType(file, com.intellij.psi.PsiNamedElement::class.java)
+        val simpleClassName = clsFqn?.substringAfterLast('.')?.takeIf { it.isNotBlank() }
 
-        val classCandidates =
-            if (simpleClassName.isNullOrBlank()) {
-                emptyList()
-            } else {
-                named.filter { it.name == simpleClassName }
-            }
+        val named: Collection<PsiNamedElement> =
+            PsiTreeUtil.findChildrenOfType(file, PsiNamedElement::class.java)
 
-        val classElement = classCandidates.firstOrNull() ?: file
+        val classElement =
+            if (simpleClassName == null) null else named.firstOrNull { it.name == simpleClassName }
 
         if (member.isNullOrBlank()) return classElement
 
-        // Find member by name under the class element (or file if class not found)
-        val scopeRoot = classElement
-        val members = PsiTreeUtil.findChildrenOfType(scopeRoot, com.intellij.psi.PsiNamedElement::class.java)
-        return members.firstOrNull { it.name == member } ?: classElement
+        val memberElement = named.firstOrNull { it.name == member }
+        return memberElement ?: classElement
+    }
+
+    private fun guessAnchorOffsetFromText(
+        text: String,
+        f: Finding,
+    ): Int? {
+        val cls =
+            f.classFqn
+                ?.substringAfterLast('.')
+                ?.trim()
+                .takeIf { !it.isNullOrBlank() }
+        if (cls != null) {
+            val patterns =
+                listOf(
+                    "class $cls",
+                    "object $cls",
+                    "interface $cls",
+                    "enum class $cls",
+                    "data class $cls",
+                    "sealed class $cls",
+                    "annotation class $cls",
+                )
+            for (p in patterns) {
+                val idx = text.indexOf(p)
+                if (idx >= 0) return idx
+            }
+        }
+
+        val member = f.memberName?.trim().takeIf { !it.isNullOrBlank() }
+        if (member != null) {
+            val patterns = listOf("fun $member", "val $member", "var $member")
+            for (p in patterns) {
+                val idx = text.indexOf(p)
+                if (idx >= 0) return idx
+            }
+        }
+
+        return null
     }
 
     private data class CommentDirectives(
         val lineToRules: Map<Int, Set<String>>,
         val fileWide: Set<String>,
         val lineStartOffsets: IntArray,
+        val text: String,
     ) {
         fun lineOfOffset(offset: Int): Int {
-            // Binary search into lineStartOffsets
             var lo = 0
             var hi = lineStartOffsets.size - 1
             while (lo <= hi) {
@@ -174,12 +215,23 @@ internal object InlineSuppressor {
             line: Int,
             ruleId: String,
         ): Boolean {
-            // allow directive on same line or up to 2 lines above
             for (l in line downTo maxOf(0, line - 2)) {
                 val rules = lineToRules[l] ?: continue
                 if (rules.contains("all") || rules.contains(ruleId)) return true
             }
             return false
+        }
+
+        /** Inclusive [fromLine], exclusive [toLine]. */
+        fun linesWindow(
+            fromLine: Int,
+            toLine: Int,
+        ): String {
+            if (fromLine >= toLine) return ""
+            val start = lineStartOffsets.getOrNull(fromLine) ?: 0
+            val end = lineStartOffsets.getOrNull(toLine) ?: text.length
+            if (start >= end) return ""
+            return text.substring(start, minOf(end, text.length))
         }
     }
 
@@ -188,7 +240,6 @@ internal object InlineSuppressor {
         val lineToRules = mutableMapOf<Int, Set<String>>()
         val fileWide = mutableSetOf<String>()
 
-        // precompute line start offsets
         val starts = IntArray(lines.size.coerceAtLeast(1))
         var off = 0
         for (i in lines.indices) {
@@ -196,16 +247,28 @@ internal object InlineSuppressor {
             off += lines[i].length + 1
         }
 
+        var firstNonEmptyLine = 0
+        run {
+            for (i in lines.indices) {
+                if (lines[i].trim().isNotEmpty()) {
+                    firstNonEmptyLine = i
+                    return@run
+                }
+            }
+        }
+
         for (i in lines.indices) {
             val raw = lines[i]
             val idx = raw.indexOf(COMMENT_PREFIX)
             if (idx < 0) continue
+
             val tail = raw.substring(idx + COMMENT_PREFIX.length).trim()
             if (tail.isBlank()) continue
 
             val tokens =
                 tail
                     .split(',', ' ', '\t')
+                    .asSequence()
                     .map { it.trim() }
                     .filter { it.isNotBlank() }
                     .map { it.removePrefix(TOKEN_PREFIX) }
@@ -213,15 +276,13 @@ internal object InlineSuppressor {
 
             if (tokens.isEmpty()) continue
 
-            // If a directive is on the very first non-empty line, treat it as file-wide.
-            // Users can still do element-scoped suppression by placing a directive near declaration.
-            if (i == 0) {
+            if (i == firstNonEmptyLine) {
                 fileWide.addAll(tokens)
             } else {
                 lineToRules[i] = tokens
             }
         }
 
-        return CommentDirectives(lineToRules, fileWide, starts)
+        return CommentDirectives(lineToRules, fileWide, starts, text)
     }
 }

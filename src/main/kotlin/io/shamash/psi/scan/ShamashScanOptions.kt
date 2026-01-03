@@ -24,7 +24,7 @@ import io.shamash.psi.baseline.BaselineConfig
  * Execution options for a Shamash project scan.
  *
  * This intentionally separates "what to do" (export/baseline behavior)
- * from "how to analyze" (engine config).
+ * from "how to analyze" (engine schema).
  */
 data class ShamashScanOptions(
     val exportReports: Boolean,
