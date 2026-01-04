@@ -34,7 +34,7 @@ object RuleRegistry {
             DeadcodeUnusedPrivateMembersRule(),
             MetricsMaxMethodsByRoleRule(),
             PackagesRolePlacementRule(),
-            PackagesRootPackageRule()
+            PackagesRootPackageRule(),
         )
 
     private val rules: Map<String, EngineRule> =

@@ -19,7 +19,6 @@
 package io.shamash.psi.ui.dashboard
 
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.VerticalLayout
@@ -61,11 +60,17 @@ class FixesPanel(
         }
 
         val ctx = FixContext(project = project)
+
         val fixes =
             try {
                 FixRegistry.fixesFor(f, ctx)
             } catch (t: Throwable) {
-                PsiActionUtil.notify(project, "Shamash PSI", "Fix provider crashed: ${t.message}", NotificationType.ERROR)
+                PsiActionUtil.notify(
+                    project,
+                    "Shamash PSI",
+                    "Fix provider crashed: ${t.message}",
+                    NotificationType.ERROR,
+                )
                 emptyList()
             }
 
@@ -77,62 +82,51 @@ class FixesPanel(
         }
 
         fixes.forEach { fix ->
-            root.add(fixButton(f, fix))
+            root.add(fixButton(fix))
         }
 
         revalidate()
         repaint()
     }
 
-    private fun fixButton(
-        finding: Finding,
-        fix: ShamashFix,
-    ): JButton {
-        val label = (fixTitle(fix).ifBlank { fix.id })
+    private fun fixButton(fix: ShamashFix): JButton {
+        val label = fix.title.takeIf { it.isNotBlank() } ?: fix.id
+
         return JButton(label).apply {
             toolTipText = "Apply fix: ${fix.id}"
 
             addActionListener {
-                try {
-                    WriteCommandAction.runWriteCommandAction(
+                if (!fix.isApplicable()) {
+                    PsiActionUtil.notify(
                         project,
-                        "Shamash PSI: $label",
-                        null,
-                        Runnable { applyFixBestEffort(fix) },
+                        "Shamash PSI",
+                        "Fix is no longer applicable (finding may be stale): $label",
+                        NotificationType.WARNING,
                     )
-                    PsiActionUtil.notify(project, "Shamash PSI", "Applied: $label", NotificationType.INFORMATION)
+                    return@addActionListener
+                }
+
+                try {
+                    // IMPORTANT:
+                    // Fix implementations are responsible for write actions / command wrappers.
+                    // The UI must not reflectively invoke methods (breaks on non-public fix impls).
+                    fix.apply()
+
+                    PsiActionUtil.notify(
+                        project,
+                        "Shamash PSI",
+                        "Applied: $label",
+                        NotificationType.INFORMATION,
+                    )
                 } catch (t: Throwable) {
-                    PsiActionUtil.notify(project, "Shamash PSI", "Fix failed: ${t.message}", NotificationType.ERROR)
+                    PsiActionUtil.notify(
+                        project,
+                        "Shamash PSI",
+                        "Fix failed: ${t.message}",
+                        NotificationType.ERROR,
+                    )
                 }
             }
         }
-    }
-
-    private fun fixTitle(fix: ShamashFix): String =
-        try {
-            // common patterns: title/label/name
-            val m =
-                fix.javaClass.methods.firstOrNull { it.name == "getTitle" && it.parameterCount == 0 }
-                    ?: fix.javaClass.methods.firstOrNull { it.name == "getLabel" && it.parameterCount == 0 }
-                    ?: fix.javaClass.methods.firstOrNull { it.name == "getName" && it.parameterCount == 0 }
-            (m?.invoke(fix) as? String) ?: ""
-        } catch (_: Throwable) {
-            ""
-        }
-
-    private fun applyFixBestEffort(fix: ShamashFix) {
-        // Try apply() with no args, or apply(Project)
-        val m0 = fix.javaClass.methods.firstOrNull { it.name == "apply" && it.parameterCount == 0 }
-        if (m0 != null) {
-            m0.invoke(fix)
-            return
-        }
-        val m1 = fix.javaClass.methods.firstOrNull { it.name == "apply" && it.parameterCount == 1 }
-        if (m1 != null) {
-            m1.invoke(fix, project)
-            return
-        }
-
-        error("ShamashFix has no apply() method signature we recognize: ${fix.javaClass.name}")
     }
 }

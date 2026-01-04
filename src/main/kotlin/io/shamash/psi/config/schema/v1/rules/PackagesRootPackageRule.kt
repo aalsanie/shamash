@@ -81,7 +81,10 @@ class PackagesRootPackageRule : EngineRule {
         )
     }
 
-    private fun resolveExpectedRoot(rule: Rule, config: ShamashPsiConfigV1): String {
+    private fun resolveExpectedRoot(
+        rule: Rule,
+        config: ShamashPsiConfigV1,
+    ): String {
         // Rule params are modeled/typed in your schema model, so access them directly
         // instead of assuming a generic map.
         //
@@ -93,8 +96,18 @@ class PackagesRootPackageRule : EngineRule {
 
         return when (mode) {
             "explicit" -> value
-            "auto" -> config.project.rootPackage.value?.trim().orEmpty()
-            else -> if (value.isNotBlank()) value else config.project.rootPackage.value?.trim().orEmpty()
+            "auto" ->
+                config.project.rootPackage.value
+                    ?.trim()
+                    .orEmpty()
+            else ->
+                if (value.isNotBlank()) {
+                    value
+                } else {
+                    config.project.rootPackage.value
+                        ?.trim()
+                        .orEmpty()
+                }
         }
     }
 
@@ -145,7 +158,12 @@ class PackagesRootPackageRule : EngineRule {
             if (t.startsWith("package ")) {
                 val after = t.removePrefix("package ").trim()
                 // Java allows trailing semicolon; Kotlin doesn't
-                val token = after.trimEnd(';').split(' ', '\t').firstOrNull().orEmpty()
+                val token =
+                    after
+                        .trimEnd(';')
+                        .split(' ', '\t')
+                        .firstOrNull()
+                        .orEmpty()
                 return token.takeIf { it.isNotBlank() }
             }
 

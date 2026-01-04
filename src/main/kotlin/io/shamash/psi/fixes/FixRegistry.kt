@@ -24,6 +24,7 @@ import io.shamash.psi.fixes.providers.DeadcodeUnusedPrivateMembersFixProvider
 import io.shamash.psi.fixes.providers.MetricsMaxMethodsByRoleFixProvider
 import io.shamash.psi.fixes.providers.NamingBannedSuffixesFixProvider
 import io.shamash.psi.fixes.providers.PackagesRolePlacementFixProvider
+import io.shamash.psi.fixes.providers.PackagesRootPackageFixProvider
 
 object FixRegistry {
     private val providers =
@@ -33,6 +34,7 @@ object FixRegistry {
             MetricsMaxMethodsByRoleFixProvider(),
             NamingBannedSuffixesFixProvider(),
             PackagesRolePlacementFixProvider(),
+            PackagesRootPackageFixProvider(),
             SuppressFixProvider(),
         )
 
