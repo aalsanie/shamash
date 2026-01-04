@@ -5,13 +5,13 @@
     <vendor email="a.aalsanie@outlook.com">A.ALSANIE</vendor>
 
     <description><![CDATA[
-        Shamash is a JVM architecture tool with two engines:
+        Shamash is a JVM architecture enforcement tool with two complementary engines:
         <br/><br/>
         <b>ASM</b>:
-        analyzes compiled bytecode + jars to detect architectural drift and dependency violations.
-        <br/>
+        analyzes compiled bytecode and jars to detect architectural drift, dependency violations, and forbidden couplings — without requiring source code.
+        <br/><br/>
         <b>PSI</b>:
-        analyzes source via IntelliJ PSI using a configurable YAML schema, and can guide fixes.
+        analyzes source code via IntelliJ PSI using a configurable YAML schema, provides architectural dashboards, inline suppressions, guided fixes, and exportable reports.
     ]]></description>
 
     <depends>com.intellij.modules.java</depends>
@@ -117,11 +117,13 @@
     </actions>
 
     <change-notes><![CDATA[
-  <ul>
-    <li>New: PSI Dashboard - for configurable architecture.</li>
-    <li>New: PSI Scan runner - for configurable architecture.</li>
-    <li>New: PSI Exports - for findings.</li>
-    <li>New: PSI Fixes - for fixing architectural violations.</li>
-  </ul>
-]]></change-notes>
+                     <ul>
+                      <li>PSI v1: Source-based architecture analysis using IntelliJ PSI.</li>
+                      <li>Architecture dashboards for PSI findings.</li>
+                      <li>Configurable YAML schema (schema v1) with validation.</li>
+                      <li>Inline suppressions and guided fixes for architectural violations.</li>
+                      <li>Export PSI findings to JSON, SARIF, XML, and HTML.</li>
+                    </ul>
+                     ]]>
+    </change-notes>
 </idea-plugin>

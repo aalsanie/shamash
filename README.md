@@ -2,21 +2,27 @@
   <img src="assets/shamash_logo.png" alt="Shamash Logo" width="180"/>
 </p>
 
-[![current release](https://img.shields.io/badge/release-0.3.0-green)](https://github.com/aalsanie/shamash/releases) | [![install plugin](https://img.shields.io/badge/jetbrains-plugin-red)](https://plugins.jetbrains.com/plugin/29504-shamash) | [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+[![current release](https://img.shields.io/badge/release-0.42.0-green)](https://github.com/aalsanie/shamash/releases) | [![install plugin](https://img.shields.io/badge/jetbrains-plugin-red)](https://plugins.jetbrains.com/plugin/29504-shamash) | [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 # Shamash
 
-A JVM Architectural engine helps you shape a clean, maintainable and scalable architecture.
-You own the narrative you define your architecture rules
+Shamash is a JVM architecture enforcement tool for teams that want to **define, validate, and maintain architectural boundaries**.
+
+It provides two complementary engines:
+
+- **ASM** — analyzes compiled bytecode and JARs to detect architectural drift, forbidden dependencies, and dependency graph violations, without requiring source code.
+
+- **PSI** — analyzes source code using IntelliJ PSI and a configurable YAML schema, providing architectural dashboards, inline suppressions, guided fixes, and exportable reports.
 
 ### What It Offers?
-- Configurable architecture engine
-- Code structure rule engine
+- Configurable architecture rules (roles, placement, dependencies)
+- Source-level architecture validation via PSI
+- Bytecode-level architecture validation via ASM
 - Bytecode aware codebase scanner
 - Bytecode inspection
 - Dependency / call graph analysis
-- Dead code / deprecation / shadow usage detection
-- JVM internals visibility
+- Dead code / deprecation / shadow usage detection - under development
+- JVM internals visibility - under development
 - Architectural Dashboard
 - Instant IDE feedback and exportable reports
 

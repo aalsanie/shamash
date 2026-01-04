@@ -28,7 +28,7 @@ plugins {
 }
 
 group = "io.shamash"
-version = "0.41.1"
+version = "0.50.0"
 
 kotlin {
     jvmToolchain(17)
