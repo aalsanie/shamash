@@ -44,7 +44,7 @@ class RunPsiScanActionE2ETest : BasePlatformTestCase() {
 
     fun testRunPsiScanActionUpdatesUiState() {
         myFixture.tempDirFixture.createFile(
-            "a/BadService.java",
+            "src/main/java/a/BadService.java",
             """
             package a;
             class BadService {}

@@ -23,6 +23,7 @@ import io.shamash.psi.config.schema.v1.rules.DeadcodeUnusedPrivateMembersRule
 import io.shamash.psi.config.schema.v1.rules.MetricsMaxMethodsByRoleRule
 import io.shamash.psi.config.schema.v1.rules.NamingBannedSuffixesRule
 import io.shamash.psi.config.schema.v1.rules.PackagesRolePlacementRule
+import io.shamash.psi.config.schema.v1.rules.PackagesRootPackageRule
 import io.shamash.psi.engine.EngineRule
 
 object RuleRegistry {
@@ -33,6 +34,7 @@ object RuleRegistry {
             DeadcodeUnusedPrivateMembersRule(),
             MetricsMaxMethodsByRoleRule(),
             PackagesRolePlacementRule(),
+            PackagesRootPackageRule()
         )
 
     private val rules: Map<String, EngineRule> =

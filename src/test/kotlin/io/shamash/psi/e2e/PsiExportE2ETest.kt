@@ -32,7 +32,7 @@ import java.nio.file.Files
 class PsiExportE2ETest : BasePlatformTestCase() {
     fun testExportProducesAllFormatsByDefault() {
         myFixture.tempDirFixture.createFile(
-            "a/BadService.java",
+            "src/main/java/a/BadService.java",
             """
             package a;
             class BadService {}

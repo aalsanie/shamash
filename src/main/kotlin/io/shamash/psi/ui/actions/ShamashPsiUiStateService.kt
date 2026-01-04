@@ -25,28 +25,39 @@ import io.shamash.psi.engine.Finding
 import io.shamash.psi.export.schema.v1.model.ExportedReport
 import java.nio.file.Path
 
+/**
+ * In-memory UI state for Shamash PSI tool window.
+ *
+ * This is intentionally simple:
+ * - It's a project-level service.
+ * - It stores the *last* results only (scan, validation, export).
+ * - Tool window panels read these values on refresh().
+ */
 @Service(Service.Level.PROJECT)
-class ShamashPsiUiStateService(
-    private val project: Project,
-) {
-    @Volatile var lastFindings: List<Finding> = emptyList()
+class ShamashPsiUiStateService {
+    @Volatile
+    var lastFindings: List<Finding> = emptyList()
         private set
 
-    @Volatile var lastValidationErrors: List<ValidationError> = emptyList()
+    @Volatile
+    var lastValidationErrors: List<ValidationError> = emptyList()
         private set
 
-    @Volatile var lastExportDir: Path? = null
+    @Volatile
+    var lastExportDir: Path? = null
         private set
 
-    @Volatile var lastExportedReport: ExportedReport? = null
+    @Volatile
+    var lastExportedReport: ExportedReport? = null
         private set
 
     fun updateFindings(findings: List<Finding>) {
-        lastFindings = findings
+        // Defensive copy so UI never observes a mutable backing list.
+        lastFindings = findings.toList()
     }
 
     fun updateValidation(errors: List<ValidationError>) {
-        lastValidationErrors = errors
+        lastValidationErrors = errors.toList()
     }
 
     fun updateExport(

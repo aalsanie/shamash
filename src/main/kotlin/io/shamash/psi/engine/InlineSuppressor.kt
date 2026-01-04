@@ -48,23 +48,34 @@ internal object InlineSuppressor {
         if (findings.isEmpty()) return findings
 
         val text = file.text ?: return findings
+
         val commentDirectives = parseCommentDirectives(text)
         val fileWideSuppressed: Set<String> = commentDirectives.fileWide
         val hasFileWideAll = fileWideSuppressed.contains("all")
 
         val out = ArrayList<Finding>(findings.size)
         for (f in findings) {
-            if (hasFileWideAll || fileWideSuppressed.contains(f.ruleId)) continue
+            // 1) file-wide comment suppression
+            if (hasFileWideAll || fileWideSuppressed.contains(f.ruleId)) {
+                continue
+            }
 
+            // 2) find an anchor offset
             val anchorOffset =
                 f.startOffset
                     ?: locateAnchorOffset(file, f)
                     ?: guessAnchorOffsetFromText(text, f)
 
+            // 3) line-comment suppression near anchor
             val anchorLine = anchorOffset?.let { commentDirectives.lineOfOffset(it) }
-            if (anchorLine != null && commentDirectives.isSuppressedAtLine(anchorLine, f.ruleId)) continue
+            if (anchorLine != null && commentDirectives.isSuppressedAtLine(anchorLine, f.ruleId)) {
+                continue
+            }
 
-            if (isSuppressedByAnnotation(file, text, f, anchorOffset, commentDirectives)) continue
+            // 4) annotation suppression (Java PSI annotations, Kotlin text window)
+            if (isSuppressedByAnnotation(file, text, f, anchorOffset, commentDirectives)) {
+                continue
+            }
 
             out += f
         }
@@ -87,11 +98,11 @@ internal object InlineSuppressor {
             val annotations = owner.modifierList?.annotations.orEmpty()
             for (ann in annotations) {
                 val qName = ann.qualifiedName ?: continue
-                if (qName.endsWith("Suppress") || qName.endsWith("SuppressWarnings")) {
-                    val text = ann.parameterList.text ?: ann.text
-                    if (text.contains("\"${TOKEN_PREFIX}all\"") || text.contains("\"${TOKEN_PREFIX}${f.ruleId}\"")) {
-                        return true
-                    }
+                if (!qName.endsWith("Suppress") && !qName.endsWith("SuppressWarnings")) continue
+
+                val annText = ann.parameterList.text ?: ann.text ?: continue
+                if (annText.contains("\"${TOKEN_PREFIX}all\"") || annText.contains("\"${TOKEN_PREFIX}${f.ruleId}\"")) {
+                    return true
                 }
             }
         }
@@ -100,14 +111,25 @@ internal object InlineSuppressor {
         val isKotlin = file.virtualFile?.extension?.lowercase() == "kt"
         if (!isKotlin) return false
 
+        /**
+         * IMPORTANT:
+         * Kotlin PSI elements (e.g., KtClass) frequently report textRange.startOffset at the *first modifier*,
+         * which can be the '@Suppress' line. Our window extraction is [fromLine, toLine) (exclusive of toLine),
+         * so if declLine is the annotation line, the window will NOT include the annotation itself.
+         *
+         * Therefore, for Kotlin we must prefer an anchor that points at the *declaration keyword* line
+         * (e.g., "class BadService"), which is exactly what [anchorOffset] / [guessAnchorOffsetFromText] provides.
+         */
         val declOffset =
-            element?.textRange?.startOffset
+            // For Kotlin PSI, element/textRange often starts at the first modifier/annotation.
+            // We want the *declaration* line (e.g., "class BadService") so the window includes @Suppress above it.
+            guessAnchorOffsetFromText(fileText, f)
                 ?: anchorOffset
+                ?: element?.textRange?.startOffset
                 ?: return false
 
         val declLine = commentDirectives.lineOfOffset(declOffset)
         val fromLine = maxOf(0, declLine - 3)
-
         val window = commentDirectives.linesWindow(fromLine, declLine)
 
         // Accept both @Suppress("shamash:...") and @kotlin.Suppress("shamash:...")
@@ -158,6 +180,7 @@ internal object InlineSuppressor {
                 ?.substringAfterLast('.')
                 ?.trim()
                 .takeIf { !it.isNullOrBlank() }
+
         if (cls != null) {
             val patterns =
                 listOf(
@@ -228,24 +251,51 @@ internal object InlineSuppressor {
             toLine: Int,
         ): String {
             if (fromLine >= toLine) return ""
-            val start = lineStartOffsets.getOrNull(fromLine) ?: 0
-            val end = lineStartOffsets.getOrNull(toLine) ?: text.length
+            if (lineStartOffsets.isEmpty()) return ""
+
+            val safeFrom = fromLine.coerceIn(0, lineStartOffsets.size - 1)
+            val safeTo = toLine.coerceIn(0, lineStartOffsets.size)
+
+            if (safeFrom >= safeTo) return ""
+
+            val start = lineStartOffsets.getOrElse(safeFrom) { 0 }
+            val end = if (safeTo < lineStartOffsets.size) lineStartOffsets[safeTo] else text.length
             if (start >= end) return ""
             return text.substring(start, minOf(end, text.length))
         }
     }
 
+    private fun buildLineStartOffsets(text: String): IntArray {
+        if (text.isEmpty()) return intArrayOf(0)
+
+        var lines = 1
+        for (i in text.indices) {
+            if (text[i] == '\n') lines++
+        }
+
+        val starts = IntArray(lines)
+        starts[0] = 0
+
+        var lineIdx = 1
+        for (i in text.indices) {
+            if (text[i] == '\n') {
+                val next = i + 1
+                if (lineIdx < starts.size) {
+                    starts[lineIdx] = next
+                    lineIdx++
+                }
+            }
+        }
+
+        return starts
+    }
+
     private fun parseCommentDirectives(text: String): CommentDirectives {
         val lines = text.split('\n')
+        val starts = buildLineStartOffsets(text)
+
         val lineToRules = mutableMapOf<Int, Set<String>>()
         val fileWide = mutableSetOf<String>()
-
-        val starts = IntArray(lines.size.coerceAtLeast(1))
-        var off = 0
-        for (i in lines.indices) {
-            starts[i] = off
-            off += lines[i].length + 1
-        }
 
         var firstNonEmptyLine = 0
         run {
@@ -258,7 +308,8 @@ internal object InlineSuppressor {
         }
 
         for (i in lines.indices) {
-            val raw = lines[i]
+            val raw = lines[i].trimEnd('\r')
+
             val idx = raw.indexOf(COMMENT_PREFIX)
             if (idx < 0) continue
 
@@ -283,6 +334,11 @@ internal object InlineSuppressor {
             }
         }
 
-        return CommentDirectives(lineToRules, fileWide, starts, text)
+        return CommentDirectives(
+            lineToRules = lineToRules,
+            fileWide = fileWide,
+            lineStartOffsets = starts,
+            text = text,
+        )
     }
 }

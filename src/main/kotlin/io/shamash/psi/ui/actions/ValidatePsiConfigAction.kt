@@ -18,12 +18,13 @@
  */
 package io.shamash.psi.ui.actions
 
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.extensions.PluginId
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.progress.Task
 import io.shamash.psi.config.ConfigValidation
 import io.shamash.psi.config.SchemaValidator
 import io.shamash.psi.config.SchemaValidatorNetworkNt
@@ -31,12 +32,6 @@ import io.shamash.psi.ui.ShamashPsiToolWindowController
 import io.shamash.psi.ui.settings.ShamashPsiConfigLocator
 import java.io.StringReader
 
-/**
- * Validates PSI YAML and updates UI state (Config tab).
- *
- * IMPORTANT:
- * This action must *always* update ShamashPsiUiStateService so panels can render results.
- */
 class ValidatePsiConfigAction(
     private val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
 ) : AnAction() {
@@ -45,23 +40,11 @@ class ValidatePsiConfigAction(
 
         val vf = ShamashPsiConfigLocator.resolveConfigFile(project)
         if (vf == null) {
-            ShamashPsiUiStateService.getInstance(project).updateValidation(
-                listOf(
-                    io.shamash.psi.config.ValidationError(
-                        path = "settings.configPath",
-                        message =
-                            "Config file not found. Create a valid PSI config " +
-                                "under /shamash/config/psi.yml (or resources/shamash/config/psi.yml).",
-                        severity = io.shamash.psi.config.ValidationSeverity.ERROR,
-                    ),
-                ),
-            )
-
+            ShamashPsiUiStateService.getInstance(project).updateValidation(emptyList())
             PsiActionUtil.notify(
                 project,
                 "Shamash PSI",
-                "No PSI schema found. " +
-                    "Create one from reference first.",
+                "No PSI config found. Create one from reference first.",
                 NotificationType.WARNING,
             )
             PsiActionUtil.openPsiToolWindow(project)
@@ -72,34 +55,59 @@ class ValidatePsiConfigAction(
 
         val yaml = String(vf.contentsToByteArray())
 
-        val validation =
-            ConfigValidation.loadAndValidateV1(
-                reader = StringReader(yaml),
-                schemaValidator = schemaValidator,
-            )
+        object : Task.Backgroundable(project, "Shamash PSI Validate Config", false) {
+            private var ok = false
+            private var errorCount = 0
+            private var warnCount = 0
+            private var errors = emptyList<io.shamash.psi.config.ValidationError>()
 
-        // Update state on EDT then refresh UI so the Config tab reflects latest results.
-        ApplicationManager.getApplication().invokeLater {
-            val state = ShamashPsiUiStateService.getInstance(project)
-            state.updateValidation(validation.errors)
+            override fun run(indicator: ProgressIndicator) {
+                indicator.isIndeterminate = true
+                ProgressManager.checkCanceled()
 
-            // Always refresh panels after state mutation (otherwise Config tab stays stale).
-            ShamashPsiToolWindowController.getInstance(project).refreshAll()
+                val res =
+                    ConfigValidation.loadAndValidateV1(
+                        reader = StringReader(yaml),
+                        schemaValidator = schemaValidator,
+                    )
 
-            val msg =
-                if (validation.errors.any { it.severity.name == "ERROR" }) {
-                    "Config invalid. Fix errors in Config tab."
-                } else {
-                    // include warnings count if any
-                    val warns = validation.errors.count { it.severity.name == "WARNING" }
-                    if (warns > 0) "Config is valid (with $warns warning(s))." else "Config is valid."
+                errors = res.errors
+                errorCount = res.errors.count { it.severity.name == "ERROR" }
+                warnCount = res.errors.size - errorCount
+                ok = res.ok
+                ProgressManager.checkCanceled()
+
+                ApplicationManager.getApplication().invokeLater {
+                    ShamashPsiUiStateService.getInstance(project).updateValidation(res.errors)
+                    ShamashPsiToolWindowController.getInstance(project).refreshAll()
                 }
+            }
 
-            PsiActionUtil.notify(project, "Shamash PSI", msg, NotificationType.INFORMATION)
-            PsiActionUtil.openPsiToolWindow(project)
-            ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.CONFIG)
-        }
+            override fun onSuccess() {
+                PsiActionUtil.openPsiToolWindow(project)
+                ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.CONFIG)
+                ShamashPsiToolWindowController.getInstance(project).refreshAll()
+
+                if (!ok || errorCount > 0) {
+                    PsiActionUtil.notify(
+                        project,
+                        "Shamash PSI",
+                        "Config invalid. Errors: $errorCount | Warnings: $warnCount",
+                        NotificationType.ERROR,
+                    )
+                } else {
+                    PsiActionUtil.notify(
+                        project,
+                        "Shamash PSI",
+                        "Config is valid. Errors: $errorCount | Warnings: $warnCount",
+                        NotificationType.INFORMATION,
+                    )
+                }
+            }
+
+            override fun onThrowable(error: Throwable) {
+                PsiActionUtil.notify(project, "Shamash PSI", "Validation failed: ${error.message}", NotificationType.ERROR)
+            }
+        }.queue()
     }
-
-    private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"
 }

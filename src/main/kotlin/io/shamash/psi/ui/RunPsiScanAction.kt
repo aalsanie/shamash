@@ -27,6 +27,8 @@ import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.Project
+import io.shamash.psi.baseline.BaselineConfig
 import io.shamash.psi.config.ConfigValidation
 import io.shamash.psi.config.SchemaValidator
 import io.shamash.psi.config.SchemaValidatorNetworkNt
@@ -54,8 +56,7 @@ class RunPsiScanAction(
                         path = "settings.configPath",
                         message =
                             "Config file not found. " +
-                                "Create a valid PSI config under /shamash/config/psi.yml " +
-                                "(or resources/shamash/config/psi.yml).",
+                                "Create a valid PSI config under /shamash/config/psi.yml (or resources/shamash/config/psi.yml).",
                         severity = ValidationSeverity.ERROR,
                     ),
                 ),
@@ -64,11 +65,12 @@ class RunPsiScanAction(
             PsiActionUtil.notify(
                 project,
                 "Shamash PSI",
-                "No PSI schema found. Create one from reference first.",
+                "No PSI config found. Create one from reference first.",
                 NotificationType.WARNING,
             )
             PsiActionUtil.openPsiToolWindow(project)
             ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.CONFIG)
+            ShamashPsiToolWindowController.getInstance(project).refreshAll()
             return
         }
 
@@ -77,10 +79,13 @@ class RunPsiScanAction(
     }
 
     private fun validateAndScanInBackground(
-        project: com.intellij.openapi.project.Project,
+        project: Project,
         yaml: String,
     ) {
         object : Task.Backgroundable(project, "Shamash PSI Scan", true) {
+            private var validationErrors: List<ValidationError> = emptyList()
+            private var findingsCount: Int = 0
+
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
                 ProgressManager.checkCanceled()
@@ -92,19 +97,18 @@ class RunPsiScanAction(
                         schemaValidator = schemaValidator,
                     )
 
-                // publish validation on EDT
+                validationErrors = validation.errors
+
+                // publish validation to UI state on EDT
                 ApplicationManager.getApplication().invokeLater {
                     ShamashPsiUiStateService.getInstance(project).updateValidation(validation.errors)
+                    ShamashPsiToolWindowController.getInstance(project).refreshAll()
                 }
 
                 ProgressManager.checkCanceled()
-
-                // IMPORTANT:
-                // - We treat WARNINGS as non-blocking.
-                // - We only stop scanning if we have at least one ERROR (validation.ok==false) or config=null.
                 if (!validation.ok || validation.config == null) return
 
-                // 2) Scan (background)
+                // 2) Scan (background) - scan runner guards PSI access (read-action + smart-mode)
                 val result =
                     runner.scanProject(
                         project = project,
@@ -112,26 +116,26 @@ class RunPsiScanAction(
                         options =
                             ShamashScanOptions(
                                 exportReports = false,
-                                baseline = io.shamash.psi.baseline.BaselineConfig.Off,
+                                baseline = BaselineConfig.Off,
                                 toolName = "Shamash PSI",
                                 toolVersion = pluginVersion(),
                                 generatedAtEpochMillis = System.currentTimeMillis(),
                             ),
                     )
 
+                findingsCount = result.findings.size
+
                 ProgressManager.checkCanceled()
 
+                // publish findings on EDT
                 ApplicationManager.getApplication().invokeLater {
                     ShamashPsiUiStateService.getInstance(project).updateFindings(result.findings)
+                    ShamashPsiToolWindowController.getInstance(project).refreshAll()
                 }
             }
 
             override fun onSuccess() {
-                val state = ShamashPsiUiStateService.getInstance(project)
-
-                // Only treat ERROR validation entries as blocking.
-                val hasError = state.lastValidationErrors.any { it.severity == ValidationSeverity.ERROR }
-                if (hasError) {
+                if (validationErrors.any { it.severity == ValidationSeverity.ERROR }) {
                     PsiActionUtil.notify(project, "Shamash PSI", "Config invalid. Fix errors in Config tab.", NotificationType.WARNING)
                     PsiActionUtil.openPsiToolWindow(project)
                     ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.CONFIG)
@@ -139,9 +143,21 @@ class RunPsiScanAction(
                     return
                 }
 
-                PsiActionUtil.notify(project, "Shamash PSI", "Scan completed.", NotificationType.INFORMATION)
                 PsiActionUtil.openPsiToolWindow(project)
 
+                if (findingsCount == 0) {
+                    PsiActionUtil.notify(
+                        project,
+                        "Shamash PSI",
+                        "Scan completed: 0 findings. (Either the project is clean, or rules produced no findings for the scanned sources.)",
+                        NotificationType.INFORMATION,
+                    )
+                    ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.DASHBOARD)
+                    ShamashPsiToolWindowController.getInstance(project).refreshAll()
+                    return
+                }
+
+                PsiActionUtil.notify(project, "Shamash PSI", "Scan completed: $findingsCount findings.", NotificationType.INFORMATION)
                 val controller = ShamashPsiToolWindowController.getInstance(project)
                 controller.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
                 controller.refreshAll()

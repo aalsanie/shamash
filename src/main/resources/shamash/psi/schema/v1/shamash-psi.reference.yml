@@ -2,21 +2,18 @@ version: 1
 
 project:
   validation:
-    unknownRuleId: warn   # warn | error | ignore
-  rootPackage:
-    mode: auto
-    value: ""
+    unknownRuleId: warn
   sourceGlobs:
     include:
       - "src/main/java/**"
       - "src/main/kotlin/**"
     exclude:
       - "**/build/**"
-      - "**/generated/**"
+      - "**/.gradle/**"
+      - "**/out/**"
       - "**/.idea/**"
+      - "**/generated/**"
 
-############################ Example roles ###########################
-## Adjust or remove entirely if you do not use layered architecture ##
 roles:
   controller:
     priority: 100
@@ -24,7 +21,7 @@ roles:
       anyOf:
         - annotation: "org.springframework.web.bind.annotation.RestController"
         - annotation: "org.springframework.stereotype.Controller"
-        - packageRegex: ".*\\.controller\\..*"
+        - packageRegex: ".*\\.controller(\\..*)?$"
         - classNameEndsWith: "Controller"
 
   service:
@@ -32,7 +29,7 @@ roles:
     match:
       anyOf:
         - annotation: "org.springframework.stereotype.Service"
-        - packageRegex: ".*\\.service\\..*"
+        - packageRegex: ".*\\.service(\\..*)?$"
         - classNameEndsWith: "Service"
 
   repository:
@@ -40,80 +37,68 @@ roles:
     match:
       anyOf:
         - annotation: "org.springframework.stereotype.Repository"
-        - packageRegex: ".*\\.(dao|repository)\\..*"
+        - packageRegex: ".*\\.(dao|repository)(\\..*)?$"
         - classNameEndsWithAny: ["Dao", "Repository"]
 
-# Rules are examples: OFF by default.
 rules:
 
+  naming.bannedSuffixes:
+    enabled: true
+    severity: WARNING
+    banned: ["Action"]          # matches ExportPsiReportsAction, RunPsiScanAction, etc.
+    applyTo: "classes"
+    caseSensitive: true
+
   arch.forbiddenRoleDependencies:
-    enabled: false
+    enabled: true
     severity: ERROR
-    dependencyKinds:
-      - methodCall
-      - fieldType
-      - parameterType
-      - returnType
-      - extends
-      - implements
-      - annotationType
+    kinds: ["methodCall","fieldType","parameterType","returnType","extends","implements","annotationType"]
     forbidden:
       - from: "controller"
         to: ["repository"]
-        message: "Controller must not depend on repository"
       - from: "service"
         to: ["controller"]
-        message: "Service must not depend on controller"
 
-  metrics.maxMethodsByRole:
-    enabled: false
-    severity: WARNING
-    limits:
-      controller: 5
-      service: 8
-      repository: 10
-    countKinds: [declaredMethods]
-
-  controller.maxPublicEndpoints:
-    enabled: false
+  metrics.maxMethodsByRole.controller:
+    enabled: true
     severity: WARNING
     role: "controller"
-    maxPublicMethods: 1
+    max: 5
+
+  metrics.maxMethodsByRole.service:
+    enabled: true
+    severity: WARNING
+    role: "service"
+    max: 8
+
+  metrics.maxMethodsByRole.repository:
+    enabled: true
+    severity: WARNING
+    role: "repository"
+    max: 10
 
   packages.rolePlacement:
-    enabled: false
+    enabled: true
     severity: WARNING
-    expected:
-      controller: { packageRegex: ".*\\.controller(\\..*)?$" }
-      service:    { packageRegex: ".*\\.service(\\..*)?$" }
-      repository: { packageRegex: ".*\\.(dao|repository)(\\..*)?$" }
-
-  packages.rootPackage:
-    enabled: false
-    severity: WARNING
-    mode: explicit
-    value: "com.myco"
-
-  naming.bannedSuffixes:
-    enabled: false
-    severity: WARNING
-    banned: ["Manager", "Helper", "Impl"]
+    mode: "any"
+    placement:
+      controller:
+        - ".*\\.controller(\\..*)?$"
+      service:
+        - ".*\\.service(\\..*)?$"
+      repository:
+        - ".*\\.(dao|repository)(\\..*)?$"
 
   deadcode.unusedPrivateMembers:
-    enabled: false
+    enabled: true
     severity: INFO
-    check: { fields: true, methods: true, classes: false }
+    check:
+      fields: true
+      methods: true
+      classes: false
     ignoreIfAnnotatedWithPrefix:
       - "org.junit."
       - "org.springframework.web.bind.annotation."
       - "jakarta.persistence."
       - "com.fasterxml.jackson.annotation."
       - "lombok."
-
-# Exceptions example
-exceptions:
-  - id: "ignore-generated"
-    reason: "Generated sources are noisy and not team-owned"
-    match:
-      fileGlob: "**/generated/**"
-    suppress: ["*"]

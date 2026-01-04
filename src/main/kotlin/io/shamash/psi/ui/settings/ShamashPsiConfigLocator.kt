@@ -22,6 +22,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import io.shamash.psi.util.ShamashProjectUtil
 import java.nio.file.Path
 
 /**
@@ -33,6 +34,9 @@ import java.nio.file.Path
  *
  * IMPORTANT: In light tests / freshly created files, VFS may not "see" the file yet.
  * We always use refreshAndFindFileByNioFile(...) to avoid false "file not found".
+ *
+ * IMPORTANT (tests): project.basePath can be null in some fixtures.
+ * We fall back to ProjectUtil.guessProjectDir(project) and content roots.
  */
 object ShamashPsiConfigLocator {
     /**
@@ -69,7 +73,7 @@ object ShamashPsiConfigLocator {
         // 2) Default discovery
         val baseDirs: List<Path> = resolveProjectBaseDirs(project)
 
-        // NOTE: "Create from Reference" currently writes to "resources/shamash/configs/psi.yml" (configs plural).
+        // NOTE: "Create from Reference" may write to ".../configs/psi.yml" (configs plural).
         // We support both ".../config/..." and ".../configs/..." so the locator matches both layouts.
         val relativeDefaults: List<String> =
             listOf(
@@ -87,7 +91,7 @@ object ShamashPsiConfigLocator {
                 "src/resources/shamash/config/psi.yaml",
                 "src/resources/shamash/configs/psi.yml",
                 "src/resources/shamash/configs/psi.yaml",
-                // Plain "resources" folder (your current create-from-reference behavior)
+                // Plain "resources" folder
                 "resources/shamash/config/psi.yml",
                 "resources/shamash/config/psi.yaml",
                 "resources/shamash/configs/psi.yml",
@@ -126,10 +130,13 @@ object ShamashPsiConfigLocator {
         val p = Path.of(configured)
         if (p.isAbsolute) return p
 
-        // Prefer project.basePath. If missing, fall back to content roots.
-        val base = project.basePath
-        if (base != null) return Path.of(base).resolve(p)
+        // Prefer project.basePath when present.
+        project.basePath?.let { return Path.of(it).resolve(p) }
 
+        // Next best: guessProjectDir (very reliable in IntelliJ test fixtures)
+        ShamashProjectUtil.guessProjectDir(project)?.path?.let { return Path.of(it).resolve(p) }
+
+        // Fallback: first content root
         val roots = ProjectRootManager.getInstance(project).contentRoots
         if (roots.isNotEmpty()) {
             return Path.of(roots[0].path).resolve(p)
@@ -141,15 +148,15 @@ object ShamashPsiConfigLocator {
     /**
      * Returns possible "project base dirs" used for resolving defaults.
      * - project.basePath when available
+     * - ProjectUtil.guessProjectDir(project) when available (important for tests)
      * - all contentRoots as fallbacks (works in test projects / atypical setups)
      */
     private fun resolveProjectBaseDirs(project: Project): List<Path> {
-        val out = ArrayList<Path>(6)
+        val out = ArrayList<Path>(8)
 
-        val basePath = project.basePath
-        if (basePath != null) {
-            out.add(Path.of(basePath))
-        }
+        project.basePath?.let { out.add(Path.of(it)) }
+
+        ShamashProjectUtil.guessProjectDir(project)?.path?.let { out.add(Path.of(it)) }
 
         val roots = ProjectRootManager.getInstance(project).contentRoots
         for (r in roots) {

@@ -21,12 +21,14 @@ package io.shamash.psi.scan
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
+import io.shamash.psi.baseline.BaselineConfig
 import io.shamash.psi.config.ConfigValidation
+import io.shamash.psi.config.ValidationError
 import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.engine.Finding
 import io.shamash.psi.engine.ShamashPsiEngine
@@ -40,8 +42,12 @@ import java.nio.file.Path
  * Project-wide scan runner for Shamash PSI engine with optional report export.
  *
  * Threading:
- * - Runs on a background thread, but ALL PSI access is wrapped in a read-action.
- * - Uses Smart Mode for analysis (waits for indexing) to keep resolve/type-safe.
+ * - VFS traversal is done on the calling thread.
+ * - Any PSI access (PsiManager.findFile, resolve, types) is executed inside:
+ *     DumbService.runReadActionInSmartMode { ... }
+ *
+ * This prevents "Read access is allowed from inside read-action only" crashes and
+ * avoids running heavy resolve while indexing.
  */
 class ShamashProjectScanRunner(
     private val engine: ShamashPsiEngine = ShamashPsiEngine(),
@@ -52,9 +58,12 @@ class ShamashProjectScanRunner(
         val exportedReport: ExportedReport?,
         val outputDir: Path?,
         val baselineWritten: Boolean,
-        val configErrors: List<io.shamash.psi.config.ValidationError> = emptyList(),
+        val configErrors: List<ValidationError> = emptyList(),
     )
 
+    /**
+     * Backward-compatible entrypoint: validates first from [configReader].
+     */
     fun scanProject(
         project: Project,
         configReader: Reader,
@@ -75,6 +84,9 @@ class ShamashProjectScanRunner(
         return scanProject(project, res.config, options)
     }
 
+    /**
+     * Production entrypoint: scans project files, aggregates findings, and optionally exports reports.
+     */
     fun scanProject(
         project: Project,
         config: ShamashPsiConfigV1,
@@ -83,41 +95,29 @@ class ShamashProjectScanRunner(
         ProgressManager.checkCanceled()
 
         val psiManager = PsiManager.getInstance(project)
+        val dumb = DumbService.getInstance(project)
+
         val findings = ArrayList<Finding>(1024)
 
-        val fileIndex = ProjectFileIndex.getInstance(project)
-        val dumbService = DumbService.getInstance(project)
-
-        val includes =
-            config.project.sourceGlobs.include
-                .ifEmpty { listOf("src/main/java/**", "src/main/kotlin/**") }
-        val excludes =
-            config.project.sourceGlobs.exclude
-                .ifEmpty { listOf("**/build/**", "**/generated/**", "**/.idea/**") }
-
-        val roots = ProjectRootManager.getInstance(project).contentRoots
+        val roots = collectContentRoots(project)
         for (root in roots) {
             ProgressManager.checkCanceled()
-            collectFindingsUnderRoot(root, psiManager, config, findings, fileIndex, dumbService, includes, excludes)
+            collectFindingsUnderRoot(root, dumb, psiManager, config, findings)
         }
 
         if (!options.exportReports) {
-            return ScanResult(findings = findings, exportedReport = null, outputDir = null, baselineWritten = false)
+            return ScanResult(
+                findings = findings,
+                exportedReport = null,
+                outputDir = null,
+                baselineWritten = false,
+            )
         }
 
-        val basePath =
-            project.basePath
-                ?: project.projectFile?.parent?.path
-                ?: ProjectRootManager
-                    .getInstance(project)
-                    .contentRoots
-                    .firstOrNull()
-                    ?.path
-                ?: throw IllegalStateException("Project basePath is null; cannot export Shamash reports.")
-
+        val projectBasePath = resolveProjectBasePath(project)
         val exportResult =
             exportService.export(
-                projectBasePath = Path.of(basePath),
+                projectBasePath = projectBasePath,
                 projectName = project.name,
                 toolName = options.toolName,
                 toolVersion = options.toolVersion,
@@ -135,60 +135,82 @@ class ShamashProjectScanRunner(
         )
     }
 
+    private fun collectContentRoots(project: Project): List<VirtualFile> {
+        val out = ArrayList<VirtualFile>(8)
+
+        // Project content roots (works for most projects)
+        out.addAll(ProjectRootManager.getInstance(project).contentRoots)
+
+        // Module roots (helps in some multi-module layouts)
+        val modules =
+            com.intellij.openapi.module.ModuleManager
+                .getInstance(project)
+                .modules
+        for (m in modules) {
+            out.addAll(ModuleRootManager.getInstance(m).contentRoots)
+        }
+
+        // De-dup by path, keep order
+        val seen = LinkedHashSet<String>(out.size)
+        val deduped = ArrayList<VirtualFile>(out.size)
+        for (vf in out) {
+            if (seen.add(vf.path)) deduped.add(vf)
+        }
+
+        return deduped
+    }
+
     private fun collectFindingsUnderRoot(
         root: VirtualFile,
+        dumb: DumbService,
         psiManager: PsiManager,
         config: ShamashPsiConfigV1,
         outFindings: MutableList<Finding>,
-        fileIndex: ProjectFileIndex,
-        dumbService: DumbService,
-        includes: List<String>,
-        excludes: List<String>,
     ) {
+        val include = config.project.sourceGlobs.include
+        val exclude = config.project.sourceGlobs.exclude
+
         VfsUtilCore.iterateChildrenRecursively(root, null) { vf ->
             ProgressManager.checkCanceled()
 
             if (vf.isDirectory) return@iterateChildrenRecursively true
             if (vf.fileType.isBinary) return@iterateChildrenRecursively true
 
-            // Fast filter: only source files we care about
-            val ext = vf.extension?.lowercase()
-            if (ext != "kt" && ext != "java") return@iterateChildrenRecursively true
+            val path = GlobMatcher.normalizePath(vf.path)
 
-            if (!fileIndex.isInSourceContent(vf)) return@iterateChildrenRecursively true
+            // Apply include/exclude globs early (cheap)
+            if (include.isNotEmpty() && include.none { GlobMatcher.matches(it, path) }) {
+                return@iterateChildrenRecursively true
+            }
+            if (exclude.isNotEmpty() && exclude.any { GlobMatcher.matches(it, path) }) {
+                return@iterateChildrenRecursively true
+            }
 
-            val normalized = GlobMatcher.normalizePath(vf.path)
+            // PSI work must be in read-action + smart mode
+            dumb.runReadActionInSmartMode {
+                ProgressManager.checkCanceled()
 
-            // YAML globs are relative-friendly; try both absolute and relative-to-root matching.
-            val relToRoot =
-                runCatching {
-                    val rootPath = GlobMatcher.normalizePath(root.path).trimEnd('/')
-                    if (normalized.startsWith(rootPath)) normalized.removePrefix(rootPath).trimStart('/') else normalized
-                }.getOrDefault(normalized)
-
-            fun matchesAny(
-                globs: List<String>,
-                path: String,
-            ): Boolean = globs.any { GlobMatcher.matches(it, path) }
-
-            val included = matchesAny(includes, normalized) || matchesAny(includes, relToRoot)
-            if (!included) return@iterateChildrenRecursively true
-
-            val excluded = matchesAny(excludes, normalized) || matchesAny(excludes, relToRoot)
-            if (excluded) return@iterateChildrenRecursively true
-
-            val fileFindings: List<Finding> =
-                dumbService.runReadActionInSmartMode<List<Finding>> {
-                    ProgressManager.checkCanceled()
-                    val psiFile = psiManager.findFile(vf) ?: return@runReadActionInSmartMode emptyList()
-                    engine.analyzeFile(psiFile, config)
+                val psiFile = psiManager.findFile(vf) ?: return@runReadActionInSmartMode
+                val fileFindings = engine.analyzeFile(psiFile, config)
+                if (fileFindings.isNotEmpty()) {
+                    outFindings.addAll(fileFindings)
                 }
-
-            if (fileFindings.isNotEmpty()) {
-                outFindings.addAll(fileFindings)
             }
 
             true
         }
+    }
+
+    private fun resolveProjectBasePath(project: Project): Path {
+        val basePath =
+            project.basePath
+                ?: project.projectFile?.parent?.path
+                ?: ProjectRootManager
+                    .getInstance(project)
+                    .contentRoots
+                    .firstOrNull()
+                    ?.path
+                ?: throw IllegalStateException("Project basePath is null; cannot export Shamash reports.")
+        return Path.of(basePath)
     }
 }

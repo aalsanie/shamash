@@ -1,21 +1,3 @@
-/*
- * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
- *
- * Author: @aalsanie
- *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.shamash.psi.config
 
 import io.shamash.psi.config.schema.v1.model.ExceptionMatch
@@ -32,7 +14,17 @@ object ConfigValidator {
     // These are reserved "match everything" tokens in exception suppress lists.
     private val WILDCARD_SUPPRESS: Set<String> = setOf("*", "all")
 
-    fun validateSemantic(config: ShamashPsiConfigV1): List<ValidationError> {
+    /**
+     * Semantic validation that also supports checking whether rules are actually executable.
+     *
+     * @param executableRuleIds optional set of ruleIds that are runnable in the engine.
+     *        If provided, enabled rules not in this set will be warned/errored (per unknownRuleId policy),
+     *        even if they exist in the schema registry.
+     */
+    fun validateSemantic(
+        config: ShamashPsiConfigV1,
+        executableRuleIds: Set<String>? = null,
+    ): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
         // Version check
@@ -66,6 +58,7 @@ object ConfigValidator {
 
             val spec = RuleSpecRegistryV1.find(ruleId)
             if (spec == null) {
+                // Unknown to schema/spec registry
                 when (config.project.validation.unknownRuleId) {
                     UnknownRuleIdPolicyV1.IGNORE -> Unit
                     UnknownRuleIdPolicyV1.WARN ->
@@ -73,9 +66,30 @@ object ConfigValidator {
                     UnknownRuleIdPolicyV1.ERROR ->
                         errors += ValidationError(rulePath, "Unknown ruleId '$ruleId'", ValidationSeverity.ERROR)
                 }
-            } else {
-                errors += spec.validate(rulePath, ruleDef, config)
+                return@forEach
             }
+
+            // Known to schema, but possibly not implemented in engine
+            if (executableRuleIds != null && !executableRuleIds.contains(ruleId)) {
+                when (config.project.validation.unknownRuleId) {
+                    UnknownRuleIdPolicyV1.IGNORE -> Unit
+                    UnknownRuleIdPolicyV1.WARN ->
+                        errors += ValidationError(
+                            rulePath,
+                            "RuleId '$ruleId' is defined in schema but not implemented in engine (rule will not run)",
+                            ValidationSeverity.WARNING,
+                        )
+                    UnknownRuleIdPolicyV1.ERROR ->
+                        errors += ValidationError(
+                            rulePath,
+                            "RuleId '$ruleId' is defined in schema but not implemented in engine",
+                            ValidationSeverity.ERROR,
+                        )
+                }
+                // still run spec validation so user sees param issues too
+            }
+
+            errors += spec.validate(rulePath, ruleDef, config)
         }
 
         // Validate exceptions
@@ -87,29 +101,29 @@ object ConfigValidator {
             if (ex.suppress.isEmpty()) errors += err("$base.suppress", "suppress must contain at least one ruleId")
             if (ex.suppress.any { it.isBlank() }) errors += err("$base.suppress", "suppress must not contain blank values")
 
-            val knownRuleIds = RuleSpecRegistryV1.allIds()
+            val knownSpecRuleIds = RuleSpecRegistryV1.allIds()
+            val knownExecutableRuleIds = executableRuleIds
 
             ex.suppress.forEachIndexed { j, rid ->
                 // Allow reserved wildcard tokens.
                 if (rid in WILDCARD_SUPPRESS) return@forEachIndexed
 
-                if (!knownRuleIds.contains(rid)) {
+                val specKnown = knownSpecRuleIds.contains(rid)
+                val execKnown = knownExecutableRuleIds?.contains(rid) ?: true // if not provided, skip exec check
+
+                if (!specKnown || !execKnown) {
+                    val why =
+                        when {
+                            !specKnown -> "Unknown ruleId '$rid' in exception suppress list"
+                            else -> "RuleId '$rid' in exception suppress list is not implemented in engine"
+                        }
+
                     when (config.project.validation.unknownRuleId) {
                         UnknownRuleIdPolicyV1.IGNORE -> Unit
                         UnknownRuleIdPolicyV1.WARN ->
-                            errors +=
-                                ValidationError(
-                                    "$base.suppress[$j]",
-                                    "Unknown ruleId '$rid' in exception suppress list",
-                                    ValidationSeverity.WARNING,
-                                )
+                            errors += ValidationError("$base.suppress[$j]", why, ValidationSeverity.WARNING)
                         UnknownRuleIdPolicyV1.ERROR ->
-                            errors +=
-                                ValidationError(
-                                    "$base.suppress[$j]",
-                                    "Unknown ruleId '$rid' in exception suppress list",
-                                    ValidationSeverity.ERROR,
-                                )
+                            errors += ValidationError("$base.suppress[$j]", why, ValidationSeverity.ERROR)
                     }
                 }
             }
@@ -163,20 +177,19 @@ object ConfigValidator {
             is Matcher.PackageRegex -> compileRegex(m.packageRegex, "$path.packageRegex", errors)
             is Matcher.ClassNameRegex -> compileRegex(m.classNameRegex, "$path.classNameRegex", errors)
 
-            // non-regex matchers need no semantic validation here
             else -> Unit
         }
     }
 
     private fun isExceptionMatchEmpty(m: ExceptionMatch): Boolean =
         m.fileGlob == null &&
-            m.packageRegex == null &&
-            m.classNameRegex == null &&
-            m.methodNameRegex == null &&
-            m.fieldNameRegex == null &&
-            m.hasAnnotation == null &&
-            m.hasAnnotationPrefix == null &&
-            m.role == null
+                m.packageRegex == null &&
+                m.classNameRegex == null &&
+                m.methodNameRegex == null &&
+                m.fieldNameRegex == null &&
+                m.hasAnnotation == null &&
+                m.hasAnnotationPrefix == null &&
+                m.role == null
 
     private fun compileRegex(
         rx: String,
@@ -190,8 +203,6 @@ object ConfigValidator {
         }
     }
 
-    private fun err(
-        path: String,
-        msg: String,
-    ): ValidationError = ValidationError(path, msg, ValidationSeverity.ERROR)
+    private fun err(path: String, msg: String): ValidationError =
+        ValidationError(path, msg, ValidationSeverity.ERROR)
 }
