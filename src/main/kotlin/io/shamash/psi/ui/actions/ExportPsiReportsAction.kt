@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.psi.ui
+package io.shamash.psi.ui.actions
 
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationType
@@ -30,11 +30,11 @@ import com.intellij.openapi.project.Project
 import io.shamash.psi.baseline.BaselineConfig
 import io.shamash.psi.config.ConfigValidation
 import io.shamash.psi.export.ShamashPsiReportExportService
-import io.shamash.psi.scan.ShamashScanOptions
-import io.shamash.psi.ui.actions.PsiActionUtil
-import io.shamash.psi.ui.actions.ShamashPsiUiStateService
+import io.shamash.psi.ui.ShamashPsiToolWindowController
 import io.shamash.psi.ui.settings.ShamashPsiConfigLocator
+import io.shamash.psi.util.ShamashProjectUtil
 import java.io.StringReader
+import java.nio.file.Path
 
 class ExportPsiReportsAction(
     private val exportService: ShamashPsiReportExportService = ShamashPsiReportExportService(),
@@ -56,47 +56,55 @@ class ExportPsiReportsAction(
             return
         }
 
-        // Resolve config (for metadata only; export uses findings from UI state)
         val vf = ShamashPsiConfigLocator.resolveConfigFile(project)
         if (vf == null) {
             PsiActionUtil.notify(project, "Shamash PSI", "Config file not found; cannot export.", NotificationType.ERROR)
             return
         }
+
         val yaml = String(vf.contentsToByteArray())
 
         object : Task.Backgroundable(project, "Shamash PSI Export Reports", false) {
-            private var outputDir: java.nio.file.Path? = null
+            private var outputDir: Path? = null
             private var report: io.shamash.psi.export.schema.v1.model.ExportedReport? = null
-            private var baselineWritten: Boolean = false
 
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
                 ProgressManager.checkCanceled()
 
-                val validation = ConfigValidation.loadAndValidateV1(StringReader(yaml))
-                if (!validation.ok || validation.config == null) {
-                    // export requires a valid config because exporters need metadata and exceptions.
-                    return
+                try {
+                    // Export requires a valid config for metadata/exceptions.
+                    val validation = ConfigValidation.loadAndValidateV1(StringReader(yaml))
+                    if (!validation.ok || validation.config == null) {
+                        return
+                    }
+
+                    // IMPORTANT:
+                    // Do NOT touch ProjectRootManager/contentRoots here.
+                    // That can trigger Gradle project model initialization.
+                    val basePath = resolveProjectBasePathSafe(project)
+
+                    val result =
+                        exportService.export(
+                            projectBasePath = basePath,
+                            projectName = project.name,
+                            toolName = "Shamash PSI",
+                            toolVersion = pluginVersion(),
+                            findings = findings,
+                            baseline = BaselineConfig.Off,
+                            exceptionsPreprocessor = null,
+                            generatedAtEpochMillis = System.currentTimeMillis(),
+                        )
+
+                    outputDir = result.outputDir
+                    report = result.report
+
+                    ProgressManager.checkCanceled()
+                } catch (t: Throwable) {
+                    // Don’t let IDE crash because some other plugin (Gradle) had broken persisted state.
+                    // Surface as a normal export failure.
+                    throw RuntimeException("Export failed: ${t.message}", t)
                 }
-
-                val basePath = resolveProjectBasePath(project)
-                val result =
-                    exportService.export(
-                        projectBasePath = basePath,
-                        projectName = project.name,
-                        toolName = "Shamash PSI",
-                        toolVersion = pluginVersion(),
-                        findings = findings,
-                        baseline = BaselineConfig.Off,
-                        exceptionsPreprocessor = null,
-                        generatedAtEpochMillis = System.currentTimeMillis(),
-                    )
-
-                outputDir = result.outputDir
-                report = result.report
-                baselineWritten = result.baselineWritten
-
-                ProgressManager.checkCanceled()
             }
 
             override fun onSuccess() {
@@ -122,23 +130,34 @@ class ExportPsiReportsAction(
             }
 
             override fun onThrowable(error: Throwable) {
-                PsiActionUtil.notify(project, "Shamash PSI", "Export failed: ${error.message}", NotificationType.ERROR)
+                PsiActionUtil.notify(
+                    project,
+                    "Shamash PSI",
+                    error.message ?: "Export failed.",
+                    NotificationType.ERROR,
+                )
             }
         }.queue()
     }
 
-    private fun resolveProjectBasePath(project: Project): java.nio.file.Path {
-        val basePath =
-            project.basePath
-                ?: project.projectFile?.parent?.path
-                ?: com.intellij.openapi.roots.ProjectRootManager
-                    .getInstance(project)
-                    .contentRoots
-                    .firstOrNull()
-                    ?.path
-                ?: throw IllegalStateException("Project basePath is null; cannot export Shamash reports.")
-        return java.nio.file.Path
-            .of(basePath)
+    /**
+     * Safe project base path resolution that avoids touching Gradle-backed project model APIs.
+     */
+    private fun resolveProjectBasePathSafe(project: Project): Path {
+        // 1) Most reliable & cheapest
+        project.basePath?.let { return Path.of(it) }
+
+        // 2) Often present in test / unusual setups
+        project.projectFile
+            ?.parent
+            ?.path
+            ?.let { return Path.of(it) }
+
+        // 3) Best-effort guess without ProjectRootManager
+        val guessed = ShamashProjectUtil.guessProjectDir(project)?.path
+        if (!guessed.isNullOrBlank()) return Path.of(guessed)
+
+        throw IllegalStateException("Project base path is null; cannot export Shamash reports.")
     }
 
     private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"
