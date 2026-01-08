@@ -18,6 +18,7 @@
  */
 package io.shamash.psi.engine
 
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiFile
@@ -59,7 +60,9 @@ internal object ExceptionSuppressor {
         val basePath = project.basePath
 
         return findings.filterNot { f ->
+            ProgressManager.checkCanceled()
             config.shamashExceptions.any { ex ->
+                ProgressManager.checkCanceled()
                 val suppressesThisRule =
                     ex.suppress.any { token -> token == f.ruleId || token in WILDCARD_SUPPRESS }
 
@@ -67,7 +70,7 @@ internal object ExceptionSuppressor {
 
                 // expiry enforcement
                 ex.expiresOn?.let { dateStr ->
-                    runCatching { LocalDate.parse(dateStr) }.getOrNull()?.let { exp ->
+                    runCatching { dateStr }.getOrNull()?.let { exp ->
                         if (LocalDate.now().isAfter(exp)) return@any false
                     }
                 }
@@ -167,6 +170,7 @@ internal object ExceptionSuppressor {
 
         // Check method first
         psiClass.findMethodsByName(memberName, true).forEach { m ->
+            ProgressManager.checkCanceled()
             m.modifierList.annotations
                 .mapNotNull { it.qualifiedName }
                 .forEach { if (annOk(it)) return true }

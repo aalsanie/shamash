@@ -28,7 +28,7 @@ import io.shamash.psi.fixes.providers.PackagesRootPackageFixProvider
 import io.shamash.psi.fixes.providers.SuppressFixProvider
 
 object FixRegistry {
-    private val providers =
+    private val providers: List<FixProvider> =
         listOf(
             ArchForbiddenRoleDependenciesFixProvider(),
             DeadcodeUnusedPrivateMembersFixProvider(),
@@ -42,5 +42,21 @@ object FixRegistry {
     fun fixesFor(
         f: Finding,
         ctx: FixContext,
-    ): List<ShamashFix> = providers.filter { it.supports(f) }.flatMap { it.fixesFor(f, ctx) }
+    ): List<ShamashFix> {
+        val out = ArrayList<ShamashFix>(8)
+        val seenIds = HashSet<String>(8)
+
+        for (p in providers) {
+            val supported = runCatching { p.supports(f) }.getOrDefault(false)
+            if (!supported) continue
+
+            val fixes = runCatching { p.fixesFor(f, ctx) }.getOrDefault(emptyList())
+            for (fix in fixes) {
+                // de-dup by id to keep UI stable even if providers overlap
+                if (seenIds.add(fix.id)) out += fix
+            }
+        }
+
+        return out
+    }
 }

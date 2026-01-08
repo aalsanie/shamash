@@ -13,8 +13,8 @@
       "additionalProperties": { "$ref": "#/$defs/roleDef" }
     },
     "rules": {
-      "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/ruleDef" }
+      "type": "array",
+      "items": { "$ref": "#/$defs/ruleDef" }
     },
     "exceptions": {
       "type": "array",
@@ -23,27 +23,35 @@
   },
   "$defs": {
     "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"] },
+
+    "unknownRulePolicy": {
+      "type": "string",
+      "enum": ["ERROR", "WARN", "IGNORE", "error", "warn", "ignore"]
+    },
+
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
     "globList": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": { "$ref": "#/$defs/nonEmptyString" }
     },
+
     "regexList": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": { "$ref": "#/$defs/nonEmptyString" }
     },
+
     "project": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["sourceGlobs", "validation"],
       "properties": {
-        "rootPackage": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["mode", "value"],
-          "properties": {
-            "mode": { "type": "string", "enum": ["auto", "explicit"] },
-            "value": { "type": "string" }
-          }
-        },
+        "rootPackage": { "$ref": "#/$defs/rootPackage" },
         "sourceGlobs": {
           "type": "object",
           "additionalProperties": false,
@@ -56,22 +64,38 @@
         "validation": {
           "type": "object",
           "additionalProperties": false,
+          "required": ["unknownRule"],
           "properties": {
-            "unknownRuleId": { "type": "string", "enum": ["ERROR", "IGNORE", "WARN", "error", "ignore", "warn"] }
+            "unknownRule": { "$ref": "#/$defs/unknownRulePolicy" }
           }
         }
       }
     },
+
+    "rootPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "value"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["AUTO", "EXPLICIT", "auto", "explicit"]
+        },
+        "value": { "type": "string" }
+      }
+    },
+
     "roleDef": {
       "type": "object",
       "additionalProperties": false,
       "required": ["priority", "match"],
       "properties": {
         "description": { "type": "string" },
-        "priority": { "type": "integer" },
+        "priority": { "type": "integer", "minimum": 0, "maximum": 100 },
         "match": { "$ref": "#/$defs/matcher" }
       }
     },
+
     "matcher": {
       "type": "object",
       "additionalProperties": false,
@@ -87,21 +111,25 @@
           "items": { "$ref": "#/$defs/matcher" }
         },
         "not": { "$ref": "#/$defs/matcher" },
-        "annotation": { "type": "string", "minLength": 1 },
-        "annotationPrefix": { "type": "string", "minLength": 1 },
-        "packageRegex": { "type": "string", "minLength": 1 },
-        "packageContainsSegment": { "type": "string", "minLength": 1 },
-        "classNameRegex": { "type": "string", "minLength": 1 },
-        "classNameEndsWith": { "type": "string", "minLength": 1 },
+
+        "annotation": { "$ref": "#/$defs/nonEmptyString" },
+        "annotationPrefix": { "$ref": "#/$defs/nonEmptyString" },
+        "packageRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "packageContainsSegment": { "$ref": "#/$defs/nonEmptyString" },
+        "classNameRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "classNameEndsWith": { "$ref": "#/$defs/nonEmptyString" },
+
         "classNameEndsWithAny": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         },
+
         "hasMainMethod": { "type": "boolean" },
-        "implements": { "type": "string", "minLength": 1 },
-        "extends": { "type": "string", "minLength": 1 }
+        "implements": { "$ref": "#/$defs/nonEmptyString" },
+        "extends": { "$ref": "#/$defs/nonEmptyString" }
       },
+
       "oneOf": [
         { "required": ["anyOf"] },
         { "required": ["allOf"] },
@@ -118,57 +146,83 @@
         { "required": ["extends"] }
       ]
     },
+
     "ruleScope": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "includeRoles": { "type": "array", "items": { "type": "string" } },
-        "excludeRoles": { "type": "array", "items": { "type": "string" } },
+        "includeRoles": { "$ref": "#/$defs/stringList" },
+        "excludeRoles": { "$ref": "#/$defs/stringList" },
+
         "includePackages": { "$ref": "#/$defs/regexList" },
         "excludePackages": { "$ref": "#/$defs/regexList" },
+
         "includeGlobs": { "$ref": "#/$defs/globList" },
         "excludeGlobs": { "$ref": "#/$defs/globList" }
       }
     },
+
     "ruleDef": {
       "type": "object",
-      "additionalProperties": true,
-      "required": ["enabled", "severity"],
+      "additionalProperties": false,
+      "required": ["type", "name", "enabled", "severity"],
       "properties": {
+        "type": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+
+        "roles": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+
         "enabled": { "type": "boolean" },
         "severity": { "$ref": "#/$defs/severity" },
-        "scope": { "$ref": "#/$defs/ruleScope" }
+
+        "scope": { "$ref": "#/$defs/ruleScope" },
+
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        }
       }
     },
+
     "exceptionDef": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "reason", "match", "suppress"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "reason": { "type": "string", "minLength": 1 },
-        "expiresOn": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "reason": { "$ref": "#/$defs/nonEmptyString" },
+
+        "expiresOn": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+
         "match": { "$ref": "#/$defs/exceptionMatch" },
+
         "suppress": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "$ref": "#/$defs/nonEmptyString" }
         }
       }
     },
+
     "exceptionMatch": {
       "type": "object",
       "additionalProperties": false,
       "minProperties": 1,
       "properties": {
-        "fileGlob": { "type": "string", "minLength": 1 },
-        "packageRegex": { "type": "string", "minLength": 1 },
-        "classNameRegex": { "type": "string", "minLength": 1 },
-        "methodNameRegex": { "type": "string", "minLength": 1 },
-        "fieldNameRegex": { "type": "string", "minLength": 1 },
-        "hasAnnotation": { "type": "string", "minLength": 1 },
-        "hasAnnotationPrefix": { "type": "string", "minLength": 1 },
-        "role": { "type": "string", "minLength": 1 }
+        "fileGlob": { "$ref": "#/$defs/nonEmptyString" },
+        "packageRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "classNameRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "methodNameRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "fieldNameRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "hasAnnotation": { "$ref": "#/$defs/nonEmptyString" },
+        "hasAnnotationPrefix": { "$ref": "#/$defs/nonEmptyString" },
+        "role": { "$ref": "#/$defs/nonEmptyString" }
       }
     }
   }

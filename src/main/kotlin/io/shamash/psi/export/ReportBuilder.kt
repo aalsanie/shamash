@@ -18,22 +18,25 @@
  */
 package io.shamash.psi.export
 
+import io.shamash.psi.baseline.BaselineFingerprint
 import io.shamash.psi.engine.Finding
 import io.shamash.psi.export.schema.v1.model.ExportedFinding
 import io.shamash.psi.export.schema.v1.model.ExportedReport
 import io.shamash.psi.export.schema.v1.model.ProjectMetadata
 import io.shamash.psi.export.schema.v1.model.ToolMetadata
+import io.shamash.psi.util.PathNormalizer
 import java.nio.file.Path
+import java.nio.file.Paths
 
 /**
- * Builds a schema v1 ExportedReport from engine findings.
+ * Builds a schema v1 [ExportedReport] from engine findings.
  *
  * Responsibilities:
  * - Run a deterministic preprocessing pipeline.
  * - Normalize base path and exported file paths.
- * - Map internal Finding to exported schema model.
- * - Compute stable fingerprints baseline-ready.
- * - Enforce ordering at the export boundary.
+ * - Map internal [Finding] to exported schema model.
+ * - Compute stable baseline-ready fingerprints.
+ * - Enforce deterministic ordering at the export boundary.
  */
 class ReportBuilder(
     private val findingPreprocessors: List<FindingPreprocessor> = emptyList(),
@@ -46,18 +49,19 @@ class ReportBuilder(
         findings: List<Finding>,
         generatedAtEpochMillis: Long,
     ): ExportedReport {
-        val normalizedBasePath = PathNormalizer.normalizeBasePath(projectBasePath)
+        val baseAbs: Path = projectBasePath.toAbsolutePath().normalize()
+        val normalizedBasePath: String = PathNormalizer.normalize(baseAbs.toString())
 
         val preprocessedFindings =
             applyPreprocessors(
-                projectBasePath = projectBasePath,
+                projectBasePath = baseAbs,
                 findings = findings,
             )
 
         val exportedFindings =
             preprocessedFindings
                 .asSequence()
-                .map { toExportedFinding(projectBasePath, it) }
+                .map { toExportedFinding(baseAbs, it) }
                 .sortedWith(EXPORTED_FINDING_COMPARATOR)
                 .toList()
 
@@ -95,8 +99,8 @@ class ReportBuilder(
         projectBasePath: Path,
         finding: Finding,
     ): ExportedFinding {
-        val filePath = PathNormalizer.toProjectRelativeNormalizedPath(projectBasePath, finding.filePath)
-        val fingerprint = FindingFingerprint.sha256Hex(finding, filePath)
+        val filePath = toProjectRelativeNormalizedPath(projectBasePath, finding.filePath)
+        val fingerprint = BaselineFingerprint.sha256Hex(finding, filePath)
 
         return ExportedFinding(
             ruleId = finding.ruleId,
@@ -108,6 +112,25 @@ class ReportBuilder(
             fingerprint = fingerprint,
         )
     }
+
+    private fun toProjectRelativeNormalizedPath(
+        projectBasePath: Path,
+        rawFilePath: String,
+    ): String {
+        val target = safeToPath(rawFilePath)
+        return if (target != null) {
+            PathNormalizer.relativizeOrNormalize(projectBasePath, target)
+        } else {
+            PathNormalizer.normalize(rawFilePath)
+        }
+    }
+
+    private fun safeToPath(raw: String): Path? =
+        try {
+            Paths.get(raw)
+        } catch (_: Throwable) {
+            null
+        }
 
     private fun normalizeOptional(value: String?): String? {
         val v = value?.trim()
@@ -134,27 +157,19 @@ class ReportBuilder(
                 val memberCmp = (a.memberName ?: "").compareTo(b.memberName ?: "")
                 if (memberCmp != 0) return@Comparator memberCmp
 
-                val msgCmp = a.message.compareTo(b.message)
-                if (msgCmp != 0) return@Comparator msgCmp
+                // fingerprint is intended stable; message is not.
+                val fpCmp = a.fingerprint.compareTo(b.fingerprint)
+                if (fpCmp != 0) return@Comparator fpCmp
 
-                a.fingerprint.compareTo(b.fingerprint)
+                a.message.compareTo(b.message)
             }
 
         private fun severityRank(f: ExportedFinding): Int =
-            when (f.severity.name) {
-                "ERROR" -> 0
-                "WARNING" -> 1
+            when (f.severity) {
+                // adjust to your actual enum values if needed
+                io.shamash.psi.engine.FindingSeverity.ERROR -> 0
+                io.shamash.psi.engine.FindingSeverity.WARNING -> 1
                 else -> 2
             }
     }
-}
-
-/**
- * Official hook point for baseline and exception suppression.
- */
-fun interface FindingPreprocessor {
-    fun process(
-        projectBasePath: Path,
-        findings: List<Finding>,
-    ): List<Finding>
 }

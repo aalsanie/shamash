@@ -18,10 +18,12 @@
  */
 package io.shamash.psi.baseline
 
-import io.shamash.psi.export.json.JsonEscaper
+import io.shamash.psi.util.json.JsonEscaper
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import kotlin.io.path.name
 
 /**
  * Stores and loads Shamash baseline data used to suppress pre-existing findings.
@@ -61,6 +63,7 @@ class BaselineStore {
 
         val raw = Files.readString(path, StandardCharsets.UTF_8)
         val parsed = parseBaseline(raw)
+
         if (parsed.version != VERSION) {
             throw IllegalStateException(
                 "Unsupported baseline version ${parsed.version} in $path (supported: $VERSION).",
@@ -80,18 +83,15 @@ class BaselineStore {
         Files.createDirectories(path.parent)
 
         val json = serializeBaseline(fingerprints)
-        val tmp = path.resolveSibling("${path.fileName}.tmp")
 
+        val tmp = path.resolveSibling("${path.name}.tmp")
         Files.writeString(tmp, json, StandardCharsets.UTF_8)
+
+        // Best-effort atomic move (falls back when not supported)
         try {
-            Files.move(
-                tmp,
-                path,
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-            )
-        } catch (e: Exception) {
-            Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } catch (_: Exception) {
+            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
         }
     }
 
@@ -107,7 +107,7 @@ class BaselineStore {
             sb
                 .append('\n')
                 .append("    \"")
-                .append(JsonEscaper.escapeString(fp))
+                .append(JsonEscaper.escape(fp))
                 .append('"')
             first = false
         }
@@ -134,14 +134,10 @@ class BaselineStore {
         fieldName: String,
     ): Int {
         val idx = json.indexOf("\"$fieldName\"")
-        if (idx < 0) {
-            throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
-        }
+        if (idx < 0) throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
 
         val colon = json.indexOf(':', idx)
-        if (colon < 0) {
-            throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
-        }
+        if (colon < 0) throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
 
         var i = colon + 1
         while (i < json.length && json[i].isWhitespace()) i++
@@ -149,10 +145,7 @@ class BaselineStore {
         val start = i
         while (i < json.length && (json[i].isDigit() || json[i] == '-')) i++
 
-        if (start == i) {
-            throw IllegalStateException("Invalid baseline JSON: \"$fieldName\" is not a number.")
-        }
-
+        if (start == i) throw IllegalStateException("Invalid baseline JSON: \"$fieldName\" is not a number.")
         return json.substring(start, i).trim().toInt()
     }
 
@@ -161,24 +154,16 @@ class BaselineStore {
         fieldName: String,
     ): Set<String> {
         val idx = json.indexOf("\"$fieldName\"")
-        if (idx < 0) {
-            throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
-        }
+        if (idx < 0) throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
 
         val colon = json.indexOf(':', idx)
-        if (colon < 0) {
-            throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
-        }
+        if (colon < 0) throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
 
         val openBracket = json.indexOf('[', colon)
-        if (openBracket < 0) {
-            throw IllegalStateException("Invalid baseline JSON: missing '[' for \"$fieldName\".")
-        }
+        if (openBracket < 0) throw IllegalStateException("Invalid baseline JSON: missing '[' for \"$fieldName\".")
 
         val closeBracket = json.indexOf(']', openBracket)
-        if (closeBracket < 0) {
-            throw IllegalStateException("Invalid baseline JSON: missing ']' for \"$fieldName\".")
-        }
+        if (closeBracket < 0) throw IllegalStateException("Invalid baseline JSON: missing ']' for \"$fieldName\".")
 
         val arraySlice = json.substring(openBracket + 1, closeBracket)
         return extractJsonStringLiterals(arraySlice)
@@ -187,6 +172,7 @@ class BaselineStore {
     private fun extractJsonStringLiterals(slice: String): Set<String> {
         val out = LinkedHashSet<String>()
         var i = 0
+
         while (i < slice.length) {
             while (i < slice.length && slice[i].isWhitespace()) i++
             if (i >= slice.length) break
@@ -196,47 +182,54 @@ class BaselineStore {
                 continue
             }
 
-            i++
+            i++ // skip opening quote
             val sb = StringBuilder()
+
             while (i < slice.length) {
                 val ch = slice[i]
-                if (ch == '"') {
-                    i++
-                    break
-                }
-                if (ch == '\\') {
-                    if (i + 1 >= slice.length) {
-                        throw IllegalStateException("Invalid baseline JSON: trailing escape in string literal.")
+                when (ch) {
+                    '"' -> {
+                        i++ // consume closing quote
+                        break
                     }
-                    val next = slice[i + 1]
-                    when (next) {
-                        '"', '\\', '/' -> sb.append(next)
-                        'b' -> sb.append('\b')
-                        'f' -> sb.append('\u000C')
-                        'n' -> sb.append('\n')
-                        'r' -> sb.append('\r')
-                        't' -> sb.append('\t')
-                        'u' -> {
-                            if (i + 5 >= slice.length) {
-                                throw IllegalStateException("Invalid baseline JSON: incomplete unicode escape.")
-                            }
-                            val hex = slice.substring(i + 2, i + 6)
-                            val code = hex.toInt(16)
-                            sb.append(code.toChar())
-                            i += 4
+                    '\\' -> {
+                        if (i + 1 >= slice.length) {
+                            throw IllegalStateException("Invalid baseline JSON: trailing escape in string literal.")
                         }
-                        else -> throw IllegalStateException("Invalid baseline JSON: unsupported escape sequence \\$next.")
+                        val next = slice[i + 1]
+                        when (next) {
+                            '"', '\\', '/' -> sb.append(next)
+                            'b' -> sb.append('\b')
+                            'f' -> sb.append('\u000C')
+                            'n' -> sb.append('\n')
+                            'r' -> sb.append('\r')
+                            't' -> sb.append('\t')
+                            'u' -> {
+                                if (i + 5 >= slice.length) {
+                                    throw IllegalStateException("Invalid baseline JSON: incomplete unicode escape.")
+                                }
+                                val hex = slice.substring(i + 2, i + 6)
+                                val code = hex.toInt(16)
+                                sb.append(code.toChar())
+                                i += 4
+                            }
+                            else -> throw IllegalStateException(
+                                "Invalid baseline JSON: unsupported escape sequence \\$next.",
+                            )
+                        }
+                        i += 2
+                        continue
                     }
-                    i += 2
-                    continue
+                    else -> {
+                        sb.append(ch)
+                        i++
+                    }
                 }
-
-                sb.append(ch)
-                i++
             }
 
             out.add(sb.toString())
         }
+
         return out
     }
 }

@@ -21,8 +21,6 @@ package io.shamash.psi.config
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.ProgressManager
 import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
@@ -38,44 +36,46 @@ import java.lang.reflect.Method
  * It uses networknt-json-schema (the library), not the network.
  */
 object SchemaValidatorNetworkNt : SchemaValidator {
+    /**
+     * Optional cancellation hook.
+     * IntelliJ can set this to ProgressManager::checkCanceled via wiring in plugin code.
+     * CLI can leave it null.
+     */
+    @Volatile
+    var cancelCheck: (() -> Unit)? = null
+
     private val mapper: ObjectMapper = ObjectMapper()
 
     private val schema: JsonSchema by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        SchemaResources.openSchemaJson().use { stream ->
-            loadSchema(stream)
-        }
+        SchemaResources.openSchemaJson().use { stream -> loadSchema(stream) }
     }
 
     override fun validate(raw: Any?): List<ValidationError> {
-        ProgressManager.checkCanceled()
+        cancelCheck?.invoke()
 
         val node: JsonNode =
             try {
                 toJsonNode(raw)
-            } catch (e: ProcessCanceledException) {
-                throw e
             } catch (e: Exception) {
                 return listOf(
                     ValidationError(
                         path = "",
-                        message = "Config root cannot be converted to JSON node: ${e.message}",
+                        message = "Config root cannot be converted to JSON node: ${e.message ?: e::class.java.simpleName}",
                         severity = ValidationSeverity.ERROR,
                     ),
                 )
             }
 
-        ProgressManager.checkCanceled()
+        cancelCheck?.invoke()
 
         val messages: Set<ValidationMessage> =
             try {
                 schema.validate(node)
-            } catch (e: ProcessCanceledException) {
-                throw e
             } catch (e: Exception) {
                 return listOf(
                     ValidationError(
                         path = "",
-                        message = "Schema validation failed unexpectedly: ${e.message}",
+                        message = "Schema validation failed unexpectedly: ${e.message ?: e::class.java.simpleName}",
                         severity = ValidationSeverity.ERROR,
                     ),
                 )
@@ -91,7 +91,7 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     }
 
     private fun loadSchema(schemaStream: InputStream): JsonSchema {
-        ProgressManager.checkCanceled()
+        cancelCheck?.invoke()
         val schemaNode: JsonNode = mapper.readTree(schemaStream)
         val factory: JsonSchemaFactory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
         return factory.getSchema(schemaNode)
@@ -126,7 +126,7 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     private fun ValidationMessage.toValidationError(): ValidationError {
         val rawPath: String = extractBestEffortPath(this)
         val cleanedPath: String = cleanJsonPath(rawPath)
-        val msg: String = extractBestEffortMessage(this)
+        val msg: String = message?.takeIf { it.isNotBlank() } ?: "Schema validation error"
 
         return ValidationError(
             path = cleanedPath,
@@ -145,30 +145,15 @@ object SchemaValidatorNetworkNt : SchemaValidator {
                 .removePrefix("$")
                 .trim()
 
-        return if (dollarCleaned.startsWith("#/")) {
-            dollarCleaned.removePrefix("#/")
-        } else {
-            dollarCleaned
-        }
+        return if (dollarCleaned.startsWith("#/")) dollarCleaned.removePrefix("#/") else dollarCleaned
     }
 
     private fun extractBestEffortPath(msg: ValidationMessage): String {
         // networknt versions differ; use reflection for best compatibility
-        val instanceLocation = reflectToString(msg, "getInstanceLocation")
-        if (instanceLocation.isNotBlank()) return instanceLocation
-
-        val evaluationPath = reflectToString(msg, "getEvaluationPath")
-        if (evaluationPath.isNotBlank()) return evaluationPath
-
-        val schemaLocation = reflectToString(msg, "getSchemaLocation")
-        if (schemaLocation.isNotBlank()) return schemaLocation
-
+        reflectToString(msg, "getInstanceLocation").takeIf { it.isNotBlank() }?.let { return it }
+        reflectToString(msg, "getEvaluationPath").takeIf { it.isNotBlank() }?.let { return it }
+        reflectToString(msg, "getSchemaLocation").takeIf { it.isNotBlank() }?.let { return it }
         return ""
-    }
-
-    private fun extractBestEffortMessage(msg: ValidationMessage): String {
-        val m = msg.message
-        return if (!m.isNullOrBlank()) m else "Schema validation error"
     }
 
     private fun reflectToString(
@@ -177,13 +162,8 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     ): String {
         return try {
             val m: Method =
-                target.javaClass.methods.firstOrNull {
-                    it.name == methodName && it.parameterCount == 0
-                } ?: return ""
-            val r = m.invoke(target) ?: return ""
-            r.toString()
-        } catch (e: ProcessCanceledException) {
-            throw e
+                target.javaClass.methods.firstOrNull { it.name == methodName && it.parameterCount == 0 } ?: return ""
+            (m.invoke(target) ?: "").toString()
         } catch (_: Throwable) {
             ""
         }

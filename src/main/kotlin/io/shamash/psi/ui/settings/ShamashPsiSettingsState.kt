@@ -29,13 +29,15 @@ import com.intellij.openapi.project.Project
     name = "ShamashPsiSettings",
     storages = [Storage("shamash-psi.xml")],
 )
-class ShamashPsiSettingsState(
-    private val project: Project,
-) : PersistentStateComponent<ShamashPsiSettingsState.State> {
+class ShamashPsiSettingsState : PersistentStateComponent<ShamashPsiSettingsState.State> {
     data class State(
         var configPath: String? = null,
         var exportDirOverride: String? = null,
-        var baselineMode: String = "OFF", // OFF | USE | GENERATE: string to avoid enum classpath issues
+        /**
+         * OFF | USE | GENERATE.
+         * Stored as a string to keep settings resilient across refactors and avoid enum binary compatibility issues.
+         */
+        var baselineMode: String = "OFF",
         var openToolWindowOnScan: Boolean = true,
     )
 
@@ -44,7 +46,14 @@ class ShamashPsiSettingsState(
     override fun getState(): State = state
 
     override fun loadState(state: State) {
-        this.state = state
+        // Make a defensive copy (avoid holding onto the framework's mutable instance).
+        this.state =
+            State(
+                configPath = state.configPath,
+                exportDirOverride = state.exportDirOverride,
+                baselineMode = state.baselineMode,
+                openToolWindowOnScan = state.openToolWindowOnScan,
+            )
     }
 
     companion object {

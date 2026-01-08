@@ -22,11 +22,15 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
+import io.shamash.psi.config.schema.v1.model.RuleKey
+import io.shamash.psi.config.schema.v1.model.RuleScope
 import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
+import io.shamash.psi.config.validation.v1.params.ParamError
 import io.shamash.psi.engine.index.ProjectRoleIndex
 import io.shamash.psi.engine.index.ProjectRoleIndexSnapshot
 import io.shamash.psi.engine.registry.RuleRegistry
 import io.shamash.psi.facts.FactExtractor
+import io.shamash.psi.facts.FactsResult
 import io.shamash.psi.util.GlobMatcher
 
 /**
@@ -40,72 +44,193 @@ import io.shamash.psi.util.GlobMatcher
 class ShamashPsiEngine {
     private val log: Logger = Logger.getInstance(ShamashPsiEngine::class.java)
 
+    /**
+     * Back-compat API: returns findings only.
+     * Prefer [analyzeFileResult] for production usage.
+     */
     fun analyzeFile(
         file: PsiFile,
         config: ShamashPsiConfigV1,
-    ): List<Finding> {
+    ): List<Finding> = analyzeFileResult(file, config).findings
+
+    /**
+     * Production API: findings + structured engine errors.
+     */
+    fun analyzeFileResult(
+        file: PsiFile,
+        config: ShamashPsiConfigV1,
+    ): EngineResult {
         ProgressManager.checkCanceled()
 
         val filePath = normalizeFilePath(file)
+        val fileId = filePath
 
-        val facts0 =
+        val errors = mutableListOf<EngineError>()
+
+        fun record(
+            phase: String,
+            t: Throwable,
+            ruleId: String? = null,
+            message: String? = null,
+        ) {
+            errors +=
+                EngineError(
+                    fileId = fileId,
+                    phase = phase,
+                    message = message ?: (t.message ?: "Engine error"),
+                    throwableClass = t::class.java.name,
+                    ruleId = ruleId,
+                )
+        }
+
+        val factsResult: FactsResult =
             try {
-                FactExtractor.extract(file)
+                FactExtractor.extractResult(file)
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (t: Throwable) {
-                log.warn("Fact extraction failed for $filePath", t)
-                return emptyList()
+                // FactExtractor is already best-effort, but keep engine safe in case of unexpected throw.
+                record("facts:extractResult", t)
+                FactsResult(
+                    facts =
+                        io.shamash.psi.facts.model.v1.FactsIndex(
+                            classes = emptyList(),
+                            methods = emptyList(),
+                            fields = emptyList(),
+                            dependencies = emptyList(),
+                            roles = emptyMap(),
+                            classToRole = emptyMap(),
+                        ),
+                    errors = emptyList(),
+                )
             }
 
-        val roleIndex =
+        // Propagate facts extraction errors into engine error channel.
+        for (e in factsResult.errors) {
+            errors +=
+                EngineError(
+                    fileId = fileId,
+                    phase = "facts:${e.phase}",
+                    message = e.message,
+                    throwableClass = e.throwableClass,
+                    ruleId = null,
+                )
+        }
+
+        val roleIndex: ProjectRoleIndexSnapshot =
             try {
                 ProjectRoleIndex.getInstance(file.project).getOrBuild(config)
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (t: Throwable) {
-                log.warn("Project role index build failed; falling back to file-local roles for $filePath", t)
+                record("roleIndex:getOrBuild", t)
                 emptyRoleIndex()
             }
 
         val facts =
-            facts0.copy(
+            factsResult.facts.copy(
                 roles = roleIndex.roleToClasses,
                 classToRole = roleIndex.classToRole,
             )
 
         val rawFindings = mutableListOf<Finding>()
 
-        for ((ruleId, ruleDef) in config.rules) {
+        for (ruleDef in config.rules) {
             ProgressManager.checkCanceled()
             if (!ruleDef.enabled) continue
 
-            val rule = RuleRegistry.find(ruleId)
+            // Expand authored RuleDef into concrete rule instances:
+            // - roles == null => wildcard instance (type.name)
+            // - roles != null => one instance per role (type.name.role)
+            val roles = ruleDef.roles
+            val instanceRoles: List<String?> =
+                if (roles == null) {
+                    listOf(null)
+                } else {
+                    roles
+                        .asSequence()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .distinct()
+                        .map { it }
+                        .toList()
+                }
+
+            if (instanceRoles.isEmpty()) continue
+
+            val baseId = "${ruleDef.type}.${ruleDef.name}"
+            val rule = RuleRegistry.find(baseId)
             if (rule == null) {
-                // configValidator should handle unknownRuleId policy, but engine must be safe too.
-                log.debug("Unknown ruleId '$ruleId' (enabled=${ruleDef.enabled})")
+                // Validation layer controls unknown-rule policy; engine stays safe.
+                log.debug("Unknown rule '$baseId' (enabled=${ruleDef.enabled})")
                 continue
             }
 
-            val produced =
-                try {
-                    rule.evaluate(file, facts, ruleDef, config)
-                } catch (e: ProcessCanceledException) {
-                    throw e
-                } catch (t: Throwable) {
-                    log.warn("Rule '${rule.id}' crashed on $filePath; continuing with remaining rules.", t)
-                    emptyList()
-                }
+            for (role in instanceRoles) {
+                ProgressManager.checkCanceled()
 
-            // normalize findings defensively
-            // rules may accidentally emit blank filePath.
-            for (f in produced) {
-                rawFindings +=
-                    if (f.filePath.isBlank()) {
-                        f.copy(filePath = filePath)
+                // If a concrete role instance contradicts the authored scope, skip.
+                if (role != null && ruleDef.scope?.excludeRoles?.contains(role) == true) continue
+
+                val effectiveRule =
+                    if (role == null) {
+                        ruleDef
                     } else {
-                        f
+                        val scope0 = ruleDef.scope
+                        val scope =
+                            if (scope0 == null) {
+                                RuleScope(
+                                    includeRoles = listOf(role),
+                                    excludeRoles = null,
+                                    includePackages = null,
+                                    excludePackages = null,
+                                    includeGlobs = null,
+                                    excludeGlobs = null,
+                                )
+                            } else {
+                                // A role-specific rule instance must only apply to that role.
+                                // If authored includeRoles exists, we still override it to match the instance.
+                                scope0.copy(includeRoles = listOf(role))
+                            }
+
+                        ruleDef.copy(scope = scope)
                     }
+
+                val instanceId = RuleKey(ruleDef.type, ruleDef.name, role).canonicalId()
+
+                val produced =
+                    try {
+                        rule.evaluate(file, facts, effectiveRule, config)
+                    } catch (e: ProcessCanceledException) {
+                        throw e
+                    } catch (e: ParamError) {
+                        // Param errors must be explicit and must not crash the scan.
+                        errors +=
+                            EngineError(
+                                fileId = fileId,
+                                phase = "rule:params",
+                                message = e.message,
+                                throwableClass = e::class.java.name,
+                                ruleId = instanceId,
+                            )
+                        emptyList()
+                    } catch (t: Throwable) {
+                        record("rule:crash", t, ruleId = instanceId, message = "Rule '${rule.id}' crashed")
+                        emptyList()
+                    }
+
+                // Normalize findings defensively:
+                // - ensure filePath
+                // - force canonical (expanded) ruleId
+                for (f in produced) {
+                    val fixedPath = if (f.filePath.isBlank()) filePath else f.filePath
+                    rawFindings +=
+                        if (f.ruleId == instanceId && f.filePath == fixedPath) {
+                            f
+                        } else {
+                            f.copy(ruleId = instanceId, filePath = fixedPath)
+                        }
+                }
             }
         }
 
@@ -115,7 +240,7 @@ class ShamashPsiEngine {
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (t: Throwable) {
-                log.warn("Exception suppression failed for $filePath; returning unsuppressed findings.", t)
+                record("suppress:exceptions", t)
                 rawFindings
             }
 
@@ -125,11 +250,14 @@ class ShamashPsiEngine {
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (t: Throwable) {
-                log.warn("Inline suppression failed for $filePath; returning findings without inline suppression.", t)
+                record("suppress:inline", t)
                 suppressed
             }
 
-        return normalizeAndSort(inlineSuppressed)
+        val findings = normalizeAndSort(inlineSuppressed)
+        val stabilizedErrors = stabilizeErrors(errors)
+
+        return EngineResult(findings = findings, errors = stabilizedErrors)
     }
 
     private fun normalizeFilePath(file: PsiFile): String {
@@ -148,8 +276,7 @@ class ShamashPsiEngine {
     private fun normalizeAndSort(findings: List<Finding>): List<Finding> {
         if (findings.isEmpty()) return findings
 
-        // Deduplicate and stable sort
-        // exports and UI presentation.
+        // Deduplicate and stable sort exports and UI presentation.
         val unique = findings.distinctBy { key(it) }
 
         return unique.sortedWith(
@@ -185,4 +312,18 @@ class ShamashPsiEngine {
             FindingSeverity.WARNING -> 1
             FindingSeverity.INFO -> 2
         }
+
+    private fun stabilizeErrors(errors: List<EngineError>): List<EngineError> {
+        if (errors.isEmpty()) return errors
+        val unique = errors.distinctBy { "${it.fileId}|${it.phase}|${it.ruleId ?: ""}|${it.message}|${it.throwableClass ?: ""}" }
+        return unique.sortedWith(
+            compareBy<EngineError>(
+                { it.fileId },
+                { it.phase },
+                { it.ruleId ?: "" },
+                { it.message },
+                { it.throwableClass ?: "" },
+            ),
+        )
+    }
 }

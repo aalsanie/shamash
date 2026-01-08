@@ -19,6 +19,7 @@
 package io.shamash.psi.ui.dashboard
 
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.ui.JBSplitter
@@ -31,6 +32,7 @@ import io.shamash.psi.fixes.PsiResolver
 import io.shamash.psi.ui.actions.PsiActionUtil
 import io.shamash.psi.ui.actions.ShamashPsiUiStateService
 import java.awt.BorderLayout
+import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.ListSelectionModel
@@ -44,7 +46,8 @@ class ShamashPsiDashboardPanel(
     private val details = FindingDetailsPanel()
     private val fixes = FixesPanel(project)
 
-    private var selected: Finding? = null
+    // Stable selection identity across refreshes.
+    private var selectedKey: String? = null
 
     init {
         val toolbar = DashboardToolbarPanel(project) { refresh() }
@@ -54,10 +57,10 @@ class ShamashPsiDashboardPanel(
         table.setStriped(true)
         table.autoCreateRowSorter = true
 
-        table.selectionModel.addListSelectionListener {
-            val row = table.selectedRow
-            val f = if (row >= 0) model.getFinding(table.convertRowIndexToModel(row)) else null
-            selected = f
+        table.selectionModel.addListSelectionListener { e ->
+            if (e.valueIsAdjusting) return@addListSelectionListener
+            val f = selectedFromTable()
+            selectedKey = f?.let(::keyOf)
             details.setFinding(f)
             fixes.setFinding(f)
         }
@@ -66,7 +69,7 @@ class ShamashPsiDashboardPanel(
 
         val right =
             JPanel(VerticalLayout(10)).apply {
-                border = javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10)
+                border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
                 add(goToSourceButton())
                 add(details)
                 add(fixes)
@@ -84,18 +87,64 @@ class ShamashPsiDashboardPanel(
     }
 
     fun refresh() {
+        val app = ApplicationManager.getApplication()
+        if (!app.isDispatchThread) {
+            app.invokeLater { refresh() }
+            return
+        }
+
         val findings = ShamashPsiUiStateService.getInstance(project).lastFindings
         model.setFindings(findings)
 
-        // keep selection stable if possible
+        // Try to restore previous selection by key.
+        val key = selectedKey
+        if (key != null) {
+            val modelRow = findModelRowByKey(findings, key)
+            if (modelRow >= 0) {
+                val viewRow = table.convertRowIndexToView(modelRow)
+                if (viewRow >= 0 && viewRow < table.rowCount) {
+                    table.selectionModel.setSelectionInterval(viewRow, viewRow)
+                }
+            } else {
+                clearSelection()
+            }
+        } else {
+            clearSelection()
+        }
+
+        // Update side panels based on current selection.
+        val selected = selectedFromTable()
         details.setFinding(selected)
         fixes.setFinding(selected)
+    }
+
+    private fun clearSelection() {
+        table.clearSelection()
+        details.setFinding(null)
+        fixes.setFinding(null)
+    }
+
+    private fun selectedFromTable(): Finding? {
+        val viewRow = table.selectedRow
+        if (viewRow < 0) return null
+        val modelRow = table.convertRowIndexToModel(viewRow)
+        return model.getFinding(modelRow)
+    }
+
+    private fun findModelRowByKey(
+        findings: List<Finding>,
+        key: String,
+    ): Int {
+        for (i in findings.indices) {
+            if (keyOf(findings[i]) == key) return i
+        }
+        return -1
     }
 
     private fun goToSourceButton(): JButton =
         JButton("Go to source").apply {
             addActionListener {
-                val f = selected
+                val f = selectedFromTable()
                 if (f == null) return@addActionListener
 
                 try {
@@ -115,4 +164,16 @@ class ShamashPsiDashboardPanel(
                 }
             }
         }
+
+    private fun keyOf(f: Finding): String {
+        // A stable-ish identity for UI selection purposes.
+        // Keep it simple: no new IDs invented in engine layer.
+        return buildString {
+            append(f.ruleId).append('|')
+            append(f.filePath).append('|')
+            append(f.classFqn.orEmpty()).append('|')
+            append(f.memberName.orEmpty()).append('|')
+            append(f.message)
+        }
+    }
 }

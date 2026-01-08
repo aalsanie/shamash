@@ -21,25 +21,33 @@ package io.shamash.psi.ui.actions
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import io.shamash.psi.config.ConfigValidation
 import io.shamash.psi.config.SchemaValidator
 import io.shamash.psi.config.SchemaValidatorNetworkNt
+import io.shamash.psi.config.ValidationError
 import io.shamash.psi.ui.ShamashPsiToolWindowController
 import io.shamash.psi.ui.settings.ShamashPsiConfigLocator
 import java.io.StringReader
 
+/**
+ * Validates the project's Shamash PSI YAML config and shows results in the Config tab.
+ *
+ * UX feature:
+ * - Does not run scan.
+ * - Uses locked-in config validator.
+ */
 class ValidatePsiConfigAction(
+    // Allow overriding for tests; default is the shipped validator.
     private val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
 ) : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
         val vf = ShamashPsiConfigLocator.resolveConfigFile(project)
-        if (vf == null) {
+        if (vf == null || !vf.isValid) {
             ShamashPsiUiStateService.getInstance(project).updateValidation(emptyList())
             PsiActionUtil.notify(
                 project,
@@ -53,17 +61,31 @@ class ValidatePsiConfigAction(
             return
         }
 
-        val yaml = String(vf.contentsToByteArray())
+        val yaml =
+            try {
+                String(vf.contentsToByteArray())
+            } catch (t: Throwable) {
+                PsiActionUtil.notify(project, "Shamash PSI", "Failed to read config file: ${t.message}", NotificationType.ERROR)
+                return
+            }
 
         object : Task.Backgroundable(project, "Shamash PSI Validate Config", false) {
             private var ok = false
+            private var errors: List<ValidationError> = emptyList()
             private var errorCount = 0
             private var warnCount = 0
-            private var errors = emptyList<io.shamash.psi.config.ValidationError>()
 
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
                 ProgressManager.checkCanceled()
+
+                // Make schema validation cancelable.
+                // (This is supported by SchemaValidatorNetworkNt; harmless for other validators.)
+                try {
+                    io.shamash.psi.config.SchemaValidatorNetworkNt.cancelCheck = { ProgressManager.checkCanceled() }
+                } catch (_: Throwable) {
+                    // ignore - validator impl may not support cancellation hook
+                }
 
                 val res =
                     ConfigValidation.loadAndValidateV1(
@@ -71,19 +93,20 @@ class ValidatePsiConfigAction(
                         schemaValidator = schemaValidator,
                     )
 
-                errors = res.errors
-                errorCount = res.errors.count { it.severity.name == "ERROR" }
-                warnCount = res.errors.size - errorCount
                 ok = res.ok
-                ProgressManager.checkCanceled()
+                errors = res.errors
 
-                ApplicationManager.getApplication().invokeLater {
-                    ShamashPsiUiStateService.getInstance(project).updateValidation(res.errors)
-                    ShamashPsiToolWindowController.getInstance(project).refreshAll()
-                }
+                // Keep counting logic stable without guessing additional types.
+                errorCount = errors.count { it.severity.name == "ERROR" }
+                warnCount = errors.size - errorCount
+
+                ProgressManager.checkCanceled()
             }
 
             override fun onSuccess() {
+                // Update UI state once.
+                ShamashPsiUiStateService.getInstance(project).updateValidation(errors)
+
                 PsiActionUtil.openPsiToolWindow(project)
                 ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.CONFIG)
                 ShamashPsiToolWindowController.getInstance(project).refreshAll()

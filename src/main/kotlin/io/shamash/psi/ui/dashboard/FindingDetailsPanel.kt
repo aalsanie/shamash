@@ -25,6 +25,7 @@ import com.intellij.ui.components.panels.VerticalLayout
 import io.shamash.psi.engine.Finding
 import java.awt.BorderLayout
 import java.awt.Dimension
+import javax.swing.BorderFactory
 import javax.swing.JPanel
 
 class FindingDetailsPanel : JPanel(BorderLayout()) {
@@ -33,7 +34,7 @@ class FindingDetailsPanel : JPanel(BorderLayout()) {
 
     init {
         val root = JPanel(VerticalLayout(8))
-        root.border = javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        root.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
 
         root.add(header)
 
@@ -53,8 +54,7 @@ class FindingDetailsPanel : JPanel(BorderLayout()) {
             return
         }
 
-        header.text =
-            "<html><b>${f.severity.name}</b> — ${escape(f.ruleId)}</html>"
+        header.text = "<html><b>${escapeHtml(f.severity.name)}</b> — ${escapeHtml(f.ruleId)}</html>"
 
         body.text =
             buildString {
@@ -74,5 +74,9 @@ class FindingDetailsPanel : JPanel(BorderLayout()) {
             }.trimEnd()
     }
 
-    private fun escape(s: String): String = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    private fun escapeHtml(s: String): String =
+        s
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
 }

@@ -22,59 +22,54 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import io.shamash.psi.util.ShamashProjectUtil
+import io.shamash.psi.util.intellij.ShamashProjectUtil
 import java.nio.file.Path
 
 /**
  * Resolves the active PSI config file for a project.
  *
  * Priority:
- * 1) If user configured an explicit path in settings, use it (relative paths are resolved from project base dir).
- * 2) Otherwise auto-discover common default locations (keeps the plugin usable out-of-the-box).
+ * 1) Settings override (relative resolved from a stable project base dir).
+ * 2) Default discovery in common locations under plausible base dirs.
  *
- * IMPORTANT: In light tests / freshly created files, VFS may not "see" the file yet.
- * We always use refreshAndFindFileByNioFile(...) to avoid false "file not found".
- *
- * IMPORTANT (tests): project.basePath can be null in some fixtures.
- * We fall back to ProjectUtil.guessProjectDir(project) and content roots.
+ * Uses refreshAndFindFileByNioFile(...) to avoid stale VFS states (especially in tests).
  */
 object ShamashPsiConfigLocator {
-    /**
-     * Resolve the PSI config file as a VirtualFile, or null if not found.
-     */
     fun resolveConfigFile(project: Project): VirtualFile? {
-        val candidates: List<Path> = buildCandidatePaths(project)
+        val candidates = buildCandidatePaths(project)
+        if (candidates.isEmpty()) return null
 
         val lfs = LocalFileSystem.getInstance()
         for (candidate in candidates) {
-            val vf: VirtualFile = lfs.refreshAndFindFileByNioFile(candidate) ?: continue
-            if (!vf.isDirectory) return vf
+            val vf = lfs.refreshAndFindFileByNioFile(candidate) ?: continue
+            if (!vf.isDirectory && vf.isValid) return vf
         }
-
         return null
     }
 
     /**
-     * Visible for tests: compute all candidate absolute paths (in priority order).
+     * Visible for tests: compute candidate absolute paths (priority order).
      */
     internal fun buildCandidatePaths(project: Project): List<Path> {
         val candidates = ArrayList<Path>(32)
 
-        // 1) Settings override (highest priority)
-        val configuredRaw: String = ShamashPsiSettingsState.getInstance(project).state.configPath ?: ""
-        val configured: String = configuredRaw.trim()
+        // 1) Settings override
+        val configured =
+            ShamashPsiSettingsState
+                .getInstance(project)
+                .state
+                .configPath
+                ?.trim()
+                .orEmpty()
+
         if (configured.isNotBlank()) {
-            val resolved: Path? = resolveConfigured(project, configured)
-            if (resolved != null) {
-                candidates.add(resolved)
-            }
+            resolveConfigured(project, configured)?.let { candidates.add(it.normalize()) }
         }
 
         // 2) Default discovery
-        val baseDirs: List<Path> = resolveProjectBaseDirs(project)
+        val baseDirs = resolveProjectBaseDirs(project)
+        if (baseDirs.isEmpty()) return candidates
 
-        // NOTE: "Create from Reference" may write to ".../configs/psi.yml" (configs plural).
-        // We support both ".../config/..." and ".../configs/..." so the locator matches both layouts.
         val relativeDefaults: List<String> =
             listOf(
                 // Preferred documented paths (repo root)
@@ -107,18 +102,15 @@ object ShamashPsiConfigLocator {
 
         for (base in baseDirs) {
             for (rel in relativeDefaults) {
-                candidates.add(base.resolve(rel))
+                candidates.add(base.resolve(rel).normalize())
             }
         }
 
-        // De-dup while preserving order (normalize for stable equality)
+        // De-dup while preserving order.
         val seen = LinkedHashSet<Path>(candidates.size)
         val deduped = ArrayList<Path>(candidates.size)
         for (p in candidates) {
-            val n = p.normalize()
-            if (seen.add(n)) {
-                deduped.add(n)
-            }
+            if (seen.add(p)) deduped.add(p)
         }
         return deduped
     }
@@ -130,14 +122,13 @@ object ShamashPsiConfigLocator {
         val p = Path.of(configured)
         if (p.isAbsolute) return p
 
-        // Prefer project.basePath when present.
+        // Prefer stable base dirs that don't require Gradle model interaction.
         project.basePath?.let { return Path.of(it).resolve(p) }
 
-        // Next best: guessProjectDir (very reliable in IntelliJ test fixtures)
         ShamashProjectUtil.guessProjectDir(project)?.path?.let { return Path.of(it).resolve(p) }
 
-        // Fallback: first content root
-        val roots = ProjectRootManager.getInstance(project).contentRoots
+        // Last resort: content roots (may trigger model init in some environments).
+        val roots = runCatching { ProjectRootManager.getInstance(project).contentRoots }.getOrDefault(emptyArray())
         if (roots.isNotEmpty()) {
             return Path.of(roots[0].path).resolve(p)
         }
@@ -146,33 +137,30 @@ object ShamashPsiConfigLocator {
     }
 
     /**
-     * Returns possible "project base dirs" used for resolving defaults.
-     * - project.basePath when available
-     * - ProjectUtil.guessProjectDir(project) when available (important for tests)
-     * - all contentRoots as fallbacks (works in test projects / atypical setups)
+     * Possible base dirs used for default discovery:
+     * - project.basePath
+     * - guessProjectDir(project) (important for tests)
+     * - content roots (last resort)
      */
     private fun resolveProjectBaseDirs(project: Project): List<Path> {
         val out = ArrayList<Path>(8)
 
-        project.basePath?.let { out.add(Path.of(it)) }
+        project.basePath?.let { out.add(Path.of(it).normalize()) }
 
-        ShamashProjectUtil.guessProjectDir(project)?.path?.let { out.add(Path.of(it)) }
+        ShamashProjectUtil.guessProjectDir(project)?.path?.let { out.add(Path.of(it).normalize()) }
 
-        val roots = ProjectRootManager.getInstance(project).contentRoots
+        // Only touch ProjectRootManager as a fallback.
+        val roots = runCatching { ProjectRootManager.getInstance(project).contentRoots }.getOrDefault(emptyArray())
         for (r in roots) {
-            out.add(Path.of(r.path))
+            out.add(Path.of(r.path).normalize())
         }
 
-        // De-dup preserve order
+        // De-dup preserve order.
         val seen = LinkedHashSet<Path>(out.size)
         val deduped = ArrayList<Path>(out.size)
         for (p in out) {
-            val n = p.normalize()
-            if (seen.add(n)) {
-                deduped.add(n)
-            }
+            if (seen.add(p)) deduped.add(p)
         }
-
         return deduped
     }
 }

@@ -22,6 +22,7 @@ import io.shamash.psi.export.ExportOutputLayout
 import io.shamash.psi.export.Exporter
 import io.shamash.psi.export.schema.v1.model.ExportedFinding
 import io.shamash.psi.export.schema.v1.model.ExportedReport
+import io.shamash.psi.util.json.JsonEscaper
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
@@ -29,7 +30,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Deterministic JSON exporter for schema v1.
+ * JSON exporter for schema v1.
  *
  * Characteristics:
  * - No external JSON library (full control + stability).
@@ -75,17 +76,17 @@ class JsonExporter : Exporter {
         writer.append("  \"tool\": {").append('\n')
         writer
             .append("    \"name\": \"")
-            .append(JsonEscaper.escapeString(tool.name))
+            .append(JsonEscaper.escape(tool.name))
             .append("\",")
             .append('\n')
         writer
             .append("    \"version\": \"")
-            .append(JsonEscaper.escapeString(tool.version))
+            .append(JsonEscaper.escape(tool.version))
             .append("\",")
             .append('\n')
         writer
             .append("    \"schemaVersion\": \"")
-            .append(JsonEscaper.escapeString(tool.schemaVersion))
+            .append(JsonEscaper.escape(tool.schemaVersion))
             .append("\",")
             .append('\n')
         writer.append("    \"generatedAtEpochMillis\": ").append(tool.generatedAtEpochMillis.toString()).append('\n')
@@ -100,12 +101,12 @@ class JsonExporter : Exporter {
         writer.append("  \"project\": {").append('\n')
         writer
             .append("    \"name\": \"")
-            .append(JsonEscaper.escapeString(project.name))
+            .append(JsonEscaper.escape(project.name))
             .append("\",")
             .append('\n')
         writer
             .append("    \"basePath\": \"")
-            .append(JsonEscaper.escapeString(project.basePath))
+            .append(JsonEscaper.escape(project.basePath))
             .append("\"")
             .append('\n')
         writer.append("  }")
@@ -135,12 +136,12 @@ class JsonExporter : Exporter {
         writer.append("    {").append('\n')
         writer
             .append("      \"ruleId\": \"")
-            .append(JsonEscaper.escapeString(finding.ruleId))
+            .append(JsonEscaper.escape(finding.ruleId))
             .append("\",")
             .append('\n')
         writer
             .append("      \"message\": \"")
-            .append(JsonEscaper.escapeString(finding.message))
+            .append(JsonEscaper.escape(finding.message))
             .append("\",")
             .append('\n')
         writer
@@ -150,18 +151,18 @@ class JsonExporter : Exporter {
             .append('\n')
         writer
             .append("      \"filePath\": \"")
-            .append(JsonEscaper.escapeString(finding.filePath))
+            .append(JsonEscaper.escape(finding.filePath))
             .append("\",")
             .append('\n')
 
         // Baseline-ready and deterministic:
-        writer.append("      \"fingerprint\": \"").append(JsonEscaper.escapeString(finding.fingerprint)).append('"')
+        writer.append("      \"fingerprint\": \"").append(JsonEscaper.escape(finding.fingerprint)).append('"')
 
         if (finding.classFqn != null) {
             writer.append(',').append('\n')
             writer
                 .append("      \"classFqn\": \"")
-                .append(JsonEscaper.escapeString(finding.classFqn))
+                .append(JsonEscaper.escape(finding.classFqn))
                 .append("\"")
         }
 
@@ -169,7 +170,7 @@ class JsonExporter : Exporter {
             writer.append(',').append('\n')
             writer
                 .append("      \"memberName\": \"")
-                .append(JsonEscaper.escapeString(finding.memberName))
+                .append(JsonEscaper.escape(finding.memberName))
                 .append("\"")
         }
 

@@ -29,6 +29,6 @@ data class BaselineConfig(
     val writeMerged: Boolean = true,
 ) {
     companion object {
-        val Off: BaselineConfig = BaselineConfig(mode = BaselineMode.OFF)
+        val OFF: BaselineConfig = BaselineConfig(mode = BaselineMode.OFF)
     }
 }

@@ -20,14 +20,6 @@ package io.shamash.psi.util
 
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Lightweight glob matcher for IDE + CLI usage.
- *
- * Supported:
- * - ** matches any characters including '/'
- * - *  matches any characters except '/'
- * - ?  matches a single character except '/'
- */
 object GlobMatcher {
     private val cache = ConcurrentHashMap<String, Regex>()
 
@@ -36,29 +28,28 @@ object GlobMatcher {
         path: String,
     ): Boolean {
         val nPath = normalizePath(path)
-        val rx = cache.computeIfAbsent(glob) { compile(it) }
+        val nGlob = normalizePath(glob)
+
+        val rx = cache.computeIfAbsent(nGlob) { compile(it) }
         if (rx.matches(nPath)) return true
 
-        // If the glob is "relative-ish" (does not start with '/'), allow it to match anywhere in the path.
-        val g = normalizePath(glob)
-        if (!g.startsWith("/")) {
-            val anyRx = cache.computeIfAbsent("**/$g") { compile(it) }
+        // If the glob is relative-ish, allow it to match anywhere in the path.
+        if (!nGlob.startsWith("/")) {
+            val anyKey = normalizePath("**/$nGlob")
+            val anyRx = cache.computeIfAbsent(anyKey) { compile(it) }
             if (anyRx.matches(nPath)) return true
         }
         return false
     }
 
     fun normalizePath(path: String): String {
-        // Normalize to forward slashes, drop redundant leading "file:" etc.
-        var p = path.replace('\\', '/')
-        if (p.startsWith("file:")) p = p.removePrefix("file:")
-        // collapse '//' (but keep leading '//' for UNC is irrelevant for IDE)
-        while (p.contains("//")) p = p.replace("//", "/")
-        return p.trim()
+        val p = path.replace('\\', '/')
+        val stripped = p.replace(Regex("^[A-Za-z]:/"), "/")
+        return stripped.replace(Regex("/+"), "/")
     }
 
-    private fun compile(glob: String): Regex {
-        val g = normalizePath(glob)
+    private fun compile(normalizedGlob: String): Regex {
+        val g = normalizePath(normalizedGlob)
         val sb = StringBuilder()
         sb.append('^')
 
@@ -76,9 +67,7 @@ object GlobMatcher {
                     }
                 }
                 '?' -> sb.append("[^/]")
-                '.', '(', ')', '+', '|', '^', '$', '@', '%', '{', '}', '[', ']', '\\' -> {
-                    sb.append('\\').append(c)
-                }
+                '.', '(', ')', '+', '|', '^', '$', '@', '%', '{', '}', '[', ']', '\\' -> sb.append('\\').append(c)
                 else -> sb.append(c)
             }
             i++

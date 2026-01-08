@@ -24,140 +24,93 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
-import com.intellij.openapi.project.Project
-import io.shamash.psi.baseline.BaselineConfig
-import io.shamash.psi.config.ConfigValidation
-import io.shamash.psi.export.ShamashPsiReportExportService
+import io.shamash.psi.scan.ShamashProjectScanRunner
+import io.shamash.psi.scan.ShamashScanOptions
 import io.shamash.psi.ui.ShamashPsiToolWindowController
 import io.shamash.psi.ui.settings.ShamashPsiConfigLocator
-import io.shamash.psi.util.ShamashProjectUtil
 import java.io.StringReader
-import java.nio.file.Path
 
+/**
+ * UI export action.
+ *
+ * Export is produced via the single scan entry point.
+ */
 class ExportPsiReportsAction(
-    private val exportService: ShamashPsiReportExportService = ShamashPsiReportExportService(),
+    private val runner: ShamashProjectScanRunner = ShamashProjectScanRunner(),
 ) : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
-        val findings = ShamashPsiUiStateService.getInstance(project).lastFindings
-        if (findings.isEmpty()) {
-            PsiActionUtil.notify(
-                project,
-                "Shamash PSI",
-                "No PSI findings to export. Run a PSI scan first (or confirm your rules produce findings for this project).",
-                NotificationType.WARNING,
-            )
-            PsiActionUtil.openPsiToolWindow(project)
-            ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.DASHBOARD)
-            ShamashPsiToolWindowController.getInstance(project).refreshAll()
-            return
-        }
-
         val vf = ShamashPsiConfigLocator.resolveConfigFile(project)
-        if (vf == null) {
+        if (vf == null || !vf.isValid) {
             PsiActionUtil.notify(project, "Shamash PSI", "Config file not found; cannot export.", NotificationType.ERROR)
             return
         }
 
-        val yaml = String(vf.contentsToByteArray())
+        val yaml =
+            try {
+                String(vf.contentsToByteArray())
+            } catch (t: Throwable) {
+                PsiActionUtil.notify(project, "Shamash PSI", "Failed to read config file: ${t.message}", NotificationType.ERROR)
+                return
+            }
+
+        val options =
+            ShamashScanOptions(
+                exportReports = true,
+                // baseline mode is controlled by config/options elsewhere; export action should not override it.
+                // If you later add baseline controls in UI settings, wire it here.
+                toolName = "Shamash PSI",
+                toolVersion = pluginVersion(),
+            )
 
         object : Task.Backgroundable(project, "Shamash PSI Export Reports", false) {
-            private var outputDir: Path? = null
-            private var report: io.shamash.psi.export.schema.v1.model.ExportedReport? = null
+            private lateinit var result: ShamashProjectScanRunner.ScanResult
 
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
-                ProgressManager.checkCanceled()
-
-                try {
-                    // Export requires a valid config for metadata/exceptions.
-                    val validation = ConfigValidation.loadAndValidateV1(StringReader(yaml))
-                    if (!validation.ok || validation.config == null) {
-                        return
-                    }
-
-                    // IMPORTANT:
-                    // Do NOT touch ProjectRootManager/contentRoots here.
-                    // That can trigger Gradle project model initialization.
-                    val basePath = resolveProjectBasePathSafe(project)
-
-                    val result =
-                        exportService.export(
-                            projectBasePath = basePath,
-                            projectName = project.name,
-                            toolName = "Shamash PSI",
-                            toolVersion = pluginVersion(),
-                            findings = findings,
-                            baseline = BaselineConfig.Off,
-                            exceptionsPreprocessor = null,
-                            generatedAtEpochMillis = System.currentTimeMillis(),
-                        )
-
-                    outputDir = result.outputDir
-                    report = result.report
-
-                    ProgressManager.checkCanceled()
-                } catch (t: Throwable) {
-                    // Don’t let IDE crash because some other plugin (Gradle) had broken persisted state.
-                    // Surface as a normal export failure.
-                    throw RuntimeException("Export failed: ${t.message}", t)
-                }
+                result = runner.scanProject(project, StringReader(yaml), options, indicator)
             }
 
             override fun onSuccess() {
-                ShamashPsiUiStateService.getInstance(project).updateExport(outputDir, report)
+                // Update UI state from the *single* source of truth result.
+                ShamashPsiUiStateService.getInstance(project).updateFindings(result.findings)
+                ShamashPsiUiStateService.getInstance(project).updateExport(result.outputDir, result.exportedReport)
+
+                PsiActionUtil.openPsiToolWindow(project)
+                ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.DASHBOARD)
                 ShamashPsiToolWindowController.getInstance(project).refreshAll()
 
-                if (outputDir == null || report == null) {
+                if (result.configErrors.isNotEmpty()) {
                     PsiActionUtil.notify(
                         project,
                         "Shamash PSI",
-                        "Export failed: config invalid or export could not be created.",
+                        "Export failed: config invalid.",
                         NotificationType.ERROR,
                     )
+                    return
+                }
+
+                val outDir = result.outputDir
+                val report = result.exportedReport
+                if (outDir == null || report == null) {
+                    PsiActionUtil.notify(project, "Shamash PSI", "Export failed.", NotificationType.ERROR)
                     return
                 }
 
                 PsiActionUtil.notify(
                     project,
                     "Shamash PSI",
-                    "Exported reports to: $outputDir",
+                    "Exported reports to: $outDir",
                     NotificationType.INFORMATION,
                 )
             }
 
             override fun onThrowable(error: Throwable) {
-                PsiActionUtil.notify(
-                    project,
-                    "Shamash PSI",
-                    error.message ?: "Export failed.",
-                    NotificationType.ERROR,
-                )
+                PsiActionUtil.notify(project, "Shamash PSI", error.message ?: "Export failed.", NotificationType.ERROR)
             }
         }.queue()
-    }
-
-    /**
-     * Safe project base path resolution that avoids touching Gradle-backed project model APIs.
-     */
-    private fun resolveProjectBasePathSafe(project: Project): Path {
-        // 1) Most reliable & cheapest
-        project.basePath?.let { return Path.of(it) }
-
-        // 2) Often present in test / unusual setups
-        project.projectFile
-            ?.parent
-            ?.path
-            ?.let { return Path.of(it) }
-
-        // 3) Best-effort guess without ProjectRootManager
-        val guessed = ShamashProjectUtil.guessProjectDir(project)?.path
-        if (!guessed.isNullOrBlank()) return Path.of(guessed)
-
-        throw IllegalStateException("Project base path is null; cannot export Shamash reports.")
     }
 
     private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"

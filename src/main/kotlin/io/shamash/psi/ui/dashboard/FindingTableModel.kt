@@ -26,7 +26,8 @@ class FindingTableModel : AbstractTableModel() {
     private var rows: List<Finding> = emptyList()
 
     fun setFindings(findings: List<Finding>) {
-        rows = findings
+        // Defensive copy so UI never observes caller's mutable list.
+        rows = findings.toList()
         fireTableDataChanged()
     }
 
@@ -42,7 +43,8 @@ class FindingTableModel : AbstractTableModel() {
         rowIndex: Int,
         columnIndex: Int,
     ): Any {
-        val f = rows[rowIndex]
+        // Swing can call this during transitions; be defensive.
+        val f = rows.getOrNull(rowIndex) ?: return ""
         return when (columnIndex) {
             0 -> f.severity.name
             1 -> f.ruleId

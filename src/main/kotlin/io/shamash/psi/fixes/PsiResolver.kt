@@ -31,7 +31,7 @@ import io.shamash.psi.engine.Finding
 /**
  * Resolves PSI targets for a given [Finding].
  *
- * This is used by fix providers (dashboard + intentions) and should remain:
+ * Must remain:
  *  - null-safe
  *  - non-throwing
  *  - language-agnostic (works for Java + Kotlin using generic PSI abstractions)
@@ -41,19 +41,19 @@ object PsiResolver {
         project: Project,
         filePath: String,
     ): PsiFile? {
-        return try {
-            val vf: VirtualFile = LocalFileSystem.getInstance().findFileByPath(filePath) ?: return null
+        return runCatching {
+            val normalized = normalizePath(filePath)
+            val vf: VirtualFile =
+                LocalFileSystem.getInstance().refreshAndFindFileByPath(normalized) ?: return null
             PsiManager.getInstance(project).findFile(vf)
-        } catch (_: Throwable) {
-            null
-        }
+        }.getOrNull()
     }
 
     /**
      * Resolve the most specific PSI element for this finding.
      *
      * Priority:
-     *  1) [Finding.startOffset] anchor
+     *  1) [Finding.startOffset] anchor -> nearest meaningful parent (named/member-ish), else leaf, else file
      *  2) member (by [Finding.memberName]) inside class
      *  3) class (by [Finding.classFqn])
      *  4) file
@@ -64,30 +64,33 @@ object PsiResolver {
     ): PsiElement? {
         val file = resolveFile(project, finding.filePath) ?: return null
 
-        // Offset-based resolution (best effort)
+        // 1) Offset-based resolution (best effort)
         val off = finding.startOffset
-        if (off != null && off >= 0 && off < file.textLength) {
-            return try {
-                file.findElementAt(off) ?: file
-            } catch (_: Throwable) {
-                // fall back
-                null
-            } ?: return file
+        if (off != null && off in 0 until file.textLength) {
+            val leaf = runCatching { file.findElementAt(off) }.getOrNull()
+            if (leaf != null) {
+                // Prefer a "meaningful" element over a leaf token/whitespace.
+                val meaningful =
+                    PsiTreeUtil.getParentOfType(
+                        leaf,
+                        PsiNamedElement::class.java,
+                        // strict =
+                        false,
+                    ) as? PsiElement
+
+                return meaningful ?: leaf
+            }
         }
 
-        val classFqn = finding.classFqn
-        val memberName = finding.memberName
+        val classFqn = finding.classFqn?.trim().takeIf { !it.isNullOrBlank() }
+        val memberName = finding.memberName?.trim().takeIf { !it.isNullOrBlank() }
 
-        if (classFqn.isNullOrBlank() && memberName.isNullOrBlank()) return file
+        if (classFqn == null && memberName == null) return file
 
         val classElement =
-            if (classFqn.isNullOrBlank()) {
-                null
-            } else {
-                findClassLike(file, simpleNameOf(classFqn))
-            }
+            if (classFqn == null) null else findClassLike(file, simpleNameOf(classFqn))
 
-        if (memberName.isNullOrBlank()) {
+        if (memberName == null) {
             return classElement ?: file
         }
 
@@ -106,16 +109,35 @@ object PsiResolver {
         return findClassLike(file, simpleNameOf(classFqn))
     }
 
+    /**
+     * Resolve a member-ish element.
+     *
+     * If [resolveElement] returns a leaf token, we try to lift it to a named element.
+     * If it returns file, we fallback to searching by memberName.
+     */
     fun resolveMember(
         project: Project,
         finding: Finding,
     ): PsiElement? {
         val file = resolveFile(project, finding.filePath) ?: return null
-        val element = resolveElement(project, finding) ?: return null
-        if (element != file) return element
-        // fallback: try member by name directly
-        val name = finding.memberName ?: return null
+
+        val resolved = resolveElement(project, finding) ?: return null
+        if (resolved != file) {
+            val asNamed =
+                (resolved as? PsiNamedElement)
+                    ?: PsiTreeUtil.getParentOfType(resolved, PsiNamedElement::class.java, false)
+            return asNamed as? PsiElement ?: resolved
+        }
+
+        val name = finding.memberName?.trim().takeIf { !it.isNullOrBlank() } ?: return null
         return findNamed(file, name)
+    }
+
+    private fun normalizePath(path: String): String {
+        // LocalFileSystem expects system-independent paths with '/'.
+        // Also strips accidental "file://" prefixes if any caller passes URLs.
+        val p = path.removePrefix("file://").removePrefix("file:")
+        return p.replace('\\', '/')
     }
 
     private fun simpleNameOf(fqn: String): String = fqn.substringAfterLast('.')
@@ -124,17 +146,17 @@ object PsiResolver {
         file: PsiFile,
         simpleName: String,
     ): PsiElement? {
-        // Generic approach: find any named element that matches the class simple name.
-        // Prefer elements that look like type declarations by heuristics.
         val all = PsiTreeUtil.findChildrenOfType(file, PsiNamedElement::class.java)
         val candidates = all.filter { it.name == simpleName }
         if (candidates.isEmpty()) return null
-        // Heuristic: Kotlin/Java class declarations tend to include keyword "class"/"interface" in text.
+
+        // Heuristic: prefer likely type declarations.
         val preferred =
             candidates.firstOrNull {
                 val t = (it as? PsiElement)?.text ?: return@firstOrNull false
-                t.contains("class ") || t.contains("interface ") || t.contains("enum ")
+                t.contains("class ") || t.contains("interface ") || t.contains("enum ") || t.contains("object ")
             }
+
         return (preferred as? PsiElement) ?: (candidates.first() as? PsiElement)
     }
 
@@ -143,6 +165,6 @@ object PsiResolver {
         name: String,
     ): PsiElement? {
         val all = PsiTreeUtil.findChildrenOfType(root, PsiNamedElement::class.java)
-        return all.firstOrNull { it.name == name }
+        return all.firstOrNull { it.name == name } as? PsiElement
     }
 }

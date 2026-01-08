@@ -18,16 +18,20 @@
  */
 package io.shamash.psi.export
 
-import io.shamash.psi.export.html.HtmlExporter
-import io.shamash.psi.export.json.JsonExporter
-import io.shamash.psi.export.sarif.SarifExporter
-import io.shamash.psi.export.xml.XmlExporter
-
 object DefaultExportPipelineFactory {
     /**
-     * This method intentionally depends only on exporter-layer types.
-     * callers plugin UI, CLI, inspection integration are responsible for building preprocessors
+     * Create the default export pipeline.
+     *
+     * This factory intentionally depends only on exporter-layer types.
+     * Callers (plugin UI, CLI, inspection integration) are responsible for building preprocessors
      * using their available engine/schema context.
+     *
+     * Preprocessor order is intentional and stable:
+     *  1) exceptionsPreprocessor (drops/adjusts findings based on explicit "ignore"/exceptions rules)
+     *  2) baselinePreprocessor (drops findings already present in baseline fingerprints)
+     *
+     * Rationale: baseline suppression should be applied after exceptions filtering, so exceptions
+     * can remove/shape findings before baseline comparison/export.
      */
     fun create(
         exceptionsPreprocessor: FindingPreprocessor? = null,
@@ -42,19 +46,9 @@ object DefaultExportPipelineFactory {
             preprocessors.add(baselinePreprocessor)
         }
 
-        val reportBuilder = ReportBuilder(preprocessors)
-
-        val exporters =
-            listOf(
-                JsonExporter(),
-                SarifExporter(),
-                XmlExporter(),
-                HtmlExporter(),
-            )
-
         return ExportOrchestrator(
-            reportBuilder = reportBuilder,
-            exporters = exporters,
+            reportBuilder = ReportBuilder(preprocessors),
+            exporters = Exporters.createAll(),
         )
     }
 }

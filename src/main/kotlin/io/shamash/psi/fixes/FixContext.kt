@@ -27,7 +27,7 @@ import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
  */
 data class FixContext(
     val project: Project,
-    /** The schema used to produce the findings (optional). */
+    /** config used to produce the findings (optional). */
     val config: ShamashPsiConfigV1? = null,
     /** If known, the schema file being used. Enables schema-edit fixes. */
     val configFile: VirtualFile? = null,

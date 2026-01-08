@@ -21,9 +21,9 @@ package io.shamash.psi.export.sarif
 import io.shamash.psi.engine.FindingSeverity
 import io.shamash.psi.export.ExportOutputLayout
 import io.shamash.psi.export.Exporter
-import io.shamash.psi.export.json.JsonEscaper
 import io.shamash.psi.export.schema.v1.model.ExportedFinding
 import io.shamash.psi.export.schema.v1.model.ExportedReport
+import io.shamash.psi.util.json.JsonEscaper
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
@@ -91,12 +91,12 @@ class SarifExporter : Exporter {
         writer.append("        \"driver\": {").append('\n')
         writer
             .append("          \"name\": \"")
-            .append(JsonEscaper.escapeString(tool.name))
+            .append(JsonEscaper.escape(tool.name))
             .append("\",")
             .append('\n')
         writer
             .append("          \"version\": \"")
-            .append(JsonEscaper.escapeString(tool.version))
+            .append(JsonEscaper.escape(tool.version))
             .append("\",")
             .append('\n')
         writer.append("          \"informationUri\": \"https://github.com/aalsanie/shamash\",").append('\n')
@@ -106,18 +106,18 @@ class SarifExporter : Exporter {
             writer.append("            {").append('\n')
             writer
                 .append("              \"id\": \"")
-                .append(JsonEscaper.escapeString(ruleId))
+                .append(JsonEscaper.escape(ruleId))
                 .append("\",")
                 .append('\n')
             writer
                 .append("              \"name\": \"")
-                .append(JsonEscaper.escapeString(ruleId))
+                .append(JsonEscaper.escape(ruleId))
                 .append("\",")
                 .append('\n')
             writer
                 .append(
                     "              \"shortDescription\": { \"text\": \"",
-                ).append(JsonEscaper.escapeString(ruleId))
+                ).append(JsonEscaper.escape(ruleId))
                 .append("\" }")
                 .append('\n')
             writer.append("            }")
@@ -168,7 +168,7 @@ class SarifExporter : Exporter {
         writer.append("        {").append('\n')
         writer
             .append("          \"ruleId\": \"")
-            .append(JsonEscaper.escapeString(finding.ruleId))
+            .append(JsonEscaper.escape(finding.ruleId))
             .append("\",")
             .append('\n')
         writer
@@ -179,13 +179,13 @@ class SarifExporter : Exporter {
         writer
             .append(
                 "          \"message\": { \"text\": \"",
-            ).append(JsonEscaper.escapeString(finding.message))
+            ).append(JsonEscaper.escape(finding.message))
             .append("\" },")
             .append('\n')
 
         writer
             .append("          \"partialFingerprints\": { \"primaryLocationLineHash\": \"")
-            .append(JsonEscaper.escapeString(finding.fingerprint))
+            .append(JsonEscaper.escape(finding.fingerprint))
             .append("\" },")
             .append('\n')
 
@@ -194,7 +194,7 @@ class SarifExporter : Exporter {
         writer.append("              \"physicalLocation\": {").append('\n')
         writer
             .append("                \"artifactLocation\": { \"uri\": \"")
-            .append(JsonEscaper.escapeString(finding.filePath))
+            .append(JsonEscaper.escape(finding.filePath))
             .append("\" }")
             .append('\n')
         writer.append("              }").append('\n')

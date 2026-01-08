@@ -18,6 +18,7 @@
  */
 package io.shamash.psi.engine.index
 
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiClass
@@ -32,17 +33,17 @@ import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.engine.RoleClassifier
 import io.shamash.psi.facts.model.v1.ClassFact
 import io.shamash.psi.util.GlobMatcher
+import java.security.MessageDigest
 
 /**
  * Project-wide role index.
  *
- * Why this exists:
  * - File-local role classification breaks architecture rules (deps to other project types look 'external').
  * - This index builds class->role mapping for ALL source classes within configured source globs.
  *
  * Cache:
  * - CachedValue invalidated by PsiModificationTracker.MODIFICATION_COUNT
- * - Also re-built if schema's role matcher definitions change (by keying cache per schema fingerprint).
+ * - Also re-built if schema's role matcher definitions change (fingerprint-based).
  */
 class ProjectRoleIndex private constructor(
     private val project: Project,
@@ -54,19 +55,41 @@ class ProjectRoleIndex private constructor(
             project.getUserData(KEY) ?: ProjectRoleIndex(project).also { project.putUserData(KEY, it) }
     }
 
-    // Cache is per schema fingerprint
-    // changes in roles/sourceGlobs rebuild immediately.
-    private val cacheByFingerprint = mutableMapOf<String, CachedValue<ProjectRoleIndexSnapshot>>()
+    private data class SnapshotCache(
+        val fingerprint: String,
+        val snapshot: ProjectRoleIndexSnapshot,
+    )
+
+    private val cacheKey: Key<CachedValue<SnapshotCache>> = Key.create("shamash.psi.projectRoleIndex.snapshotCache.v1")
 
     fun getOrBuild(config: ShamashPsiConfigV1): ProjectRoleIndexSnapshot {
         val fp = fingerprint(config)
-        val cached =
-            cacheByFingerprint.getOrPut(fp) {
-                CachedValuesManager.getManager(project).createCachedValue {
-                    CachedValueProvider.Result.create(buildSnapshot(config), PsiModificationTracker.MODIFICATION_COUNT)
-                }
+
+        val cv =
+            project.getUserData(cacheKey) ?: CachedValuesManager
+                .getManager(project)
+                .createCachedValue {
+                    CachedValueProvider.Result.create(
+                        SnapshotCache(
+                            fingerprint = fp,
+                            snapshot = buildSnapshot(config),
+                        ),
+                        PsiModificationTracker.MODIFICATION_COUNT,
+                    )
+                }.also { project.putUserData(cacheKey, it) }
+
+        val cached = cv.value
+        if (cached.fingerprint == fp) return cached.snapshot
+
+        // Same CachedValue instance, but schema fingerprint changed (roles/globs changed).
+        val rebuilt = SnapshotCache(fp, buildSnapshot(config))
+        // We cannot mutate CachedValue contents, so we replace the CachedValue in user data.
+        val newCv =
+            CachedValuesManager.getManager(project).createCachedValue {
+                CachedValueProvider.Result.create(rebuilt, PsiModificationTracker.MODIFICATION_COUNT)
             }
-        return cached.value
+        project.putUserData(cacheKey, newCv)
+        return rebuilt.snapshot
     }
 
     private fun buildSnapshot(config: ShamashPsiConfigV1): ProjectRoleIndexSnapshot {
@@ -78,14 +101,17 @@ class ProjectRoleIndex private constructor(
         val annotations = HashMap<String, Set<String>>(4096)
         val filePaths = HashMap<String, String>(4096)
 
-        // this covers Java + Kotlin (as light classes).
+        // Covers Java + Kotlin (as light classes).
         AllClassesSearch.search(scope, project).forEach { psiClass: PsiClass ->
+            ProgressManager.checkCanceled()
+
             val fqn = psiClass.qualifiedName ?: return@forEach
+            val vf = psiClass.containingFile?.virtualFile ?: return@forEach
 
-            val vf = psiClass.containingFile?.virtualFile
-            val path = vf?.path ?: return@forEach
+            val rawPath = vf.path
+            val path = GlobMatcher.normalizePath(rawPath)
 
-            // apply source globs
+            // Apply source globs
             val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
             if (!ok) return@forEach
 
@@ -96,6 +122,7 @@ class ProjectRoleIndex private constructor(
                     ?.annotations
                     ?.mapNotNull { it.qualifiedName }
                     ?.toSet() ?: emptySet()
+
             val hasMain =
                 psiClass.methods.any { m ->
                     m.name == "main" &&
@@ -116,6 +143,7 @@ class ProjectRoleIndex private constructor(
                     filePath = path,
                     textRange = null,
                 )
+
             annotations[fqn] = anns
             filePaths[fqn] = path
         }
@@ -133,19 +161,36 @@ class ProjectRoleIndex private constructor(
 
     private fun fingerprint(config: ShamashPsiConfigV1): String {
         // Must change when role definitions or source globs change.
-        // deliberately ignore rule params; those don't affect role index.
+        // Deliberately ignore rule params; those don't affect role index.
+
+        // Ensure stable ordering.
         val rolesPart =
             config.roles.entries
                 .sortedBy { it.key }
-                .joinToString(";") { (k, v) -> "$k:${v.priority}:${v.match}" }
-        val globsPart =
-            (
-                config.project.sourceGlobs.include
-                    .sorted() to
-                    config.project.sourceGlobs.exclude
-                        .sorted()
-            ).toString()
-        return (rolesPart + "|" + globsPart).hashCode().toString()
+                .joinToString(";") { (k, v) ->
+                    val matchStable = v.match.toString() // best-effort; match is a schema model and should be stable.
+                    "$k:${v.priority}:$matchStable"
+                }
+
+        val includePart =
+            config.project.sourceGlobs.include
+                .sorted()
+                .joinToString(",") { GlobMatcher.normalizePath(it) }
+        val excludePart =
+            config.project.sourceGlobs.exclude
+                .sorted()
+                .joinToString(",") { GlobMatcher.normalizePath(it) }
+
+        val material = "$rolesPart|inc:$includePart|exc:$excludePart"
+        return sha256Hex(material)
+    }
+
+    private fun sha256Hex(s: String): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val bytes = md.digest(s.toByteArray(Charsets.UTF_8))
+        val sb = StringBuilder(bytes.size * 2)
+        for (b in bytes) sb.append(((b.toInt() and 0xff) + 0x100).toString(16).substring(1))
+        return sb.toString()
     }
 }
 

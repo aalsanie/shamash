@@ -35,6 +35,7 @@ import io.shamash.psi.ui.actions.ShamashPsiUiStateService
 import io.shamash.psi.ui.settings.ShamashPsiConfigLocator
 import java.awt.BorderLayout
 import java.awt.Dimension
+import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JPanel
 
@@ -51,18 +52,21 @@ class ShamashPsiConfigPanel(
     private val validationArea = JBTextArea()
     private val supportedRulesArea = JBTextArea()
 
+    // Computed once per panel instance. Rules/specs change only with plugin version, not per refresh.
+    private val supportedRulesText: String = PsiRuleSupportView.format(PsiRuleSupportView.compute())
+
     init {
         val root = JPanel(VerticalLayout(10))
-        root.border = javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        root.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
 
         // --- Config location ---
         root.add(JBLabel("<html><b>Active PSI Config</b></html>"))
         root.add(configPathLabel)
 
         val buttonsRow = JPanel()
-        buttonsRow.add(button("Validate", "io.shamash.psi.actions.ValidatePsiConfigAction"))
-        buttonsRow.add(button("Open Reference", "io.shamash.psi.actions.OpenPsiReferenceConfigAction"))
-        buttonsRow.add(button("Create from Reference", "io.shamash.psi.actions.CreatePsiConfigFromReferenceAction"))
+        buttonsRow.add(button("Validate", ACTION_VALIDATE))
+        buttonsRow.add(button("Open Reference", ACTION_OPEN_REFERENCE))
+        buttonsRow.add(button("Create from Reference", ACTION_CREATE_FROM_REFERENCE))
         root.add(buttonsRow)
 
         // --- Validation output ---
@@ -87,13 +91,12 @@ class ShamashPsiConfigPanel(
 
     fun refresh() {
         val vf = ShamashPsiConfigLocator.resolveConfigFile(project)
-        configPathLabel.text = vf?.path ?: "<no schema found>"
+        configPathLabel.text = vf?.path ?: "<no config found>"
 
         val errors = ShamashPsiUiStateService.getInstance(project).lastValidationErrors
         validationArea.text = formatValidation(errors)
 
-        val support = PsiRuleSupportView.compute()
-        supportedRulesArea.text = PsiRuleSupportView.format(support)
+        supportedRulesArea.text = supportedRulesText
     }
 
     private fun formatValidation(errors: List<ValidationError>): String {
@@ -112,8 +115,7 @@ class ShamashPsiConfigPanel(
                 append(e.severity.name)
                     .append(" @ ")
                     .append(if (e.path.isBlank()) "<root>" else e.path)
-                    .append("\n")
-                    .append("  ")
+                    .append("\n  ")
                     .append(e.message)
                     .append("\n\n")
             }
@@ -132,13 +134,21 @@ class ShamashPsiConfigPanel(
                     return@addActionListener
                 }
 
-                // IMPORTANT: pass project via DataContext; EMPTY_CONTEXT makes e.project null and actions silently no-op.
+                // IMPORTANT: pass project via DataContext; EMPTY_CONTEXT makes e.project null.
                 val event = AnActionEvent.createFromAnAction(action, null, "ShamashPsiConfigPanel", dataContext)
                 action.actionPerformed(event)
 
-                // NOTE: validation action updates state on EDT and also refreshes all tabs,
-                // but we still refresh here to keep the panel responsive in case of other actions.
+                // This refresh is immediate (may be stale for background actions),
+                // but the toolwindow controller refresh after background completion will update it.
                 refresh()
             }
         }
+
+    companion object {
+        // Action IDs should match your plugin.xml registration.
+        // If you rely on "class FQN as action id", these must match the actual package.
+        private const val ACTION_VALIDATE = "io.shamash.psi.actions.ValidatePsiConfigAction"
+        private const val ACTION_OPEN_REFERENCE = "io.shamash.psi.actions.OpenPsiReferenceConfigAction"
+        private const val ACTION_CREATE_FROM_REFERENCE = "io.shamash.psi.actions.CreatePsiConfigFromReferenceAction"
+    }
 }

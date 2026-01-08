@@ -19,18 +19,25 @@
 package io.shamash.psi.baseline
 
 import io.shamash.psi.engine.Finding
-import io.shamash.psi.export.FindingFingerprint
-import io.shamash.psi.export.PathNormalizer
+import io.shamash.psi.util.PathNormalizer
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.nio.file.Paths
+import java.security.MessageDigest
 
 /**
  * Coordinates baseline read/write and fingerprint computation for scan/export wiring.
  *
- * This class is intentionally independent of the scan runner and export pipeline factory.
- * The runner/factory can call into this class to:
- * - load baseline fingerprints (for suppression),
- * - compute fingerprints from findings,
- * - write a new/merged baseline.
+ * Baseline owns:
+ * - stable fingerprinting spec (SHA-256 over normalized finding identity fields)
+ * - baseline.json persistence
+ *
+ * Baseline does NOT:
+ * - load/validate config
+ * - extract facts
+ * - execute rules
+ * - handle exception/inline suppression
+ * - depend on export/presentation layers
  */
 class BaselineCoordinator(
     private val store: BaselineStore = BaselineStore(),
@@ -48,9 +55,12 @@ class BaselineCoordinator(
     /**
      * Computes stable fingerprints for the provided findings.
      *
-     * Fingerprinting is based on:
-     * - normalized project-relative path derived from [projectBasePath] and [Finding.filePath],
-     * - finding content via [FindingFingerprint].
+     * Fingerprinting uses:
+     * - a normalized project-relative path derived from [projectBasePath] + finding.filePath
+     * - finding identity fields (ruleId, severity, offsets, data) with deterministic ordering
+     *
+     * IMPORTANT: message text is intentionally excluded to avoid baselines breaking
+     * on message wording changes.
      */
     fun computeFingerprints(
         projectBasePath: Path,
@@ -61,11 +71,12 @@ class BaselineCoordinator(
         val out = LinkedHashSet<String>(findings.size)
         for (finding in findings) {
             val normalizedPath =
-                PathNormalizer.toProjectRelativeNormalizedPath(
-                    basePath = projectBasePath,
-                    filePath = finding.filePath,
+                PathNormalizer.relativizeOrNormalize(
+                    base = projectBasePath,
+                    target = Paths.get(finding.filePath),
                 )
-            out.add(FindingFingerprint.sha256Hex(finding, normalizedPath))
+
+            out.add(BaselineFingerprint.sha256Hex(finding, normalizedPath))
         }
         return out
     }
@@ -98,7 +109,7 @@ class BaselineCoordinator(
     }
 
     /**
-     * Creates a baseline suppression preprocessor for use in the export pipeline.
+     * Creates a baseline suppression preprocessor.
      *
      * Returns null when [baselineFingerprints] is empty.
      */
@@ -106,4 +117,59 @@ class BaselineCoordinator(
         if (baselineFingerprints.isEmpty()) return null
         return BaselineFindingPreprocessor(baselineFingerprints)
     }
+}
+
+/**
+ * Baseline fingerprinting spec (owned by baseline layer).
+ * Used by export
+ * This is deterministic and stable across OSes by:
+ * - using project-relative normalized paths (forward slashes, no drive letters)
+ * - sorting data keys/values
+ * - excluding human-readable message text
+ */
+object BaselineFingerprint {
+    fun sha256Hex(
+        finding: Finding,
+        normalizedProjectRelativePath: String,
+    ): String {
+        val md = MessageDigest.getInstance("SHA-256")
+
+        fun put(s: String) {
+            md.update(s.toByteArray(StandardCharsets.UTF_8))
+            md.update(0x1F) // unit separator
+        }
+
+        put("v1") // baseline fingerprint version
+        put(normalizedProjectRelativePath)
+
+        put(finding.ruleId)
+        put(finding.severity.name)
+
+        put(finding.startOffset?.toString() ?: "")
+        put(finding.endOffset?.toString() ?: "")
+
+        // Deterministic data encoding: sort by key then by value
+        val entries = finding.data.entries.sortedWith(compareBy<Map.Entry<String, String>> { it.key }.thenBy { it.value })
+        for ((k, v) in entries) {
+            put(k)
+            put(v)
+        }
+
+        return md.digest().toHexLower()
+    }
+
+    private fun ByteArray.toHexLower(): String {
+        val out = CharArray(this.size * 2)
+        var j = 0
+        for (b in this) {
+            val i = b.toInt() and 0xFF
+            val hi = i ushr 4
+            val lo = i and 0x0F
+            out[j++] = HEX[hi]
+            out[j++] = HEX[lo]
+        }
+        return String(out)
+    }
+
+    private val HEX: CharArray = "0123456789abcdef".toCharArray()
 }

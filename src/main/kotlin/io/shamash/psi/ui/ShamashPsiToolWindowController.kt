@@ -23,13 +23,15 @@ import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBTabbedPane
 import io.shamash.psi.ui.config.ShamashPsiConfigTab
 import io.shamash.psi.ui.dashboard.ShamashPsiDashboardTab
-import io.shamash.psi.ui.toolbox.ShamashPsiToolboxTab
+import io.shamash.psi.ui.dashboard.ShamashPsiFindingsTab
 
 @Service(Service.Level.PROJECT)
 class ShamashPsiToolWindowController(
     private val project: Project,
 ) {
-    enum class Tab { DASHBOARD, TOOLBOX, CONFIG }
+    enum class Tab { DASHBOARD, FINDINGS, CONFIG }
+
+    private val tabIndex = LinkedHashMap<Tab, Int>(8)
 
     lateinit var tabbedPane: JBTabbedPane
         private set
@@ -37,7 +39,7 @@ class ShamashPsiToolWindowController(
     lateinit var dashboardTab: ShamashPsiDashboardTab
         private set
 
-    lateinit var toolboxTab: ShamashPsiToolboxTab
+    lateinit var findingsTab: ShamashPsiFindingsTab
         private set
 
     lateinit var configTab: ShamashPsiConfigTab
@@ -45,28 +47,33 @@ class ShamashPsiToolWindowController(
 
     fun init(tabbedPane: JBTabbedPane) {
         this.tabbedPane = tabbedPane
-        this.dashboardTab = ShamashPsiDashboardTab(project)
-        this.toolboxTab = ShamashPsiToolboxTab(project)
-        this.configTab = ShamashPsiConfigTab(project)
 
+        dashboardTab = ShamashPsiDashboardTab(project)
+        findingsTab = ShamashPsiFindingsTab(project)
+        configTab = ShamashPsiConfigTab(project)
+
+        tabbedPane.removeAll()
+        tabIndex.clear()
+
+        tabIndex[Tab.DASHBOARD] = tabbedPane.tabCount
         tabbedPane.addTab("Dashboard", dashboardTab.component())
-        tabbedPane.addTab("Toolbox", toolboxTab.component())
+
+        tabIndex[Tab.FINDINGS] = tabbedPane.tabCount
+        tabbedPane.addTab("Findings", findingsTab.component())
+
+        tabIndex[Tab.CONFIG] = tabbedPane.tabCount
         tabbedPane.addTab("Config", configTab.component())
     }
 
     fun refreshAll() {
         if (::dashboardTab.isInitialized) dashboardTab.refresh()
+        if (::findingsTab.isInitialized) findingsTab.refresh()
         if (::configTab.isInitialized) configTab.refresh()
     }
 
     fun select(tab: Tab) {
         if (!::tabbedPane.isInitialized) return
-        val index =
-            when (tab) {
-                Tab.DASHBOARD -> 0
-                Tab.TOOLBOX -> 1
-                Tab.CONFIG -> 2
-            }
+        val index = tabIndex[tab] ?: return
         if (index in 0 until tabbedPane.tabCount) {
             tabbedPane.selectedIndex = index
         }

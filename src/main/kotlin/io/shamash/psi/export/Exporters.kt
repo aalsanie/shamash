@@ -35,20 +35,18 @@ object Exporters {
      * Create exporters for the given set of formats.
      */
     fun create(formats: Set<Format>): List<Exporter> {
-        val list = ArrayList<Exporter>(formats.size)
-
-        for (format in Format.values()) {
-            if (!formats.contains(format)) continue
-
-            when (format) {
-                Format.JSON -> list.add(JsonExporter())
-                Format.SARIF -> list.add(SarifExporter())
-                Format.XML -> list.add(XmlExporter())
-                Format.HTML -> list.add(HtmlExporter())
-            }
-        }
-
-        return list
+        if (formats.isEmpty()) return emptyList()
+        return Format.entries
+            .asSequence()
+            .filter { it in formats }
+            .map {
+                when (it) {
+                    Format.JSON -> JsonExporter()
+                    Format.SARIF -> SarifExporter()
+                    Format.XML -> XmlExporter()
+                    Format.HTML -> HtmlExporter()
+                }
+            }.toList()
     }
 
     fun createAll(): List<Exporter> = create(Format.entries.toSet())

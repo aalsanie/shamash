@@ -21,6 +21,11 @@ package io.shamash.psi.baseline
 /**
  * Baseline execution mode for Shamash scans/exports.
  *
+ * IMPORTANT:
+ * - This enum is part of baseline's public contract.
+ * - Do not reorder or rename values without a deliberate migration plan.
+ *
+ * Modes:
  * - [OFF]: No baseline is loaded or written.
  * - [USE]: Load an existing baseline and suppress matching findings.
  * - [GENERATE]: Export findings and write/update the baseline from the current scan output.

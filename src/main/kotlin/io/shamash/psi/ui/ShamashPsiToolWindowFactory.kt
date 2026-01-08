@@ -32,11 +32,19 @@ class ShamashPsiToolWindowFactory :
         project: Project,
         toolWindow: ToolWindow,
     ) {
+        // Tool window content can be recreated; avoid stacking duplicate tab panes.
+        toolWindow.contentManager.removeAllContents(true)
+
         val tabs = JBTabbedPane()
 
-        // init controller + tabs
         val controller = ShamashPsiToolWindowController.getInstance(project)
         controller.init(tabs)
+
+        // Initial render
+        controller.refreshAll()
+
+        // Default landing tab (keep Dashboard as the overview; scans land on Findings via action)
+        controller.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
 
         val content = ContentFactory.getInstance().createContent(tabs, "", false)
         toolWindow.contentManager.addContent(content)

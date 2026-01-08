@@ -27,7 +27,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 /**
- * Exports Shamash reports to `<projectRoot>/shamash` and optionally applies / generates a baseline.
+ * Exports Shamash reports to `<projectRoot>/.shamash` and optionally applies / generates a baseline.
  *
  * This class wires:
  * - output directory resolution + normalization,
@@ -52,6 +52,10 @@ class ShamashPsiReportExportService(
      * - Applies preprocessors in order:
      *   1) exceptionsPreprocessor (if present)
      *   2) baselinePreprocessor (if baseline USE and baseline exists)
+     *
+     * Baseline GENERATE:
+     * - Baseline is generated from the same "current findings" definition used for reporting,
+     *   which includes applying the exceptionsPreprocessor (if provided).
      */
     fun export(
         projectBasePath: Path,
@@ -59,40 +63,37 @@ class ShamashPsiReportExportService(
         toolName: String,
         toolVersion: String,
         findings: List<Finding>,
-        baseline: BaselineConfig = BaselineConfig.Off,
+        baseline: BaselineConfig = BaselineConfig.OFF,
         exceptionsPreprocessor: FindingPreprocessor? = null,
         generatedAtEpochMillis: Long = System.currentTimeMillis(),
     ): ExportResult {
         val outputDir = ExportOutputLayout.normalizeOutputDir(projectBasePath, null)
         Files.createDirectories(outputDir)
 
-        // baseline fingerprints: only needed for USE mode
         val baselineFingerprints =
-            when (baseline.mode) {
-                BaselineMode.USE -> baselineCoordinator.loadBaselineFingerprints(outputDir)
-                BaselineMode.GENERATE -> emptySet()
-                BaselineMode.OFF -> emptySet()
+            if (baseline.mode == BaselineMode.USE) {
+                baselineCoordinator.loadBaselineFingerprints(outputDir)
+            } else {
+                emptySet()
             }
 
-        // baseline preprocessor: suppresses findings present in baseline
+        // Adapt baseline's preprocessor type into the export-layer preprocessor hook
+        // to preserve layering (baseline stays independent of export).
         val baselinePreprocessor: FindingPreprocessor? =
-            baselineCoordinator.createSuppressionPreprocessor(baselineFingerprints)
+            if (baseline.mode == BaselineMode.USE && baselineFingerprints.isNotEmpty()) {
+                baselineCoordinator
+                    .createSuppressionPreprocessor(baselineFingerprints)
+                    ?.let { bp ->
+                        FindingPreprocessor { base, fs -> bp.process(base, fs) }
+                    }
+            } else {
+                null
+            }
 
-        // explicitly use FindingPreprocessors as the canonical adapter point.
-        val preprocessors = ArrayList<FindingPreprocessor>(2)
-
-        if (exceptionsPreprocessor != null) {
-            preprocessors.add(exceptionsPreprocessor)
-        }
-        if (baselinePreprocessor != null) {
-            preprocessors.add(baselinePreprocessor)
-        }
-
-        // build report and export in ALL formats by default.
         val orchestrator =
-            ExportOrchestrator(
-                reportBuilder = ReportBuilder(preprocessors),
-                exporters = Exporters.createAll(),
+            DefaultExportPipelineFactory.create(
+                exceptionsPreprocessor = exceptionsPreprocessor,
+                baselinePreprocessor = baselinePreprocessor,
             )
 
         val report =
@@ -106,10 +107,19 @@ class ShamashPsiReportExportService(
                 generatedAtEpochMillis = generatedAtEpochMillis,
             )
 
-        // writes baseline.json
         val baselineWritten =
             if (baseline.mode == BaselineMode.GENERATE) {
-                val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, findings)
+                // Baseline generation must match the exported "current findings" definition.
+                // We apply exceptions only (no baseline suppression while generating).
+                val baseAbs = projectBasePath.toAbsolutePath().normalize()
+                val currentFindings =
+                    if (exceptionsPreprocessor != null) {
+                        exceptionsPreprocessor.process(baseAbs, findings)
+                    } else {
+                        findings
+                    }
+
+                val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, currentFindings)
                 baselineCoordinator.writeBaseline(
                     outputDir = outputDir,
                     fingerprints = fingerprints,

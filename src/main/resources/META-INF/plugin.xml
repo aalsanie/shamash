@@ -2,7 +2,7 @@
     <id>io.shamash</id>
     <name>Shamash</name>
 
-    <vendor email="a.aalsanie@outlook.com">A.ALSANIE</vendor>
+    <vendor email="a.aalsanie@outlook.com">Ahmad Alsanie</vendor>
 
     <description><![CDATA[
         Shamash is a JVM architecture enforcement tool with two complementary engines:
@@ -20,7 +20,7 @@
     <extensions defaultExtensionNs="com.intellij">
 
         <!-- Notifications -->
-        <notificationGroup id="Shamash"
+        <notificationGroup id="Shamash PSI"
                            displayType="BALLOON"
                            isLogByDefault="true"/>
 
@@ -67,7 +67,7 @@
         <!-- ============== PSI ============== -->
 
         <action id="io.shamash.psi.actions.OpenPsiDashboardAction"
-                class="io.shamash.psi.ui.OpenPsiDashboardAction"
+                class="io.shamash.psi.ui.actions.OpenPsiDashboardAction"
                 text="Shamash: PSI Dashboard"
                 description="Open the Shamash PSI dashboard."
                 icon="/icons/pluginIcon.svg">
@@ -75,7 +75,7 @@
         </action>
 
         <action id="io.shamash.psi.actions.RunPsiScanAction"
-                class="io.shamash.psi.ui.RunPsiScanAction"
+                class="io.shamash.psi.ui.actions.RunPsiScanAction"
                 text="Shamash: Run PSI Scan"
                 description="Runs Shamash PSI rules on project source using IntelliJ PSI."
                 icon="/icons/pluginIcon.svg">
@@ -99,7 +99,7 @@
         </action>
 
         <action id="io.shamash.psi.actions.OpenPsiReferenceConfigAction"
-                class="io.shamash.psi.ui.OpenPsiReferenceConfigAction"
+                class="io.shamash.psi.ui.actions.OpenPsiReferenceConfigAction"
                 text="Shamash: Open PSI Reference Config"
                 description="Open the built-in Shamash PSI reference YAML."
                 icon="/icons/pluginIcon.svg">

@@ -26,6 +26,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import io.shamash.psi.ui.settings.ShamashPsiUiConstants
 
+/**
+ * UI should call scan runner, then use this to notify/focus.
+ */
 object PsiActionUtil {
     fun notify(
         project: Project?,
@@ -33,14 +36,32 @@ object PsiActionUtil {
         message: String,
         type: NotificationType,
     ) {
-        val n = Notification(ShamashPsiUiConstants.NOTIFICATION_GROUP_ID, title, message, type)
-        Notifications.Bus.notify(n, project)
+        val notification =
+            Notification(
+                ShamashPsiUiConstants.NOTIFICATION_GROUP_ID,
+                title,
+                message,
+                type,
+            )
+        Notifications.Bus.notify(notification, project)
     }
 
     fun openPsiToolWindow(project: Project) {
-        ApplicationManager.getApplication().invokeLater {
-            val tw = ToolWindowManager.getInstance(project).getToolWindow(ShamashPsiUiConstants.TOOLWINDOW_ID)
-            tw?.show()
+        if (project.isDisposed) return
+
+        val runnable =
+            Runnable {
+                if (project.isDisposed) return@Runnable
+                val tw = ToolWindowManager.getInstance(project).getToolWindow(ShamashPsiUiConstants.TOOLWINDOW_ID)
+                // activate() brings focus; show() only makes it visible.
+                tw?.activate(null, true)
+            }
+
+        val app = ApplicationManager.getApplication()
+        if (app.isDispatchThread) {
+            runnable.run()
+        } else {
+            app.invokeLater(runnable)
         }
     }
 }

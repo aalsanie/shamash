@@ -18,13 +18,13 @@
  */
 package io.shamash.psi.engine.registry
 
-import io.shamash.psi.config.schema.v1.rules.ArchForbiddenRoleDependenciesRule
-import io.shamash.psi.config.schema.v1.rules.DeadcodeUnusedPrivateMembersRule
-import io.shamash.psi.config.schema.v1.rules.MetricsMaxMethodsByRoleRule
-import io.shamash.psi.config.schema.v1.rules.NamingBannedSuffixesRule
-import io.shamash.psi.config.schema.v1.rules.PackagesRolePlacementRule
-import io.shamash.psi.config.schema.v1.rules.PackagesRootPackageRule
 import io.shamash.psi.engine.EngineRule
+import io.shamash.psi.engine.rules.ArchForbiddenRoleDependenciesRule
+import io.shamash.psi.engine.rules.DeadcodeUnusedPrivateMembersRule
+import io.shamash.psi.engine.rules.MetricsMaxMethodsByRoleRule
+import io.shamash.psi.engine.rules.NamingBannedSuffixesRule
+import io.shamash.psi.engine.rules.PackagesRolePlacementRule
+import io.shamash.psi.engine.rules.PackagesRootPackageRule
 
 object RuleRegistry {
     private val ruleList: List<EngineRule> =

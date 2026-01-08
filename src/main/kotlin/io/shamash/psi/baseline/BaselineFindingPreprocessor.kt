@@ -19,21 +19,28 @@
 package io.shamash.psi.baseline
 
 import io.shamash.psi.engine.Finding
-import io.shamash.psi.export.FindingFingerprint
-import io.shamash.psi.export.FindingPreprocessor
-import io.shamash.psi.export.PathNormalizer
+import io.shamash.psi.util.PathNormalizer
 import java.nio.file.Path
+import java.nio.file.Paths
 
 /**
- * Suppresses findings that match an existing baseline by stable fingerprint.
+ * Applies baseline suppression to findings.
  *
- * Fingerprints are computed using the project's base path and a project-relative
- * normalized file path (forward slashes), consistent with exporter fingerprinting.
+ * A finding is suppressed when its computed fingerprint exists in [baselineFingerprints].
+ *
+ * Notes:
+ * - Baseline fingerprints are computed using [BaselineFingerprint] (owned by baseline layer).
+ * - Path normalization uses locked util [PathNormalizer] to ensure cross-OS stability.
  */
 class BaselineFindingPreprocessor(
     private val baselineFingerprints: Set<String>,
-) : FindingPreprocessor {
-    override fun process(
+) {
+    /**
+     * Returns a filtered list of findings after applying baseline suppression.
+     *
+     * This method is deterministic: input order is preserved for non-suppressed findings.
+     */
+    fun process(
         projectBasePath: Path,
         findings: List<Finding>,
     ): List<Finding> {
@@ -42,12 +49,12 @@ class BaselineFindingPreprocessor(
         val out = ArrayList<Finding>(findings.size)
         for (finding in findings) {
             val normalizedPath =
-                PathNormalizer.toProjectRelativeNormalizedPath(
-                    basePath = projectBasePath,
-                    filePath = finding.filePath,
+                PathNormalizer.relativizeOrNormalize(
+                    base = projectBasePath,
+                    target = Paths.get(finding.filePath),
                 )
 
-            val fingerprint = FindingFingerprint.sha256Hex(finding, normalizedPath)
+            val fingerprint = BaselineFingerprint.sha256Hex(finding, normalizedPath)
             if (!baselineFingerprints.contains(fingerprint)) {
                 out.add(finding)
             }

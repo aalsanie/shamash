@@ -18,26 +18,33 @@
  */
 package io.shamash.psi.ui.config
 
-import io.shamash.psi.config.schema.v1.registry.RuleSpecRegistryV1
+import io.shamash.psi.config.validation.v1.registry.RuleSpecRegistryV1
 import io.shamash.psi.engine.registry.RuleRegistry
 
+/**
+ * Diagnostic view: compares executable engine rules vs schema/spec-validated rule IDs.
+ *
+ * Intended usage:
+ * - Display in Config/Support tab.
+ * - Helps detect drift when a rule is added/removed without updating its spec definition.
+ */
 object PsiRuleSupportView {
     data class Support(
         val executable: Set<String>,
-        val specd: Set<String>,
+        val specValidated: Set<String>,
         val missingSpec: Set<String>,
         val missingRule: Set<String>,
     )
 
     fun compute(): Support {
         val executable = RuleRegistry.allIds()
-        val specd = RuleSpecRegistryV1.allIds()
+        val specValidated = RuleSpecRegistryV1.allIds()
 
         return Support(
             executable = executable,
-            specd = specd,
-            missingSpec = executable - specd,
-            missingRule = specd - executable,
+            specValidated = specValidated,
+            missingSpec = executable - specValidated,
+            missingRule = specValidated - executable,
         )
     }
 
@@ -47,7 +54,7 @@ object PsiRuleSupportView {
             s.executable.sorted().forEach { append("- ").append(it).append('\n') }
 
             append("\nSpec-validated rules:\n")
-            s.specd.sorted().forEach { append("- ").append(it).append('\n') }
+            s.specValidated.sorted().forEach { append("- ").append(it).append('\n') }
 
             if (s.missingSpec.isNotEmpty()) {
                 append("\nWARNING: Rules missing specs (will run but schema validation is weaker):\n")

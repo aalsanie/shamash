@@ -18,12 +18,14 @@
  */
 package io.shamash.psi.ui.dashboard
 
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.project.Project
+import io.shamash.psi.ui.actions.PsiActionUtil
 import java.awt.FlowLayout
 import javax.swing.JButton
 import javax.swing.JPanel
@@ -41,9 +43,9 @@ class DashboardToolbarPanel(
     init {
         add(JButton("Refresh").apply { addActionListener { onRefresh() } })
 
-        add(actionButton("Run Scan", "io.shamash.psi.actions.RunPsiScanAction"))
-        add(actionButton("Export", "io.shamash.psi.actions.ExportPsiReportsAction"))
-        add(actionButton("Validate Config", "io.shamash.psi.actions.ValidatePsiConfigAction"))
+        add(actionButton("Run Scan", ACTION_RUN_SCAN))
+        add(actionButton("Export", ACTION_EXPORT))
+        add(actionButton("Validate Config", ACTION_VALIDATE))
     }
 
     private fun actionButton(
@@ -52,12 +54,24 @@ class DashboardToolbarPanel(
     ): JButton =
         JButton(label).apply {
             addActionListener {
-                val action = ActionManager.getInstance().getAction(actionId) ?: return@addActionListener
+                val action = ActionManager.getInstance().getAction(actionId)
+                if (action == null) {
+                    PsiActionUtil.notify(project, "Shamash PSI", "Action not found: $actionId", NotificationType.ERROR)
+                    return@addActionListener
+                }
 
                 // IMPORTANT: pass DataContext with PROJECT (EMPTY_CONTEXT => e.project == null).
                 val event = AnActionEvent.createFromAnAction(action, null, "ShamashPsiDashboardToolbar", dataContext)
                 action.actionPerformed(event)
+
+                // Immediate refresh is fine for responsiveness, but background actions will refresh again on success.
                 onRefresh()
             }
         }
+
+    companion object {
+        private const val ACTION_RUN_SCAN = "io.shamash.psi.actions.RunPsiScanAction"
+        private const val ACTION_EXPORT = "io.shamash.psi.actions.ExportPsiReportsAction"
+        private const val ACTION_VALIDATE = "io.shamash.psi.actions.ValidatePsiConfigAction"
+    }
 }

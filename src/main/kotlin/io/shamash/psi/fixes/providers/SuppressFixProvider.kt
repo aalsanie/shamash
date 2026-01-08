@@ -19,14 +19,11 @@
 package io.shamash.psi.fixes.providers
 
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.PsiImportStatementBase
-import com.intellij.psi.PsiNamedElement
-import com.intellij.psi.PsiPackageStatement
-import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.psi.engine.Finding
 import io.shamash.psi.fixes.FixContext
 import io.shamash.psi.fixes.FixProvider
@@ -35,6 +32,11 @@ import io.shamash.psi.fixes.ShamashFix
 
 /**
  * Provides suppression fixes for any finding.
+ *
+ * Supported formats (must match engine suppressors):
+ *  - Line comment directive: // shamash:ignore <ruleId>|all
+ *  - Kotlin: @Suppress("shamash:<ruleId>|all")
+ *  - Java: @SuppressWarnings("shamash:<ruleId>|all")
  */
 class SuppressFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = true
@@ -45,7 +47,6 @@ class SuppressFixProvider : FixProvider {
     ): List<ShamashFix> {
         val project = ctx.project
         val file = PsiResolver.resolveFile(project, f.filePath) ?: return emptyList()
-
         val element = PsiResolver.resolveElement(project, f) ?: file
 
         val commentFix = SuppressAsCommentFix(project, file, element, f.ruleId)
@@ -66,15 +67,20 @@ class SuppressFixProvider : FixProvider {
 
         override fun apply() {
             val doc = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
-
-            // For comment suppression, current behavior is acceptable: it will suppress at the anchor line.
             val offset = element.textRange?.startOffset ?: return
-            val lineStart = doc.getLineStartOffset(doc.getLineNumber(offset))
-            val directive = "// shamash:ignore $ruleId\n"
+            val line = doc.getLineNumber(offset)
+            val lineStart = doc.getLineStartOffset(line)
+
+            val indent = leadingWhitespaceAt(doc, lineStart)
+            val directive = "$indent// shamash:ignore $ruleId\n"
 
             WriteCommandAction.runWriteCommandAction(project) {
-                val tail = doc.text.substring(lineStart)
-                if (tail.contains("shamash:ignore") && tail.contains(ruleId)) return@runWriteCommandAction
+                // De-dup where it matters: current line or the line directly above.
+                if (hasTokenOnLineOrPrev(doc, line, "shamash:ignore $ruleId") ||
+                    hasTokenOnLineOrPrev(doc, line, "shamash:ignore all")
+                ) {
+                    return@runWriteCommandAction
+                }
 
                 doc.insertString(lineStart, directive)
                 PsiDocumentManager.getInstance(project).commitDocument(doc)
@@ -98,25 +104,28 @@ class SuppressFixProvider : FixProvider {
             val doc = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
 
             val ext = file.virtualFile?.extension?.lowercase() ?: ""
-            val annLine =
+            val annCore =
                 when (ext) {
-                    "kt" -> "@Suppress(\"shamash:$ruleId\")\n"
-                    else -> "@SuppressWarnings(\"shamash:$ruleId\")\n"
+                    "kt" -> "@Suppress(\"shamash:$ruleId\")"
+                    else -> "@SuppressWarnings(\"shamash:$ruleId\")"
                 }
 
             val insertOffset = computeInsertionLineStartOffset(doc) ?: return
+            val line = doc.getLineNumber(insertOffset)
+            val lineStart = doc.getLineStartOffset(line)
+
+            val indent = leadingWhitespaceAt(doc, lineStart)
+            val annLine = "$indent$annCore\n"
 
             WriteCommandAction.runWriteCommandAction(project) {
-                // De-dup in a small window around insertion point
-                val windowStart = maxOf(0, insertOffset - 512)
-                val windowEnd = minOf(doc.textLength, insertOffset + 512)
-                val window = doc.text.substring(windowStart, windowEnd)
-
-                if (window.contains("shamash:$ruleId") || window.contains("shamash:all")) {
+                // De-dup locally (annotation can be above the declaration line).
+                if (hasTokenOnLineOrPrev(doc, line, "shamash:$ruleId") ||
+                    hasTokenOnLineOrPrev(doc, line, "shamash:all")
+                ) {
                     return@runWriteCommandAction
                 }
 
-                doc.insertString(insertOffset, annLine)
+                doc.insertString(lineStart, annLine)
                 PsiDocumentManager.getInstance(project).commitDocument(doc)
             }
         }
@@ -124,142 +133,49 @@ class SuppressFixProvider : FixProvider {
         /**
          * We want class/member suppression, so we insert ABOVE the declaration.
          *
-         * If the finding has no class/member anchor (file-scoped rules like packages.rootPackage),
+         * If the finding has no class/member anchor (file-scoped rules),
          * we fallback to the first top-level declaration (class/object/interface/fun/val/var),
-         * never before the package.
+         * never before the package/imports.
          */
-        private fun computeInsertionLineStartOffset(doc: com.intellij.openapi.editor.Document): Int? {
-            val text = file.text ?: return null
-            val ext = file.virtualFile?.extension?.lowercase() ?: ""
+        private fun computeInsertionLineStartOffset(doc: Document): Int? {
+            val text = file.text
+            val headerEnd = headerEndOffset(text)
 
-            // 1) Try to anchor to the best PSI element if the finding is declaration-scoped.
+            // 1) If this is declaration-scoped, try to anchor directly to PSI element.
             val hasAnchorInfo = !finding.classFqn.isNullOrBlank() || !finding.memberName.isNullOrBlank()
             if (hasAnchorInfo) {
-                val target = bestTargetElement(file, finding) ?: element
-                val declOffset = safeDeclarationOffset(file, target, finding) ?: 0
-
-                // If we got a non-header decl offset, use it.
-                if (declOffset > 0 && !isInFileHeader(text, declOffset, ext)) {
-                    val line = doc.getLineNumber(declOffset)
+                val offset = element.textRange?.startOffset
+                if (offset != null && offset > 0 && offset > headerEnd) {
+                    val line = doc.getLineNumber(offset)
                     return doc.getLineStartOffset(line)
                 }
             }
 
-            // 2) Fallback: find first top-level declaration after package/imports.
-            val firstDecl = firstTopLevelDeclarationOffset(text)
-            if (firstDecl != null) {
-                val line = doc.getLineNumber(firstDecl)
+            // 2) Fallback: first top-level declaration after header.
+            val firstDeclaration = firstTopLevelDeclarationOffset(text)
+            if (firstDeclaration != null) {
+                val line = doc.getLineNumber(firstDeclaration)
                 return doc.getLineStartOffset(line)
             }
 
-            // 3) Last resort: insert after header (package/imports). Never at 0.
-            val headerEnd = headerEndOffset(text)
+            // 3) Last resort: insert after header end (never at 0).
             val line = doc.getLineNumber(minOf(headerEnd, doc.textLength))
             return doc.getLineStartOffset(line)
         }
 
-        private fun bestTargetElement(
-            file: PsiFile,
-            f: Finding,
-        ): PsiElement? {
-            val member = f.memberName?.trim().takeIf { !it.isNullOrBlank() }
-            val cls =
-                f.classFqn
-                    ?.substringAfterLast('.')
-                    ?.trim()
-                    .takeIf { !it.isNullOrBlank() }
-
-            val named: Collection<PsiNamedElement> =
-                PsiTreeUtil.findChildrenOfType(file, PsiNamedElement::class.java)
-
-            if (member != null) {
-                named.firstOrNull { it.name == member }?.let { return it }
-            }
-            if (cls != null) {
-                named.firstOrNull { it.name == cls }?.let { return it }
-            }
-            return null
-        }
-
-        private fun safeDeclarationOffset(
-            file: PsiFile,
-            target: PsiElement,
-            f: Finding,
-        ): Int? {
-            val start = target.textRange?.startOffset
-
-            // If PSI start is usable and not header-ish, take it.
-            if (start != null && start > 0) return start
-
-            // Otherwise, use text heuristics (works for Kotlin where PSI start can point at modifiers).
-            val text = file.text ?: return start
-
-            val cls =
-                f.classFqn
-                    ?.substringAfterLast('.')
-                    ?.trim()
-                    .takeIf { !it.isNullOrBlank() }
-            val member = f.memberName?.trim().takeIf { !it.isNullOrBlank() }
-
-            if (member != null) {
-                findFirstOf(text, listOf("fun $member", "val $member", "var $member"))?.let { return it }
-            }
-            if (cls != null) {
-                findFirstOf(
-                    text,
-                    listOf(
-                        "class $cls",
-                        "object $cls",
-                        "interface $cls",
-                        "enum class $cls",
-                        "data class $cls",
-                        "sealed class $cls",
-                        "annotation class $cls",
-                    ),
-                )?.let { return it }
-            }
-
-            return start
-        }
-
-        private fun findFirstOf(
-            text: String,
-            patterns: List<String>,
-        ): Int? {
-            for (p in patterns) {
-                val idx = text.indexOf(p)
-                if (idx >= 0) return idx
-            }
-            return null
-        }
-
-        /**
-         * Kotlin-safe header detection (doesn't rely on Java PSI types).
-         */
-        private fun isInFileHeader(
-            text: String,
-            offset: Int,
-            ext: String,
-        ): Boolean {
-            // For both Java/Kotlin: use text-based header end (package + imports).
-            // It's safer across PSI implementations.
-            val headerEnd = headerEndOffset(text)
-            return offset <= headerEnd
-        }
-
         /**
          * Returns the offset right AFTER the last import line (or after package line if no imports).
+         * Text-based so it works for Kotlin + Java consistently.
          */
         private fun headerEndOffset(text: String): Int {
             var last = 0
 
             // end of package line
-            run {
-                val m = Regex("(?m)^\\s*package\\s+[^\\n]+\\n").find(text)
-                if (m != null) last = maxOf(last, m.range.last + 1)
+            Regex("(?m)^\\s*package\\s+[^\\n]+\\n").find(text)?.let {
+                last = maxOf(last, it.range.last + 1)
             }
 
-            // end of last import line (scan all)
+            // end of last import line
             Regex("(?m)^\\s*import\\s+[^\\n]+\\n")
                 .findAll(text)
                 .forEach { last = maxOf(last, it.range.last + 1) }
@@ -269,21 +185,51 @@ class SuppressFixProvider : FixProvider {
 
         /**
          * Find the first top-level declaration after the header (package/imports).
-         * This avoids inserting before package for file-scoped findings.
          */
         private fun firstTopLevelDeclarationOffset(text: String): Int? {
             val start = headerEndOffset(text)
             if (start >= text.length) return null
 
-            // Looks for lines starting with optional annotations, then a decl keyword.
             val re =
                 Regex(
                     pattern =
                         "(?m)^(?:\\s*@[^\\n]+\\n)*\\s*(class|object|interface|enum\\s+class|data\\s+class|sealed\\s+class|annotation\\s+class|fun|val|var)\\b",
                 )
 
-            val m = re.find(text, startIndex = start) ?: return null
-            return m.range.first
+            return re.find(text, startIndex = start)?.range?.first
+        }
+    }
+
+    private companion object {
+        private fun leadingWhitespaceAt(
+            doc: Document,
+            lineStart: Int,
+        ): String {
+            val text = doc.charsSequence
+            var i = lineStart
+            while (i < doc.textLength) {
+                val c = text[i]
+                if (c != ' ' && c != '\t') break
+                i++
+            }
+            return text.subSequence(lineStart, i).toString()
+        }
+
+        private fun hasTokenOnLineOrPrev(
+            doc: Document,
+            line: Int,
+            token: String,
+        ): Boolean {
+            fun lineText(l: Int): String {
+                if (l < 0) return ""
+                val start = doc.getLineStartOffset(l)
+                val end = doc.getLineEndOffset(l)
+                return doc.text.substring(start, end)
+            }
+
+            val cur = lineText(line)
+            val prev = lineText(line - 1)
+            return cur.contains(token) || prev.contains(token)
         }
     }
 }

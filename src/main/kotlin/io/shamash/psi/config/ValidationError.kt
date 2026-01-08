@@ -24,4 +24,4 @@ data class ValidationError(
     val severity: ValidationSeverity = ValidationSeverity.ERROR,
 )
 
-enum class ValidationSeverity { ERROR, WARNING }
+enum class ValidationSeverity { ERROR, WARNING, INFO }

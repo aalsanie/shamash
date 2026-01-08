@@ -21,6 +21,10 @@ package io.shamash.psi.ui.config
 import com.intellij.openapi.project.Project
 import javax.swing.JComponent
 
+/**
+ * Tool window tab wrapper for the Config panel.
+ *
+ */
 class ShamashPsiConfigTab(
     project: Project,
 ) {
@@ -28,5 +32,7 @@ class ShamashPsiConfigTab(
 
     fun component(): JComponent = panel
 
-    fun refresh() = panel.refresh()
+    fun refresh() {
+        panel.refresh()
+    }
 }

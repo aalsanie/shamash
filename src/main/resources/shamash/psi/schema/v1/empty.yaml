@@ -1,20 +1,29 @@
 version: 1
 
 project:
+  # Optional: if omitted, loader may default, but schema is strict and requires this block.
+  validation:
+    # WARN | ERROR | IGNORE (case-insensitive)
+    unknownRule: ERROR
+
+  # Optional; if you omit it, PackagesRootPackageSpec can enforce via rules if you want.
   rootPackage:
-    mode: auto
+    mode: AUTO
     value: ""
+
   sourceGlobs:
     include:
       - "src/main/java/**"
       - "src/main/kotlin/**"
     exclude:
       - "**/build/**"
-      - "**/generated/**"
+      - "**/.gradle/**"
+      - "**/out/**"
       - "**/.idea/**"
+      - "**/generated/**"
 
 roles: {}
 
-rules: {}
+rules: []
 
 exceptions: []

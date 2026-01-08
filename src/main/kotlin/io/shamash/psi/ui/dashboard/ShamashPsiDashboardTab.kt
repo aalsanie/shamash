@@ -21,6 +21,9 @@ package io.shamash.psi.ui.dashboard
 import com.intellij.openapi.project.Project
 import javax.swing.JComponent
 
+/**
+ * Tool window tab wrapper for the Dashboard panel.
+ */
 class ShamashPsiDashboardTab(
     project: Project,
 ) {
@@ -28,5 +31,7 @@ class ShamashPsiDashboardTab(
 
     fun component(): JComponent = panel
 
-    fun refresh() = panel.refresh()
+    fun refresh() {
+        panel.refresh()
+    }
 }

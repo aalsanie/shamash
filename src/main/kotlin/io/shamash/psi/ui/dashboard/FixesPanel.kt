@@ -19,6 +19,7 @@
 package io.shamash.psi.ui.dashboard
 
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.VerticalLayout
@@ -28,6 +29,7 @@ import io.shamash.psi.fixes.FixRegistry
 import io.shamash.psi.fixes.ShamashFix
 import io.shamash.psi.ui.actions.PsiActionUtil
 import java.awt.BorderLayout
+import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JPanel
 
@@ -36,26 +38,29 @@ class FixesPanel(
 ) : JPanel(BorderLayout()) {
     private val root =
         JPanel(VerticalLayout(6)).apply {
-            border = javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10)
+            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
         }
 
     private val title = JBLabel("<html><b>Fixes</b></html>")
 
     init {
-        root.add(title)
         add(root, BorderLayout.NORTH)
         setFinding(null)
     }
 
     fun setFinding(f: Finding?) {
-        // clear all but title
+        val app = ApplicationManager.getApplication()
+        if (!app.isDispatchThread) {
+            app.invokeLater { setFinding(f) }
+            return
+        }
+
         root.removeAll()
         root.add(title)
 
         if (f == null) {
             root.add(JBLabel("Select a finding to see available fixes."))
-            revalidate()
-            repaint()
+            finishRefresh()
             return
         }
 
@@ -68,7 +73,7 @@ class FixesPanel(
                 PsiActionUtil.notify(
                     project,
                     "Shamash PSI",
-                    "Fix provider crashed: ${t.message}",
+                    "Fix provider failed: ${t.message}",
                     NotificationType.ERROR,
                 )
                 emptyList()
@@ -76,15 +81,15 @@ class FixesPanel(
 
         if (fixes.isEmpty()) {
             root.add(JBLabel("No fixes available for this finding."))
-            revalidate()
-            repaint()
+            finishRefresh()
             return
         }
 
-        fixes.forEach { fix ->
-            root.add(fixButton(fix))
-        }
+        fixes.forEach { fix -> root.add(fixButton(fix)) }
+        finishRefresh()
+    }
 
+    private fun finishRefresh() {
         revalidate()
         repaint()
     }
@@ -107,9 +112,7 @@ class FixesPanel(
                 }
 
                 try {
-                    // IMPORTANT:
-                    // Fix implementations are responsible for write actions / command wrappers.
-                    // The UI must not reflectively invoke methods (breaks on non-public fix impls).
+                    // Fix implementations own write-actions / command wrappers.
                     fix.apply()
 
                     PsiActionUtil.notify(

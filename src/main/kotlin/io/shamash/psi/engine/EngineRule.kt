@@ -19,7 +19,7 @@
 package io.shamash.psi.engine
 
 import com.intellij.psi.PsiFile
-import io.shamash.psi.config.schema.v1.model.Rule
+import io.shamash.psi.config.schema.v1.model.RuleDef
 import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.facts.model.v1.FactsIndex
 
@@ -29,7 +29,7 @@ interface EngineRule {
     fun evaluate(
         file: PsiFile,
         facts: FactsIndex,
-        rule: Rule,
+        rule: RuleDef,
         config: ShamashPsiConfigV1,
     ): List<Finding>
 }

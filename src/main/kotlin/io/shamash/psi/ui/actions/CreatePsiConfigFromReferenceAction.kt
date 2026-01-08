@@ -26,82 +26,75 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.psi.config.ProjectLayout
-import io.shamash.psi.config.ResourceBaseLookup
 import io.shamash.psi.config.SchemaResources
+import io.shamash.psi.config.intellij.ResourceBaseLookup
 import io.shamash.psi.ui.settings.ShamashPsiConfigLocator
 import io.shamash.psi.ui.settings.ShamashPsiSettingsState
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ * Creates a PSI config file from the shipped reference YAML, if one does not already exist,
+ * then opens it in the editor and focuses the Shamash PSI tool window.
+ *
+ * UI contract:
+ * - UI does not "invent" config content; it uses SchemaResources from the config module.
+ * - UI does not validate; scan/config validator handles correctness on execution.
+ */
 class CreatePsiConfigFromReferenceAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        val basePath = project.basePath
-        if (basePath.isNullOrBlank()) {
-            PsiActionUtil.notify(
-                project,
-                "Shamash PSI",
-                "Project basePath is null; cannot create config.",
-                NotificationType.ERROR,
-            )
+        val projectBase = project.basePath?.takeIf { it.isNotBlank() }?.let(Path::of)
+        if (projectBase == null) {
+            notify(project, "Project basePath is null; cannot create config.", NotificationType.ERROR)
             return
         }
 
         // If config already exists (whatever locator resolves), open it and stop.
         val existing = ShamashPsiConfigLocator.resolveConfigFile(project)
         if (existing != null && existing.isValid) {
-            PsiActionUtil.notify(
-                project,
-                "Shamash PSI",
-                "PSI config already exists: " +
-                    existing.path,
-                NotificationType.INFORMATION,
-            )
+            notify(project, "PSI config already exists: ${existing.path}", NotificationType.INFORMATION)
             openInEditor(project, existing)
             PsiActionUtil.openPsiToolWindow(project)
             return
         }
 
-        val projectBase = Path.of(basePath)
         val target = resolveCreateTarget(project, projectBase)
 
         val yaml =
-            SchemaResources.openReferenceYaml().use { input ->
-                input.readBytes().toString(StandardCharsets.UTF_8)
+            try {
+                SchemaResources.openReferenceYaml().use { input ->
+                    input.readBytes().toString(StandardCharsets.UTF_8)
+                }
+            } catch (t: Throwable) {
+                notify(project, "Failed to load reference PSI config: ${t.message}", NotificationType.ERROR)
+                return
             }
 
         try {
             Files.createDirectories(target.parent)
-            if (!Files.exists(target)) {
+            if (Files.notExists(target)) {
                 Files.writeString(target, yaml, StandardCharsets.UTF_8)
             }
         } catch (t: Throwable) {
-            PsiActionUtil.notify(
-                project,
-                "Shamash PSI",
-                "Failed to write config: " +
-                    "${t.message}",
-                NotificationType.ERROR,
-            )
+            notify(project, "Failed to write config: ${t.message}", NotificationType.ERROR)
             return
         }
 
+        // Refresh VFS + open file on EDT.
         ApplicationManager.getApplication().invokeLater {
             val vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target)
-            if (vf != null) {
+            if (vf != null && vf.isValid) {
                 VfsUtil.markDirtyAndRefresh(false, false, false, vf)
                 openInEditor(project, vf)
             }
         }
 
-        PsiActionUtil.notify(
-            project,
-            "Shamash PSI",
-            "Created PSI config at ${projectBase.relativize(target)}",
-            NotificationType.INFORMATION,
-        )
+        val rel = runCatching { projectBase.relativize(target).toString() }.getOrDefault(target.toString())
+        notify(project, "Created PSI config at $rel", NotificationType.INFORMATION)
         PsiActionUtil.openPsiToolWindow(project)
     }
 
@@ -112,29 +105,36 @@ class CreatePsiConfigFromReferenceAction : AnAction() {
         val override =
             ShamashPsiSettingsState
                 .getInstance(project)
-                .state.configPath
+                .state
+                .configPath
                 ?.trim()
                 .orEmpty()
+
         if (override.isNotEmpty()) {
             val p = Path.of(override)
-            return if (p.isAbsolute) p else projectBase.resolve(p)
+            return (if (p.isAbsolute) p else projectBase.resolve(p)).normalize()
         }
 
         val resourceRoot =
             ResourceBaseLookup.bestResourceRootPath(project)
                 ?: ResourceBaseLookup.fallbackResourceRootPath(projectBase)
 
-        // Use ShamashPsiPaths relative (central place), but resolve it *under resources root*.
-        // ShamashPsiPaths currently returns projectBase.resolve("shamash/configs/psi.yml").
-        // We want resourceRoot.resolve("shamash/configs/psi.yml").
-        val rel = ProjectLayout.PSI_CONFIG_RELATIVE_YML
-        return resourceRoot.resolve(rel).normalize()
+        // Reference path is owned by config module.
+        return resourceRoot.resolve(ProjectLayout.PSI_CONFIG_RELATIVE_YML).normalize()
     }
 
     private fun openInEditor(
         project: Project,
-        vf: com.intellij.openapi.vfs.VirtualFile,
+        vf: VirtualFile,
     ) {
         FileEditorManager.getInstance(project).openFile(vf, true)
+    }
+
+    private fun notify(
+        project: Project,
+        message: String,
+        type: NotificationType,
+    ) {
+        PsiActionUtil.notify(project, "Shamash PSI", message, type)
     }
 }

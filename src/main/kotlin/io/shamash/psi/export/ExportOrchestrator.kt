@@ -23,13 +23,18 @@ import io.shamash.psi.export.schema.v1.model.ExportedReport
 import java.nio.file.Path
 
 /**
- * Orchestrates building an ExportedReport and running a set of exporters.
+ * Orchestrates building an [ExportedReport] and running a set of [Exporter]s.
  *
- * This is the only entry-point other layers should call for exporters.
+ * This is the core export pipeline component. Most callers should use
+ * [ShamashPsiReportExportService], which wires output directory layout and baseline behavior.
  *
- * - Report building: normalization and ordering are done once.
- * - Exporters must not mutate or reorder the report.
- * - Exporters are executed in order by class name.
+ * Responsibilities:
+ * - Build the report once (normalization/ordering happens in [ReportBuilder]).
+ * - Execute exporters in the given order (factory-defined and stable).
+ *
+ * Non-responsibilities:
+ * - Does not mutate findings or the report.
+ * - Does not own output directory resolution/normalization (handled by the caller/service).
  */
 class ExportOrchestrator(
     private val reportBuilder: ReportBuilder,
@@ -54,8 +59,7 @@ class ExportOrchestrator(
                 generatedAtEpochMillis = generatedAtEpochMillis,
             )
 
-        val sortedExporters = exporters.sortedBy { it::class.java.name }
-        for (exporter in sortedExporters) {
+        for (exporter in exporters) {
             exporter.export(report, outputDir)
         }
 

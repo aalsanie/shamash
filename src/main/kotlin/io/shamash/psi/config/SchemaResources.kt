@@ -30,5 +30,5 @@ object SchemaResources {
             "Missing resource: $resourcePath"
         }
 
-    fun openEmptyYaml(): InputStream = openRequired("${ProjectLayout.BASE}/empty.yaml")
+    fun openEmptyYaml(): InputStream = openRequired(ProjectLayout.EMPTY_YML)
 }

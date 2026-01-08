@@ -24,48 +24,84 @@ import io.shamash.psi.config.ValidationError
 import io.shamash.psi.engine.Finding
 import io.shamash.psi.export.schema.v1.model.ExportedReport
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * In-memory UI state for Shamash PSI tool window.
  *
- * This is intentionally simple:
- * - It's a project-level service.
- * - It stores the *last* results only (scan, validation, export).
- * - Tool window panels read these values on refresh().
+ * Contract:
+ * - Project-level service (supports multiple open projects).
+ * - Stores only the most recent results (scan + validation + export).
+ * - Updates are atomic to avoid panels observing mixed state.
  */
 @Service(Service.Level.PROJECT)
 class ShamashPsiUiStateService {
-    @Volatile
-    var lastFindings: List<Finding> = emptyList()
-        private set
+    data class Snapshot(
+        val findings: List<Finding> = emptyList(),
+        val validationErrors: List<ValidationError> = emptyList(),
+        val exportDir: Path? = null,
+        val exportedReport: ExportedReport? = null,
+    )
 
-    @Volatile
-    var lastValidationErrors: List<ValidationError> = emptyList()
-        private set
+    private val ref = AtomicReference(Snapshot())
 
-    @Volatile
-    var lastExportDir: Path? = null
-        private set
+    val lastFindings: List<Finding>
+        get() = ref.get().findings
 
-    @Volatile
-    var lastExportedReport: ExportedReport? = null
-        private set
+    val lastValidationErrors: List<ValidationError>
+        get() = ref.get().validationErrors
+
+    val lastExportDir: Path?
+        get() = ref.get().exportDir
+
+    val lastExportedReport: ExportedReport?
+        get() = ref.get().exportedReport
+
+    fun updateFromScan(
+        findings: List<Finding>,
+        validationErrors: List<ValidationError>,
+        exportDir: Path?,
+        exportedReport: ExportedReport?,
+    ) {
+        // Defensive copies so UI never observes a mutable backing list.
+        ref.set(
+            Snapshot(
+                findings = findings.toList(),
+                validationErrors = validationErrors.toList(),
+                exportDir = exportDir,
+                exportedReport = exportedReport,
+            ),
+        )
+    }
 
     fun updateFindings(findings: List<Finding>) {
-        // Defensive copy so UI never observes a mutable backing list.
-        lastFindings = findings.toList()
+        ref.updateAndGet { s ->
+            s.copy(
+                findings = findings.toList(),
+                // successful scan/refresh typically means old errors are not relevant anymore
+                validationErrors = emptyList(),
+            )
+        }
     }
 
     fun updateValidation(errors: List<ValidationError>) {
-        lastValidationErrors = errors.toList()
+        ref.updateAndGet { s -> s.copy(validationErrors = errors.toList()) }
     }
 
     fun updateExport(
         outputDir: Path?,
         report: ExportedReport?,
     ) {
-        lastExportDir = outputDir
-        lastExportedReport = report
+        ref.updateAndGet { s ->
+            s.copy(
+                exportDir = outputDir,
+                exportedReport = report,
+            )
+        }
+    }
+
+    fun clearExport() {
+        ref.updateAndGet { s -> s.copy(exportDir = null, exportedReport = null) }
     }
 
     companion object {

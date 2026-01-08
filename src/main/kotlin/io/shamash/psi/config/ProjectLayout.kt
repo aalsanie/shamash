@@ -29,6 +29,7 @@ object ProjectLayout {
     const val BASE: String = "/shamash/psi/schema/v1"
     const val SCHEMA_JSON: String = "$BASE/shamash-psi.schema.json"
     const val REFERENCE_YML: String = "$BASE/shamash-psi.reference.yml"
+    const val EMPTY_YML: String = "$BASE/empty.yaml"
 
     const val PSI_CONFIG_RELATIVE_YML = "$PSI_CONFIG_DIR/$PSI_CONFIG_FILE_YML"
     const val PSI_CONFIG_RELATIVE_YAML = "$PSI_CONFIG_DIR/$PSI_CONFIG_FILE_YAML"

@@ -36,8 +36,6 @@ class HtmlExporter : Exporter {
         report: ExportedReport,
         outputDir: Path,
     ) {
-        Files.createDirectories(outputDir)
-
         val outputFile = outputDir.resolve(ExportOutputLayout.HTML_FILE_NAME)
         Files.newOutputStream(outputFile).use { os ->
             BufferedWriter(OutputStreamWriter(os, StandardCharsets.UTF_8)).use { writer ->
@@ -152,11 +150,12 @@ class HtmlExporter : Exporter {
 
         writer.append("        <tr>").append('\n')
 
+        val sevName = finding.severity.name
         writer
             .append("          <td><span class=\"badge ")
-            .append(severityBadgeClass(finding.severity.name))
+            .append(severityBadgeClass(finding))
             .append("\">")
-            .append(escapeHtml(finding.severity.name))
+            .append(escapeHtml(sevName))
             .append("</span></td>")
             .append('\n')
 
@@ -165,25 +164,21 @@ class HtmlExporter : Exporter {
             .append(escapeHtml(finding.ruleId))
             .append("</td>")
             .append('\n')
-
         writer
             .append("          <td class=\"mono\">")
             .append(escapeHtml(finding.filePath))
             .append("</td>")
             .append('\n')
-
         writer
             .append("          <td class=\"mono\">")
             .append(escapeHtml(owner))
             .append("</td>")
             .append('\n')
-
         writer
             .append("          <td class=\"mono\">")
             .append(escapeHtml(finding.fingerprint))
             .append("</td>")
             .append('\n')
-
         writer
             .append("          <td>")
             .append(escapeHtml(finding.message))
@@ -205,8 +200,8 @@ class HtmlExporter : Exporter {
         }
     }
 
-    private fun severityBadgeClass(severityName: String): String =
-        when (severityName) {
+    private fun severityBadgeClass(finding: ExportedFinding): String =
+        when (finding.severity.name) {
             "ERROR" -> "badgeError"
             "WARNING" -> "badgeWarn"
             else -> "badgeInfo"
@@ -230,7 +225,7 @@ class HtmlExporter : Exporter {
     }
 
     private companion object {
-        private const val CSS =
+        private const val CSS = // unchanged
             "body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; " +
                 "padding:24px; background:#0b0f17; color:#e7eefc;}\n" +
                 ".header{display:flex; flex-direction:column; gap:6px; margin-bottom:16px;}\n" +

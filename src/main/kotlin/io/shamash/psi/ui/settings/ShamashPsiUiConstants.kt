@@ -18,7 +18,12 @@
  */
 package io.shamash.psi.ui.settings
 
+/**
+ * UI identifiers.
+ *
+ * IMPORTANT: these must match plugin.xml registrations (tool window + notification group).
+ */
 object ShamashPsiUiConstants {
     const val TOOLWINDOW_ID: String = "Shamash PSI"
-    const val NOTIFICATION_GROUP_ID: String = "Shamash"
+    const val NOTIFICATION_GROUP_ID: String = "Shamash PSI"
 }
