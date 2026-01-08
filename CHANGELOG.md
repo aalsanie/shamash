@@ -1,7 +1,16 @@
 # Changelog
-
+Shamash is currently shipped as an IntelliJ plugin only.
+This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
+
+## [0.60.0]
+### Fixed
+- Stabilize PSI Config v1 contract (reference YAML + JSON schema + binder alignment)
+- Tighten param typing + validation messages (maps vs lists, non-empty rules, regex lists, etc.)
+- Refactor scan pipeline for IDE safety (smart-mode read actions) + progress indicator file names
+- Update engine/baseline/export/fixes/UI wiring to new config pipeline
+- Fixed `facts.classToRole` only includes roles for classes found in the current file.
 ### Added
 - Configurable architecture engine
 - Configurable code structure engine
@@ -29,9 +38,6 @@
 - Removed opinionated inspections and fixes and descriptions
 - Removed legacy architecture module
 - Removed static inspections and fixes
-
-### Fixed
-- Fixed `facts.classToRole` only includes roles for classes found in the current file.
 
 ## [0.41.1]
 ### Removed

@@ -118,11 +118,11 @@
 
     <change-notes><![CDATA[
                      <ul>
-                      <li>PSI v1: Source-based architecture analysis using IntelliJ PSI.</li>
-                      <li>Architecture dashboards for PSI findings.</li>
-                      <li>Configurable YAML schema (schema v1) with validation.</li>
-                      <li>Inline suppressions and guided fixes for architectural violations.</li>
-                      <li>Export PSI findings to JSON, SARIF, XML, and HTML.</li>
+                      <li><strong>PSI Config v1</strong>: schema + validation stabilized (clear errors, consistent param typing)</li>
+                      <li><strong>Scan pipeline refactor</strong>: safer indexing/read-action handling + progress feedback</li>
+                      <li><strong>Baseline / export / fixes</strong>: updated to align with the v1 config pipeline</li>
+                      <li><strong>Reference config</strong>: updated with examples for quick verification</li>
+                      <li><strong>Known gap</strong>: automated tests in progress (unit + integration + E2E)</li>
                     </ul>
                      ]]>
     </change-notes>
