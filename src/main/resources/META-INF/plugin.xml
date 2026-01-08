@@ -8,7 +8,7 @@
         Shamash is a JVM architecture enforcement tool with two complementary engines:
         <br/><br/>
         <b>ASM</b>:
-        analyzes compiled bytecode and jars to detect architectural drift, dependency violations, and forbidden couplings — without requiring source code.
+        analyzes compiled bytecode and jars to detect architectural drift, dependency violations, and forbidden couplings.
         <br/><br/>
         <b>PSI</b>:
         analyzes source code via IntelliJ PSI using a configurable YAML schema, provides architectural dashboards, inline suppressions, guided fixes, and exportable reports.
