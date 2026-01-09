@@ -1,0 +1,148 @@
+version: 1
+
+project:
+  validation:
+    # Strict: fail if a rule is not implemented/registered
+    unknownRule: ERROR
+
+  # AUTO lets the tool infer root package (if your binder supports it),
+  # while the packages.rootPackage rule below can still enforce consistency.
+  rootPackage:
+    mode: AUTO
+    value: ""
+
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+      - "src/main/resources/**"
+    exclude:
+      - "**/build/**"
+      - "**/.gradle/**"
+      - "**/out/**"
+      - "**/.idea/**"
+      - "**/generated/**"
+
+roles:
+  controller:
+    priority: 100
+    description: "Web controllers"
+    match:
+      allOf:
+        - packageContainsSegment: "controller"
+        - not:
+            classNameEndsWith: "Internal"
+
+  service:
+    priority: 80
+    description: "Application services"
+    match:
+      anyOf:
+        - packageContainsSegment: "service"
+        - classNameEndsWith: "UseCase"
+
+  repository:
+    priority: 60
+    description: "Persistence"
+    match:
+      anyOf:
+        - packageContainsSegment: "repository"
+        - classNameEndsWithAny: ["Repository", "Dao"]
+
+  entrypoint:
+    priority: 10
+    description: "Runnable app entrypoints"
+    match:
+      hasMainMethod: true
+
+rules:
+  - type: "naming"
+    name: "bannedSuffixes"
+    roles: null
+    enabled: true
+    severity: WARNING
+    scope:
+      excludeGlobs:
+        - "src/test/**"
+    params:
+      banned: ["Action"]
+      applyToRoles: ["controller", "service", "repository"]
+      caseSensitive: false
+
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      kinds: ["methodCall", "fieldType", "parameterType", "returnType"]
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+          message: "Controllers must not depend on repository"
+        - from: "service"
+          to: ["controller"]
+
+  - type: "metrics"
+    name: "maxMethodsByRole"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      limits:
+        controller: 5
+        service: 12
+        repository: 10
+      countKinds: ["declaredMethods"]
+      ignoreMethodNameRegex:
+        - "^(get|set).*$"
+
+  - type: "packages"
+    name: "rolePlacement"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      expected:
+        controller:
+          packageRegex: ".*\\.controller(\\..*)?$"
+        service:
+          packageRegex: ".*\\.service(\\..*)?$"
+        repository:
+          packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+
+  - type: "packages"
+    name: "rootPackage"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      mode: "AUTO"
+      value: ""
+
+  - type: "deadcode"
+    name: "unusedPrivateMembers"
+    roles: null
+    enabled: true
+    severity: INFO
+    params:
+      check:
+        fields: true
+        methods: true
+        classes: false
+      ignoreIfAnnotatedWithPrefix:
+        - "org.junit."
+        - "org.springframework.web.bind.annotation."
+        - "jakarta.persistence."
+        - "lombok."
+      ignoreNameRegex: "^_.*$"
+
+exceptions:
+  - id: "EX-legacy"
+    reason: "Legacy module; cleanup scheduled"
+    expiresOn: "2026-06-01"
+    match:
+      packageRegex: "^com\\.acme\\.legacy\\..*$"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+      - "metrics.maxMethodsByRole"

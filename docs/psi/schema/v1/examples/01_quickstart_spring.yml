@@ -1,0 +1,110 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  rootPackage:
+    mode: EXPLICIT
+    value: "com.acme.app"
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude:
+      - "**/build/**"
+      - "**/.gradle/**"
+      - "**/out/**"
+      - "**/.idea/**"
+      - "**/generated/**"
+
+roles:
+  controller:
+    priority: 100
+    description: "Web controllers / adapters"
+    match:
+      anyOf:
+        - annotation: "org.springframework.web.bind.annotation.RestController"
+        - annotation: "org.springframework.stereotype.Controller"
+        - packageContainsSegment: "controller"
+        - classNameEndsWith: "Controller"
+
+  service:
+    priority: 80
+    description: "Application services"
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Service"
+        - packageContainsSegment: "service"
+        - classNameEndsWith: "Service"
+
+  repository:
+    priority: 60
+    description: "Persistence adapters"
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Repository"
+        - packageContainsSegment: "repository"
+        - classNameEndsWithAny: ["Repository", "Dao"]
+
+rules:
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      kinds: ["methodCall", "fieldType", "parameterType", "returnType", "extends", "implements", "annotationType"]
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+          message: "Controllers must not depend directly on repositories"
+        - from: "service"
+          to: ["controller"]
+
+  - type: "metrics"
+    name: "maxMethodsByRole"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      limits:
+        controller: 5
+        service: 8
+        repository: 10
+      countKinds: ["declaredMethods"]
+      ignoreMethodNameRegex:
+        - "^(get|set|toString|equals|hashCode)$"
+
+  - type: "packages"
+    name: "rolePlacement"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      expected:
+        controller:
+          packageRegex: ".*\\.controller(\\..*)?$"
+        service:
+          packageRegex: ".*\\.service(\\..*)?$"
+        repository:
+          packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+
+  - type: "packages"
+    name: "rootPackage"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      mode: "EXPLICIT"
+      value: "com.acme.app"
+
+exceptions:
+  - id: "EX-001"
+    reason: "Generated sources are noisy and not team-owned"
+    match:
+      fileGlob: "**/generated/**"
+    suppress:
+      - "arch.forbiddenRoleDependencies"
+      - "metrics.maxMethodsByRole"
+      - "packages.rolePlacement"
+      - "packages.rootPackage"

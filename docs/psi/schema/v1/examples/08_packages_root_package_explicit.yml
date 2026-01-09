@@ -1,0 +1,33 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  rootPackage:
+    mode: EXPLICIT
+    value: "com.acme"
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude: []
+
+roles:
+  any:
+    priority: 10
+    match:
+      packageRegex: ".*"
+
+rules:
+  - type: "packages"
+    name: "rootPackage"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      # Required: AUTO or EXPLICIT
+      mode: "EXPLICIT"
+      # Required when mode=EXPLICIT
+      value: "com.acme"
+
+exceptions: []

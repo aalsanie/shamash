@@ -1,0 +1,42 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude: []
+
+roles:
+  controller:
+    priority: 100
+    match:
+      packageContainsSegment: "controller"
+  service:
+    priority: 80
+    match:
+      packageContainsSegment: "service"
+  repository:
+    priority: 60
+    match:
+      packageContainsSegment: "repository"
+
+rules:
+  - type: "packages"
+    name: "rolePlacement"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      # Required: map roleId -> { packageRegex }
+      expected:
+        controller:
+          packageRegex: ".*\\.controller(\\..*)?$"
+        service:
+          packageRegex: ".*\\.service(\\..*)?$"
+        repository:
+          packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+
+exceptions: []

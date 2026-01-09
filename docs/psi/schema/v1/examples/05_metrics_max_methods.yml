@@ -1,0 +1,48 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude:
+      - "src/test/**"
+
+roles:
+  controller:
+    priority: 100
+    match:
+      classNameEndsWith: "Controller"
+  service:
+    priority: 80
+    match:
+      classNameEndsWith: "Service"
+  repository:
+    priority: 60
+    match:
+      classNameEndsWithAny: ["Repository", "Dao"]
+
+rules:
+  - type: "metrics"
+    name: "maxMethodsByRole"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      # Required: map of roleId -> max (int)
+      limits:
+        controller: 5
+        service: 8
+        repository: 10
+
+      # Optional: list of counting modes (allowed: declaredMethods, publicMethods, privateMethods)
+      countKinds: ["declaredMethods", "publicMethods"]
+
+      # Optional: list of regex patterns; method names matching any are ignored
+      ignoreMethodNameRegex:
+        - "^(get|set).*$"
+        - "^(toString|equals|hashCode)$"
+
+exceptions: []

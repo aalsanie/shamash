@@ -11,6 +11,7 @@ This changelog tracks changes relevant to the plugin distribution.
 - Refactor scan pipeline for IDE safety (smart-mode read actions) + progress indicator file names
 - Update engine/baseline/export/fixes/UI wiring to new config pipeline
 - Fixed `facts.classToRole` only includes roles for classes found in the current file.
+
 ### Added
 - Configurable architecture engine
 - Configurable code structure engine

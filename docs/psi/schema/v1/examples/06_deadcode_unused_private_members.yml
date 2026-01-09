@@ -1,0 +1,57 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude:
+      - "src/test/**"
+      - "**/generated/**"
+
+roles:
+  anyClass:
+    priority: 50
+    match:
+      packageRegex: ".*"
+
+rules:
+  - type: "deadcode"
+    name: "unusedPrivateMembers"
+    roles: null
+    enabled: true
+    severity: INFO
+    params:
+      # Required: what to check
+      check:
+        fields: true
+        methods: true
+        classes: false
+
+      # Optional ignores (exact annotations)
+      ignoreIfAnnotatedWithExact:
+        - "org.junit.jupiter.api.Test"
+        - "org.jetbrains.annotations.VisibleForTesting"
+
+      # Optional ignores (annotation prefix)
+      ignoreIfAnnotatedWithPrefix:
+        - "org.springframework.web.bind.annotation."
+        - "jakarta.persistence."
+        - "lombok."
+
+      # Optional: ignore if the containing class has these annotations
+      ignoreIfContainingClassAnnotatedWithExact:
+        - "org.springframework.boot.autoconfigure.SpringBootApplication"
+
+      ignoreIfContainingClassAnnotatedWithPrefix:
+        - "org.springframework.stereotype."
+
+      # Optional: ignore for these roles (role ids)
+      ignoreRoles: ["anyClass"]
+
+      # Optional: ignore members whose names match this regex
+      ignoreNameRegex: "^_.*$"
+
+exceptions: []

@@ -1,0 +1,40 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude: []
+
+roles:
+  controller:
+    priority: 100
+    match:
+      classNameEndsWith: "Controller"
+  service:
+    priority: 80
+    match:
+      classNameEndsWith: "Service"
+  repository:
+    priority: 60
+    match:
+      classNameEndsWithAny: ["Repository", "Dao"]
+
+rules:
+  - type: "naming"
+    name: "bannedSuffixes"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      # Required: non-empty list of banned suffixes
+      banned: ["Action", "Mgr"]
+      # Optional: restrict to these roles only
+      applyToRoles: ["controller", "service"]
+      # Optional: case sensitive suffix matching (default is false)
+      caseSensitive: true
+
+exceptions: []

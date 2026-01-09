@@ -1,0 +1,105 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude: []
+
+roles:
+  # Leaf: annotation (exact FQN)
+  restController:
+    priority: 100
+    match:
+      annotation: "org.springframework.web.bind.annotation.RestController"
+
+  # Leaf: annotationPrefix (FQN prefix)
+  anySpringWeb:
+    priority: 90
+    match:
+      annotationPrefix: "org.springframework.web.bind.annotation."
+
+  # Leaf: packageRegex
+  adaptersByRegex:
+    priority: 80
+    match:
+      packageRegex: ".*\\.(adapter|adapters)(\\..*)?$"
+
+  # Leaf: packageContainsSegment
+  anyControllerSegment:
+    priority: 70
+    match:
+      packageContainsSegment: "controller"
+
+  # Leaf: classNameRegex
+  anyFacade:
+    priority: 60
+    match:
+      classNameRegex: ".*Facade$"
+
+  # Leaf: classNameEndsWith
+  anyServiceSuffix:
+    priority: 50
+    match:
+      classNameEndsWith: "Service"
+
+  # Leaf: classNameEndsWithAny
+  anyDataAccessSuffix:
+    priority: 40
+    match:
+      classNameEndsWithAny: ["Repository", "Dao"]
+
+  # Leaf: hasMainMethod
+  entrypoints:
+    priority: 30
+    match:
+      hasMainMethod: true
+
+  # Leaf: implements
+  runnableThings:
+    priority: 20
+    match:
+      implements: "java.lang.Runnable"
+
+  # Leaf: extends
+  servletThings:
+    priority: 10
+    match:
+      extends: "jakarta.servlet.http.HttpServlet"
+
+  # Operator: allOf
+  strictController:
+    priority: 95
+    match:
+      allOf:
+        - packageContainsSegment: "controller"
+        - classNameEndsWith: "Controller"
+
+  # Operator: not
+  nonRepository:
+    priority: 55
+    match:
+      not:
+        packageContainsSegment: "repository"
+
+  # Operator: anyOf (already used above; here for completeness with mixed leaves)
+  anyWebComponent:
+    priority: 85
+    match:
+      anyOf:
+        - annotationPrefix: "org.springframework.web.bind.annotation."
+        - extends: "jakarta.servlet.http.HttpServlet"
+
+rules:
+  - type: "naming"
+    name: "bannedSuffixes"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      banned: ["Action", "Manager"]
+
+exceptions: []

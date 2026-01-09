@@ -1,0 +1,63 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude:
+      - "**/build/**"
+
+roles:
+  controller:
+    priority: 100
+    match:
+      packageContainsSegment: "controller"
+
+  service:
+    priority: 80
+    match:
+      packageContainsSegment: "service"
+
+  repository:
+    priority: 60
+    match:
+      packageContainsSegment: "repository"
+
+rules:
+  # Apply only to controllers + services, and only inside com.acme.* packages,
+  # but exclude any files under src/test/**
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeRoles: ["controller", "service"]
+      includePackages:
+        - "^com\\.acme\\..*$"
+      excludeGlobs:
+        - "src/test/**"
+    params:
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+
+  # Apply only to repositories, and exclude legacy packages by regex
+  - type: "deadcode"
+    name: "unusedPrivateMembers"
+    roles: ["repository"]
+    enabled: true
+    severity: INFO
+    scope:
+      excludePackages:
+        - "^com\\.acme\\.legacy\\..*$"
+    params:
+      check:
+        fields: true
+        methods: true
+        classes: false
+
+exceptions: []

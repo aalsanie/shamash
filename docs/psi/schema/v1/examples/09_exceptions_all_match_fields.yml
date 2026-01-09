@@ -1,0 +1,100 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude: []
+
+roles:
+  controller:
+    priority: 100
+    match:
+      packageContainsSegment: "controller"
+  repository:
+    priority: 60
+    match:
+      packageContainsSegment: "repository"
+
+rules:
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+
+  - type: "deadcode"
+    name: "unusedPrivateMembers"
+    roles: null
+    enabled: true
+    severity: INFO
+    params:
+      check:
+        fields: true
+        methods: true
+        classes: false
+
+exceptions:
+  - id: "EX-fileGlob"
+    reason: "Ignore anything under legacy generated folder"
+    match:
+      fileGlob: "**/legacy-generated/**"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+
+  - id: "EX-packageRegex"
+    reason: "Legacy package is temporarily excluded"
+    match:
+      packageRegex: "^com\\.acme\\.legacy\\..*$"
+    suppress:
+      - "arch.forbiddenRoleDependencies"
+
+  - id: "EX-classNameRegex"
+    reason: "Ignore scaffolding classes"
+    match:
+      classNameRegex: ".*Scaffold.*"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+
+  - id: "EX-methodNameRegex"
+    reason: "Ignore generated bridge methods"
+    match:
+      methodNameRegex: "^access\\$.*$"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+
+  - id: "EX-fieldNameRegex"
+    reason: "Ignore synthetic cache fields"
+    match:
+      fieldNameRegex: "^\\$cached.*$"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+
+  - id: "EX-hasAnnotation"
+    reason: "Ignore unused-private-members inside test utilities annotated with @VisibleForTesting"
+    match:
+      hasAnnotation: "org.jetbrains.annotations.VisibleForTesting"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+
+  - id: "EX-hasAnnotationPrefix"
+    reason: "Ignore rules in code that is explicitly marked as generated"
+    match:
+      hasAnnotationPrefix: "javax.annotation.processing."
+    suppress:
+      - "arch.forbiddenRoleDependencies"
+      - "deadcode.unusedPrivateMembers"
+
+  - id: "EX-role"
+    reason: "Temporarily ignore deadcode rule for repositories"
+    match:
+      role: "repository"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
