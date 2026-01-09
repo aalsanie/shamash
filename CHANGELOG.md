@@ -4,6 +4,12 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
 
+### Fixed
+- Existing bug related to role assignment for a specific rule caused any rule with a role not to take effect
+  - patched ConfigSemanticValidator to execute rule key regardless of role being there or not
+  - the engine expand authored roles into instance of name.type.role at runtime
+- Populated classToRole facts with a fallback to UAST extractor
+
 ## [0.60.0]
 ### Fixed
 - Stabilize PSI Config v1 contract (reference YAML + JSON schema + binder alignment)

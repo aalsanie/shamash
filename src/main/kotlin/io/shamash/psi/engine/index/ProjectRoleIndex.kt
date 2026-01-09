@@ -20,8 +20,14 @@ package io.shamash.psi.engine.index
 
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.AllClassesSearch
@@ -31,6 +37,7 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import io.shamash.psi.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.engine.RoleClassifier
+import io.shamash.psi.facts.FactExtractor
 import io.shamash.psi.facts.model.v1.ClassFact
 import io.shamash.psi.util.GlobMatcher
 import java.security.MessageDigest
@@ -93,23 +100,55 @@ class ProjectRoleIndex private constructor(
     }
 
     private fun buildSnapshot(config: ShamashPsiConfigV1): ProjectRoleIndexSnapshot {
-        val scope = GlobalSearchScope.projectScope(project)
         val include = config.project.sourceGlobs.include
         val exclude = config.project.sourceGlobs.exclude
+
+        // Primary strategy: index-backed class search (fast when available).
+        val bySearch = collectViaAllClassesSearch(include, exclude)
+
+        // Fallback strategy: VFS walk + FactExtractor (covers Kotlin reliably, avoids "no classes" cases).
+        val collected =
+            if (bySearch.classFacts.isNotEmpty()) {
+                bySearch
+            } else {
+                collectViaVfsScan(include, exclude)
+            }
+
+        val roleClassifier = RoleClassifier(multiRole = false)
+        val classification = roleClassifier.classify(collected.classFacts, config.roles)
+
+        return ProjectRoleIndexSnapshot(
+            roleToClasses = classification.roleToClasses,
+            classToRole = classification.classToRole,
+            classToAnnotations = collected.classToAnnotations,
+            classToFilePath = collected.classToFilePath,
+        )
+    }
+
+    private data class Collected(
+        val classFacts: List<ClassFact>,
+        val classToAnnotations: Map<String, Set<String>>,
+        val classToFilePath: Map<String, String>,
+    )
+
+    private fun collectViaAllClassesSearch(
+        include: List<String>,
+        exclude: List<String>,
+    ): Collected {
+        val scope = GlobalSearchScope.projectScope(project)
 
         val classFacts = ArrayList<ClassFact>(4096)
         val annotations = HashMap<String, Set<String>>(4096)
         val filePaths = HashMap<String, String>(4096)
 
-        // Covers Java + Kotlin (as light classes).
+        // Covers Java + Kotlin (as light classes) when available.
         AllClassesSearch.search(scope, project).forEach { psiClass: PsiClass ->
             ProgressManager.checkCanceled()
 
             val fqn = psiClass.qualifiedName ?: return@forEach
             val vf = psiClass.containingFile?.virtualFile ?: return@forEach
 
-            val rawPath = vf.path
-            val path = GlobMatcher.normalizePath(rawPath)
+            val path = GlobMatcher.normalizePath(vf.path)
 
             // Apply source globs
             val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
@@ -148,15 +187,87 @@ class ProjectRoleIndex private constructor(
             filePaths[fqn] = path
         }
 
-        val roleClassifier = RoleClassifier(multiRole = false)
-        val classification = roleClassifier.classify(classFacts, config.roles)
-
-        return ProjectRoleIndexSnapshot(
-            roleToClasses = classification.roleToClasses,
-            classToRole = classification.classToRole,
+        return Collected(
+            classFacts = classFacts,
             classToAnnotations = annotations,
             classToFilePath = filePaths,
         )
+    }
+
+    private fun collectViaVfsScan(
+        include: List<String>,
+        exclude: List<String>,
+    ): Collected {
+        val roots = collectContentRoots()
+        if (roots.isEmpty()) {
+            return Collected(emptyList(), emptyMap(), emptyMap())
+        }
+
+        val psiManager = PsiManager.getInstance(project)
+
+        val seen = LinkedHashMap<String, ClassFact>(4096)
+        val annotations = HashMap<String, Set<String>>(4096)
+        val filePaths = HashMap<String, String>(4096)
+
+        for (root in roots) {
+            ProgressManager.checkCanceled()
+            VfsUtilCore.iterateChildrenRecursively(root, null) { vf ->
+                ProgressManager.checkCanceled()
+
+                if (vf.isDirectory) return@iterateChildrenRecursively true
+                if (vf.fileType.isBinary) return@iterateChildrenRecursively true
+
+                val path = GlobMatcher.normalizePath(vf.path)
+
+                // Apply include/exclude globs early.
+                val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
+                if (!ok) return@iterateChildrenRecursively true
+
+                val psiFile: PsiFile = psiManager.findFile(vf) ?: return@iterateChildrenRecursively true
+                val facts = FactExtractor.extractResult(psiFile).facts
+
+                for (c in facts.classes) {
+                    // Prefer first occurrence for deterministic behavior.
+                    if (!seen.containsKey(c.fqName)) {
+                        seen[c.fqName] = c
+                        annotations[c.fqName] = c.annotationsFqns
+                        filePaths[c.fqName] = c.filePath
+                    }
+                }
+
+                true
+            }
+        }
+
+        return Collected(
+            classFacts = seen.values.toList(),
+            classToAnnotations = annotations,
+            classToFilePath = filePaths,
+        )
+    }
+
+    private fun collectContentRoots(): List<VirtualFile> {
+        val out = ArrayList<VirtualFile>(8)
+
+        // Project content roots.
+        out.addAll(ProjectRootManager.getInstance(project).contentRoots)
+
+        // Module roots (helps in multi-module layouts).
+        val modules =
+            com.intellij.openapi.module.ModuleManager
+                .getInstance(project)
+                .modules
+        for (m in modules) {
+            out.addAll(ModuleRootManager.getInstance(m).contentRoots)
+        }
+
+        // De-dup by path, keep order.
+        val seen = LinkedHashSet<String>(out.size)
+        val deduped = ArrayList<VirtualFile>(out.size)
+        for (vf in out) {
+            if (seen.add(vf.path)) deduped.add(vf)
+        }
+        return deduped
     }
 
     private fun fingerprint(config: ShamashPsiConfigV1): String {

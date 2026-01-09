@@ -1,0 +1,127 @@
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  rootPackage:
+    mode: EXPLICIT
+    value: "com.pit.app"
+  sourceGlobs:
+    include:
+      - "**/*.kt"
+      - "**/*.java"
+    exclude:
+      - "**/build/**"
+      - "**/.gradle/**"
+      - "**/out/**"
+      - "**/.idea/**"
+      - "**/generated/**"
+
+roles:
+  controller:
+    priority: 100
+    description: "Controllers"
+    match:
+      anyOf:
+        - packageRegex: ".*\\.controller(\\..*)?$"
+        - classNameEndsWith: "Controller"
+
+  service:
+    priority: 80
+    description: "Services"
+    match:
+      anyOf:
+        - packageRegex: ".*\\.service(\\..*)?$"
+        - classNameEndsWith: "Service"
+
+  repository:
+    priority: 60
+    description: "Repositories"
+    match:
+      anyOf:
+        - packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+        - classNameEndsWithAny: ["Dao", "Repository"]
+
+rules:
+  - type: "packages"
+    name: "rootPackage"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      mode: "EXPLICIT"
+      value: "com.this.will.never.match"
+
+  - type: "naming"
+    name: "bannedSuffixes"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      banned: ["Action", "Util"]
+      caseSensitive: true
+
+  - type: "packages"
+    name: "rolePlacement"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      expected:
+        controller:
+          packageRegex: ".*\\.controller(\\..*)?$"
+        service:
+          packageRegex: ".*\\.service(\\..*)?$"
+        repository:
+          packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+
+  - type: "metrics"
+    name: "maxMethodsByRole"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      limits:
+        controller: 1
+        service: 1
+        repository: 1
+      countKinds: ["declaredMethods"]
+      ignoreMethodNameRegex:
+        - "^(get|set|toString|equals|hashCode)$"
+
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      kinds:
+        - "methodCall"
+        - "fieldType"
+        - "parameterType"
+        - "returnType"
+        - "extends"
+        - "implements"
+        - "annotationType"
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+          message: "Controllers must not depend directly on repositories"
+        - from: "service"
+          to: ["controller"]
+          message: "Services must not depend on controllers"
+
+  - type: "deadcode"
+    name: "unusedPrivateMembers"
+    roles: null
+    enabled: true
+    severity: INFO
+    params:
+      check:
+        fields: true
+        methods: true
+        classes: false
+      ignoreNameRegex:
+        - "^_"
+
+exceptions: []

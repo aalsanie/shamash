@@ -168,14 +168,26 @@ object ConfigSemanticValidatorV1 {
 
             // Executability check (optional)
             if (executableRuleKeys != null) {
-                // A wildcard rule is considered executable if ANY role instance is executable.
-                // A specific rule is executable only if its concrete instances are executable.
+                // Engine registry exposes only base rule ids (type.name). The engine itself expands
+                // authored role lists into concrete instances (type.name.role) at runtime.
+                //
+                // Therefore, a rule is executable if the base (type,name) is implemented — regardless
+                // of whether roles == null (wildcard) or roles != null (role-specific instances).
+                //
+                // If, in the future, the engine registry starts exposing role-specific ids too,
+                // this logic still holds.
+                val baseKey = RuleKey(type = type, name = name, role = null)
                 val isExecutable =
-                    if (rule.roles == null) {
-                        executableRuleKeys.any { it.type == type && it.name == name }
-                    } else {
-                        rule.roles.any { roleId ->
-                            executableRuleKeys.contains(RuleKey(type = type, name = name, role = roleId.trim()))
+                    when (val roles = rule.roles) {
+                        null -> executableRuleKeys.contains(baseKey) || executableRuleKeys.any { it.type == type && it.name == name }
+                        else -> {
+                            // Prefer base key, but also accept explicit role keys if the engine ever exposes them.
+                            executableRuleKeys.contains(baseKey) ||
+                                roles
+                                    .asSequence()
+                                    .map { it.trim() }
+                                    .filter { it.isNotEmpty() }
+                                    .any { r -> executableRuleKeys.contains(RuleKey(type = type, name = name, role = r)) }
                         }
                     }
 

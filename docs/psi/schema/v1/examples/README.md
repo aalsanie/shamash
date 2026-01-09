@@ -1,6 +1,6 @@
 # Shamash PSI examples (schema v1)
 
-These example configs are **schema-valid** and use only **implemented rule keys**:
+These example configs are **schema-valid** and use only **implemented rule ids**:
 
 - naming.bannedSuffixes
 - arch.forbiddenRoleDependencies

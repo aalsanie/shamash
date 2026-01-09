@@ -19,14 +19,16 @@
 package io.shamash.psi.engine.rules
 
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
-import com.intellij.psi.PsiField
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.SearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.psi.config.schema.v1.model.RuleDef
@@ -35,11 +37,22 @@ import io.shamash.psi.config.validation.v1.params.ParamError
 import io.shamash.psi.config.validation.v1.params.Params
 import io.shamash.psi.engine.EngineRule
 import io.shamash.psi.engine.Finding
+import io.shamash.psi.engine.FindingSeverity
 import io.shamash.psi.facts.model.v1.FactsIndex
+import org.jetbrains.uast.UAnnotation
+import org.jetbrains.uast.UClass
+import org.jetbrains.uast.UDeclaration
+import org.jetbrains.uast.UFile
+import org.jetbrains.uast.UastVisibility
+import org.jetbrains.uast.toUElementOfType
+import org.jetbrains.uast.visitor.AbstractUastVisitor
 import java.util.LinkedHashMap
 
 /**
  * Reports unused private members (fields/methods/classes) in the current file.
+ *
+ * Uses UAST when available (covers Kotlin + Java).
+ * Falls back to PSI-only traversal when UAST cannot be built.
  *
  * Params (v1):
  * - check: optional object { fields?: bool, methods?: bool, classes?: bool } (defaults: fields=true, methods=true, classes=false)
@@ -50,6 +63,8 @@ import java.util.LinkedHashMap
  *
  * Notes:
  * - Uses ReferencesSearch with project scope. Cancellation-aware for IDE safety.
+ * - For Kotlin, UAST exposes synthetic methods (e.g., property accessors) with no sourcePsi.
+ * - Those are ignored to avoid false positives.
  */
 class DeadcodeUnusedPrivateMembersRule : EngineRule {
     override val id: String = "deadcode.unusedPrivateMembers"
@@ -64,6 +79,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
         val p = Params.of(rule.params, "rules.${rule.type}.${rule.name}.params")
 
         val check = readCheck(p, rule.params["check"])
+
         val ignoreRoles =
             p
                 .optionalStringList("ignoreRoles")
@@ -93,11 +109,204 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
 
         val sev = RuleUtil.severity(rule)
         val filePath = normalizePath(file.virtualFile?.path ?: file.name)
-        val project = file.project
-        val scope = GlobalSearchScope.projectScope(project)
+        val scope = GlobalSearchScope.projectScope(file.project)
 
+        val uFile = file.toUElementOfType<UFile>()
+        return if (uFile != null) {
+            evaluateUast(
+                uFile = uFile,
+                file = file,
+                facts = facts,
+                ruleInstanceId = ruleInstanceId,
+                sev = sev,
+                filePath = filePath,
+                scope = scope,
+                check = check,
+                ignoreRoles = ignoreRoles,
+                ignoreNameRegexes = ignoreNameRegexes,
+                ignoreMemberExact = ignoreMemberExact,
+                ignoreMemberPrefix = ignoreMemberPrefix,
+                ignoreClassExact = ignoreClassExact,
+                ignoreClassPrefix = ignoreClassPrefix,
+            )
+        } else {
+            evaluatePsi(
+                file = file,
+                facts = facts,
+                ruleInstanceId = ruleInstanceId,
+                sev = sev,
+                filePath = filePath,
+                scope = scope,
+                check = check,
+                ignoreRoles = ignoreRoles,
+                ignoreNameRegexes = ignoreNameRegexes,
+                ignoreMemberExact = ignoreMemberExact,
+                ignoreMemberPrefix = ignoreMemberPrefix,
+                ignoreClassExact = ignoreClassExact,
+                ignoreClassPrefix = ignoreClassPrefix,
+            )
+        }
+    }
+
+    private fun evaluateUast(
+        uFile: UFile,
+        file: PsiFile,
+        facts: FactsIndex,
+        ruleInstanceId: String,
+        sev: FindingSeverity,
+        filePath: String,
+        scope: GlobalSearchScope,
+        check: Check,
+        ignoreRoles: Set<String>?,
+        ignoreNameRegexes: List<Regex>,
+        ignoreMemberExact: Set<String>,
+        ignoreMemberPrefix: Set<String>,
+        ignoreClassExact: Set<String>,
+        ignoreClassPrefix: Set<String>,
+    ): List<Finding> {
         val out = ArrayList<Finding>()
 
+        uFile.accept(
+            object : AbstractUastVisitor() {
+                override fun visitClass(node: UClass): Boolean {
+                    ProgressManager.checkCanceled()
+
+                    val classFqn = node.qualifiedName
+                    if (classFqn.isNullOrBlank()) return false
+
+                    val role = facts.classToRole[classFqn]
+                    if (ignoreRoles != null && role != null && role in ignoreRoles) return false
+
+                    if (shouldIgnoreByAnnotation(node.annotations, ignoreClassExact, ignoreClassPrefix)) return false
+
+                    val classPsi: PsiElement? = node.sourcePsi ?: node.javaPsi
+                    val localScope: SearchScope = classPsi?.useScope ?: file.useScope
+
+                    if (check.fields) {
+                        for (field in node.fields) {
+                            ProgressManager.checkCanceled()
+                            if (!isPrivate(field)) continue
+                            if (field.name == "serialVersionUID") continue
+
+                            if (
+                                shouldIgnoreUastMember(
+                                    name = field.name,
+                                    annotations = field.annotations,
+                                    ignoreNameRegexes = ignoreNameRegexes,
+                                    ignoreMemberExact = ignoreMemberExact,
+                                    ignoreMemberPrefix = ignoreMemberPrefix,
+                                )
+                            ) {
+                                continue
+                            }
+
+                            val anchor = (field.sourcePsi ?: field.javaPsi) as? PsiElement ?: continue
+                            if (isUsed(anchor, localScope, scope)) continue
+
+                            out +=
+                                Finding(
+                                    ruleId = ruleInstanceId,
+                                    message = "Private field '${field.name}' appears unused.",
+                                    filePath = filePath,
+                                    severity = sev,
+                                    classFqn = classFqn,
+                                    memberName = field.name,
+                                    data = mapOf("memberKind" to "field"),
+                                )
+                        }
+                    }
+
+                    if (check.methods) {
+                        for (m in node.methods) {
+                            ProgressManager.checkCanceled()
+                            if (!isPrivate(m)) continue
+                            if (m.isConstructor) continue
+
+                            // Kotlin synthetic methods (e.g., property accessors) typically have no sourcePsi.
+                            // Ignore them to avoid false positives.
+                            if (m.sourcePsi == null) continue
+
+                            val anchor = (m.sourcePsi ?: m.javaPsi) as? PsiElement ?: continue
+
+                            // Keep the small "main" skip for Java.
+                            if (anchor is PsiMethod) {
+                                if (m.name == "main" && anchor.hasModifierProperty(PsiModifier.STATIC)) continue
+                            }
+
+                            if (
+                                shouldIgnoreUastMember(
+                                    name = m.name,
+                                    annotations = m.annotations,
+                                    ignoreNameRegexes = ignoreNameRegexes,
+                                    ignoreMemberExact = ignoreMemberExact,
+                                    ignoreMemberPrefix = ignoreMemberPrefix,
+                                )
+                            ) {
+                                continue
+                            }
+
+                            if (isUsed(anchor, localScope, scope)) continue
+
+                            out +=
+                                Finding(
+                                    ruleId = ruleInstanceId,
+                                    message = "Private method '${m.name}' appears unused.",
+                                    filePath = filePath,
+                                    severity = sev,
+                                    classFqn = classFqn,
+                                    memberName = m.name,
+                                    data = mapOf("memberKind" to "method"),
+                                )
+                        }
+                    }
+
+                    if (check.classes) {
+                        for (inner in node.innerClasses) {
+                            ProgressManager.checkCanceled()
+                            if (!isPrivate(inner)) continue
+                            if (shouldIgnoreByAnnotation(inner.annotations, ignoreMemberExact, ignoreMemberPrefix)) continue
+
+                            val anchor = (inner.sourcePsi ?: inner.javaPsi) as? PsiElement ?: continue
+                            if (ReferencesSearch.search(anchor, scope).findFirst() != null) continue
+
+                            val innerFqn = inner.qualifiedName ?: continue
+                            out +=
+                                Finding(
+                                    ruleId = ruleInstanceId,
+                                    message = "Private nested class '${inner.name}' appears unused.",
+                                    filePath = filePath,
+                                    severity = sev,
+                                    classFqn = innerFqn,
+                                    memberName = inner.name,
+                                    data = mapOf("memberKind" to "class"),
+                                )
+                        }
+                    }
+
+                    return false
+                }
+            },
+        )
+
+        return out
+    }
+
+    private fun evaluatePsi(
+        file: PsiFile,
+        facts: FactsIndex,
+        ruleInstanceId: String,
+        sev: FindingSeverity,
+        filePath: String,
+        scope: GlobalSearchScope,
+        check: Check,
+        ignoreRoles: Set<String>?,
+        ignoreNameRegexes: List<Regex>,
+        ignoreMemberExact: Set<String>,
+        ignoreMemberPrefix: Set<String>,
+        ignoreClassExact: Set<String>,
+        ignoreClassPrefix: Set<String>,
+    ): List<Finding> {
+        val out = ArrayList<Finding>()
         val psiClasses = PsiTreeUtil.findChildrenOfType(file, PsiClass::class.java)
 
         for (cls in psiClasses) {
@@ -115,9 +324,8 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                     if (!field.hasModifierProperty(PsiModifier.PRIVATE)) continue
                     if (field.name == "serialVersionUID") continue
 
-                    if (shouldIgnoreMember(field, cls, ignoreNameRegexes, ignoreMemberExact, ignoreMemberPrefix)) continue
-
-                    if (isUsed(field, scope, cls)) continue
+                    if (shouldIgnoreMember(field, ignoreNameRegexes, ignoreMemberExact, ignoreMemberPrefix)) continue
+                    if (isUsed(field, cls.useScope, scope)) continue
 
                     out +=
                         Finding(
@@ -139,9 +347,8 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                     if (m.isConstructor) continue
                     if (m.name == "main" && m.hasModifierProperty(PsiModifier.STATIC)) continue
 
-                    if (shouldIgnoreMember(m, cls, ignoreNameRegexes, ignoreMemberExact, ignoreMemberPrefix)) continue
-
-                    if (isUsed(m, scope, cls)) continue
+                    if (shouldIgnoreMember(m, ignoreNameRegexes, ignoreMemberExact, ignoreMemberPrefix)) continue
+                    if (isUsed(m, cls.useScope, scope)) continue
 
                     out +=
                         Finding(
@@ -157,27 +364,25 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
             }
 
             if (check.classes) {
-                // private nested classes only (top-level private classes are not valid in Java; Kotlin has internal/private top-level but represented differently)
+                // private nested classes only
                 for (inner in cls.innerClasses) {
                     ProgressManager.checkCanceled()
                     if (!inner.hasModifierProperty(PsiModifier.PRIVATE)) continue
 
                     if (shouldIgnoreClassByAnnotation(inner, ignoreMemberExact, ignoreMemberPrefix)) continue
+                    if (ReferencesSearch.search(inner, scope).findFirst() != null) continue
 
-                    val anyRef = ReferencesSearch.search(inner, scope).findFirst()
-                    if (anyRef == null) {
-                        val innerFqn = inner.qualifiedName ?: continue
-                        out +=
-                            Finding(
-                                ruleId = ruleInstanceId,
-                                message = "Private nested class '${inner.name}' appears unused.",
-                                filePath = filePath,
-                                severity = sev,
-                                classFqn = innerFqn,
-                                memberName = inner.name,
-                                data = mapOf("memberKind" to "class"),
-                            )
-                    }
+                    val innerFqn = inner.qualifiedName ?: continue
+                    out +=
+                        Finding(
+                            ruleId = ruleInstanceId,
+                            message = "Private nested class '${inner.name}' appears unused.",
+                            filePath = filePath,
+                            severity = sev,
+                            classFqn = innerFqn,
+                            memberName = inner.name,
+                            data = mapOf("memberKind" to "class"),
+                        )
                 }
             }
         }
@@ -215,52 +420,120 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
 
     private fun normSet(list: List<String>?): Set<String> = (list ?: emptyList()).map { it.trim() }.filter { it.isNotEmpty() }.toSet()
 
+    private fun shouldIgnoreByAnnotation(
+        annotations: List<UAnnotation>,
+        exact: Set<String>,
+        prefix: Set<String>,
+    ): Boolean = shouldIgnoreByAnnotationFqns(annotations.mapNotNull { it.qualifiedName }, exact, prefix)
+
+    // Compatibility: some platform/UAST variants surface annotations as PSI annotations arrays.
+    private fun shouldIgnoreByAnnotation(
+        annotations: Array<out PsiAnnotation>,
+        exact: Set<String>,
+        prefix: Set<String>,
+    ): Boolean = shouldIgnoreByAnnotationFqns(annotations.mapNotNull { it.qualifiedName }, exact, prefix)
+
+    private fun shouldIgnoreUastMember(
+        name: String?,
+        annotations: List<UAnnotation>,
+        ignoreNameRegexes: List<Regex>,
+        ignoreMemberExact: Set<String>,
+        ignoreMemberPrefix: Set<String>,
+    ): Boolean =
+        shouldIgnoreMemberByAnnotationFqns(
+            name = name,
+            annotationFqns = annotations.mapNotNull { it.qualifiedName },
+            ignoreNameRegexes = ignoreNameRegexes,
+            ignoreMemberExact = ignoreMemberExact,
+            ignoreMemberPrefix = ignoreMemberPrefix,
+        )
+
+    private fun shouldIgnoreUastMember(
+        name: String?,
+        annotations: Array<out PsiAnnotation>,
+        ignoreNameRegexes: List<Regex>,
+        ignoreMemberExact: Set<String>,
+        ignoreMemberPrefix: Set<String>,
+    ): Boolean =
+        shouldIgnoreMemberByAnnotationFqns(
+            name = name,
+            annotationFqns = annotations.mapNotNull { it.qualifiedName },
+            ignoreNameRegexes = ignoreNameRegexes,
+            ignoreMemberExact = ignoreMemberExact,
+            ignoreMemberPrefix = ignoreMemberPrefix,
+        )
+
+    private fun shouldIgnoreByAnnotationFqns(
+        annotationFqns: List<String>,
+        exact: Set<String>,
+        prefix: Set<String>,
+    ): Boolean {
+        if (exact.isEmpty() && prefix.isEmpty()) return false
+        return annotationFqns.any { a -> a in exact || prefix.any { p -> a.startsWith(p) } }
+    }
+
+    private fun shouldIgnoreMemberByAnnotationFqns(
+        name: String?,
+        annotationFqns: List<String>,
+        ignoreNameRegexes: List<Regex>,
+        ignoreMemberExact: Set<String>,
+        ignoreMemberPrefix: Set<String>,
+    ): Boolean {
+        if (!name.isNullOrBlank()) {
+            if (ignoreNameRegexes.any { it.containsMatchIn(name) }) return true
+        }
+        if (ignoreMemberExact.isEmpty() && ignoreMemberPrefix.isEmpty()) return false
+        return annotationFqns.any { a -> a in ignoreMemberExact || ignoreMemberPrefix.any { p -> a.startsWith(p) } }
+    }
+
+    private fun isPrivate(decl: UDeclaration): Boolean {
+        if (decl.visibility == UastVisibility.PRIVATE) return true
+        val psi = (decl.sourcePsi ?: decl.javaPsi) as? PsiModifierListOwner
+        return psi?.hasModifierProperty(PsiModifier.PRIVATE) == true
+    }
+
     private fun shouldIgnoreClassByAnnotation(
         cls: PsiModifierListOwner,
         exact: Set<String>,
         prefix: Set<String>,
     ): Boolean {
         if (exact.isEmpty() && prefix.isEmpty()) return false
-        val anns = annotationFqns(cls)
+        val anns =
+            cls.modifierList
+                ?.annotations
+                ?.mapNotNull { it.qualifiedName }
+                .orEmpty()
         return anns.any { a -> a in exact || prefix.any { p -> a.startsWith(p) } }
     }
 
     private fun shouldIgnoreMember(
         member: PsiMember,
-        containingClass: PsiClass,
         ignoreNameRegexes: List<Regex>,
         ignoreMemberExact: Set<String>,
         ignoreMemberPrefix: Set<String>,
     ): Boolean {
         val name = member.name ?: return false
         if (ignoreNameRegexes.any { it.containsMatchIn(name) }) return true
-
         if (ignoreMemberExact.isEmpty() && ignoreMemberPrefix.isEmpty()) return false
-        val anns = annotationFqns(member)
-        if (anns.any { a -> a in ignoreMemberExact || ignoreMemberPrefix.any { p -> a.startsWith(p) } }) return true
 
-        // Also ignore if containing class has matching annotation lists in member scope (spec covers this via separate keys,
-        // but we already processed those at the class loop level).
-        return false
+        val anns =
+            (member as? PsiModifierListOwner)
+                ?.modifierList
+                ?.annotations
+                ?.mapNotNull { it.qualifiedName }
+                .orEmpty()
+        return anns.any { a -> a in ignoreMemberExact || ignoreMemberPrefix.any { p -> a.startsWith(p) } }
     }
 
-    private fun annotationFqns(owner: PsiModifierListOwner): List<String> =
-        owner.modifierList
-            ?.annotations
-            ?.mapNotNull { it.qualifiedName }
-            .orEmpty()
-
     private fun isUsed(
-        member: PsiMember,
-        scope: GlobalSearchScope,
-        cls: PsiClass,
+        element: PsiElement,
+        localScope: SearchScope,
+        globalScope: GlobalSearchScope,
     ): Boolean {
-        // Local scan first: any reference inside the class counts as used.
-        val localRefs = ReferencesSearch.search(member, cls.useScope).findAll()
-        if (localRefs.any { it.element != member }) return true
-
-        // Global fallback
-        return ReferencesSearch.search(member, scope).findFirst() != null
+        // Local scan first (cheap).
+        if (ReferencesSearch.search(element, localScope).findFirst() != null) return true
+        // Global fallback.
+        return ReferencesSearch.search(element, globalScope).findFirst() != null
     }
 
     private fun normalizePath(path: String): String = path.replace('\\', '/')

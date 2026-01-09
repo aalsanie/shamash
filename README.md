@@ -26,6 +26,9 @@ It provides two complementary engines:
 - Architectural Dashboard
 - Instant IDE feedback and exportable reports
 
+### Documentation & Hands-on Example
+[Documentation](./docs/psi/README.md)
+
 ### How to use
 - Download the plugin from intellij marketplace or build locally (Future milestone: CLI: under development)
 - Open Shamash ASM - left hand panel: for bytecode analysis and export findings

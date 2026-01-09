@@ -1,0 +1,266 @@
+{
+  "tool": {
+    "name": "Shamash PSI",
+    "version": "0.60.0",
+    "schemaVersion": "v1",
+    "generatedAtEpochMillis": 1767955553247
+  },
+  "project": {
+    "name": "pit-violation",
+    "basePath": "/Users/Ahmad/IdeaProjects/Shamash/docs/psi/pit-violation"
+  },
+  "findings": [
+    {
+      "ruleId": "arch.forbiddenRoleDependencies",
+      "message": "Controllers must not depend directly on repositories",
+      "severity": "ERROR",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13",
+      "classFqn": "com.pit.app.controller.AdminController"
+    },
+    {
+      "ruleId": "arch.forbiddenRoleDependencies",
+      "message": "Controllers must not depend directly on repositories",
+      "severity": "ERROR",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13",
+      "classFqn": "com.pit.app.controller.AdminController"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private field 'unusedCount' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e",
+      "classFqn": "com.pit.app.controller.AdminController",
+      "memberName": "unusedCount"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private field 'unusedCount' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e",
+      "classFqn": "com.pit.app.controller.AdminController",
+      "memberName": "unusedCount"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private method 'unusedSecret' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083",
+      "classFqn": "com.pit.app.controller.AdminController",
+      "memberName": "unusedSecret"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private method 'unusedSecret' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083",
+      "classFqn": "com.pit.app.controller.AdminController",
+      "memberName": "unusedSecret"
+    },
+    {
+      "ruleId": "metrics.maxMethodsByRole",
+      "message": "Class 'com.pit.app.controller.AdminController' (role 'controller') has 2 methods, exceeding max=1.",
+      "severity": "WARNING",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544",
+      "classFqn": "com.pit.app.controller.AdminController"
+    },
+    {
+      "ruleId": "metrics.maxMethodsByRole",
+      "message": "Class 'com.pit.app.controller.AdminController' (role 'controller') has 2 methods, exceeding max=1.",
+      "severity": "WARNING",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544",
+      "classFqn": "com.pit.app.controller.AdminController"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.controller' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.controller' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
+      "fingerprint": "047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f"
+    },
+    {
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'repository' class 'com.pit.app.data.UserDao' is in package 'com.pit.app.data' which does not match expected packageRegex='.*\\.(dao|repository)(\\..*)?$'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserDao.kt",
+      "fingerprint": "f12f446477e1b6f9ad812ffa9938b061d3739dc155f1bc2a035e114eeafc003b",
+      "classFqn": "com.pit.app.data.UserDao"
+    },
+    {
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'repository' class 'com.pit.app.data.UserDao' is in package 'com.pit.app.data' which does not match expected packageRegex='.*\\.(dao|repository)(\\..*)?$'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserDao.kt",
+      "fingerprint": "f12f446477e1b6f9ad812ffa9938b061d3739dc155f1bc2a035e114eeafc003b",
+      "classFqn": "com.pit.app.data.UserDao"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.data' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserDao.kt",
+      "fingerprint": "921df15a6baa710ef3a31268127f127c07c6a8a5c5d7ede1e63e26bc97044f75"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.data' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserDao.kt",
+      "fingerprint": "921df15a6baa710ef3a31268127f127c07c6a8a5c5d7ede1e63e26bc97044f75"
+    },
+    {
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'repository' class 'com.pit.app.data.UserRepository' is in package 'com.pit.app.data' which does not match expected packageRegex='.*\\.(dao|repository)(\\..*)?$'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserRepository.kt",
+      "fingerprint": "2e859107450aa92fe531c819286d30905aaf83f2b1df5ce5d20e77fcb7ee3939",
+      "classFqn": "com.pit.app.data.UserRepository"
+    },
+    {
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'repository' class 'com.pit.app.data.UserRepository' is in package 'com.pit.app.data' which does not match expected packageRegex='.*\\.(dao|repository)(\\..*)?$'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserRepository.kt",
+      "fingerprint": "2e859107450aa92fe531c819286d30905aaf83f2b1df5ce5d20e77fcb7ee3939",
+      "classFqn": "com.pit.app.data.UserRepository"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.data' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserRepository.kt",
+      "fingerprint": "2a7145781477a2b8b7290795baaa0dd966321d53adad4562405cf46764f6777b"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.data' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/data/UserRepository.kt",
+      "fingerprint": "2a7145781477a2b8b7290795baaa0dd966321d53adad4562405cf46764f6777b"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.service' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/service/UserService.kt",
+      "fingerprint": "e550cb4293024eb2e70a582cee760ac4ac92ad104e52b95dec4d2aad8e82a0ae"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.service' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/service/UserService.kt",
+      "fingerprint": "e550cb4293024eb2e70a582cee760ac4ac92ad104e52b95dec4d2aad8e82a0ae"
+    },
+    {
+      "ruleId": "naming.bannedSuffixes",
+      "message": "Banned class name suffix 'Action' in 'LoginAction'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/web/LoginAction.kt",
+      "fingerprint": "288d38adc1d4ce4bf5a4ef630b6ff3e5c6c8b3aa76f90d231746a80c0b609999",
+      "classFqn": "com.pit.app.web.LoginAction"
+    },
+    {
+      "ruleId": "naming.bannedSuffixes",
+      "message": "Banned class name suffix 'Action' in 'LoginAction'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/web/LoginAction.kt",
+      "fingerprint": "288d38adc1d4ce4bf5a4ef630b6ff3e5c6c8b3aa76f90d231746a80c0b609999",
+      "classFqn": "com.pit.app.web.LoginAction"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.web' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/web/LoginAction.kt",
+      "fingerprint": "1630625a8c96550f1864dc2c3eda1f65af5b1d2a85f885ab2dabec30960268bd"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.web' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/web/LoginAction.kt",
+      "fingerprint": "1630625a8c96550f1864dc2c3eda1f65af5b1d2a85f885ab2dabec30960268bd"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private field 'unusedField' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "dced1dad1341734e88308b15534fe7494c5b8d6c77ddd9194561f1864898d876",
+      "classFqn": "com.pit.app.web.UserController",
+      "memberName": "unusedField"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private field 'unusedField' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "dced1dad1341734e88308b15534fe7494c5b8d6c77ddd9194561f1864898d876",
+      "classFqn": "com.pit.app.web.UserController",
+      "memberName": "unusedField"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private method 'unusedMethod' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "d270f06486f6b451bd49e8d50b485b4dbae3a35e99e7b8f342f877c2beff3b8e",
+      "classFqn": "com.pit.app.web.UserController",
+      "memberName": "unusedMethod"
+    },
+    {
+      "ruleId": "deadcode.unusedPrivateMembers",
+      "message": "Private method 'unusedMethod' appears unused.",
+      "severity": "INFO",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "d270f06486f6b451bd49e8d50b485b4dbae3a35e99e7b8f342f877c2beff3b8e",
+      "classFqn": "com.pit.app.web.UserController",
+      "memberName": "unusedMethod"
+    },
+    {
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'controller' class 'com.pit.app.web.UserController' is in package 'com.pit.app.web' which does not match expected packageRegex='.*\\.controller(\\..*)?$'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "b3ee50ea4345c50701a9d8153ab699bdb50c4596ff7d83e931b346796e21160e",
+      "classFqn": "com.pit.app.web.UserController"
+    },
+    {
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'controller' class 'com.pit.app.web.UserController' is in package 'com.pit.app.web' which does not match expected packageRegex='.*\\.controller(\\..*)?$'.",
+      "severity": "WARNING",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "b3ee50ea4345c50701a9d8153ab699bdb50c4596ff7d83e931b346796e21160e",
+      "classFqn": "com.pit.app.web.UserController"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.web' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "eba36943397ad1d296157280328c445d3abfec79f85000b2d79f2708d3feb0a5"
+    },
+    {
+      "ruleId": "packages.rootPackage",
+      "message": "Package 'com.pit.app.web' is outside configured root package 'com.this.will.never.match'.",
+      "severity": "ERROR",
+      "filePath": "src/main/kotlin/com/pit/app/web/UserController.kt",
+      "fingerprint": "eba36943397ad1d296157280328c445d3abfec79f85000b2d79f2708d3feb0a5"
+    }
+  ]
+}

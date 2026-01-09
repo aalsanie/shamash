@@ -26,7 +26,8 @@ Then customize:
 - `exceptions`
 
 ## Role
-Is a **map** of: `roleId -> roleDef`, where you defined your targeted role e.g. controller
+Is a **map** of: `roleId -> roleDef`, where you defined your targeted role e.g. controller.
+A controller is considered a well-defined role when you match it using [matchers](./examples/02_matchers_all_leaves.yml).
 
 ```yaml
 roles:

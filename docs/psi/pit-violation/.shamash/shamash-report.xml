@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shamashReport schemaVersion="v1" generatedAtEpochMillis="1767955553247">
+  <tool name="Shamash PSI" version="0.60.0"/>
+  <project name="pit-violation" basePath="/Users/Ahmad/IdeaProjects/Shamash/docs/psi/pit-violation"/>
+  <findings count="32">
+    <finding ruleId="arch.forbiddenRoleDependencies" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13" classFqn="com.pit.app.controller.AdminController">
+      <message>Controllers must not depend directly on repositories</message>
+    </finding>
+    <finding ruleId="arch.forbiddenRoleDependencies" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13" classFqn="com.pit.app.controller.AdminController">
+      <message>Controllers must not depend directly on repositories</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e" classFqn="com.pit.app.controller.AdminController" memberName="unusedCount">
+      <message>Private field &apos;unusedCount&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e" classFqn="com.pit.app.controller.AdminController" memberName="unusedCount">
+      <message>Private field &apos;unusedCount&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083" classFqn="com.pit.app.controller.AdminController" memberName="unusedSecret">
+      <message>Private method &apos;unusedSecret&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083" classFqn="com.pit.app.controller.AdminController" memberName="unusedSecret">
+      <message>Private method &apos;unusedSecret&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="metrics.maxMethodsByRole" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" classFqn="com.pit.app.controller.AdminController">
+      <message>Class &apos;com.pit.app.controller.AdminController&apos; (role &apos;controller&apos;) has 2 methods, exceeding max=1.</message>
+    </finding>
+    <finding ruleId="metrics.maxMethodsByRole" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" classFqn="com.pit.app.controller.AdminController">
+      <message>Class &apos;com.pit.app.controller.AdminController&apos; (role &apos;controller&apos;) has 2 methods, exceeding max=1.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f">
+      <message>Package &apos;com.pit.app.controller&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f">
+      <message>Package &apos;com.pit.app.controller&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/data/UserDao.kt" fingerprint="f12f446477e1b6f9ad812ffa9938b061d3739dc155f1bc2a035e114eeafc003b" classFqn="com.pit.app.data.UserDao">
+      <message>Role &apos;repository&apos; class &apos;com.pit.app.data.UserDao&apos; is in package &apos;com.pit.app.data&apos; which does not match expected packageRegex=&apos;.*\.(dao|repository)(\..*)?$&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/data/UserDao.kt" fingerprint="f12f446477e1b6f9ad812ffa9938b061d3739dc155f1bc2a035e114eeafc003b" classFqn="com.pit.app.data.UserDao">
+      <message>Role &apos;repository&apos; class &apos;com.pit.app.data.UserDao&apos; is in package &apos;com.pit.app.data&apos; which does not match expected packageRegex=&apos;.*\.(dao|repository)(\..*)?$&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/data/UserDao.kt" fingerprint="921df15a6baa710ef3a31268127f127c07c6a8a5c5d7ede1e63e26bc97044f75">
+      <message>Package &apos;com.pit.app.data&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/data/UserDao.kt" fingerprint="921df15a6baa710ef3a31268127f127c07c6a8a5c5d7ede1e63e26bc97044f75">
+      <message>Package &apos;com.pit.app.data&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/data/UserRepository.kt" fingerprint="2e859107450aa92fe531c819286d30905aaf83f2b1df5ce5d20e77fcb7ee3939" classFqn="com.pit.app.data.UserRepository">
+      <message>Role &apos;repository&apos; class &apos;com.pit.app.data.UserRepository&apos; is in package &apos;com.pit.app.data&apos; which does not match expected packageRegex=&apos;.*\.(dao|repository)(\..*)?$&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/data/UserRepository.kt" fingerprint="2e859107450aa92fe531c819286d30905aaf83f2b1df5ce5d20e77fcb7ee3939" classFqn="com.pit.app.data.UserRepository">
+      <message>Role &apos;repository&apos; class &apos;com.pit.app.data.UserRepository&apos; is in package &apos;com.pit.app.data&apos; which does not match expected packageRegex=&apos;.*\.(dao|repository)(\..*)?$&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/data/UserRepository.kt" fingerprint="2a7145781477a2b8b7290795baaa0dd966321d53adad4562405cf46764f6777b">
+      <message>Package &apos;com.pit.app.data&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/data/UserRepository.kt" fingerprint="2a7145781477a2b8b7290795baaa0dd966321d53adad4562405cf46764f6777b">
+      <message>Package &apos;com.pit.app.data&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/service/UserService.kt" fingerprint="e550cb4293024eb2e70a582cee760ac4ac92ad104e52b95dec4d2aad8e82a0ae">
+      <message>Package &apos;com.pit.app.service&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/service/UserService.kt" fingerprint="e550cb4293024eb2e70a582cee760ac4ac92ad104e52b95dec4d2aad8e82a0ae">
+      <message>Package &apos;com.pit.app.service&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="naming.bannedSuffixes" severity="WARNING" filePath="src/main/kotlin/com/pit/app/web/LoginAction.kt" fingerprint="288d38adc1d4ce4bf5a4ef630b6ff3e5c6c8b3aa76f90d231746a80c0b609999" classFqn="com.pit.app.web.LoginAction">
+      <message>Banned class name suffix &apos;Action&apos; in &apos;LoginAction&apos;.</message>
+    </finding>
+    <finding ruleId="naming.bannedSuffixes" severity="WARNING" filePath="src/main/kotlin/com/pit/app/web/LoginAction.kt" fingerprint="288d38adc1d4ce4bf5a4ef630b6ff3e5c6c8b3aa76f90d231746a80c0b609999" classFqn="com.pit.app.web.LoginAction">
+      <message>Banned class name suffix &apos;Action&apos; in &apos;LoginAction&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/web/LoginAction.kt" fingerprint="1630625a8c96550f1864dc2c3eda1f65af5b1d2a85f885ab2dabec30960268bd">
+      <message>Package &apos;com.pit.app.web&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/web/LoginAction.kt" fingerprint="1630625a8c96550f1864dc2c3eda1f65af5b1d2a85f885ab2dabec30960268bd">
+      <message>Package &apos;com.pit.app.web&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="dced1dad1341734e88308b15534fe7494c5b8d6c77ddd9194561f1864898d876" classFqn="com.pit.app.web.UserController" memberName="unusedField">
+      <message>Private field &apos;unusedField&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="dced1dad1341734e88308b15534fe7494c5b8d6c77ddd9194561f1864898d876" classFqn="com.pit.app.web.UserController" memberName="unusedField">
+      <message>Private field &apos;unusedField&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="d270f06486f6b451bd49e8d50b485b4dbae3a35e99e7b8f342f877c2beff3b8e" classFqn="com.pit.app.web.UserController" memberName="unusedMethod">
+      <message>Private method &apos;unusedMethod&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="d270f06486f6b451bd49e8d50b485b4dbae3a35e99e7b8f342f877c2beff3b8e" classFqn="com.pit.app.web.UserController" memberName="unusedMethod">
+      <message>Private method &apos;unusedMethod&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="b3ee50ea4345c50701a9d8153ab699bdb50c4596ff7d83e931b346796e21160e" classFqn="com.pit.app.web.UserController">
+      <message>Role &apos;controller&apos; class &apos;com.pit.app.web.UserController&apos; is in package &apos;com.pit.app.web&apos; which does not match expected packageRegex=&apos;.*\.controller(\..*)?$&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="b3ee50ea4345c50701a9d8153ab699bdb50c4596ff7d83e931b346796e21160e" classFqn="com.pit.app.web.UserController">
+      <message>Role &apos;controller&apos; class &apos;com.pit.app.web.UserController&apos; is in package &apos;com.pit.app.web&apos; which does not match expected packageRegex=&apos;.*\.controller(\..*)?$&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="eba36943397ad1d296157280328c445d3abfec79f85000b2d79f2708d3feb0a5">
+      <message>Package &apos;com.pit.app.web&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/kotlin/com/pit/app/web/UserController.kt" fingerprint="eba36943397ad1d296157280328c445d3abfec79f85000b2d79f2708d3feb0a5">
+      <message>Package &apos;com.pit.app.web&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    </finding>
+  </findings>
+</shamashReport>
