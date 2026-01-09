@@ -29,7 +29,8 @@ It provides two complementary engines:
 ### Documentation & Hands-on Example
 [Documentation & Test Bed application](./docs/psi/README.md)
 
-### How to use
+### How to use as an intellij plugin
+- Refer to [documentation](./docs/psi/README.md) for more details around configurability
 - Download the plugin from intellij marketplace or build locally (Future milestone: CLI: under development)
 - Open Shamash ASM - left hand panel: for bytecode analysis and export findings
   - Press Shamash logo to analyze and view finding, hierarchy, analysis, and more.
