@@ -27,7 +27,7 @@ plugins {
 }
 
 group = "io.shamash"
-version = "0.60.1"
+version = "0.70.0"
 
 allprojects {
     repositories {
