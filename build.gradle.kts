@@ -1,5 +1,6 @@
 /*
- * Shamash is a JVM architecture enforcement tool to define, validate, and maintain architectural boundaries.
+ * Shamash is a JVM architecture enforcement tool that helps teams
+ * define, validate, and continuously enforce architectural boundaries.
  *
  * Copyright © 2025-2026 | Author: @aalsanie
  *
@@ -26,20 +27,19 @@ plugins {
     id("org.jetbrains.kotlinx.kover") version "0.9.4" apply false
 }
 
-group = "io.shamash"
-version = "0.70.0"
-
 allprojects {
+    group = "io.shamash"
+    version = "0.70.0"
+
     repositories {
         mavenCentral()
     }
 }
 
 subprojects {
-    // Default: Kotlin/JVM module
+    // Default Kotlin/JVM behavior for all modules (safe even if some modules don't compile Kotlin sources)
     apply(plugin = "org.jetbrains.kotlin.jvm")
 
-    // Configure Kotlin toolchain only when Kotlin plugin is present
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension>("kotlin") {
             jvmToolchain(17)
@@ -52,12 +52,12 @@ subprojects {
 
         tasks.withType(Test::class.java).configureEach {
             maxHeapSize = "2g"
-            // Keep JUnit4 unless module explicitly uses JUnit5.
+            // Keep JUnit4 unless module explicitly opts into JUnit5.
             // useJUnitPlatform()
         }
     }
 
-    // Spotless: apply + configure only when plugin is present
+    // Spotless
     apply(plugin = "com.diffplug.spotless")
     plugins.withId("com.diffplug.spotless") {
         extensions.configure<SpotlessExtension> {
@@ -71,6 +71,6 @@ subprojects {
         }
     }
 
-    // Kover (optional): apply everywhere; modules can override config if needed
+    // Kover (optional): modules can override
     apply(plugin = "org.jetbrains.kotlinx.kover")
 }

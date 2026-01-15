@@ -4,6 +4,7 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
 
+## [0.70.0]
 ### Added
 
 - Major refactor: modularized the codebase into five modules for clearer ownership and reuse:

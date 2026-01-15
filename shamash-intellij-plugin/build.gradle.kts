@@ -25,8 +25,10 @@ dependencies {
     implementation(project(":shamash-asm-core"))
 
     intellijPlatform {
+        // used for compilation / runIde / tests
         intellijIdea("2024.2")
 
+        // plugin uses Java + Kotlin IDE APIs
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
 
@@ -39,12 +41,15 @@ dependencies {
 
 tasks.test {
     maxHeapSize = "2g"
-    // If migrated tests to JUnit5.
     // useJUnitPlatform()
 }
 
 intellijPlatform {
     pluginConfiguration {
+        id = "io.shamash"
+        name = "Shamash"
+        version = rootProject.version.toString()
+
         ideaVersion {
             sinceBuild = "242"
             untilBuild = "253.*"
