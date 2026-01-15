@@ -1,5 +1,8 @@
 /*
- * Copyright © 2025-2026 | Shamash is a refactoring tool that enforces clean architecture.
+ * Copyright © 2025-2026 | Shamash
+ *
+ * Shamash is a JVM architecture enforcement tool that helps teams
+ * define, validate, and continuously enforce architectural boundaries.
  *
  * Author: @aalsanie
  *

@@ -2,69 +2,71 @@
   <img src="assets/shamash_logo.png" alt="Shamash Logo" width="180"/>
 </p>
 
-[![current release](https://img.shields.io/badge/release-0.60.1-green)](https://github.com/aalsanie/shamash/releases) | [![install plugin](https://img.shields.io/badge/jetbrains-plugin-red)](https://plugins.jetbrains.com/plugin/29504-shamash) | [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+[![current release](https://img.shields.io/badge/release-0.70.0-green)](https://github.com/aalsanie/shamash/releases) | [![install plugin](https://img.shields.io/badge/jetbrains-plugin-red)](https://plugins.jetbrains.com/plugin/29504-shamash) | [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
 # Shamash
 
-Shamash is a JVM architecture enforcement tool for teams that want to **define, validate, and maintain architectural boundaries**.
+Shamash is a JVM architecture enforcement tool that helps teams **define, validate, and continuously enforce architectural boundaries**
 
-It provides two complementary engines:
+It ships two complementary engines:
 
-- **ASM:** analyzes compiled bytecode and JARs to detect architectural drift, forbidden dependencies, and dependency graph violations, without requiring source code.
+- **ASM (Bytecode engine):** analyzes compiled `.class` files and (optionally) dependency JARs to detect forbidden dependencies, cycles, coupling hotspots, and architectural drift **without requiring source code**.
+- **PSI (Source engine):** analyzes source code via IntelliJ PSI using a strict YAML schema, providing dashboards, rule validation, suppressions, guided fixes, and exportable reports.
 
-- **PSI:** analyzes source code using IntelliJ PSI and a configurable YAML schema, providing architectural dashboards, inline suppressions, guided fixes, and exportable reports.
+---
 
-### What It Offers?
-- Configurable architecture rules (roles, placement, dependencies)
-- Source-level architecture validation via PSI
-- Bytecode-level architecture validation via ASM
-- Bytecode aware codebase scanner
-- Bytecode inspection
-- Dependency / call graph analysis
-- Dead code / deprecation / shadow usage detection - under development
-- JVM internals visibility - under development
-- Architectural Dashboard
-- Instant IDE feedback and exportable reports
+## Why two engines?
 
-### Documentation & Hands-on Example
-[Documentation & Test Bed application](./docs/psi/README.md)
+Use **PSI** when you want source-aware feedback (IDE-native dashboards, suppressions, guided fixes).
+Use **ASM** when you need build-artifact truth (bytecode-level reality, JAR visibility, CI-friendly scans).
 
-### How to use as an intellij plugin
-- Refer to [documentation](./docs/psi/README.md) for more details around configurability
-- Download the plugin from intellij marketplace or build locally (Future milestone: CLI: under development)
-- Open Shamash ASM - left hand panel: for bytecode analysis and export findings
-  - Press Shamash logo to analyze and view finding, hierarchy, analysis, and more.
-- Open Shamash PSI - left hand panel: to configure your architecture and export findings
-  - create your psi.yml using ui or manually
-  - validate your rules
-  - run a scan and analyze your architecture
-- Open either dashboards and export your codebase reports including
-  - overall architecture score 
-  - graphs and reports of current hierarchy, issues and analysis
-  - exports of all PSI findings, violations and fixes
+Most teams run both:
+- PSI for day-to-day development feedback
+- ASM for “what actually ships” bytecode verification
 
-### Local Setup
-To verify
-```shell
-./gradlew runPluginVerifier
-```
+### Both engines are configurable via
+- ASM reads **`asm.yml`**
+- PSI reads **`psi.yml`**
 
-To build
-```shell
+These YAML configs define roles, rules, scope, validation behavior, exports, and (when enabled) analysis outputs like graphs/hotspots/scores.
 
-./gradlew clean buildplugin
-```
-To run
-```shell
-gradlew.bat spotlessApply
-gradlew clean runIde
-```
+---
 
-All inspections are deterministic, reversible, and framework-aware where necessary.
+## What it covers
 
+### Architecture enforcement
+- Roles (e.g., controller/service/repository) and placement rules
+- Forbidden dependencies (role → role, package → package, module → module)
+- Dependency cycles (with representative cycle paths)
+- Config validation with clear, path-aware errors
 
-## License
-[LICENSE](LICENSE.md)
+### Analysis outputs
+- Dependency / call graph analysis (configurable granularity)
+- Hotspots and scoring (architecture health indicators)
+- Exportable reports (JSON / SARIF / HTML / XML)
 
-## Changelog
-[CHANGELOG](./CHANGELOG.md)
+### Under development (not promised yet)
+- Dead code detection
+- Deprecation / shadow usage detection
+- Additional JVM internals visibility and advanced inspections
+
+---
+
+## Documentation & hands-on example
+
+- **Docs + Test Bed applications:** [`./docs/`](./docs)
+
+---
+
+## IntelliJ Plugin: quick start
+
+1. Install from JetBrains Marketplace (or build locally).
+2. Open the tool windows:
+  - **Shamash PSI**: configure architecture and validate rules against source
+  - **Shamash ASM**: scan bytecode and export findings
+3. Create a config from reference (or write one manually), then:
+  - **Validate config**
+  - **Run scan**
+  - Review findings and export reports
+
+> Configs typically live under your project (e.g. `psi.yml`, `asm.yml`) and reports go under `.shamash/` by default.

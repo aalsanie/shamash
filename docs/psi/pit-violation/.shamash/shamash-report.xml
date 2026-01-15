@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<shamashReport schemaVersion="v1" generatedAtEpochMillis="1767955553247">
-  <tool name="Shamash PSI" version="0.60.0"/>
+<shamashReport schemaVersion="v1" generatedAtEpochMillis="1768449801069">
+  <tool name="Shamash PSI" version="242.20224.300"/>
   <project name="pit-violation" basePath="/Users/Ahmad/IdeaProjects/Shamash/docs/psi/pit-violation"/>
   <findings count="32">
-    <finding ruleId="arch.forbiddenRoleDependencies" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13" classFqn="com.pit.app.controller.AdminController">
+    <finding ruleId="arch.forbiddenRoleDependencies" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="5e5326c16010b71f1cf594706f11e0877f16dfc937cf0b901e4c38c7b584740f" classFqn="com.AdminController">
       <message>Controllers must not depend directly on repositories</message>
     </finding>
-    <finding ruleId="arch.forbiddenRoleDependencies" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13" classFqn="com.pit.app.controller.AdminController">
+    <finding ruleId="arch.forbiddenRoleDependencies" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="5e5326c16010b71f1cf594706f11e0877f16dfc937cf0b901e4c38c7b584740f" classFqn="com.AdminController">
       <message>Controllers must not depend directly on repositories</message>
     </finding>
-    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e" classFqn="com.pit.app.controller.AdminController" memberName="unusedCount">
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e" classFqn="com.AdminController" memberName="unusedCount">
       <message>Private field &apos;unusedCount&apos; appears unused.</message>
     </finding>
-    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e" classFqn="com.pit.app.controller.AdminController" memberName="unusedCount">
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e" classFqn="com.AdminController" memberName="unusedCount">
       <message>Private field &apos;unusedCount&apos; appears unused.</message>
     </finding>
-    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083" classFqn="com.pit.app.controller.AdminController" memberName="unusedSecret">
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083" classFqn="com.AdminController" memberName="unusedSecret">
       <message>Private method &apos;unusedSecret&apos; appears unused.</message>
     </finding>
-    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083" classFqn="com.pit.app.controller.AdminController" memberName="unusedSecret">
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="INFO" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083" classFqn="com.AdminController" memberName="unusedSecret">
       <message>Private method &apos;unusedSecret&apos; appears unused.</message>
     </finding>
-    <finding ruleId="metrics.maxMethodsByRole" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" classFqn="com.pit.app.controller.AdminController">
-      <message>Class &apos;com.pit.app.controller.AdminController&apos; (role &apos;controller&apos;) has 2 methods, exceeding max=1.</message>
+    <finding ruleId="metrics.maxMethodsByRole" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" classFqn="com.AdminController">
+      <message>Class &apos;com.AdminController&apos; (role &apos;controller&apos;) has 2 methods, exceeding max=1.</message>
     </finding>
-    <finding ruleId="metrics.maxMethodsByRole" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" classFqn="com.pit.app.controller.AdminController">
-      <message>Class &apos;com.pit.app.controller.AdminController&apos; (role &apos;controller&apos;) has 2 methods, exceeding max=1.</message>
+    <finding ruleId="metrics.maxMethodsByRole" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" classFqn="com.AdminController">
+      <message>Class &apos;com.AdminController&apos; (role &apos;controller&apos;) has 2 methods, exceeding max=1.</message>
     </finding>
-    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f">
-      <message>Package &apos;com.pit.app.controller&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="82c6921213310583350daee770502d8db953708e14a28e1d04d86bf482fb898d" classFqn="com.AdminController">
+      <message>Role &apos;controller&apos; class &apos;com.AdminController&apos; is in package &apos;com&apos; which does not match expected packageRegex=&apos;.*\.controller(\..*)?$&apos;.</message>
     </finding>
-    <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f">
-      <message>Package &apos;com.pit.app.controller&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
+    <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/java/com/pit/app/controller/AdminController.java" fingerprint="82c6921213310583350daee770502d8db953708e14a28e1d04d86bf482fb898d" classFqn="com.AdminController">
+      <message>Role &apos;controller&apos; class &apos;com.AdminController&apos; is in package &apos;com&apos; which does not match expected packageRegex=&apos;.*\.controller(\..*)?$&apos;.</message>
     </finding>
     <finding ruleId="packages.rolePlacement" severity="WARNING" filePath="src/main/kotlin/com/pit/app/data/UserDao.kt" fingerprint="f12f446477e1b6f9ad812ffa9938b061d3739dc155f1bc2a035e114eeafc003b" classFqn="com.pit.app.data.UserDao">
       <message>Role &apos;repository&apos; class &apos;com.pit.app.data.UserDao&apos; is in package &apos;com.pit.app.data&apos; which does not match expected packageRegex=&apos;.*\.(dao|repository)(\..*)?$&apos;.</message>

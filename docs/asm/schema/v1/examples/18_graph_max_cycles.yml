@@ -1,0 +1,75 @@
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - "./build/classes"
+    outputsGlobs:
+      include: ["**/build/classes/**"]
+      exclude: []
+    jarGlobs:
+      include: ["**/*.jar"]
+      exclude: []
+  scan:
+    scope: PROJECT_ONLY
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+  validation:
+    unknownRule: ERROR
+
+roles:
+  core:
+    priority: 10
+    description: "Core"
+    match:
+      packageRegex: "^com\\.acme\\.core(\\..*)?$"
+  infra:
+    priority: 20
+    description: "Infra"
+    match:
+      packageRegex: "^com\\.acme\\.infra(\\..*)?$"
+
+analysis:
+  graphs:
+    enabled: true
+    granularity: PACKAGE
+    includeExternalBuckets: false
+  hotspots:
+    enabled: true
+    topN: 25
+    includeExternal: false
+  scoring:
+    enabled: true
+    model: V1
+    godClass:
+      enabled: true
+      weights: null
+      thresholds: null
+    overall:
+      enabled: true
+      weights: null
+      thresholds: null
+
+rules:
+  - type: graph
+    name: maxCycles
+    enabled: true
+    severity: WARNING
+    roles: null
+    scope: null
+    params:
+      maxCycles: 0
+
+exceptions: []
+
+baseline:
+  mode: GENERATE
+  path: ".shamash/baseline.json"
+
+export:
+  enabled: true
+  outputDir: ".shamash/reports"
+  formats: [JSON]
+  overwrite: true

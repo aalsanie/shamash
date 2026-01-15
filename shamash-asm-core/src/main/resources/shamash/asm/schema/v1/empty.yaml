@@ -1,0 +1,64 @@
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - "."
+
+    # Class files discovery (relative to roots)
+    outputsGlobs:
+      include: []
+      exclude: []
+
+    # Jars discovery (relative to roots)
+    jarGlobs:
+      include: []
+      exclude: []
+
+  scan:
+    scope: PROJECT_WITH_EXTERNAL_BUCKETS
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+
+  validation:
+    unknownRule: ERROR
+
+roles: {}
+
+analysis:
+  graphs:
+    enabled: true
+    granularity: PACKAGE
+    includeExternalBuckets: true
+
+  hotspots:
+    enabled: true
+    topN: 25
+    includeExternal: false
+
+  scoring:
+    enabled: true
+    model: V1
+    godClass:
+      enabled: true
+      weights: null
+      thresholds: null
+    overall:
+      enabled: true
+      weights: null
+      thresholds: null
+
+baseline:
+  mode: NONE
+  path: ".shamash/baseline/shamash-asm.baseline.json"
+
+export:
+  enabled: true
+  outputDir: ".shamash/reports/asm"
+  formats: [JSON, SARIF, HTML, XML]
+  overwrite: true
+
+rules: []
+exceptions: []

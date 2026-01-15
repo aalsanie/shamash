@@ -6,7 +6,7 @@
       "tool": {
         "driver": {
           "name": "Shamash PSI",
-          "version": "0.60.0",
+          "version": "242.20224.300",
           "informationUri": "https://github.com/aalsanie/shamash",
           "rules": [
             {
@@ -45,7 +45,7 @@
       "invocations": [
         {
           "executionSuccessful": true,
-          "startTimeUtc": "2026-01-09T10:45:53.247Z"
+          "startTimeUtc": "2026-01-15T04:03:21.069Z"
         }
       ],
       "results": [
@@ -53,7 +53,7 @@
           "ruleId": "arch.forbiddenRoleDependencies",
           "level": "error",
           "message": { "text": "Controllers must not depend directly on repositories" },
-          "partialFingerprints": { "primaryLocationLineHash": "c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13" },
+          "partialFingerprints": { "primaryLocationLineHash": "5e5326c16010b71f1cf594706f11e0877f16dfc937cf0b901e4c38c7b584740f" },
           "locations": [
             {
               "physicalLocation": {
@@ -66,7 +66,7 @@
           "ruleId": "arch.forbiddenRoleDependencies",
           "level": "error",
           "message": { "text": "Controllers must not depend directly on repositories" },
-          "partialFingerprints": { "primaryLocationLineHash": "c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13" },
+          "partialFingerprints": { "primaryLocationLineHash": "5e5326c16010b71f1cf594706f11e0877f16dfc937cf0b901e4c38c7b584740f" },
           "locations": [
             {
               "physicalLocation": {
@@ -130,7 +130,7 @@
         {
           "ruleId": "metrics.maxMethodsByRole",
           "level": "warning",
-          "message": { "text": "Class 'com.pit.app.controller.AdminController' (role 'controller') has 2 methods, exceeding max=1." },
+          "message": { "text": "Class 'com.AdminController' (role 'controller') has 2 methods, exceeding max=1." },
           "partialFingerprints": { "primaryLocationLineHash": "0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" },
           "locations": [
             {
@@ -143,7 +143,7 @@
         {
           "ruleId": "metrics.maxMethodsByRole",
           "level": "warning",
-          "message": { "text": "Class 'com.pit.app.controller.AdminController' (role 'controller') has 2 methods, exceeding max=1." },
+          "message": { "text": "Class 'com.AdminController' (role 'controller') has 2 methods, exceeding max=1." },
           "partialFingerprints": { "primaryLocationLineHash": "0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544" },
           "locations": [
             {
@@ -154,10 +154,10 @@
           ]
         },
         {
-          "ruleId": "packages.rootPackage",
-          "level": "error",
-          "message": { "text": "Package 'com.pit.app.controller' is outside configured root package 'com.this.will.never.match'." },
-          "partialFingerprints": { "primaryLocationLineHash": "047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f" },
+          "ruleId": "packages.rolePlacement",
+          "level": "warning",
+          "message": { "text": "Role 'controller' class 'com.AdminController' is in package 'com' which does not match expected packageRegex='.*\\.controller(\\..*)?$'." },
+          "partialFingerprints": { "primaryLocationLineHash": "82c6921213310583350daee770502d8db953708e14a28e1d04d86bf482fb898d" },
           "locations": [
             {
               "physicalLocation": {
@@ -167,10 +167,10 @@
           ]
         },
         {
-          "ruleId": "packages.rootPackage",
-          "level": "error",
-          "message": { "text": "Package 'com.pit.app.controller' is outside configured root package 'com.this.will.never.match'." },
-          "partialFingerprints": { "primaryLocationLineHash": "047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f" },
+          "ruleId": "packages.rolePlacement",
+          "level": "warning",
+          "message": { "text": "Role 'controller' class 'com.AdminController' is in package 'com' which does not match expected packageRegex='.*\\.controller(\\..*)?$'." },
+          "partialFingerprints": { "primaryLocationLineHash": "82c6921213310583350daee770502d8db953708e14a28e1d04d86bf482fb898d" },
           "locations": [
             {
               "physicalLocation": {

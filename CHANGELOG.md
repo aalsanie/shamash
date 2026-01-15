@@ -4,6 +4,49 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
 
+### Added
+
+- Major refactor: modularized the codebase into five modules for clearer ownership and reuse:
+  - **shamash-artifacts** — shared contracts, models, and finding/report primitives.
+  - **shamash-export** — export pipeline (orchestration, report builders, exporters, output layout).
+  - **shamash-psi-core** — PSI/source analysis core (config/validation + analysis engine integration).
+  - **shamash-asm-core** — ASM/bytecode analysis core (scan → facts → engine → baseline/export).
+  - **shamash-intellij-plugin** — IntelliJ UI/actions/tool windows wiring for PSI + ASM.
+- ASM ToolWindow with **Dashboard / Findings / Config** tabs wired.
+- ASM actions: **Run Scan**, **Validate Config**, **Create Config from Reference**, **Open Reference Config**, **Export Reports**.
+- In-memory **ASM UI state service** with listeners + automatic tab navigation.
+- Findings UI: table + details panel, selection persistence, state-driven rendering.
+- Config UI: config discovery + open/create/validate flows with settings override support.
+- Bytecode scan primitives: **BytecodeOrigin** + **BytecodeScanner** (roots resolution, glob filtering, scope bucketing, deterministic ordering, truncation limits, best-effort IO error capture).
+- **ShamashAsmScanRunner** orchestration: config load/validate → bytecode scan → fact extraction → engine execution → baseline/export integration.
+- Added dependency (`org.snakeyaml:snakeyaml-engine`).
+- ASM engine enhancements:
+  - `EngineRunSummary.RuleStats` counters for configured/executed/skipped **rule instances**.
+  - Finding normalization + stable sorting + de-dupe keys.
+  - Engine error stabilization (de-dupe + stable sorting).
+  - Engine-owned role classification (priority matching; populates `FactIndex.roles` + `classToRole`).
+  - Engine-owned exception suppression (compiled matchers: rule/type/name/role/class/package/path/glob).
+  - Engine-owned baseline flow: NONE / GENERATE (atomic write fallback) / VERIFY (suppress by fingerprints).
+  - Export pipeline wired via **shamash-export** with overwrite gating and normalized output directory resolution.
+
+### Fixed
+
+- ASM config locator parity with PSI: search `ProjectLayout.ASM_CONFIG_CANDIDATES` across resource roots + fallback to project root, with settings override.
+- avoid invalid VFS child names; prevent duplicated `shamash/configs/...` segments.
+- IntelliJ write actions: command-based writes return values safely (avoid `Unit?` mismatches).
+- Swing naming collision: replaced ambiguous `component()` usage to avoid invoke/property conflicts.
+- Rule registry executability check now uses the default registry implementation (removed invalid `RuleRegistry.allIds()` usage).
+- `graph.maxDependencyDensity` parsing uses `Params.requireDouble("max", min, max)`.
+- UnknownRulePolicy parsing tolerates lowercase values (`ERROR/WARN/IGNORE` and `error/warn/ignore`).
+- Rule execution wiring calls `Rule.evaluate(facts, rule, config)` with explicit named arguments.
+- Baseline fingerprinting handles blank `filePath` via a stable fallback path input.
+- Export overwrite gating: `overwrite=false` skips export when any requested report already exists.
+
+### Removed
+
+- Removed unused rule-context mutation approach (`withRuleDef`) in favor of the direct `Rule.evaluate(...)` contract.
+
+
 ## [0.60.1]
 ### Fixed
 - Existing bug related to role assignment for a specific rule caused any rule with a role not to take effect

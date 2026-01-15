@@ -1,0 +1,77 @@
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - "build/classes/kotlin/main"
+    outputsGlobs:
+      include: ["**/*.class"]
+      exclude: ["**/*Test.class"]
+    jarGlobs:
+      include: ["**/*.jar"]
+      exclude: []
+  scan:
+    scope: PROJECT_ONLY
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+  validation:
+    unknownRule: ERROR
+
+roles:
+  core:
+    priority: 10
+    description: "Core app code"
+    match:
+      packageRegex: "^com\\.acme\\.app(\\..*)?$"
+  legacy:
+    priority: 90
+    description: "Legacy code"
+    match:
+      packageRegex: "^com\\.acme\\.legacy(\\..*)?$"
+
+analysis:
+  graphs:
+    enabled: true
+    granularity: PACKAGE
+    includeExternalBuckets: false
+  hotspots:
+    enabled: true
+    topN: 25
+    includeExternal: false
+  scoring:
+    enabled: true
+    model: V1
+    godClass:
+      enabled: true
+      weights: null
+      thresholds: null
+    overall:
+      enabled: true
+      weights: null
+      thresholds: null
+
+rules:
+  - type: "arch"
+    name: "forbiddenPackages"
+    roles: ["core"]
+    enabled: true
+    severity: ERROR
+    scope: null
+    params:
+      forbidPackages:
+        - "^com\\.acme\\.legacy(\\..*)?$"
+        - "^com\\.acme\\.experimental(\\..*)?$"
+
+exceptions: []
+
+baseline:
+  mode: NONE
+  path: "baseline.json"
+
+export:
+  enabled: false
+  outputDir: ".shamash"
+  formats: ["JSON"]
+  overwrite: false

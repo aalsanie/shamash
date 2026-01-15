@@ -1,9 +1,9 @@
 {
   "tool": {
     "name": "Shamash PSI",
-    "version": "0.60.0",
+    "version": "242.20224.300",
     "schemaVersion": "v1",
-    "generatedAtEpochMillis": 1767955553247
+    "generatedAtEpochMillis": 1768449801069
   },
   "project": {
     "name": "pit-violation",
@@ -15,16 +15,16 @@
       "message": "Controllers must not depend directly on repositories",
       "severity": "ERROR",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
-      "fingerprint": "c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13",
-      "classFqn": "com.pit.app.controller.AdminController"
+      "fingerprint": "5e5326c16010b71f1cf594706f11e0877f16dfc937cf0b901e4c38c7b584740f",
+      "classFqn": "com.AdminController"
     },
     {
       "ruleId": "arch.forbiddenRoleDependencies",
       "message": "Controllers must not depend directly on repositories",
       "severity": "ERROR",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
-      "fingerprint": "c2db5cf29b2b6bf498c6aadd97708a9a00aacac9343cc26e98d775e894cf4f13",
-      "classFqn": "com.pit.app.controller.AdminController"
+      "fingerprint": "5e5326c16010b71f1cf594706f11e0877f16dfc937cf0b901e4c38c7b584740f",
+      "classFqn": "com.AdminController"
     },
     {
       "ruleId": "deadcode.unusedPrivateMembers",
@@ -32,7 +32,7 @@
       "severity": "INFO",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
       "fingerprint": "c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e",
-      "classFqn": "com.pit.app.controller.AdminController",
+      "classFqn": "com.AdminController",
       "memberName": "unusedCount"
     },
     {
@@ -41,7 +41,7 @@
       "severity": "INFO",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
       "fingerprint": "c24f9501342d119e7d568709dcf1c20ce19d75b5fad63015fecadbd239f5564e",
-      "classFqn": "com.pit.app.controller.AdminController",
+      "classFqn": "com.AdminController",
       "memberName": "unusedCount"
     },
     {
@@ -50,7 +50,7 @@
       "severity": "INFO",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
       "fingerprint": "b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083",
-      "classFqn": "com.pit.app.controller.AdminController",
+      "classFqn": "com.AdminController",
       "memberName": "unusedSecret"
     },
     {
@@ -59,38 +59,40 @@
       "severity": "INFO",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
       "fingerprint": "b270916db7135f218a0498c0c4d5bf1c9748b0359f16bf86ec373a906de87083",
-      "classFqn": "com.pit.app.controller.AdminController",
+      "classFqn": "com.AdminController",
       "memberName": "unusedSecret"
     },
     {
       "ruleId": "metrics.maxMethodsByRole",
-      "message": "Class 'com.pit.app.controller.AdminController' (role 'controller') has 2 methods, exceeding max=1.",
+      "message": "Class 'com.AdminController' (role 'controller') has 2 methods, exceeding max=1.",
       "severity": "WARNING",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
       "fingerprint": "0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544",
-      "classFqn": "com.pit.app.controller.AdminController"
+      "classFqn": "com.AdminController"
     },
     {
       "ruleId": "metrics.maxMethodsByRole",
-      "message": "Class 'com.pit.app.controller.AdminController' (role 'controller') has 2 methods, exceeding max=1.",
+      "message": "Class 'com.AdminController' (role 'controller') has 2 methods, exceeding max=1.",
       "severity": "WARNING",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
       "fingerprint": "0cff50b5082bfb73bc72d78728c6a218c59b69e578cd1c9b9d9b40715bc90544",
-      "classFqn": "com.pit.app.controller.AdminController"
+      "classFqn": "com.AdminController"
     },
     {
-      "ruleId": "packages.rootPackage",
-      "message": "Package 'com.pit.app.controller' is outside configured root package 'com.this.will.never.match'.",
-      "severity": "ERROR",
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'controller' class 'com.AdminController' is in package 'com' which does not match expected packageRegex='.*\\.controller(\\..*)?$'.",
+      "severity": "WARNING",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
-      "fingerprint": "047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f"
+      "fingerprint": "82c6921213310583350daee770502d8db953708e14a28e1d04d86bf482fb898d",
+      "classFqn": "com.AdminController"
     },
     {
-      "ruleId": "packages.rootPackage",
-      "message": "Package 'com.pit.app.controller' is outside configured root package 'com.this.will.never.match'.",
-      "severity": "ERROR",
+      "ruleId": "packages.rolePlacement",
+      "message": "Role 'controller' class 'com.AdminController' is in package 'com' which does not match expected packageRegex='.*\\.controller(\\..*)?$'.",
+      "severity": "WARNING",
       "filePath": "src/main/java/com/pit/app/controller/AdminController.java",
-      "fingerprint": "047478a6f0d786807990e4b8369c96fa5984a0f2f9e084ea8889afad00a8bb0f"
+      "fingerprint": "82c6921213310583350daee770502d8db953708e14a28e1d04d86bf482fb898d",
+      "classFqn": "com.AdminController"
     },
     {
       "ruleId": "packages.rolePlacement",

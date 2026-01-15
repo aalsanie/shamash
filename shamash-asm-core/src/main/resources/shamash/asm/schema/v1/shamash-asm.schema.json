@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shamash://asm/schema/v1/shamash-asm.schema.json",
+  "title": "Shamash ASM Config Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project", "roles", "analysis", "rules", "exceptions", "baseline", "export"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+
+    "project": { "$ref": "#/$defs/project" },
+
+    "roles": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/roleDef" }
+    },
+
+    "analysis": { "$ref": "#/$defs/analysis" },
+
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ruleDef" }
+    },
+
+    "exceptions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/exceptionDef" }
+    },
+
+    "baseline": { "$ref": "#/$defs/baseline" },
+
+    "export": { "$ref": "#/$defs/export" }
+  },
+
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": ["ERROR", "WARNING", "INFO"]
+    },
+
+    "unknownRulePolicy": {
+      "type": "string",
+      "enum": ["ERROR", "WARN", "IGNORE", "error", "warn", "ignore"]
+    },
+
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+
+    "stringList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+
+    "globList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+
+    "regexList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nonEmptyString" }
+    },
+
+    "scanScope": {
+      "type": "string",
+      "enum": ["PROJECT_WITH_EXTERNAL_BUCKETS", "PROJECT_ONLY", "ALL_SOURCES"]
+    },
+
+    "granularity": {
+      "type": "string",
+      "enum": ["CLASS", "PACKAGE", "MODULE"]
+    },
+
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bytecode", "scan", "validation"],
+      "properties": {
+        "bytecode": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["roots", "outputsGlobs", "jarGlobs"],
+          "properties": {
+            "roots": { "$ref": "#/$defs/stringList" },
+
+            "outputsGlobs": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["include", "exclude"],
+              "properties": {
+                "include": { "$ref": "#/$defs/globList" },
+                "exclude": { "$ref": "#/$defs/globList" }
+              }
+            },
+
+            "jarGlobs": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["include", "exclude"],
+              "properties": {
+                "include": { "$ref": "#/$defs/globList" },
+                "exclude": { "$ref": "#/$defs/globList" }
+              }
+            }
+          }
+        },
+
+        "scan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scope"],
+          "properties": {
+            "scope": { "$ref": "#/$defs/scanScope" },
+
+            "followSymlinks": { "type": "boolean" },
+
+            "maxClasses": { "type": ["integer", "null"], "minimum": 1 },
+
+            "maxJarBytes": { "type": ["integer", "null"], "minimum": 1 },
+
+            "maxClassBytes": { "type": ["integer", "null"], "minimum": 1 }
+          }
+        },
+
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unknownRule"],
+          "properties": {
+            "unknownRule": { "$ref": "#/$defs/unknownRulePolicy" }
+          }
+        }
+      }
+    },
+
+    "roleDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["priority", "match"],
+      "properties": {
+        "priority": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "description": { "type": ["string", "null"] },
+        "match": { "$ref": "#/$defs/matcher" }
+      }
+    },
+
+    "matcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "anyOf": { "type": "array", "items": { "$ref": "#/$defs/matcher" }, "minItems": 1 },
+        "allOf": { "type": "array", "items": { "$ref": "#/$defs/matcher" }, "minItems": 1 },
+        "not": { "$ref": "#/$defs/matcher" },
+
+        "packageRegex": { "$ref": "#/$defs/nonEmptyString" },
+        "packageContainsSegment": { "$ref": "#/$defs/nonEmptyString" },
+        "classNameEndsWith": { "$ref": "#/$defs/nonEmptyString" },
+
+        "annotation": { "$ref": "#/$defs/nonEmptyString" },
+        "annotationPrefix": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "oneOf": [
+        { "required": ["anyOf"] },
+        { "required": ["allOf"] },
+        { "required": ["not"] },
+        { "required": ["packageRegex"] },
+        { "required": ["packageContainsSegment"] },
+        { "required": ["classNameEndsWith"] },
+        { "required": ["annotation"] },
+        { "required": ["annotationPrefix"] }
+      ]
+    },
+
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["graphs", "hotspots", "scoring"],
+      "properties": {
+        "graphs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "granularity", "includeExternalBuckets"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "granularity": { "$ref": "#/$defs/granularity" },
+            "includeExternalBuckets": { "type": "boolean" }
+          }
+        },
+
+        "hotspots": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "topN"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "topN": { "type": "integer", "minimum": 1, "maximum": 500 },
+            "includeExternal": { "type": "boolean" }
+          }
+        },
+
+        "scoring": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "model", "godClass", "overall"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+
+            "model": {
+              "type": "string",
+              "enum": ["V1"]
+            },
+
+            "godClass": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["enabled"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+
+                "weights": {
+                  "type": ["object", "null"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "methods": { "type": "number", "minimum": 0 },
+                    "fields": { "type": "number", "minimum": 0 },
+                    "fanOut": { "type": "number", "minimum": 0 },
+                    "fanIn": { "type": "number", "minimum": 0 },
+                    "packageSpread": { "type": "number", "minimum": 0 }
+                  }
+                },
+
+                "thresholds": {
+                  "type": ["object", "null"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "warning": { "type": "number", "minimum": 0, "maximum": 1 },
+                    "error": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                }
+              }
+            },
+
+            "overall": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["enabled"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+
+                "weights": {
+                  "type": ["object", "null"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "cycles": { "type": "number", "minimum": 0 },
+                    "dependencyDensity": { "type": "number", "minimum": 0 },
+                    "layeringViolations": { "type": "number", "minimum": 0 },
+                    "godClassPrevalence": { "type": "number", "minimum": 0 },
+                    "externalCoupling": { "type": "number", "minimum": 0 }
+                  }
+                },
+
+                "thresholds": {
+                  "type": ["object", "null"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "warning": { "type": "number", "minimum": 0, "maximum": 1 },
+                    "error": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "ruleScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "includeRoles": { "$ref": "#/$defs/stringList" },
+        "excludeRoles": { "$ref": "#/$defs/stringList" },
+
+        "includePackages": { "$ref": "#/$defs/regexList" },
+        "excludePackages": { "$ref": "#/$defs/regexList" },
+
+        "includeGlobs": { "$ref": "#/$defs/globList" },
+        "excludeGlobs": { "$ref": "#/$defs/globList" }
+      }
+    },
+
+    "ruleDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name", "enabled", "severity"],
+      "properties": {
+        "type": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+
+        "roles": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+
+        "enabled": { "type": "boolean" },
+        "severity": { "$ref": "#/$defs/severity" },
+
+        "scope": { "$ref": "#/$defs/ruleScope" },
+
+        "params": { "type": "object", "additionalProperties": true }
+      }
+    },
+
+    "exceptionDef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "enabled", "match", "reason"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "enabled": { "type": "boolean" },
+        "reason": { "$ref": "#/$defs/nonEmptyString" },
+        "match": { "$ref": "#/$defs/exceptionMatch" }
+      }
+    },
+
+    "exceptionMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ruleId": { "$ref": "#/$defs/nonEmptyString" },
+
+        "ruleType": { "$ref": "#/$defs/nonEmptyString" },
+        "ruleName": { "$ref": "#/$defs/nonEmptyString" },
+
+        "roles": { "$ref": "#/$defs/stringList" },
+
+        "classInternalName": { "$ref": "#/$defs/nonEmptyString" },
+        "classNameRegex": { "$ref": "#/$defs/nonEmptyString" },
+
+        "packageRegex": { "$ref": "#/$defs/nonEmptyString" },
+
+        "originPathRegex": { "$ref": "#/$defs/nonEmptyString" },
+
+        "glob": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+
+    "baselineMode": {
+      "type": "string",
+      "enum": ["NONE", "GENERATE", "VERIFY"]
+    },
+
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "$ref": "#/$defs/baselineMode" },
+        "path": { "type": ["string", "null"], "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "const": "NONE" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "properties": {
+              "path": { "type": ["string", "null"] }
+            }
+          },
+          "else": {
+            "required": ["path"],
+            "properties": {
+              "path": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        }
+      ]
+    },
+
+    "exportFormat": {
+      "type": "string",
+      "enum": ["JSON", "SARIF", "HTML", "XML"]
+    },
+
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "overwrite"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "outputDir": { "type": ["string", "null"], "minLength": 1 },
+        "formats": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/exportFormat" }
+        },
+        "overwrite": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "enabled": { "const": true } },
+            "required": ["enabled"]
+          },
+          "then": {
+            "required": ["outputDir", "formats"],
+            "properties": {
+              "outputDir": { "$ref": "#/$defs/nonEmptyString" },
+              "formats": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/exportFormat" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

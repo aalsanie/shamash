@@ -1,0 +1,77 @@
+/*
+ * Copyright © 2025-2026 | Shamash
+ *
+ * Shamash is a JVM architecture enforcement tool that helps teams
+ * define, validate, and continuously enforce architectural boundaries.
+ *
+ * Author: @aalsanie
+ *
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.shamash.intellij.plugin.asm.ui.actions
+
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationType
+import com.intellij.notification.Notifications
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.wm.ToolWindowManager
+import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmUiConstants
+
+/**
+ * ASM UI actions should call shamash-asm-core runners/services, then use this helper
+ * to notify the user and focus the ASM tool window.
+ *
+ * Keeps UI-thread handling and notification wiring consistent across ASM actions.
+ */
+object AsmActionUtil {
+    fun notify(
+        project: Project?,
+        title: String,
+        message: String,
+        type: NotificationType,
+    ) {
+        val notification =
+            Notification(
+                ShamashAsmUiConstants.NOTIFICATION_GROUP_ID,
+                title,
+                message,
+                type,
+            )
+        Notifications.Bus.notify(notification, project)
+    }
+
+    fun openAsmToolWindow(project: Project) {
+        if (project.isDisposed) return
+
+        val runnable =
+            Runnable {
+                if (project.isDisposed) return@Runnable
+                val toolWindow =
+                    ToolWindowManager
+                        .getInstance(project)
+                        .getToolWindow(ShamashAsmUiConstants.TOOLWINDOW_ID)
+
+                // activate() brings focus; show() only makes it visible.
+                toolWindow?.activate(null, true)
+            }
+
+        val app = ApplicationManager.getApplication()
+        if (app.isDispatchThread) {
+            runnable.run()
+        } else {
+            app.invokeLater(runnable)
+        }
+    }
+}

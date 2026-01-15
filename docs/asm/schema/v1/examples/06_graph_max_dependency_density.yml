@@ -1,0 +1,44 @@
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - "./build/classes"
+    outputsGlobs:
+      include: ["**/build/classes/**"]
+      exclude: []
+    jarGlobs:
+      include: ["**/*.jar"]
+      exclude: []
+  scan:
+    scope: PROJECT_ONLY
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+  validation:
+    unknownRule: ERROR
+
+
+
+rules:
+  - type: graph
+    name: maxDependencyDensity
+    enabled: true
+    severity: WARNING
+    roles: null
+    scope: null
+    params:
+      maxDensity: 0.20
+
+exceptions: []
+
+baseline:
+  mode: GENERATE
+  path: ".shamash/baseline.json"
+
+export:
+  enabled: true
+  outputDir: ".shamash/reports"
+  formats: [JSON]
+  overwrite: true

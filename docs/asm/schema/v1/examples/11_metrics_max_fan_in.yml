@@ -1,0 +1,72 @@
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - build/classes
+    outputsGlobs:
+      include:
+        - "**/*.class"
+      exclude: []
+    jarGlobs:
+      include:
+        - "**/*.jar"
+      exclude: []
+  scan:
+    scope: PROJECT_ONLY
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+  validation:
+    unknownRule: ERROR
+
+roles:
+  core:
+    priority: 50
+    description: "Core module/classes"
+    match:
+      packageRegex: "^com\\.acme\\.core(\\..*)?$"
+
+analysis:
+  graphs:
+    enabled: true
+    granularity: PACKAGE
+    includeExternalBuckets: false
+  hotspots:
+    enabled: true
+    topN: 25
+    includeExternal: false
+  scoring:
+    enabled: true
+    model: V1
+    godClass:
+      enabled: true
+      weights: null
+      thresholds: null
+    overall:
+      enabled: true
+      weights: null
+      thresholds: null
+
+rules:
+  - type: metrics
+    name: maxFanIn
+    roles: [core]
+    enabled: true
+    severity: WARNING
+    params:
+      max: 40
+      includeExternal: false
+
+exceptions: []
+
+baseline:
+  mode: NONE
+  path: ".shamash/baseline.json"
+
+export:
+  enabled: false
+  outputDir: ".shamash/reports"
+  formats: [JSON]
+  overwrite: false

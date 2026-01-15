@@ -1,0 +1,164 @@
+<idea-plugin>
+    <id>io.shamash</id>
+    <name>Shamash</name>
+
+    <vendor email="a.aalsanie@outlook.com">Ahmad Alsanie</vendor>
+
+    <description><![CDATA[
+        Shamash is a JVM architecture enforcement tool that helps teams define, validate, and continuously enforce architectural boundaries.
+        <br/><br/>
+        It ships two complementary engines:
+        <br/><br/>
+        <b>ASM</b>:
+        analyzes compiled bytecode and jars to detect architectural drift, dependency violations, and forbidden couplings.
+        <br/><br/>
+        <b>PSI</b>:
+        analyzes source code via IntelliJ PSI using a configurable YAML schema, provides architectural dashboards, inline suppressions, guided fixes, and exportable reports.
+    ]]></description>
+
+    <depends>com.intellij.modules.java</depends>
+    <depends optional="true" config-file="META-INF/shamash-kotlin.xml">org.jetbrains.kotlin</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <!-- Notifications -->
+        <notificationGroup id="Shamash PSI"
+                           displayType="BALLOON"
+                           isLogByDefault="true"/>
+
+        <notificationGroup id="Shamash ASM"
+                           displayType="BALLOON"
+                           isLogByDefault="true"/>
+
+        <!-- Tool Windows -->
+        <toolWindow id="Shamash PSI"
+                    anchor="right"
+                    icon="/icons/pluginIcon.svg"
+                    factoryClass="io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowFactory"/>
+
+        <toolWindow id="Shamash ASM"
+                    anchor="right"
+                    icon="/icons/pluginIcon.svg"
+                    factoryClass="io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowFactory"/>
+
+        <!-- Settings / Services -->
+        <applicationService serviceImplementation="io.shamash.intellij.plugin.settings.ShamashSettings"/>
+
+    </extensions>
+
+    <actions>
+
+        <!-- ============== PSI ============== -->
+
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction"
+                text="Shamash: PSI Dashboard"
+                description="Open the Shamash PSI dashboard."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
+                text="Shamash: Run PSI Scan"
+                description="Runs Shamash PSI rules on project source using IntelliJ PSI."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
+                text="Shamash: Validate PSI Config"
+                description="Validates Shamash PSI YAML against schema and semantic rules."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.CreatePsiConfigFromReferenceAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.CreatePsiConfigFromReferenceAction"
+                text="Shamash: Create PSI Config (from Reference)"
+                description="Creates a PSI config file in the current project from the built-in reference YAML."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiReferenceConfigAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiReferenceConfigAction"
+                text="Shamash: Open PSI Reference Config"
+                description="Open the built-in Shamash PSI reference YAML."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.ExportPsiReportsAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.ExportPsiReportsAction"
+                text="Shamash: Export PSI Reports"
+                description="Exports Shamash PSI findings to JSON/SARIF/XML/HTML under the project export directory."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+
+        <!-- ============== ASM ============== -->
+
+        <action id="io.shamash.asm.openDashboard"
+                class="io.shamash.intellij.plugin.asm.ui.actions.OpenAsmDashboardAction"
+                text="Shamash: ASM Dashboard"
+                description="Open the Shamash ASM dashboard."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.asm.runScan"
+                class="io.shamash.intellij.plugin.asm.ui.actions.RunAsmScanAction"
+                text="Run ASM Scan"
+                description="Runs Shamash ASM rules on compiled bytecode and jars."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.asm.validateConfig"
+                class="io.shamash.intellij.plugin.asm.ui.actions.ValidateAsmConfigAction"
+                text="Validate ASM Config"
+                description="Validates Shamash ASM YAML against schema and semantic rules."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.asm.createConfigFromReference"
+                class="io.shamash.intellij.plugin.asm.ui.actions.CreateAsmConfigFromReferenceAction"
+                text="Create ASM Config (from Reference)"
+                description="Creates an ASM config file in the current project from the built-in reference YAML."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.asm.openReferenceConfig"
+                class="io.shamash.intellij.plugin.asm.ui.actions.OpenAsmReferenceConfigAction"
+                text="Open ASM Reference Config"
+                description="Open the built-in Shamash ASM reference YAML."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="io.shamash.asm.exportReports"
+                class="io.shamash.intellij.plugin.asm.ui.actions.ExportAsmReportsAction"
+                text="Export ASM Reports"
+                description="Exports Shamash ASM findings to JSON/SARIF/XML/HTML under the project export directory."
+                icon="/icons/pluginIcon.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+    </actions>
+
+    <change-notes><![CDATA[
+                     <ul>
+                      <li> ASM configurable engine and scanner</li>
+                      <li><strong>ASM ToolWindow</strong>: dashboard + findings + config tabs</li>
+                      <li><strong>ASM Config</strong>: reference YAML + create-from-reference workflow</li>
+                      <li><strong>ASM Scan</strong>: bytecode scan + facts + rules + export via config</li>
+                      <li><strong>Known gap</strong>: automated tests in progress (unit + integration + E2E)</li>
+                    </ul>
+                     ]]>
+    </change-notes>
+</idea-plugin>

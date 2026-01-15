@@ -1,6 +1,5 @@
 /*
- *
- * shamash is an architectural refactoring tool that enforces clean architecture.
+ * Shamash is a JVM architecture enforcement tool to define, validate, and maintain architectural boundaries.
  *
  * Copyright © 2025-2026 | Author: @aalsanie
  *
@@ -16,79 +15,62 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
-import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import com.diffplug.gradle.spotless.SpotlessExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
-    kotlin("jvm") version "1.9.23"
-    id("org.jetbrains.intellij.platform") version "2.10.5"
-    id("com.diffplug.spotless") version "8.1.0"
-    id("org.jetbrains.kotlinx.kover") version "0.9.4"
+    kotlin("jvm") version "1.9.23" apply false
+    id("org.jetbrains.intellij.platform") version "2.10.5" apply false
+
+    id("com.diffplug.spotless") version "8.1.0" apply false
+    id("org.jetbrains.kotlinx.kover") version "0.9.4" apply false
 }
 
 group = "io.shamash"
 version = "0.60.1"
 
-kotlin {
-    jvmToolchain(17)
-}
-
-repositories {
-    mavenCentral()
-    intellijPlatform {
-        defaultRepositories()
+allprojects {
+    repositories {
+        mavenCentral()
     }
 }
 
-dependencies {
-    implementation("org.ow2.asm:asm:9.7.1")
-    implementation("org.ow2.asm:asm-util:9.7.1")
-    implementation("com.networknt:json-schema-validator:1.5.9")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+subprojects {
+    // Default: Kotlin/JVM module
+    apply(plugin = "org.jetbrains.kotlin.jvm")
 
-    intellijPlatform {
-        intellijIdea("2024.2")
+    // Configure Kotlin toolchain only when Kotlin plugin is present
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        extensions.configure<KotlinJvmProjectExtension>("kotlin") {
+            jvmToolchain(17)
+        }
 
-        bundledPlugin("com.intellij.java")
-        bundledPlugin("org.jetbrains.kotlin")
+        dependencies.apply {
+            add("testImplementation", kotlin("test"))
+            add("testImplementation", "junit:junit:4.13.2")
+        }
 
-        testFramework(TestFrameworkType.Platform)
-    }
-
-    testImplementation("junit:junit:4.13.2")
-    testImplementation(kotlin("test"))
-}
-
-tasks.test {
-    maxHeapSize = "2g"
-}
-
-intellijPlatform {
-    pluginConfiguration {
-        ideaVersion {
-            // 2024.2 is 242.* (so 242 is the correct baseline)
-            sinceBuild = "242"
-            untilBuild = "252.*"
+        tasks.withType(Test::class.java).configureEach {
+            maxHeapSize = "2g"
+            // Keep JUnit4 unless module explicitly uses JUnit5.
+            // useJUnitPlatform()
         }
     }
 
-    pluginVerification {
-        ides {
-            create(IntelliJPlatformType.IntellijIdea, "2024.2")
-            create(IntelliJPlatformType.IntellijIdea, "2024.3")
-            create(IntelliJPlatformType.IntellijIdea, "2025.2")
+    // Spotless: apply + configure only when plugin is present
+    apply(plugin = "com.diffplug.spotless")
+    plugins.withId("com.diffplug.spotless") {
+        extensions.configure<SpotlessExtension> {
+            kotlin {
+                ktlint()
+                licenseHeaderFile(rootProject.file("spotless/HEADER.kt"), "package ")
+            }
+            kotlinGradle {
+                ktlint()
+            }
         }
     }
-}
 
-spotless {
-    kotlin {
-        ktlint()
-        licenseHeaderFile(rootProject.file("spotless/HEADER.kt"), "package ")
-    }
-
-    kotlinGradle {
-        ktlint()
-    }
+    // Kover (optional): apply everywhere; modules can override config if needed
+    apply(plugin = "org.jetbrains.kotlinx.kover")
 }

@@ -1,0 +1,272 @@
+# Shamash ASM Config v1 (REFERENCE)
+# --------------------------------
+# ASM scans bytecode (.class + optionally dependency jars), builds a deterministic index,
+# computes graphs/hotspots/scores, runs ASM rules, then uses the unified export pipeline.
+#
+# Pipeline:
+# 1) Parse YAML -> raw Map/List primitives
+# 2) Structural validation (JSON Schema)
+# 3) Bind into asm-core schema.v1 models
+# 4) Semantic validation (validation.v1) + RuleSpec param validation
+#
+# Notes:
+# - This reference is intentionally conservative and aligned with the currently enforced
+#   RuleSpec parameter contracts.
+# - Rules are examples. Enable/disable and tune thresholds as needed.
+
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - "."
+
+    # Discover compiled class outputs.
+    # Typical Gradle/Maven outputs:
+    outputsGlobs:
+      include:
+        - "**/build/classes/**"
+        - "**/build/intermediates/javac/**"
+        - "**/target/classes/**"
+        - "**/target/test-classes/**"
+      exclude:
+        - "**/out/**"
+        - "**/.idea/**"
+        - "**/generated/**"
+        - "**/node_modules/**"
+
+    # Discover dependency jars (optional).
+    jarGlobs:
+      include:
+        - "**/*.jar"
+      exclude:
+        - "**/build/**"            # usually outputs, not deps
+        - "**/.gradle/**/build/**" # avoid transient build outputs
+
+  scan:
+    # PROJECT_WITH_EXTERNAL_BUCKETS:
+    # - scan project outputs
+    # - do NOT scan jars
+    # - collapse external references into buckets (java.*, kotlin.*, org.springframework.*, etc.)
+    #
+    # PROJECT_ONLY:
+    # - scan project outputs only
+    # - no buckets
+    #
+    # ALL_SOURCES:
+    # - scan outputs + dependency jars (can be huge)
+    scope: PROJECT_WITH_EXTERNAL_BUCKETS
+
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+
+  validation:
+    # What to do if config references a rule that is not registered.
+    unknownRule: ERROR
+
+# -----------------------------------------------------------------------------
+# Roles (optional)
+# -----------------------------------------------------------------------------
+# If you don't need roles, set roles: {}.
+roles:
+  controller:
+    priority: 100
+    description: "Web controllers / adapters"
+    match:
+      anyOf:
+        - annotation: "org.springframework.web.bind.annotation.RestController"
+        - annotation: "org.springframework.stereotype.Controller"
+        - packageContainsSegment: "controller"
+        - classNameEndsWith: "Controller"
+
+  service:
+    priority: 90
+    description: "Services"
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Service"
+        - packageContainsSegment: "service"
+        - classNameEndsWith: "Service"
+
+  repository:
+    priority: 80
+    description: "Persistence / repositories"
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Repository"
+        - packageContainsSegment: "repository"
+        - packageContainsSegment: "dao"
+        - classNameEndsWith: "Repository"
+        - classNameEndsWith: "Dao"
+
+analysis:
+  graphs:
+    enabled: true
+    granularity: PACKAGE
+    includeExternalBuckets: true
+
+  hotspots:
+    enabled: true
+    topN: 30
+    includeExternal: false
+
+  scoring:
+    enabled: true
+    model: V1
+
+    godClass:
+      enabled: true
+      weights:
+        methods: 0.35
+        fields: 0.10
+        fanOut: 0.30
+        fanIn: 0.15
+        packageSpread: 0.10
+      thresholds:
+        warning: 0.70
+        error: 0.85
+
+    overall:
+      enabled: true
+      weights:
+        cycles: 0.30
+        dependencyDensity: 0.20
+        layeringViolations: 0.25
+        godClassPrevalence: 0.15
+        externalCoupling: 0.10
+      thresholds:
+        warning: 0.70
+        error: 0.85
+
+baseline:
+  # NONE: do not use baseline
+  # GENERATE: produce baseline file from current findings
+  # VERIFY: compare current findings to baseline and report drift
+  mode: VERIFY
+  path: ".shamash/baseline/shamash-asm.baseline.json"
+
+export:
+  enabled: true
+  outputDir: ".shamash/reports/asm"
+  formats: [JSON, SARIF, HTML, XML]
+  overwrite: true
+
+# -----------------------------------------------------------------------------
+# Rules
+# -----------------------------------------------------------------------------
+# Canonical rule identity is (type,name,role).
+# - Specs are keyed by (type,name).
+# - Config rules can be wildcard (roles: null) or specific (roles: ["roleA","roleB"]).
+#
+# severity: ERROR | WARNING | INFO
+rules:
+  # Architecture: forbid direct dependencies between roles (example layering).
+  # Contract: params.forbidden is a MAP role -> list of roles.
+  - type: arch
+    name: forbiddenRoleDependencies
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      forbidden:
+        controller:
+          - repository
+
+  # Architecture: forbid packages by regex.
+  # Contract: params.forbidPackages is a LIST of regex strings.
+  - type: arch
+    name: forbiddenPackages
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      forbidPackages:
+        - "^com\\.acme\\.forbidden(\\..*)?$"
+
+  # Graph: no cycles.
+  - type: graph
+    name: noCycles
+    roles: null
+    enabled: true
+    severity: ERROR
+    params: {}
+
+  # Graph: max cycles allowed (0 = none).
+  # Contract: params.maxCycles is an INT.
+  - type: graph
+    name: maxCycles
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      maxCycles: 0
+
+  # Graph: cap dependency density (0..1).
+  # Contract: params.maxDensity is a DOUBLE.
+  - type: graph
+    name: maxDependencyDensity
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      maxDensity: 0.40
+
+  # Graph: cap edge count.
+  # Contract: params.maxEdges is an INT.
+  - type: graph
+    name: maxEdgeCount
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      maxEdges: 50
+
+  # Metrics: cap methods per class.
+  # Contract: params.maxMethods is an INT.
+  - type: metrics
+    name: maxMethodsPerClass
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      maxMethods: 50
+
+  # Metrics: cap fields per class.
+  # Contract: params.maxFields is an INT.
+  - type: metrics
+    name: maxFieldsPerClass
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      maxFields: 30
+
+  # Origin: forbid jar dependencies.
+  # Contract: params.forbid is a LIST of MAPs with required fields: from, to.
+  - type: origin
+    name: forbiddenJarDependencies
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      forbid:
+        - from: ".*guava.*"
+          to: ".*"
+        - from: ".*commons-lang3.*"
+          to: ".*"
+
+# -----------------------------------------------------------------------------
+# Exceptions (suppression)
+# -----------------------------------------------------------------------------
+# Exceptions suppress findings by matching rule + target characteristics.
+# Use sparingly; prefer fixing architecture.
+exceptions:
+  - id: "legacy-controller-repo-bridge"
+    enabled: false
+    reason: "Temporary exception until legacy controller is refactored."
+    match:
+      ruleType: "arch"
+      ruleName: "forbiddenRoleDependencies"
+      classNameRegex: ".*LegacyController.*"
