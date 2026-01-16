@@ -13,7 +13,6 @@ It ships two complementary engines:
 
 - **ASM (Bytecode engine):** analyzes compiled `.class` files and (optionally) dependency JARs to detect forbidden dependencies, cycles, coupling hotspots, and architectural drift **without requiring source code**.
 - **PSI (Source engine):** analyzes source code via IntelliJ PSI using a strict YAML schema, providing dashboards, rule validation, suppressions, guided fixes, and exportable reports.
-
 ---
 
 ## Why two engines?
@@ -46,7 +45,7 @@ These YAML configs define roles, rules, scope, validation behavior, exports, and
 - Hotspots and scoring (architecture health indicators)
 - Exportable reports (JSON / SARIF / HTML / XML)
 
-### Under development (not promised yet)
+### Bytecode Analysis
 - Dead code detection
 - Deprecation / shadow usage detection
 - Additional JVM internals visibility and advanced inspections
