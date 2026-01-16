@@ -1,0 +1,78 @@
+name: Plugin
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *" # nightly (02:00 UTC)
+
+concurrency:
+  group: plugin-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g -Dfile.encoding=UTF-8"
+  TERM: dumb
+
+jobs:
+  build-plugin:
+    name: Build Plugin (PR/push)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule' # build always except nightly-only verify job below
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Build plugin ZIP
+        run: ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin
+
+      - name: Upload plugin distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: shamash-intellij-plugin
+          path: shamash-intellij-plugin/build/distributions/**
+          if-no-files-found: error
+
+  verify-plugin:
+    name: Verify Plugin (nightly/manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Verify plugin against IDEs
+        run: ./gradlew --stacktrace :shamash-intellij-plugin:verifyPlugin
+
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-verification-reports
+          path: |
+            shamash-intellij-plugin/build/reports/**
+            shamash-intellij-plugin/build/verification/**
+          if-no-files-found: ignore

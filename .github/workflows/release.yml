@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g -Dfile.encoding=UTF-8"
+  TERM: dumb
+
+jobs:
+  build-release-assets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle (cache)
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build (format + tests)
+        run: ./gradlew --stacktrace spotlessCheck test
+
+      - name: Build CLI distZip
+        run: ./gradlew --stacktrace :shamash-cli:distZip
+
+      - name: Build IntelliJ plugin ZIP
+        run: ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin
+
+      - name: Compute SHA-256 checksums
+        run: |
+          set -euxo pipefail
+          mkdir -p release-assets
+          cp shamash-cli/build/distributions/*.zip release-assets/
+          cp shamash-intellij-plugin/build/distributions/*.zip release-assets/
+          (cd release-assets && sha256sum *.zip > SHA256SUMS.txt)
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/*.zip
+            release-assets/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
