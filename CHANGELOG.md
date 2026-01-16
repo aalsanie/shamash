@@ -6,6 +6,12 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ### Added
 - Added test suite for `shamash-artifacts` module
+- Added test suite for `shamash-export` module
+- Added test suite for `shamash-asm-core` module
+- Added test suite for `shamash-psi-core` module
+
+### Fixed
+- Fixed GlobMatcher skipping wildcard build dir
 
 ## [0.70.0]
 ### Added
