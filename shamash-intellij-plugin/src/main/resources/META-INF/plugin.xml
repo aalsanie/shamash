@@ -152,13 +152,15 @@
     </actions>
 
     <change-notes><![CDATA[
-                     <ul>
-                      <li> ASM configurable engine and scanner</li>
-                      <li><strong>ASM ToolWindow</strong>: dashboard + findings + config tabs</li>
-                      <li><strong>ASM Config</strong>: reference YAML + create-from-reference workflow</li>
-                      <li><strong>ASM Scan</strong>: bytecode scan + facts + rules + export via config</li>
-                      <li><strong>Known gap</strong>: automated tests in progress (unit + integration + E2E)</li>
-                    </ul>
-                     ]]>
-    </change-notes>
+  <ul>
+    <li><strong>ASM</strong>: configurable engine + bytecode scanner pipeline</li>
+    <li><strong>ASM ToolWindow</strong>: dashboard + findings + config tabs</li>
+    <li><strong>ASM Config</strong>: reference <code>asm.yml</code> + create-from-reference workflow</li>
+    <li><strong>ASM Scan</strong>: bytecode scan → facts → rules → optional export (JSON/SARIF/XML/HTML) via config</li>
+    <li><strong>Testing</strong>: added test suites for <code>shamash-artifacts</code>, <code>shamash-export</code>, <code>shamash-asm-core</code>, <code>shamash-psi-core</code></li>
+    <li><strong>Fixed</strong>: GlobMatcher now matches <code>*</code>/<code>**</code consistently across platforms + supports “match anywhere” for relative globs</li>
+    <li><strong>Config Validation</strong>: improved unknown-rule validation via engine rule-id provider hook</li>
+  </ul>
+]]></change-notes>
+
 </idea-plugin>
