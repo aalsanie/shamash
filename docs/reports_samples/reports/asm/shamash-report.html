@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Shamash Report</title>
+  <style>
+body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:24px; background:#0b0f17; color:#e7eefc;}
+.header{display:flex; flex-direction:column; gap:6px; margin-bottom:16px;}
+.title{font-size:22px; font-weight:700;}
+.meta{font-size:12px; color:#a9b7d0;}
+.card{background:#101826; border:1px solid #1e2a40; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(0,0,0,.25);} 
+.row{display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid #1b263a;}
+.row:last-child{border-bottom:none;}
+.label{color:#a9b7d0; min-width:90px;}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px;}
+.tableWrap{overflow:auto;}
+table{width:100%; border-collapse:separate; border-spacing:0;}
+th,td{padding:10px 10px; text-align:left; vertical-align:top; border-bottom:1px solid #1b263a;}
+th{font-size:12px; color:#a9b7d0; font-weight:600; position:sticky; top:0; background:#101826;}
+td{font-size:13px;}
+.badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700;}
+.badgeError{background:#3b0d14; color:#ffb3bd; border:1px solid #6b1321;}
+.badgeWarn{background:#2b2106; color:#ffe0a3; border:1px solid #6a4a0a;}
+.badgeInfo{background:#0b2235; color:#b8dcff; border:1px solid #123a5a;}
+
+  </style>
+</head>
+<body>
+<header class="header">
+  <div class="title">Shamash Report</div>
+  <div class="meta">Shamash ASM vdev · schema v1 · 1768568623284</div>
+</header>
+<section class="card">
+  <div class="row"><span class="label">Project</span><span>pit-violation</span></div>
+  <div class="row"><span class="label">Base path</span><span class="mono">/Users/User/IdeaProjects/Shamash/docs/asm/pit-violation</span></div>
+  <div class="row"><span class="label">Findings</span><span>14</span></div>
+</section>
+<section class="card">
+  <div class="tableWrap">
+    <table>
+      <thead>
+        <tr><th>Severity</th><th>Rule</th><th>File</th><th>Owner</th><th>Fingerprint</th><th>Message</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">graph.noCycles</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/a/A.class</td>
+          <td class="mono">com.acme.a.A</td>
+          <td class="mono">4b0ca5ab7cdfd4276b0b4ac10a9b9235bd7d300b6710d8a551b3d63525328077</td>
+          <td>Cycle detected at granularity &#39;package&#39;: com.acme.a -&gt; com.acme.b -&gt; com.acme.a</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">api.forbiddenInternalNamePatterns</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/GeneratedProxy.class</td>
+          <td class="mono">com.acme.api.GeneratedProxy</td>
+          <td class="mono">25bd9a13efee140d03ba52d71925112fc035dce282c56dcacd77d02ce448ad27</td>
+          <td>Forbidden internal name pattern matched public API type: &#39;com/acme/api/GeneratedProxy&#39; (matched: .*GeneratedProxy.*)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">api.maxPublicTypes</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/GeneratedProxy.class</td>
+          <td class="mono">com.acme.api.GeneratedProxy</td>
+          <td class="mono">622d5e2878a037445a8ffa361e2574de957e7a591781e74f1ffea83347fa2233</td>
+          <td>Public API types count (8) exceeds max (1).</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">arch.allowedPackages.api</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/PublicApi1.class</td>
+          <td class="mono">com.acme.api.PublicApi1</td>
+          <td class="mono">74600448c5480b25a7b3130bc6d06e99a3e7721596e1c48b8254cb7152ef8b7b</td>
+          <td>Package &#39;com.acme.api&#39; is not allowed for class &#39;com.acme.api.PublicApi1&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">api.forbiddenAnnotationUsage</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class</td>
+          <td class="mono">com.acme.core.CoreService</td>
+          <td class="mono">dee5f63b73b651c85ce169603cb7237e501eaa6205af0707a86828273c01046d</td>
+          <td>Forbidden annotation &#39;com.acme.annotations.InternalApi&#39; used on class &#39;com.acme.core.CoreService&#39; (matched: ^com\.acme\.annotations\.InternalApi$)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">metrics.maxFanIn</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class</td>
+          <td class="mono">com.acme.core.CoreService</td>
+          <td class="mono">1aa757e1768eab6fe7da4d81b62ae15ef2b57bc914aa04ccc158a2d01914b543</td>
+          <td>Fan-in violations detected: 1 node(s) exceed max (0) at granularity &#39;package&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">metrics.maxFanOut</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class</td>
+          <td class="mono">com.acme.core.CoreService</td>
+          <td class="mono">fb901d91b08194e1c070b2d293ec9c5972c26e0662ea6e9bd6b56bdd31565073</td>
+          <td>Fan-out violations detected: 1 node(s) exceed max (0) at granularity &#39;package&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">metrics.maxPackageSpread</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class</td>
+          <td class="mono">com.acme.core.CoreService</td>
+          <td class="mono">2670edc6efc8f245318828f01d6c424dee0604be2a7d807d6b1789c9a1eb39bf</td>
+          <td>Package spread violations detected: 2 package(s) exceed max (0).</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">origin.forbiddenJarDependencies</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class</td>
+          <td class="mono">com.acme.core.CoreService</td>
+          <td class="mono">9a6ab76f5f270262c5819671f4932ffa1951893f881f510222632cf074121803</td>
+          <td>Forbidden origin dependency detected: &#39;pit-violation.jar&#39; -&gt; &#39;pit-violation.jar&#39; (matched forbid.from=&#39;.*build/libs/.*\.jar$&#39;, forbid.to=&#39;.*build/libs/.*\.jar$&#39;).</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">arch.forbiddenPackages.forbidden</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/forbidden/BadPlace.class</td>
+          <td class="mono">com.acme.forbidden.BadPlace</td>
+          <td class="mono">561a8cae6eb804e702438c12e75f2261db633de7df55176893138043a046aff1</td>
+          <td>Package &#39;com.acme.forbidden&#39; is forbidden for class &#39;com.acme.forbidden.BadPlace&#39; (matched: ^com\.acme\.forbidden(\..*)?$).</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">api.forbiddenInternalNamePatterns</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/api/GeneratedProxy.class</td>
+          <td class="mono">com.acme.api.GeneratedProxy</td>
+          <td class="mono">1c59cc01b880f645ad75a5dfb424644e4c8545b3b42bc906bd848a6c973f759a</td>
+          <td>Forbidden internal name pattern matched public API type: &#39;com/acme/api/GeneratedProxy&#39; (matched: .*GeneratedProxy.*)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">arch.allowedPackages.api</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/api/PublicApi1.class</td>
+          <td class="mono">com.acme.api.PublicApi1</td>
+          <td class="mono">bdc8f15c1eb1058d7b5b8ab45d6ff9b850054f460f2f2c51c4dd89a8f01877e7</td>
+          <td>Package &#39;com.acme.api&#39; is not allowed for class &#39;com.acme.api.PublicApi1&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">api.forbiddenAnnotationUsage</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/core/CoreService.class</td>
+          <td class="mono">com.acme.core.CoreService</td>
+          <td class="mono">70ad236c557ed9d05a381f9648a53a909dc6e3c974b3b1b93bf2fe6f5d41cd1b</td>
+          <td>Forbidden annotation &#39;com.acme.annotations.InternalApi&#39; used on class &#39;com.acme.core.CoreService&#39; (matched: ^com\.acme\.annotations\.InternalApi$)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">arch.forbiddenPackages.forbidden</td>
+          <td class="mono">../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/forbidden/BadPlace.class</td>
+          <td class="mono">com.acme.forbidden.BadPlace</td>
+          <td class="mono">a5d4fa2415e059f388b1ce7cca709e30f3714f67e4b1a160f340e0e72ef43c02</td>
+          <td>Package &#39;com.acme.forbidden&#39; is forbidden for class &#39;com.acme.forbidden.BadPlace&#39; (matched: ^com\.acme\.forbidden(\..*)?$).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</body>
+</html>

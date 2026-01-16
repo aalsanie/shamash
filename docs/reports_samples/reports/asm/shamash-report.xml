@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shamashReport schemaVersion="v1" generatedAtEpochMillis="1768568623284">
+  <tool name="Shamash ASM" version="dev"/>
+  <project name="pit-violation" basePath="/Users/User/IdeaProjects/Shamash/docs/asm/pit-violation"/>
+  <findings count="14">
+    <finding ruleId="graph.noCycles" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/a/A.class" fingerprint="4b0ca5ab7cdfd4276b0b4ac10a9b9235bd7d300b6710d8a551b3d63525328077" classFqn="com.acme.a.A">
+      <message>Cycle detected at granularity &apos;package&apos;: com.acme.a -&gt; com.acme.b -&gt; com.acme.a</message>
+    </finding>
+    <finding ruleId="api.forbiddenInternalNamePatterns" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/GeneratedProxy.class" fingerprint="25bd9a13efee140d03ba52d71925112fc035dce282c56dcacd77d02ce448ad27" classFqn="com.acme.api.GeneratedProxy">
+      <message>Forbidden internal name pattern matched public API type: &apos;com/acme/api/GeneratedProxy&apos; (matched: .*GeneratedProxy.*)</message>
+    </finding>
+    <finding ruleId="api.maxPublicTypes" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/GeneratedProxy.class" fingerprint="622d5e2878a037445a8ffa361e2574de957e7a591781e74f1ffea83347fa2233" classFqn="com.acme.api.GeneratedProxy">
+      <message>Public API types count (8) exceeds max (1).</message>
+    </finding>
+    <finding ruleId="arch.allowedPackages.api" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/PublicApi1.class" fingerprint="74600448c5480b25a7b3130bc6d06e99a3e7721596e1c48b8254cb7152ef8b7b" classFqn="com.acme.api.PublicApi1">
+      <message>Package &apos;com.acme.api&apos; is not allowed for class &apos;com.acme.api.PublicApi1&apos;.</message>
+    </finding>
+    <finding ruleId="api.forbiddenAnnotationUsage" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" fingerprint="dee5f63b73b651c85ce169603cb7237e501eaa6205af0707a86828273c01046d" classFqn="com.acme.core.CoreService">
+      <message>Forbidden annotation &apos;com.acme.annotations.InternalApi&apos; used on class &apos;com.acme.core.CoreService&apos; (matched: ^com\.acme\.annotations\.InternalApi$)</message>
+    </finding>
+    <finding ruleId="metrics.maxFanIn" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" fingerprint="1aa757e1768eab6fe7da4d81b62ae15ef2b57bc914aa04ccc158a2d01914b543" classFqn="com.acme.core.CoreService">
+      <message>Fan-in violations detected: 1 node(s) exceed max (0) at granularity &apos;package&apos;.</message>
+    </finding>
+    <finding ruleId="metrics.maxFanOut" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" fingerprint="fb901d91b08194e1c070b2d293ec9c5972c26e0662ea6e9bd6b56bdd31565073" classFqn="com.acme.core.CoreService">
+      <message>Fan-out violations detected: 1 node(s) exceed max (0) at granularity &apos;package&apos;.</message>
+    </finding>
+    <finding ruleId="metrics.maxPackageSpread" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" fingerprint="2670edc6efc8f245318828f01d6c424dee0604be2a7d807d6b1789c9a1eb39bf" classFqn="com.acme.core.CoreService">
+      <message>Package spread violations detected: 2 package(s) exceed max (0).</message>
+    </finding>
+    <finding ruleId="origin.forbiddenJarDependencies" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" fingerprint="9a6ab76f5f270262c5819671f4932ffa1951893f881f510222632cf074121803" classFqn="com.acme.core.CoreService">
+      <message>Forbidden origin dependency detected: &apos;pit-violation.jar&apos; -&gt; &apos;pit-violation.jar&apos; (matched forbid.from=&apos;.*build/libs/.*\.jar$&apos;, forbid.to=&apos;.*build/libs/.*\.jar$&apos;).</message>
+    </finding>
+    <finding ruleId="arch.forbiddenPackages.forbidden" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/forbidden/BadPlace.class" fingerprint="561a8cae6eb804e702438c12e75f2261db633de7df55176893138043a046aff1" classFqn="com.acme.forbidden.BadPlace">
+      <message>Package &apos;com.acme.forbidden&apos; is forbidden for class &apos;com.acme.forbidden.BadPlace&apos; (matched: ^com\.acme\.forbidden(\..*)?$).</message>
+    </finding>
+    <finding ruleId="api.forbiddenInternalNamePatterns" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/api/GeneratedProxy.class" fingerprint="1c59cc01b880f645ad75a5dfb424644e4c8545b3b42bc906bd848a6c973f759a" classFqn="com.acme.api.GeneratedProxy">
+      <message>Forbidden internal name pattern matched public API type: &apos;com/acme/api/GeneratedProxy&apos; (matched: .*GeneratedProxy.*)</message>
+    </finding>
+    <finding ruleId="arch.allowedPackages.api" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/api/PublicApi1.class" fingerprint="bdc8f15c1eb1058d7b5b8ab45d6ff9b850054f460f2f2c51c4dd89a8f01877e7" classFqn="com.acme.api.PublicApi1">
+      <message>Package &apos;com.acme.api&apos; is not allowed for class &apos;com.acme.api.PublicApi1&apos;.</message>
+    </finding>
+    <finding ruleId="api.forbiddenAnnotationUsage" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/core/CoreService.class" fingerprint="70ad236c557ed9d05a381f9648a53a909dc6e3c974b3b1b93bf2fe6f5d41cd1b" classFqn="com.acme.core.CoreService">
+      <message>Forbidden annotation &apos;com.acme.annotations.InternalApi&apos; used on class &apos;com.acme.core.CoreService&apos; (matched: ^com\.acme\.annotations\.InternalApi$)</message>
+    </finding>
+    <finding ruleId="arch.forbiddenPackages.forbidden" severity="ERROR" filePath="../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/forbidden/BadPlace.class" fingerprint="a5d4fa2415e059f388b1ce7cca709e30f3714f67e4b1a160f340e0e72ef43c02" classFqn="com.acme.forbidden.BadPlace">
+      <message>Package &apos;com.acme.forbidden&apos; is forbidden for class &apos;com.acme.forbidden.BadPlace&apos; (matched: ^com\.acme\.forbidden(\..*)?$).</message>
+    </finding>
+  </findings>
+</shamashReport>

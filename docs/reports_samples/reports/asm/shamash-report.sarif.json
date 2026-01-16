@@ -1,0 +1,257 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Shamash ASM",
+          "version": "dev",
+          "informationUri": "https://github.com/aalsanie/shamash",
+          "rules": [
+            {
+              "id": "api.forbiddenAnnotationUsage",
+              "name": "api.forbiddenAnnotationUsage",
+              "shortDescription": { "text": "api.forbiddenAnnotationUsage" }
+            },
+            {
+              "id": "api.forbiddenInternalNamePatterns",
+              "name": "api.forbiddenInternalNamePatterns",
+              "shortDescription": { "text": "api.forbiddenInternalNamePatterns" }
+            },
+            {
+              "id": "api.maxPublicTypes",
+              "name": "api.maxPublicTypes",
+              "shortDescription": { "text": "api.maxPublicTypes" }
+            },
+            {
+              "id": "arch.allowedPackages.api",
+              "name": "arch.allowedPackages.api",
+              "shortDescription": { "text": "arch.allowedPackages.api" }
+            },
+            {
+              "id": "arch.forbiddenPackages.forbidden",
+              "name": "arch.forbiddenPackages.forbidden",
+              "shortDescription": { "text": "arch.forbiddenPackages.forbidden" }
+            },
+            {
+              "id": "graph.noCycles",
+              "name": "graph.noCycles",
+              "shortDescription": { "text": "graph.noCycles" }
+            },
+            {
+              "id": "metrics.maxFanIn",
+              "name": "metrics.maxFanIn",
+              "shortDescription": { "text": "metrics.maxFanIn" }
+            },
+            {
+              "id": "metrics.maxFanOut",
+              "name": "metrics.maxFanOut",
+              "shortDescription": { "text": "metrics.maxFanOut" }
+            },
+            {
+              "id": "metrics.maxPackageSpread",
+              "name": "metrics.maxPackageSpread",
+              "shortDescription": { "text": "metrics.maxPackageSpread" }
+            },
+            {
+              "id": "origin.forbiddenJarDependencies",
+              "name": "origin.forbiddenJarDependencies",
+              "shortDescription": { "text": "origin.forbiddenJarDependencies" }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "startTimeUtc": "2026-01-16T13:03:43.284Z"
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "graph.noCycles",
+          "level": "error",
+          "message": { "text": "Cycle detected at granularity 'package': com.acme.a -> com.acme.b -> com.acme.a" },
+          "partialFingerprints": { "primaryLocationLineHash": "4b0ca5ab7cdfd4276b0b4ac10a9b9235bd7d300b6710d8a551b3d63525328077" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/a/A.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "api.forbiddenInternalNamePatterns",
+          "level": "error",
+          "message": { "text": "Forbidden internal name pattern matched public API type: 'com/acme/api/GeneratedProxy' (matched: .*GeneratedProxy.*)" },
+          "partialFingerprints": { "primaryLocationLineHash": "25bd9a13efee140d03ba52d71925112fc035dce282c56dcacd77d02ce448ad27" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/GeneratedProxy.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "api.maxPublicTypes",
+          "level": "error",
+          "message": { "text": "Public API types count (8) exceeds max (1)." },
+          "partialFingerprints": { "primaryLocationLineHash": "622d5e2878a037445a8ffa361e2574de957e7a591781e74f1ffea83347fa2233" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/GeneratedProxy.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "arch.allowedPackages.api",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is not allowed for class 'com.acme.api.PublicApi1'." },
+          "partialFingerprints": { "primaryLocationLineHash": "74600448c5480b25a7b3130bc6d06e99a3e7721596e1c48b8254cb7152ef8b7b" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/api/PublicApi1.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "api.forbiddenAnnotationUsage",
+          "level": "error",
+          "message": { "text": "Forbidden annotation 'com.acme.annotations.InternalApi' used on class 'com.acme.core.CoreService' (matched: ^com\\.acme\\.annotations\\.InternalApi$)" },
+          "partialFingerprints": { "primaryLocationLineHash": "dee5f63b73b651c85ce169603cb7237e501eaa6205af0707a86828273c01046d" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "metrics.maxFanIn",
+          "level": "error",
+          "message": { "text": "Fan-in violations detected: 1 node(s) exceed max (0) at granularity 'package'." },
+          "partialFingerprints": { "primaryLocationLineHash": "1aa757e1768eab6fe7da4d81b62ae15ef2b57bc914aa04ccc158a2d01914b543" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "metrics.maxFanOut",
+          "level": "error",
+          "message": { "text": "Fan-out violations detected: 1 node(s) exceed max (0) at granularity 'package'." },
+          "partialFingerprints": { "primaryLocationLineHash": "fb901d91b08194e1c070b2d293ec9c5972c26e0662ea6e9bd6b56bdd31565073" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "metrics.maxPackageSpread",
+          "level": "error",
+          "message": { "text": "Package spread violations detected: 2 package(s) exceed max (0)." },
+          "partialFingerprints": { "primaryLocationLineHash": "2670edc6efc8f245318828f01d6c424dee0604be2a7d807d6b1789c9a1eb39bf" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "origin.forbiddenJarDependencies",
+          "level": "error",
+          "message": { "text": "Forbidden origin dependency detected: 'pit-violation.jar' -> 'pit-violation.jar' (matched forbid.from='.*build/libs/.*\\.jar$', forbid.to='.*build/libs/.*\\.jar$')." },
+          "partialFingerprints": { "primaryLocationLineHash": "9a6ab76f5f270262c5819671f4932ffa1951893f881f510222632cf074121803" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/core/CoreService.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "arch.forbiddenPackages.forbidden",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.forbidden' is forbidden for class 'com.acme.forbidden.BadPlace' (matched: ^com\\.acme\\.forbidden(\\..*)?$)." },
+          "partialFingerprints": { "primaryLocationLineHash": "561a8cae6eb804e702438c12e75f2261db633de7df55176893138043a046aff1" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/classes/java/main/com/acme/forbidden/BadPlace.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "api.forbiddenInternalNamePatterns",
+          "level": "error",
+          "message": { "text": "Forbidden internal name pattern matched public API type: 'com/acme/api/GeneratedProxy' (matched: .*GeneratedProxy.*)" },
+          "partialFingerprints": { "primaryLocationLineHash": "1c59cc01b880f645ad75a5dfb424644e4c8545b3b42bc906bd848a6c973f759a" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/api/GeneratedProxy.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "arch.allowedPackages.api",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is not allowed for class 'com.acme.api.PublicApi1'." },
+          "partialFingerprints": { "primaryLocationLineHash": "bdc8f15c1eb1058d7b5b8ab45d6ff9b850054f460f2f2c51c4dd89a8f01877e7" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/api/PublicApi1.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "api.forbiddenAnnotationUsage",
+          "level": "error",
+          "message": { "text": "Forbidden annotation 'com.acme.annotations.InternalApi' used on class 'com.acme.core.CoreService' (matched: ^com\\.acme\\.annotations\\.InternalApi$)" },
+          "partialFingerprints": { "primaryLocationLineHash": "70ad236c557ed9d05a381f9648a53a909dc6e3c974b3b1b93bf2fe6f5d41cd1b" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/core/CoreService.class" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "arch.forbiddenPackages.forbidden",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.forbidden' is forbidden for class 'com.acme.forbidden.BadPlace' (matched: ^com\\.acme\\.forbidden(\\..*)?$)." },
+          "partialFingerprints": { "primaryLocationLineHash": "a5d4fa2415e059f388b1ce7cca709e30f3714f67e4b1a160f340e0e72ef43c02" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "../../../../../.gradle/caches/8.13/transforms/5061a382627deac08d9f30317878bd21/transformed/ideaIU-2024.2-win/build/libs/pit-violation.jar!/com/acme/forbidden/BadPlace.class" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
