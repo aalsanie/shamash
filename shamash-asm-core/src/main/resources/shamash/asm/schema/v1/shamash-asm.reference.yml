@@ -12,17 +12,19 @@
 # Notes:
 # - This reference is intentionally conservative and aligned with the currently enforced
 #   RuleSpec parameter contracts.
-# - Rules are examples. Enable/disable and tune thresholds as needed.
+# - Some fields are required by schema even if a feature is effectively disabled by scan scope.
 
 version: 1
 
 project:
   bytecode:
+    # Roots to scan. Use "." for monorepos; narrow it for faster scans.
     roots:
       - "."
 
-    # Discover compiled class outputs.
-    # Typical Gradle/Maven outputs:
+    # Discover compiled class outputs (directories).
+    # Important glob semantic:
+    # - "**/build/classes/**" matches both "build/classes/..." and "x/build/classes/..."
     outputsGlobs:
       include:
         - "**/build/classes/**"
@@ -34,14 +36,19 @@ project:
         - "**/.idea/**"
         - "**/generated/**"
         - "**/node_modules/**"
+        - "**/.gradle/**"
+        - "**/build/tmp/**"
 
-    # Discover dependency jars (optional).
+    # Discover dependency jars (schema requires at least one include glob).
+    # Whether jars are actually scanned is controlled by project.scan.scope.
     jarGlobs:
       include:
         - "**/*.jar"
       exclude:
-        - "**/build/**"            # usually outputs, not deps
-        - "**/.gradle/**/build/**" # avoid transient build outputs
+        - "**/build/**"                 # usually outputs, not deps
+        - "**/.gradle/**/build/**"      # avoid transient build outputs
+        - "**/.idea/**"
+        - "**/node_modules/**"
 
   scan:
     # PROJECT_WITH_EXTERNAL_BUCKETS:
@@ -58,12 +65,17 @@ project:
     scope: PROJECT_WITH_EXTERNAL_BUCKETS
 
     followSymlinks: false
+
+    # Optional safety caps (null = unlimited)
     maxClasses: null
     maxJarBytes: null
     maxClassBytes: null
 
   validation:
-    # What to do if config references a rule that is not registered.
+    # What to do if config references a rule that is not implemented in the engine.
+    # IGNORE: no executability checks
+    # WARN  : warnings only
+    # ERROR : fail validation
     unknownRule: ERROR
 
 # -----------------------------------------------------------------------------

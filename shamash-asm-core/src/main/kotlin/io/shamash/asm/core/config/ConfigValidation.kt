@@ -24,7 +24,6 @@ package io.shamash.asm.core.config
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
-import io.shamash.asm.core.engine.rules.RuleRegistry
 import java.io.Reader
 
 object ConfigValidation {
@@ -35,9 +34,32 @@ object ConfigValidation {
         val ok: Boolean get() = errors.none { it.severity == ValidationSeverity.ERROR }
     }
 
+    /**
+     * Production entrypoint (backward compatible).
+     *
+     * Uses the default schema validator and attempts to initialize the engine rule registry
+     * for unknown-rule executability checks when policy is WARN/ERROR.
+     */
     fun loadAndValidateV1(
         reader: Reader,
         schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
+    ): Result =
+        loadAndValidateV1(
+            reader = reader,
+            schemaValidator = schemaValidator,
+            engineRuleIdsProvider = null,
+        )
+
+    /**
+     * Test-friendly entrypoint.
+     *
+     * @param engineRuleIdsProvider Optional provider for engine rule ids.
+     * If null, the default engine registry will be used (DefaultRuleRegistry).
+     */
+    fun loadAndValidateV1(
+        reader: Reader,
+        schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
+        engineRuleIdsProvider: (() -> Set<String>)? = null,
     ): Result {
         // 1) Parse YAML
         val raw =
@@ -109,51 +131,70 @@ object ConfigValidation {
 
         // 5) Engine executability check (adds WARN/ERROR per unknownRule policy)
         //
-        // NOTE(arch): This is a boundary leak (config -> engine). You requested it explicitly.
-        // If/when we enforce strict layering, move this block to an orchestrator (plugin/CLI runner).
-        val engineIds: Set<String>? =
-            try {
-                DefaultRuleRegistry
-                    .create()
-                    .all()
-                    .map { it.id }
-                    .filter { it.isNotEmpty() }
-                    .toSet()
-            } catch (_: Throwable) {
-                // Degrade gracefully if registry cannot be initialized in some contexts.
-                null
-            }
+        // IMPORTANT:
+        // - We only attempt engine registry initialization when policy is WARN/ERROR.
+        // - If registry init fails under WARN/ERROR, we surface a warning/error instead of silently skipping.
+        // - Engine rule ids may be either:
+        //   - base ids: "type.name"
+        //   - role-expanded ids: "type.name.role"
+        //   We treat either as "implemented".
+        val policy = normalizeUnknownPolicy(typed.project.validation.unknownRule)
+        if (policy != UnknownRulePolicy.IGNORE && policy != UnknownRulePolicy.ignore) {
+            val engineIdsResult = loadEngineRuleIds(engineRuleIdsProvider)
 
-        if (engineIds != null && engineIds.isNotEmpty()) {
-            val policy = normalizeUnknownPolicy(typed.project.validation.unknownRule)
+            when (engineIdsResult) {
+                is EngineIdsResult.Unavailable -> {
+                    val sev =
+                        when (policy) {
+                            UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> ValidationSeverity.ERROR
+                            UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> ValidationSeverity.WARNING
+                            else -> ValidationSeverity.WARNING
+                        }
 
-            typed.rules.forEachIndexed { i, rule ->
-                if (!rule.enabled) return@forEachIndexed
+                    errors +=
+                        ValidationError(
+                            path = "project.validation.unknownRule",
+                            message =
+                                "Unknown-rule policy is set to '${policy.name}', but engine rule registry " +
+                                    "could not be initialized to verify rule executability: ${engineIdsResult.reason}",
+                            severity = sev,
+                        )
+                }
 
-                val type = rule.type.trim()
-                val name = rule.name.trim()
-                if (type.isEmpty() || name.isEmpty()) return@forEachIndexed
+                is EngineIdsResult.Available -> {
+                    val engineIds = engineIdsResult.ids
+                    if (engineIds.isNotEmpty()) {
+                        typed.rules.forEachIndexed { i, rule ->
+                            if (!rule.enabled) return@forEachIndexed
 
-                // Engine registry is keyed by rule "kind" (type.name) not role-expanded instances.
-                val baseId = "$type.$name"
-                if (engineIds.contains(baseId)) return@forEachIndexed
+                            val type = rule.type.trim()
+                            val name = rule.name.trim()
+                            if (type.isEmpty() || name.isEmpty()) return@forEachIndexed
 
-                when (policy) {
-                    UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> Unit
-                    UnknownRulePolicy.WARN, UnknownRulePolicy.warn ->
-                        errors +=
-                            ValidationError(
-                                path = "rules[$i]",
-                                message = "Rule '$baseId' is registered but not implemented in engine (rule will not run)",
-                                severity = ValidationSeverity.WARNING,
-                            )
-                    UnknownRulePolicy.ERROR, UnknownRulePolicy.error ->
-                        errors +=
-                            ValidationError(
-                                path = "rules[$i]",
-                                message = "Rule '$baseId' is registered but not implemented in engine",
-                                severity = ValidationSeverity.ERROR,
-                            )
+                            val baseId = "$type.$name"
+                            if (isImplemented(baseId, engineIds)) return@forEachIndexed
+
+                            when (policy) {
+                                UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> Unit
+                                UnknownRulePolicy.WARN, UnknownRulePolicy.warn ->
+                                    errors +=
+                                        ValidationError(
+                                            path = "rules[$i]",
+                                            message =
+                                                "Rule '$baseId' is configured but not implemented in the engine (rule will not run)",
+                                            severity = ValidationSeverity.WARNING,
+                                        )
+
+                                UnknownRulePolicy.ERROR, UnknownRulePolicy.error ->
+                                    errors +=
+                                        ValidationError(
+                                            path = "rules[$i]",
+                                            message = "Rule '$baseId' is configured but not implemented in the engine",
+                                            severity = ValidationSeverity.ERROR,
+                                        )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -167,4 +208,49 @@ object ConfigValidation {
             UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> UnknownRulePolicy.WARN
             UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> UnknownRulePolicy.IGNORE
         }
+
+    private sealed interface EngineIdsResult {
+        data class Available(
+            val ids: Set<String>,
+        ) : EngineIdsResult
+
+        data class Unavailable(
+            val reason: String,
+        ) : EngineIdsResult
+    }
+
+    private fun loadEngineRuleIds(engineRuleIdsProvider: (() -> Set<String>)?): EngineIdsResult =
+        try {
+            val ids =
+                (
+                    engineRuleIdsProvider?.invoke()
+                        ?: DefaultRuleRegistry
+                            .create()
+                            .all()
+                            .map { it.id }
+                            .toSet()
+                ).asSequence()
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .toSet()
+
+            EngineIdsResult.Available(ids)
+        } catch (t: Throwable) {
+            EngineIdsResult.Unavailable(t.message ?: t::class.java.simpleName)
+        }
+
+    /**
+     * A rule is considered implemented if:
+     * - the engine registry contains the base id exactly (type.name), OR
+     * - the engine registry contains any role-expanded instance (type.name.<role>), OR
+     * - the engine registry contains any id that starts with "type.name." (defensive)
+     */
+    private fun isImplemented(
+        baseId: String,
+        engineIds: Set<String>,
+    ): Boolean {
+        if (engineIds.contains(baseId)) return true
+        val prefix = "$baseId."
+        return engineIds.any { it.startsWith(prefix) }
+    }
 }

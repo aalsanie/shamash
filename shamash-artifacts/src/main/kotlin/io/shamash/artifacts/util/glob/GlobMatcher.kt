@@ -23,6 +23,18 @@ package io.shamash.artifacts.util.glob
 
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Simple glob matcher with stable cross-platform normalization.
+ *
+ * Supported:
+ * - '*'  : matches within a single path segment (no '/')
+ * - '?'  : matches a single non-'/' character
+ * - '**' : matches across path segments
+ *
+ * Important semantic:
+ * - A glob segment of ** matches *zero or more* directories.
+*   This means "xx/build/xx" must match both "build/..." and "x/build/...".
+*/
 object GlobMatcher {
     private val cache = ConcurrentHashMap<String, Regex>()
 
@@ -36,12 +48,16 @@ object GlobMatcher {
         val rx = cache.computeIfAbsent(nGlob) { compile(it) }
         if (rx.matches(nPath)) return true
 
-        // If the glob is relative-ish, allow it to match anywhere in the path.
+        // If the glob is relative-ish, allow it to match anywhere in the path by prefixing "**/".
+        // With the "**/" semantics implemented in [compile], this will match both:
+        // - "build/..." (zero directories)
+        // - "x/build/..." (one or more directories)
         if (!nGlob.startsWith("/")) {
             val anyKey = normalizePath("**/$nGlob")
             val anyRx = cache.computeIfAbsent(anyKey) { compile(it) }
             if (anyRx.matches(nPath)) return true
         }
+
         return false
     }
 
@@ -53,27 +69,60 @@ object GlobMatcher {
 
     private fun compile(normalizedGlob: String): Regex {
         val g = normalizePath(normalizedGlob)
+
         val sb = StringBuilder()
         sb.append('^')
 
         var i = 0
         while (i < g.length) {
             val c = g[i]
+
             when (c) {
                 '*' -> {
-                    val isDouble = (i + 1 < g.length && g[i + 1] == '*')
+                    val hasNext = i + 1 < g.length
+                    val isDouble = hasNext && g[i + 1] == '*'
                     if (isDouble) {
-                        sb.append(".*")
-                        i++
+                        val hasSlashAfter = (i + 2 < g.length && g[i + 2] == '/')
+                        if (hasSlashAfter) {
+                            // "**/" matches zero or more directories.
+                            // Use a non-capturing optional group so root-level matches work:
+                            // - "**/build" matches "build" and "a/build"
+                            sb.append("(?:.*/)?")
+                            i += 3 // consume "**/"
+                            continue
+                        } else {
+                            // Plain "**" (not immediately followed by '/'): match anything (including '/')
+                            sb.append(".*")
+                            i += 2 // consume "**"
+                            continue
+                        }
                     } else {
+                        // "*" within a segment
                         sb.append("[^/]*")
+                        i += 1
+                        continue
                     }
                 }
-                '?' -> sb.append("[^/]")
-                '.', '(', ')', '+', '|', '^', '$', '@', '%', '{', '}', '[', ']', '\\' -> sb.append('\\').append(c)
-                else -> sb.append(c)
+
+                '?' -> {
+                    sb.append("[^/]")
+                    i += 1
+                    continue
+                }
+
+                // Escape regex metacharacters
+                '.', '(', ')', '+', '|', '^', '$', '@', '%', '{', '}', '[', ']', '\\' -> {
+                    sb.append('\\').append(c)
+                    i += 1
+                    continue
+                }
+
+                else -> {
+                    sb.append(c)
+                    i += 1
+                    continue
+                }
             }
-            i++
         }
 
         sb.append('$')
