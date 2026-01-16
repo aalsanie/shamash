@@ -55,8 +55,8 @@ class DashboardToolbarPanel(
                 border = JBUI.Borders.empty(0)
             }
 
-        row.add(actionButton("Run ASM Scan", "io.shamash.asm.runScan"))
-        row.add(actionButton("Export ASM Reports", "io.shamash.asm.exportReports"))
+        row.add(actionButton("Run Scan", "io.shamash.asm.runScan"))
+        row.add(actionButton("Export Reports", "io.shamash.asm.exportReports"))
 
         return row
     }

@@ -55,7 +55,6 @@ class ShamashAsmDashboardPanel(
 ) : Disposable {
     private val root = JBPanel<JBPanel<*>>(BorderLayout())
 
-    private val titleLabel = JBLabel("Shamash ASM Dashboard")
     private val metaLabel = JBLabel("Config: Not found")
     private val statusLabel = JBLabel("Status: idle")
 
@@ -68,8 +67,6 @@ class ShamashAsmDashboardPanel(
         val header =
             JBPanel<JBPanel<*>>(BorderLayout()).apply {
                 border = JBUI.Borders.empty(0, 0, 8, 0)
-                titleLabel.font = titleLabel.font.deriveFont(titleLabel.font.style or Font.BOLD, 14f)
-                add(titleLabel, BorderLayout.NORTH)
                 add(metaLabel, BorderLayout.CENTER)
                 add(statusLabel, BorderLayout.SOUTH)
             }

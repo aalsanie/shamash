@@ -55,7 +55,6 @@ class ShamashAsmConfigPanel(
 ) : Disposable {
     private val root: JPanel = JBPanel<JBPanel<*>>(BorderLayout())
 
-    private val headerLabel = JBLabel("Shamash ASM Configuration", SwingConstants.LEFT)
     private val pathLabel = JBLabel("", SwingConstants.LEFT)
     private val summaryLabel = JBLabel("", SwingConstants.LEFT)
 
@@ -82,10 +81,6 @@ class ShamashAsmConfigPanel(
                 isOpaque = false
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
             }
-
-        headerLabel.font = headerLabel.font.deriveFont(headerLabel.font.style or Font.BOLD, 14f)
-        headerLabel.alignmentX = JComponent.LEFT_ALIGNMENT
-        headerStack.add(headerLabel)
 
         headerStack.add(Box.createVerticalStrut(JBUI.scale(8)))
 

@@ -161,7 +161,7 @@ class RunAsmScanAction(
                                 val msg =
                                     when {
                                         hasEngineErrors -> "Scan finished with engine errors. See Dashboard for details."
-                                        findingsCount == 0 -> "Scan complete. No findings."
+                                        findingsCount == 0 -> "Scan complete. No findings. Make sure to build before scanning."
                                         else -> "Scan complete. Findings: $findingsCount"
                                     }
 

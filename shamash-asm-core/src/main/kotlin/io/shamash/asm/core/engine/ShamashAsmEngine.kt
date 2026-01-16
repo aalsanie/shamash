@@ -36,6 +36,7 @@ import io.shamash.asm.core.config.schema.v1.model.Matcher
 import io.shamash.asm.core.config.schema.v1.model.RoleDef
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.RuleKey
+import io.shamash.asm.core.config.schema.v1.model.RuleScope
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
@@ -103,7 +104,7 @@ class ShamashAsmEngine(
         var executedRuleDefs = 0
         var skippedRuleDefs = 0
 
-        // instance counters are fine to keep internally (optional), but do NOT map them into summary RuleStats
+        // These are mapped into summary (locked-in).
         var executedRuleInstances = 0
         var skippedRuleInstances = 0
         var notFoundRuleInstances = 0
@@ -117,24 +118,30 @@ class ShamashAsmEngine(
                 continue
             }
 
-            val ruleIdBase = "${ruleDef.type.trim()}.${ruleDef.name.trim()}"
+            val type = ruleDef.type.trim()
+            val name = ruleDef.name.trim()
+            val baseRuleId = "$type.$name"
+
             val rule: Rule? = registry.resolve(ruleDef)
 
             if (rule == null) {
                 notFoundRuleInstances++
-                // unknown rule policy handling stays as you have it
+
+                // IMPORTANT:
+                // - UnknownRulePolicy.WARN should NOT fail the engine run (no EngineError).
+                // - The warning belongs in ConfigValidation (ValidationError.WARNING).
                 when (config.project.validation.unknownRule) {
                     UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> {
-                        errors += EngineError.ruleNotFound(ruleIdBase)
+                        errors += EngineError.ruleNotFound(baseRuleId)
                     }
                     UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {
-                        errors += EngineError.ruleNotFound(ruleIdBase, message = "Unknown rule (warn): $ruleIdBase")
+                        // no-op (validation layer should surface this as WARNING)
                     }
                     UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
                         // no-op
                     }
                 }
-                // this ruleDef is "skipped" from an execution point of view
+
                 skippedRuleDefs++
                 continue
             }
@@ -142,20 +149,29 @@ class ShamashAsmEngine(
             executedRuleDefs++
 
             val instanceRoles: List<String?> = expandInstanceRoles(ruleDef.roles)
-            if (instanceRoles.isEmpty()) continue
+            if (instanceRoles.isEmpty()) {
+                // Nothing to execute (defensive; should not happen after schema validation)
+                skippedRuleDefs++
+                continue
+            }
 
             for (role in instanceRoles) {
-                val instanceRuleId = RuleKey(ruleDef.type, ruleDef.name, role).canonicalId()
+                val roleTrimmed = role?.trim()?.takeIf { it.isNotEmpty() }
+                val instanceRuleId = RuleKey(type, name, roleTrimmed).canonicalId()
 
-                if (role != null && ruleDef.scope?.excludeRoles?.contains(role) == true) {
+                // If the user explicitly excludes this role via scope, skip fast.
+                val excludedByScope =
+                    roleTrimmed != null && ruleDef.scope?.excludeRoles?.any { it.trim() == roleTrimmed } == true
+                if (excludedByScope) {
                     skippedRuleInstances++
                     continue
                 }
 
-                val effectiveDef = applyRoleToRuleDef(ruleDef, role)
+                val effectiveDef = applyRoleToRuleDef(ruleDef, roleTrimmed)
 
                 try {
                     executedRuleInstances++
+
                     val produced: List<Finding> =
                         rule.evaluate(
                             facts = factsWithRoles, // engine-populated roles/classToRole
@@ -324,10 +340,11 @@ class ShamashAsmEngine(
     ): RuleDef {
         if (role == null) return ruleDef
 
+        // Ensure the instance RuleDef is explicitly scoped to this role without clobbering user scope.
         val scope0 = ruleDef.scope
         val scope =
             if (scope0 == null) {
-                io.shamash.asm.core.config.schema.v1.model.RuleScope(
+                RuleScope(
                     includeRoles = listOf(role),
                     excludeRoles = null,
                     includePackages = null,
@@ -336,10 +353,16 @@ class ShamashAsmEngine(
                     excludeGlobs = null,
                 )
             } else {
-                scope0.copy(includeRoles = listOf(role))
+                // Only set includeRoles if the user did not set it.
+                if (scope0.includeRoles == null) {
+                    scope0.copy(includeRoles = listOf(role))
+                } else {
+                    scope0
+                }
             }
 
-        return ruleDef.copy(scope = scope)
+        // Also set roles to the concrete instance role (helps rules that consult rule.roles).
+        return ruleDef.copy(roles = listOf(role), scope = scope)
     }
 
     private fun normalizeFinding(
@@ -372,7 +395,7 @@ class ShamashAsmEngine(
 
         return unique.sortedWith(
             compareBy<Finding>(
-                { it.severity.ordinal }, // FindingSeverity is stable enum order in artifacts
+                { it.severity.ordinal },
                 { it.filePath },
                 { it.classFqn ?: "" },
                 { it.memberName ?: "" },
@@ -548,7 +571,6 @@ class ShamashAsmEngine(
     }
 
     private fun escapeJson(s: String): String {
-        // Keep this dependency-free (matches artifacts baseline store spirit).
         val out = StringBuilder(s.length + 16)
         for (ch in s) {
             when (ch) {
@@ -764,7 +786,8 @@ class ShamashAsmEngine(
 
         for ((roleId, _) in compiled) roleToClasses.putIfAbsent(roleId, linkedSetOf())
 
-        for (c in facts.classes) {
+        // Deterministic traversal
+        for (c in facts.classes.asSequence().sortedBy { it.fqName }) {
             val winner = compiled.firstOrNull { (_, matcher) -> matcher.matches(c) } ?: continue
             val roleId = winner.first
             roleToClasses.getOrPut(roleId) { linkedSetOf() }.add(c.fqName)

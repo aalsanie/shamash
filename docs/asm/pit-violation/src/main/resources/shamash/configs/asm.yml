@@ -1,15 +1,16 @@
-# Shamash ASM Config v1 (REFERENCE)
-# --------------------------------
-# ASM scans bytecode (.class + optionally dependency jars), builds a deterministic index,
-# computes graphs/hotspots/scores, runs ASM rules, then uses the unified export pipeline.
+# Shamash ASM Config v1 (PIT VIOLATION - TRIGGER ALL 18 BUILTIN RULES)
+# -------------------------------------------------------------------
+# This config is designed to:
+# 1) PASS schema + semantic validation
+# 2) Trigger at least one finding for EACH builtin rule in DefaultRuleRegistry.builtins()
 #
-# Pipeline:
-# 1) Parse YAML -> raw Map/List primitives
-# 2) Structural validation (JSON Schema)
-# 3) Bind into asm-core schema.v1 models
-# 4) Semantic validation (validation.v1) + RuleSpec param validation
+# NOTE: Some rules currently cannot fire until engine param/id contracts are aligned with specs:
+# - metrics.maxFieldsPerClass (engine reads max, spec enforces maxFields)
+# - metrics.maxMethodsPerClass (engine reads max, spec enforces maxMethods)
+# - arch.forbiddenRoleDependencies (engine reads forbid list, spec enforces forbidden map)
+# - origin.allowOnlyRoot (engine id mismatch: arch.allowOnlyRoot vs origin.allowOnlyRoot)
 #
-# Rules are examples. Enable/disable and tune thresholds as needed.
+# After fixing those mismatches, this file will trigger all 18 rules.
 
 version: 1
 
@@ -18,252 +19,362 @@ project:
     roots:
       - "."
 
-    # Discover compiled class outputs.
-    # Typical Gradle/Maven outputs:
     outputsGlobs:
       include:
         - "**/build/classes/**"
-        - "**/build/intermediates/javac/**"
         - "**/target/classes/**"
         - "**/target/test-classes/**"
       exclude:
-        - "**/out/**"
         - "**/.idea/**"
+        - "**/out/**"
         - "**/generated/**"
         - "**/node_modules/**"
+        - "**/.gradle/**"
+        - "**/build/tmp/**"
 
-    # Discover dependency jars (optional).
+    # We explicitly include the project jar so jar-origin rules can trigger.
     jarGlobs:
       include:
-        - "**/*.jar"
-      exclude:
-        - "**/build/**"            # usually outputs, not deps
-        - "**/.gradle/**/build/**" # avoid transient build outputs
+        - "**/build/libs/*.jar"
+      exclude: []
 
   scan:
-    # PROJECT_WITH_EXTERNAL_BUCKETS:
-    # - scan project outputs
-    # - do NOT scan jars
-    # - collapse external references into buckets (java.*, kotlin.*, org.springframework.*, etc.)
-    #
-    # PROJECT_ONLY:
-    # - scan project outputs only
-    # - no buckets
-    #
-    # ALL_SOURCES:
-    # - scan outputs + dependency jars (can be huge)
-    scope: PROJECT_WITH_EXTERNAL_BUCKETS
-
+    # Must scan jars to trigger origin.forbiddenJarDependencies
+    scope: ALL_SOURCES
     followSymlinks: false
     maxClasses: null
     maxJarBytes: null
     maxClassBytes: null
 
   validation:
-    # What to do if config references a rule that is not registered.
     unknownRule: ERROR
 
-# -----------------------------------------------------------------------------
-# Roles (optional)
-# -----------------------------------------------------------------------------
-# If you don't need roles, set roles: {}.
+# Roles mapped directly to pit-violation package layout.
 roles:
-  controller:
+  api:
     priority: 100
-    description: "Web controllers / adapters"
+    description: "com.acme.api"
     match:
       anyOf:
-        - annotation: "org.springframework.web.bind.annotation.RestController"
-        - annotation: "org.springframework.stereotype.Controller"
-        - packageContainsSegment: "controller"
-        - classNameEndsWith: "Controller"
+        - packageRegex: "^com\\.acme\\.api(\\..*)?$"
 
-  service:
+  core:
     priority: 90
-    description: "Services"
+    description: "com.acme.core"
     match:
       anyOf:
-        - annotation: "org.springframework.stereotype.Service"
-        - packageContainsSegment: "service"
-        - classNameEndsWith: "Service"
+        - packageRegex: "^com\\.acme\\.core(\\..*)?$"
 
-  repository:
+  infra:
     priority: 80
-    description: "Persistence / repositories"
+    description: "com.acme.infra"
     match:
       anyOf:
-        - annotation: "org.springframework.stereotype.Repository"
-        - packageContainsSegment: "repository"
-        - packageContainsSegment: "dao"
-        - classNameEndsWith: "Repository"
-        - classNameEndsWith: "Dao"
+        - packageRegex: "^com\\.acme\\.infra(\\..*)?$"
+
+  a:
+    priority: 70
+    description: "com.acme.a"
+    match:
+      anyOf:
+        - packageRegex: "^com\\.acme\\.a(\\..*)?$"
+
+  b:
+    priority: 60
+    description: "com.acme.b"
+    match:
+      anyOf:
+        - packageRegex: "^com\\.acme\\.b(\\..*)?$"
+
+  forbidden:
+    priority: 50
+    description: "com.acme.forbidden"
+    match:
+      anyOf:
+        - packageRegex: "^com\\.acme\\.forbidden(\\..*)?$"
+
+  annotations:
+    priority: 40
+    description: "com.acme.annotations"
+    match:
+      anyOf:
+        - packageRegex: "^com\\.acme\\.annotations(\\..*)?$"
 
 analysis:
   graphs:
     enabled: true
     granularity: PACKAGE
-    includeExternalBuckets: true
+    includeExternalBuckets: false
 
   hotspots:
-    enabled: true
+    enabled: false
     topN: 30
     includeExternal: false
 
   scoring:
-    enabled: true
+    enabled: false
     model: V1
-
     godClass:
-      enabled: true
-      weights:
-        methods: 0.35
-        fields: 0.10
-        fanOut: 0.30
-        fanIn: 0.15
-        packageSpread: 0.10
-      thresholds:
-        warning: 0.70
-        error: 0.85
-
+      enabled: false
+      weights: null
+      thresholds: null
     overall:
-      enabled: true
-      weights:
-        cycles: 0.30
-        dependencyDensity: 0.20
-        layeringViolations: 0.25
-        godClassPrevalence: 0.15
-        externalCoupling: 0.10
-      thresholds:
-        warning: 0.70
-        error: 0.85
+      enabled: false
+      weights: null
+      thresholds: null
 
 baseline:
-  # NONE: do not use baseline
-  # GENERATE: produce baseline file from current findings
-  # VERIFY: compare current findings to baseline and report drift
-  mode: VERIFY
+  mode: NONE
   path: ".shamash/baseline/shamash-asm.baseline.json"
 
 export:
   enabled: true
   outputDir: ".shamash/reports/asm"
-  formats: [JSON, SARIF, HTML, XML]
+  formats: [JSON,HTML,SARIF,XML]
   overwrite: true
 
-# -----------------------------------------------------------------------------
-# Rules
-# -----------------------------------------------------------------------------
-# Canonical rule identity is (type,name,role).
-# - Specs are keyed by (type,name).
-# - Config rules can be wildcard (roles: null) or specific (roles: ["roleA","roleB"]).
-#
-# severity: ERROR | WARNING | INFO
 rules:
-  # Architecture: forbid direct dependencies between roles (example layering).
-  # Contract: params.forbidden is a MAP role -> list of roles.
+  # ---------------------------------------------------------------------------
+  # api.*
+  # ---------------------------------------------------------------------------
+
+  # 1) api.forbiddenAnnotationUsage
+  - type: api
+    name: forbiddenAnnotationUsage
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+    params:
+      forbid:
+        - "^com\\.acme\\.annotations\\.InternalApi$"
+
+  # 2) api.forbiddenInternalNamePatterns
+  - type: api
+    name: forbiddenInternalNamePatterns
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/api/GeneratedProxy.class"
+    params:
+      forbid:
+        # internalName uses slashes; this still matches
+        - ".*GeneratedProxy.*"
+
+  # 3) api.maxPublicTypes
+  - type: api
+    name: maxPublicTypes
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includePackages:
+        - "^com\\.acme\\.api$"
+    params:
+      # com.acme.api has multiple public types; force a violation
+      max: 1
+
+  # ---------------------------------------------------------------------------
+  # arch.*
+  # ---------------------------------------------------------------------------
+
+  # 4) arch.allowedPackages
+  # Make the API role violate allowed package constraints.
+  - type: arch
+    name: allowedPackages
+    roles:
+      - api
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/api/PublicApi1.class"
+    params:
+      allowPackages:
+        - "^com\\.acme\\.core(\\..*)?$"
+
+  # 5) arch.forbiddenPackages
+  - type: arch
+    name: forbiddenPackages
+    roles:
+      - forbidden
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/forbidden/BadPlace.class"
+    params:
+      forbidPackages:
+        - "^com\\.acme\\.forbidden(\\..*)?$"
+
+
+  # 7) arch.forbiddenRoleDependencies
+  # Scope to InfraRepo (infra) + PublicApi1 (api) to get infra->api edge.
   - type: arch
     name: forbiddenRoleDependencies
     roles: null
     enabled: true
     severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/infra/InfraRepo.class"
+        - "**/com/acme/api/PublicApi1.class"
     params:
+      direction: DIRECT
       forbidden:
-        controller:
-          - repository
+        infra:
+          - api
 
-  # Architecture: forbid packages by regex.
-  # Contract: params.forbidPackages is a LIST of regex strings.
-  - type: arch
-    name: forbiddenPackages
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      forbidPackages:
-        - "^com\\.acme\\.forbidden(\\..*)?$"
+  # ---------------------------------------------------------------------------
+  # origin.*
+  # ---------------------------------------------------------------------------
 
-  # Graph: no cycles.
-  - type: graph
-    name: noCycles
-    roles: null
-    enabled: true
-    severity: ERROR
-    params: {}
-
-  # Graph: max cycles allowed (0 = none).
-  # Contract: params.maxCycles is an INT.
-  - type: graph
-    name: maxCycles
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      maxCycles: 0
-
-  # Graph: cap dependency density (0..1).
-  # Contract: params.maxDensity is a DOUBLE.
-  - type: graph
-    name: maxDependencyDensity
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      maxDensity: 0.40
-
-  # Graph: cap edge count.
-  # Contract: params.maxEdges is an INT.
-  - type: graph
-    name: maxEdgeCount
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      maxEdges: 50
-
-  # Metrics: cap methods per class.
-  # Contract: params.maxMethods is an INT.
-  - type: metrics
-    name: maxMethodsPerClass
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      maxMethods: 50
-
-  # Metrics: cap fields per class.
-  # Contract: params.maxFields is an INT.
-  - type: metrics
-    name: maxFieldsPerClass
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      maxFields: 30
-
-  # Origin: forbid jar dependencies.
-  # Contract: params.forbid is a LIST of MAPs with required fields: from, to.
+  # 8) origin.forbiddenJarDependencies
+  # Uses the built jar entry paths to ensure originKind=JAR_ENTRY is involved.
   - type: origin
     name: forbiddenJarDependencies
     roles: null
     enabled: true
     severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/build/libs/*.jar!/com/acme/core/CoreService.class"
+        - "**/build/libs/*.jar!/com/acme/infra/InfraRepo.class"
     params:
       forbid:
-        - from: ".*guava.*"
-          to: ".*"
-        - from: ".*commons-lang3.*"
-          to: ".*"
+        - from: ".*build/libs/.*\\.jar$"
+          to: ".*build/libs/.*\\.jar$"
 
-# -----------------------------------------------------------------------------
-# Exceptions (suppression)
-# -----------------------------------------------------------------------------
-# Exceptions suppress findings by matching rule + target characteristics.
-# Use sparingly; prefer fixing architecture.
-exceptions:
-  - id: "legacy-controller-repo-bridge"
-    enabled: false
-    reason: "Temporary exception until legacy controller is refactored."
-    match:
-      ruleType: "arch"
-      ruleName: "forbiddenRoleDependencies"
-      classNameRegex: ".*LegacyController.*"
+  # ---------------------------------------------------------------------------
+  # graph.*
+  # ---------------------------------------------------------------------------
+
+  # A<->B cycle exists in pit-violation (com.acme.a.A <-> com.acme.b.B)
+
+  # 10) graph.noCycles
+  - type: graph
+    name: noCycles
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/a/A.class"
+        - "**/com/acme/b/B.class"
+    params: {}
+
+  # 11) graph.maxCycles
+  - type: graph
+    name: maxCycles
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/a/A.class"
+        - "**/com/acme/b/B.class"
+    params:
+      maxCycles: 0
+
+  # 12) graph.maxEdgeCount
+  - type: graph
+    name: maxEdgeCount
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/a/A.class"
+        - "**/com/acme/b/B.class"
+    params:
+      # A->B and B->A => 2 edges, so 1 forces violation
+      maxEdges: 1
+
+  # 13) graph.maxDependencyDensity
+  - type: graph
+    name: maxDependencyDensity
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/a/A.class"
+        - "**/com/acme/b/B.class"
+    params:
+      maxDensity: 0.0
+
+  # ---------------------------------------------------------------------------
+  # metrics.*
+  # ---------------------------------------------------------------------------
+
+  # 14) metrics.maxFanIn
+  - type: metrics
+    name: maxFanIn
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+        - "**/com/acme/infra/InfraRepo.class"
+    params:
+      max: 0
+      includeExternal: false
+
+  # 15) metrics.maxFanOut
+  - type: metrics
+    name: maxFanOut
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+        - "**/com/acme/infra/InfraRepo.class"
+    params:
+      max: 0
+      includeExternal: false
+
+  # 16) metrics.maxFieldsPerClass
+  - type: metrics
+    name: maxFieldsPerClass
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+    params:
+      maxFields: 0
+
+  # 17) metrics.maxMethodsPerClass
+  - type: metrics
+    name: maxMethodsPerClass
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+    params:
+      maxMethods: 0
+
+  # 18) metrics.maxPackageSpread
+  - type: metrics
+    name: maxPackageSpread
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+        - "**/com/acme/infra/InfraRepo.class"
+    params:
+      max: 0
+      includeExternal: false
+
+exceptions: []

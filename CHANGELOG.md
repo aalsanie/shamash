@@ -11,7 +11,12 @@ This changelog tracks changes relevant to the plugin distribution.
 - Added test suite for `shamash-psi-core` module
 
 ### Fixed
-- Fixed GlobMatcher skipping wildcard build dir
+- Fixed GlobMatcher compilation/normalization to correctly match * / ** patterns across platforms
+- Support “match anywhere” behavior for relative globs.
+
+### Changed
+- Updated ASM config validation to support engine rule-id provider .
+- Updated ASM config validation to validate unknown rules based on unknownRule policy.
 
 ## [0.70.0]
 ### Added

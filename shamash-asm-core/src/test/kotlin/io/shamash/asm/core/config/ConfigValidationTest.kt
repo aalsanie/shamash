@@ -28,7 +28,7 @@ import kotlin.test.assertTrue
 
 class ConfigValidationTest {
     @Test
-    fun `loadAndValidateV1 returns ok for reference yaml`() {
+    fun `reference yaml passes validation`() {
         val ref = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }
 
         val result = ConfigValidation.loadAndValidateV1(StringReader(ref))
@@ -42,8 +42,8 @@ class ConfigValidationTest {
     fun `unknown rule is a warning when unknownRule is WARN`() {
         val ref0 = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }
 
-        val type = "zz_unknown_type"
-        val name = "zz_unknown_name"
+        val type = "zz_unknown_type_1"
+        val name = "zz_unknown_name_1"
         val baseId = "$type.$name"
 
         val unknownRuleBlock =
@@ -53,6 +53,8 @@ class ConfigValidationTest {
                 "    roles: null",
                 "    enabled: true",
                 "    severity: ERROR",
+                "    scope:",
+                "      includeGlobs: [\"**/*\"]",
                 "    params: {}",
             ).joinToString("\n")
 
@@ -61,7 +63,7 @@ class ConfigValidationTest {
                 .let { setUnknownRulePolicy(it, "WARN") }
                 .let { injectRuleBlock(it, unknownRuleBlock) }
 
-        // Make this deterministic forever: pretend engine implements nothing.
+        // Deterministic forever: pretend engine implements nothing.
         val result =
             ConfigValidation.loadAndValidateV1(
                 reader = StringReader(updated),
@@ -72,9 +74,7 @@ class ConfigValidationTest {
         assertNotNull(result.config)
 
         assertTrue(
-            result.errors.any {
-                it.severity == ValidationSeverity.WARNING && it.message.contains(baseId)
-            },
+            result.errors.any { it.severity == ValidationSeverity.WARNING && it.message.contains(baseId) },
             "expected WARNING mentioning '$baseId'; got: ${result.errors}",
         )
     }
@@ -83,28 +83,23 @@ class ConfigValidationTest {
         yaml: String,
         policy: String,
     ): String {
-        // Replaces any existing value on that line (keeps indentation).
         val rx = Regex("(?m)^(\\s*unknownRule:)\\s*\\S+\\s*$")
-        return if (rx.containsMatchIn(yaml)) {
-            yaml.replace(rx, "$1 $policy")
-        } else {
-            // If missing, insert under "validation:" if present, else append minimal block.
-            val validationRx = Regex("(?m)^\\s*validation:\\s*$")
-            if (validationRx.containsMatchIn(yaml)) {
-                yaml.replaceFirst(validationRx, "  validation:\n    unknownRule: $policy")
-            } else {
-                yaml.trimEnd() + "\n\nproject:\n  validation:\n    unknownRule: $policy\n"
-            }
+        if (rx.containsMatchIn(yaml)) return yaml.replace(rx, "$1 $policy")
+
+        // Insert under existing validation block
+        val validationRx = Regex("(?m)^\\s*validation:\\s*$")
+        if (validationRx.containsMatchIn(yaml)) {
+            return yaml.replaceFirst(validationRx, "  validation:\n    unknownRule: $policy")
         }
+
+        // Fallback append
+        return yaml.trimEnd() + "\n\nproject:\n  validation:\n    unknownRule: $policy\n"
     }
 
     private fun injectRuleBlock(
         yaml: String,
         block: String,
     ): String {
-        // Handles both:
-        // - rules: []
-        // - rules:\n  - ...
         val inlineEmpty = Regex("(?m)^rules:\\s*\\[\\s*]\\s*$")
         if (inlineEmpty.containsMatchIn(yaml)) {
             return yaml.replaceFirst(inlineEmpty, "rules:\n$block")
@@ -115,7 +110,6 @@ class ConfigValidationTest {
             return yaml.replaceFirst(header, "rules:\n$block")
         }
 
-        // Fallback: append rules section at end (still valid YAML)
         return yaml.trimEnd() + "\n\nrules:\n$block\n"
     }
 }
