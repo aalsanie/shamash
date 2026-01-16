@@ -4,6 +4,9 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
 
+### Added
+- Added test suite for `shamash-artifacts` module
+
 ## [0.70.0]
 ### Added
 
