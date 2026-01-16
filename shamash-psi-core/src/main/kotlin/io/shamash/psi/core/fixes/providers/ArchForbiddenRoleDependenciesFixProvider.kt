@@ -70,7 +70,7 @@ class ArchForbiddenRoleDependenciesFixProvider : FixProvider {
 
         override fun apply() {
             val doc = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
-            val text = doc.text ?: return
+            val text = doc.text
 
             // Best-effort: first textual occurrence of the type simple name.
             val idx = text.indexOf(typeSimpleName)

@@ -379,7 +379,7 @@ object ConfigLoader {
             null -> null
             is List<*> -> {
                 @Suppress("UNCHECKED_CAST")
-                v as List<Any?>
+                v
             }
             else -> throw ConfigBindException(key, "$key must be a list")
         }

@@ -203,7 +203,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                                 continue
                             }
 
-                            val anchor = (field.sourcePsi ?: field.javaPsi) as? PsiElement ?: continue
+                            val anchor = (field.sourcePsi ?: field.javaPsi) ?: continue
                             if (isUsed(anchor, localScope, scope)) continue
 
                             out +=

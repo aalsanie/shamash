@@ -52,8 +52,7 @@ subprojects {
 
         tasks.withType(Test::class.java).configureEach {
             maxHeapSize = "2g"
-            // Keep JUnit4 unless module explicitly opts into JUnit5.
-            // useJUnitPlatform()
+            useJUnitPlatform()
         }
     }
 

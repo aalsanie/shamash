@@ -74,7 +74,7 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
             val doc = PsiDocumentManager.getInstance(project).getDocument(psiFile) ?: return
 
             WriteCommandAction.runWriteCommandAction(project) {
-                val text = doc.text ?: return@runWriteCommandAction
+                val text = doc.text
 
                 // 1) Prefer editing RuleDef in rules list:
                 // rules:
