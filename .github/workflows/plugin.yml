@@ -5,11 +5,11 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * *" # nightly (02:00 UTC)
+  release:
+    types: [published]
 
 concurrency:
-  group: plugin-${{ github.ref }}
+  group: plugin-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -23,7 +23,7 @@ jobs:
   build-plugin:
     name: Build Plugin (PR/push)
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule' # build always except nightly-only verify job below
+    if: github.event_name != 'release'
 
     steps:
       - uses: actions/checkout@v4
@@ -53,9 +53,9 @@ jobs:
           if-no-files-found: error
 
   verify-plugin:
-    name: Verify Plugin (nightly/manual)
+    name: Verify Plugin (release/manual)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +73,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Verify plugin against IDEs
-        run: ./gradlew --stacktrace :shamash-intellij-plugin:verifyPlugin
+        timeout-minutes: 60
+        run: ./gradlew --stacktrace --info :shamash-intellij-plugin:verifyPlugin
 
       - name: Upload verification reports
         if: always()
@@ -84,3 +85,46 @@ jobs:
             shamash-intellij-plugin/build/reports/**
             shamash-intellij-plugin/build/verification/**
           if-no-files-found: ignore
+
+  release-assets:
+    name: Attach Plugin ZIP to Release
+    runs-on: ubuntu-latest
+    needs: [verify-plugin]
+    if: github.event_name == 'release'
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make Gradle wrapper executable (Unix)
+        run: chmod +x gradlew
+
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Build plugin ZIP
+        run: ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin
+
+      - name: Prepare release assets
+        run: |
+          set -euxo pipefail
+          mkdir -p release-assets
+          cp shamash-intellij-plugin/build/distributions/*.zip release-assets/
+          (cd release-assets && sha256sum *.zip > SHA256SUMS.txt)
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/*.zip
+            release-assets/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
