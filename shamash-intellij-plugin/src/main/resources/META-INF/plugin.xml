@@ -2,7 +2,7 @@
     <id>io.shamash</id>
     <name>Shamash</name>
 
-    <vendor email="a.aalsanie@outlook.com">Ahmad Alsanie</vendor>
+    <vendor email="a.aalsanie@outlook.com">A.Alsanie</vendor>
 
     <description><![CDATA[
         Shamash is a JVM architecture enforcement tool that helps teams define, validate, and continuously enforce architectural boundaries.
