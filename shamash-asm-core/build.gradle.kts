@@ -21,7 +21,7 @@ dependencies {
 
     // Validation
     implementation("com.networknt:json-schema-validator:1.5.9")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.20.1")
     implementation("org.snakeyaml:snakeyaml-engine:2.7")
 
     testImplementation(kotlin("test"))
