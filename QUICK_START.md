@@ -30,7 +30,166 @@ Unzip it, then run the binary:
 
 (Optional) add the `bin/` directory to your `PATH`.
 
-### Quick start
+### Schema Examples
+
+```psi.yml:```
+
+```yaml
+version: 1
+
+project:
+  validation:
+    unknownRule: ERROR
+  rootPackage:
+    mode: EXPLICIT
+    value: "com.acme.app"
+  sourceGlobs:
+    include:
+      - "src/main/java/**"
+      - "src/main/kotlin/**"
+    exclude:
+      - "**/build/**"
+      - "**/.gradle/**"
+      - "**/out/**"
+      - "**/.idea/**"
+
+roles:
+  controller:
+    priority: 100
+    match:
+      anyOf:
+        - annotation: "org.springframework.web.bind.annotation.RestController"
+        - classNameEndsWith: "Controller"
+
+  service:
+    priority: 80
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Service"
+        - classNameEndsWith: "Service"
+
+  repository:
+    priority: 60
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Repository"
+        - classNameEndsWithAny: ["Repository", "Dao"]
+
+rules:
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      kinds: ["methodCall", "fieldType", "parameterType", "returnType", "extends", "implements", "annotationType"]
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+          message: "Controllers must not depend directly on repositories"
+        - from: "service"
+          to: ["controller"]
+```
+
+```asm.yml:```
+```yaml
+version: 1
+
+project:
+  bytecode:
+    roots:
+      - "."
+    outputsGlobs:
+      include:
+        - "**/build/classes/kotlin/main/**"
+        - "**/build/classes/java/main/**"
+      exclude: []
+    jarGlobs:
+      include:
+        - "**/*.jar"
+      exclude:
+        - "**/*-sources.jar"
+        - "**/*-javadoc.jar"
+
+  scan:
+    scope: PROJECT_ONLY
+    followSymlinks: false
+    maxClasses: null
+    maxJarBytes: null
+    maxClassBytes: null
+
+  validation:
+    unknownRule: ERROR
+
+roles:
+  api:
+    priority: 10
+    description: "Public API layer"
+    match:
+      packageContainsSegment: "api"
+
+  service:
+    priority: 20
+    description: "Application/service layer"
+    match:
+      packageContainsSegment: "service"
+
+  data:
+    priority: 30
+    description: "Persistence/infrastructure"
+    match:
+      packageContainsSegment: "data"
+
+analysis:
+  graphs:
+    enabled: true
+    granularity: PACKAGE
+    includeExternalBuckets: false
+
+  hotspots:
+    enabled: false
+    topN: 25
+    includeExternal: false
+
+  scoring:
+    enabled: false
+    model: V1
+    godClass:
+      enabled: true
+      weights: null
+      thresholds: null
+    overall:
+      enabled: true
+      weights: null
+      thresholds: null
+
+rules:
+  - type: arch
+    name: forbiddenRoleDependencies
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope: null
+    params:
+      direction: transitive
+      forbidden:
+        api:
+          - data
+        service:
+          - data
+
+exceptions: []
+
+baseline:
+  mode: NONE
+
+export:
+  enabled: true
+  formats: [JSON,HTML,SARIF,XML]
+  overwrite: false
+```
+
+### CLI Quick start
 
 From your project root:
 
