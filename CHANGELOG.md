@@ -4,6 +4,14 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
 
+### Fixed
+- Simplified UI and added clear instructions 
+- UI Dashboard panel overlapping action buttons
+- UI Config panel overlapping action buttons
+
+### Removed
+- Removed UI redundant labels
+
 ## [0.70.1]
 ### Added
 - Added test suite for `shamash-artifacts` module

@@ -52,7 +52,7 @@ class DashboardToolbarPanel(
         val row =
             JPanel(WrapFlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(6))).apply {
                 isOpaque = false
-                border = JBUI.Borders.empty(0)
+                border = JBUI.Borders.empty(10) // no buttons overlap, keep 10
             }
 
         row.add(actionButton("Run Scan", "io.shamash.asm.runScan"))

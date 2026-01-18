@@ -55,7 +55,6 @@ class ShamashAsmDashboardPanel(
 ) : Disposable {
     private val root = JBPanel<JBPanel<*>>(BorderLayout())
 
-    private val metaLabel = JBLabel("Config: Not found")
     private val statusLabel = JBLabel("Status: idle")
 
     private val overviewText = monoArea()
@@ -67,7 +66,6 @@ class ShamashAsmDashboardPanel(
         val header =
             JBPanel<JBPanel<*>>(BorderLayout()).apply {
                 border = JBUI.Borders.empty(0, 0, 8, 0)
-                add(metaLabel, BorderLayout.CENTER)
                 add(statusLabel, BorderLayout.SOUTH)
             }
 
@@ -128,19 +126,10 @@ class ShamashAsmDashboardPanel(
 
         val state = ShamashAsmUiStateService.getInstance(project).getState()
         val result = state?.scanResult
-        val updatedAt = state?.updatedAt
 
         val resolvedConfig =
             result?.configPath
                 ?: ShamashAsmConfigLocator.resolveConfigPath(project)
-
-        metaLabel.text =
-            buildString {
-                append("Config: ").append(resolvedConfig?.toString() ?: "Not found")
-                if (updatedAt != null) {
-                    append("  |  Updated: ").append(formatInstant(updatedAt))
-                }
-            }
 
         statusLabel.text = statusLine(result)
 
@@ -177,9 +166,10 @@ class ShamashAsmDashboardPanel(
                 Config: ${resolvedConfig?.toString() ?: "Not found"}
 
                 Use:
-                - Run ASM Scan
+                - Navigate to Config panel
+                - Create asm.yml Manually or From Reference
                 - Validate ASM Config
-                - Create ASM Config From Reference
+                - Run ASM Scan
                 """.trimIndent()
         }
 

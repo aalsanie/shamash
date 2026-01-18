@@ -145,7 +145,7 @@ class ShamashAsmConfigPanel(
         val row =
             JPanel(WrapFlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(6))).apply {
                 isOpaque = false
-                border = JBUI.Borders.empty(0)
+                border = JBUI.Borders.empty(10)// keep 10 for panel not to overlap buttons
             }
 
         row.add(actionButton("Validate Config", "io.shamash.asm.validateConfig"))

@@ -41,7 +41,7 @@ class ShamashAsmDashboardTab(
     private val panel = ShamashAsmDashboardPanel(project)
 
     init {
-        container.border = JBUI.Borders.empty(0)
+        container.border = JBUI.Borders.empty()
         container.add(DashboardToolbarPanel(project, container), BorderLayout.NORTH)
         container.setContent(panel.component())
     }
