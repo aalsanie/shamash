@@ -10,6 +10,7 @@ This changelog tracks changes relevant to the plugin distribution.
 - UI Config panel overlapping action buttons
 - Updated ASM Config tab summary messaging to reflect state accurately
 - Adjusted validate config to redirect to dashboard only on successful validation.
+- Fixed Open Reference YAML action enforcing UTF-8 on the virtual file
 
 ### Removed
 - Removed UI redundant labels

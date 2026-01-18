@@ -166,6 +166,7 @@ class ShamashAsmDashboardPanel(
                 Config: ${resolvedConfig?.toString() ?: "Not found"}
 
                 Use:
+                - Build your project (ASM analysis depends on bytecode)
                 - Navigate to Config panel
                 - Create asm.yml Manually or From Reference
                 - Validate ASM Config
