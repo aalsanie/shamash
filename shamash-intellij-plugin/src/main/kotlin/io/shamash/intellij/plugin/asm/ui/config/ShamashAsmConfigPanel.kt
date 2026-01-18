@@ -87,13 +87,11 @@ class ShamashAsmConfigPanel(
         val actionsRow = buildHeaderActionsRow().apply { alignmentX = JComponent.LEFT_ALIGNMENT }
         headerStack.add(actionsRow)
 
-        // This is the key: real vertical strut, not just border math.
         headerStack.add(Box.createVerticalStrut(JBUI.scale(10)))
 
         val meta = buildMetaPanel().apply { alignmentX = JComponent.LEFT_ALIGNMENT }
         headerStack.add(meta)
 
-        // Put header stack in NORTH, errors scroll fills the rest.
         root.add(headerStack, BorderLayout.NORTH)
         root.add(errorsScroll, BorderLayout.CENTER)
 
@@ -108,24 +106,46 @@ class ShamashAsmConfigPanel(
 
         val resolved = ShamashAsmConfigLocator.resolveConfigPath(project)
         val state = ShamashAsmUiStateService.getInstance(project).getState()
-        val errs = state?.scanResult?.configErrors.orEmpty()
+        val result = state?.scanResult
+
+        val configErrors = result?.configErrors.orEmpty()
 
         pathLabel.text = "Resolved config: ${resolved?.toString() ?: "Not found"}"
 
-        val (errCount, warnCount) = count(errs)
+        // rules:
+        // 1) Not validated -> "No Validation results yet. Press validate config"
+        // 2) Validated -> "Run scan" (if scan not ran)
+        // 3) Validate action redirects (handled in ValidateAsmConfigAction)
+        // 4) Validated + scan ran -> "Navigate to findings tab to view findings"
         summaryLabel.text =
             when {
                 resolved == null ->
                     "No ASM config found. Create one from reference."
-                errs.isEmpty() ->
-                    "No validation results yet. Use Validate or Run Scan."
-                errCount > 0 ->
+
+                // No validation has happened yet (no state/scanResult produced by validation or scan action)
+                result == null ->
+                    "No Validation results yet. Press validate config"
+
+                // Validation (or scan) produced config errors
+                configErrors.isNotEmpty() -> {
+                    val (errCount, warnCount) = count(configErrors)
                     "Invalid config. Errors: $errCount | Warnings: $warnCount"
+                }
+
+                // Config validated AND scan ran (engine result exists)
+                result.config != null && result.hasEngineResult ->
+                    "Navigate to findings tab to view findings"
+
+                // Config validated AND scan NOT ran
+                result.config != null ->
+                    "Run scan"
+
+                // Fallback (should be rare): we have a ScanResult but no errors and no typed config
                 else ->
-                    "Config valid. Warnings: $warnCount"
+                    "No Validation results yet. Press validate config"
             }
 
-        errorsTextArea.text = if (errs.isEmpty()) "" else formatErrors(errs)
+        errorsTextArea.text = if (configErrors.isEmpty()) "" else formatErrors(configErrors)
         errorsTextArea.caretPosition = 0
     }
 

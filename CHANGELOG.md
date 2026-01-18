@@ -8,6 +8,8 @@ This changelog tracks changes relevant to the plugin distribution.
 - Simplified UI and added clear instructions 
 - UI Dashboard panel overlapping action buttons
 - UI Config panel overlapping action buttons
+- Updated ASM Config tab summary messaging to reflect state accurately
+- Adjusted validate config to redirect to dashboard only on successful validation.
 
 ### Removed
 - Removed UI redundant labels

@@ -168,7 +168,13 @@ class ValidateAsmConfigAction(
 
                 AsmActionUtil.openAsmToolWindow(project)
                 val tw = ShamashAsmToolWindowController.getInstance(project)
-                tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
+
+                // Redirect to Dashboard ONLY upon successful validation (no ERROR).
+                if (ok && errorCount == 0) {
+                    tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+                } else {
+                    tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
+                }
                 tw.refreshAll()
 
                 if (!ok || errorCount > 0) {
