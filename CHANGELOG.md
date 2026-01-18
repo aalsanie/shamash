@@ -1,8 +1,12 @@
 # Changelog
-Shamash is currently shipped as an IntelliJ plugin only.
-This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
+
+## [0.70.3]
+### Update
+- Updated IntelliJ Platform target from 2024.2 to 2024.2.1+ 
+- Support Kotlin’s supportsKotlinPluginMode descriptor 
+- Eliminate unresolved extension point warnings.
 
 ## [0.70.2]
 ### Fixed

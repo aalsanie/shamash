@@ -153,13 +153,13 @@
 
     <change-notes><![CDATA[
   <ul>
-    <li><strong>ASM</strong>: configurable engine + bytecode scanner pipeline</li>
-    <li><strong>ASM ToolWindow</strong>: dashboard + findings + config tabs</li>
-    <li><strong>ASM Config</strong>: reference <code>asm.yml</code> + create-from-reference workflow</li>
-    <li><strong>ASM Scan</strong>: bytecode scan → facts → rules → optional export (JSON/SARIF/XML/HTML) via config</li>
-    <li><strong>Testing</strong>: added test suites for <code>shamash-artifacts</code>, <code>shamash-export</code>, <code>shamash-asm-core</code>, <code>shamash-psi-core</code></li>
-    <li><strong>Fixed</strong>: GlobMatcher now matches <code>*</code>/<code>**</code consistently across platforms + supports “match anywhere” for relative globs</li>
-    <li><strong>Config Validation</strong>: improved unknown-rule validation via engine rule-id provider hook</li>
+    <li><strong>Fixed</strong>: Simplified UI and added clearer in-panel instructions</li>
+    <li><strong>Fixed</strong>: Dashboard panel action buttons overlap</li>
+    <li><strong>Fixed</strong>: Config panel action buttons overlap</li>
+    <li><strong>Fixed</strong>: ASM Config tab summary messaging now reflects validation/scan state accurately</li>
+    <li><strong>Fixed</strong>: Validate Config now redirects to Dashboard only on successful validation</li>
+    <li><strong>Fixed</strong>: Open Reference YAML now opens reliably (UTF-8 + content normalization for virtual file)</li>
+    <li><strong>Removed</strong>: Removed redundant UI labels</li>
   </ul>
 ]]></change-notes>
 
