@@ -4,6 +4,7 @@ This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
 
+## [0.70.2]
 ### Fixed
 - Simplified UI and added clear instructions 
 - UI Dashboard panel overlapping action buttons
