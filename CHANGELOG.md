@@ -2,6 +2,12 @@
 
 ## [unreleased]
 
+### Update
+- Refactored baseline and extracted BaselineFingerprint
+
+### Added
+- Add a complete IntelliJ Plugin E2E test suite
+
 ## [0.70.3]
 ### Update
 - Updated IntelliJ Platform target from 2024.2 to 2024.2.1+ 

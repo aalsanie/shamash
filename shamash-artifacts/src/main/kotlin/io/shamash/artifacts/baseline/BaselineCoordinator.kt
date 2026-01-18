@@ -23,10 +23,8 @@ package io.shamash.artifacts.baseline
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.util.PathNormalizer
-import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.security.MessageDigest
 
 /**
  * Coordinates baseline read/write and fingerprint computation for scan/export wiring.
@@ -110,57 +108,4 @@ class BaselineCoordinator(
         if (baselineFingerprints.isEmpty()) return null
         return BaselineFindingPreprocessor(baselineFingerprints)
     }
-}
-
-/**
- * Baseline fingerprinting spec (owned by baseline layer).
- * Used by export
- * - using project-relative normalized paths (forward slashes, no drive letters)
- * - sorting data keys/values
- * - excluding human-readable message text
- */
-object BaselineFingerprint {
-    fun sha256Hex(
-        finding: Finding,
-        normalizedProjectRelativePath: String,
-    ): String {
-        val md = MessageDigest.getInstance("SHA-256")
-
-        fun put(s: String) {
-            md.update(s.toByteArray(StandardCharsets.UTF_8))
-            md.update(0x1F) // unit separator
-        }
-
-        put("v1") // baseline fingerprint version
-        put(normalizedProjectRelativePath)
-
-        put(finding.ruleId)
-        put(finding.severity.name)
-
-        put(finding.startOffset?.toString() ?: "")
-        put(finding.endOffset?.toString() ?: "")
-
-        val entries = finding.data.entries.sortedWith(compareBy<Map.Entry<String, String>> { it.key }.thenBy { it.value })
-        for ((k, v) in entries) {
-            put(k)
-            put(v)
-        }
-
-        return md.digest().toHexLower()
-    }
-
-    private fun ByteArray.toHexLower(): String {
-        val out = CharArray(this.size * 2)
-        var j = 0
-        for (b in this) {
-            val i = b.toInt() and 0xFF
-            val hi = i ushr 4
-            val lo = i and 0x0F
-            out[j++] = HEX[hi]
-            out[j++] = HEX[lo]
-        }
-        return String(out)
-    }
-
-    private val HEX: CharArray = "0123456789abcdef".toCharArray()
 }
