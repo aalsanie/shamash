@@ -53,7 +53,11 @@ These YAML configs define roles, rules, scope, validation behavior, exports, and
 
 ---
 
-## Documentation & hands-on example
+![Shamash IntelliJ demo](./assets/shamash-demo.gif)
+
+---
+
+## Documentation & Examples
 
 Docs + Test Bed applications: [`./docs/`](./docs)
 
