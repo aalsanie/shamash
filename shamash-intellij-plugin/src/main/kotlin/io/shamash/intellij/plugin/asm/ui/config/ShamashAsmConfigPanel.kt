@@ -21,13 +21,10 @@
  */
 package io.shamash.intellij.plugin.asm.ui.config
 
-import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
@@ -196,15 +193,13 @@ class ShamashAsmConfigPanel(
     }
 
     private fun invokeAction(action: AnAction) {
-        val dataContext: DataContext = DataManager.getInstance().getDataContext(root)
-        val event =
-            AnActionEvent.createFromAnAction(
-                action,
-                null,
-                ActionPlaces.TOOLWINDOW_TOOLBAR_BAR,
-                dataContext,
-            )
-        action.actionPerformed(event)
+        ActionManager.getInstance().tryToExecute(
+            action,
+            null,
+            root,
+            ActionPlaces.TOOLWINDOW_TOOLBAR_BAR,
+            true,
+        )
     }
 
     private fun count(errors: List<ValidationError>): Pair<Int, Int> {

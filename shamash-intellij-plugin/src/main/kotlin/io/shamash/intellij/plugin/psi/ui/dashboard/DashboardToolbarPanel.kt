@@ -23,10 +23,9 @@ package io.shamash.intellij.plugin.psi.ui.dashboard
 
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.project.Project
 import io.shamash.intellij.plugin.psi.ui.actions.PsiActionUtil
 import java.awt.FlowLayout
@@ -36,13 +35,8 @@ import javax.swing.JPanel
 class DashboardToolbarPanel(
     private val project: Project,
     private val onRefresh: () -> Unit,
-) : JPanel(FlowLayout(FlowLayout.LEFT)) {
-    private val dataContext: DataContext =
-        SimpleDataContext
-            .builder()
-            .add(CommonDataKeys.PROJECT, project)
-            .build()
-
+) : JPanel(FlowLayout(FlowLayout.LEFT)),
+    UiDataProvider {
     init {
         add(JButton("Refresh").apply { addActionListener { onRefresh() } })
 
@@ -63,13 +57,18 @@ class DashboardToolbarPanel(
                     return@addActionListener
                 }
 
-                val event = AnActionEvent.createFromAnAction(action, null, "ShamashPsiDashboardToolbar", dataContext)
-                action.actionPerformed(event)
+                // Never call action.actionPerformed(...) directly.
+                // actionPerformed is @ApiStatus.OverrideOnly; IntelliJ Platform must dispatch it.
+                ActionManager.getInstance().tryToExecute(action, null, this@DashboardToolbarPanel, "ShamashPsiDashboardToolbar", true)
 
                 // Immediate refresh is fine for responsiveness, but background actions will refresh again on success.
                 onRefresh()
             }
         }
+
+    override fun uiDataSnapshot(sink: DataSink) {
+        sink.set(CommonDataKeys.PROJECT, project)
+    }
 
     companion object {
         private const val ACTION_RUN_SCAN = "io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"

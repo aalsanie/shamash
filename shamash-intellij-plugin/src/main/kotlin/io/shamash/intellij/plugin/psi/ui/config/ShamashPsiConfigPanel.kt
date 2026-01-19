@@ -23,10 +23,9 @@ package io.shamash.intellij.plugin.psi.ui.config
 
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionManager
-import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -44,13 +43,8 @@ import javax.swing.JPanel
 
 class ShamashPsiConfigPanel(
     private val project: Project,
-) : JPanel(BorderLayout()) {
-    private val dataContext: DataContext =
-        SimpleDataContext
-            .builder()
-            .add(CommonDataKeys.PROJECT, project)
-            .build()
-
+) : JPanel(BorderLayout()),
+    UiDataProvider {
     private val configPathLabel = JBLabel()
     private val validationArea = JBTextArea()
     private val supportedRulesArea = JBTextArea()
@@ -137,15 +131,19 @@ class ShamashPsiConfigPanel(
                     return@addActionListener
                 }
 
-                // IMPORTANT: pass project via DataContext; EMPTY_CONTEXT makes e.project null.
-                val event = AnActionEvent.createFromAnAction(action, null, "ShamashPsiConfigPanel", dataContext)
-                action.actionPerformed(event)
+                // Never call action.actionPerformed(...) directly.
+                // actionPerformed is @ApiStatus.OverrideOnly; IntelliJ Platform must dispatch it.
+                ActionManager.getInstance().tryToExecute(action, null, this@ShamashPsiConfigPanel, "ShamashPsiConfigPanel", true)
 
                 // This refresh is immediate (may be stale for background actions),
                 // but the toolwindow controller refresh after background completion will update it.
                 refresh()
             }
         }
+
+    override fun uiDataSnapshot(sink: DataSink) {
+        sink.set(CommonDataKeys.PROJECT, project)
+    }
 
     companion object {
         // Action IDs should match plugin.xml registration.

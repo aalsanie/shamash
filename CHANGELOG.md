@@ -8,6 +8,12 @@
 ### Added
 - Add a complete IntelliJ Plugin E2E test suite
 
+### Fixed
+- Fix OverrideOnly invocation; migrate panels to UiDataProvider
+  - Use ActionManager.tryToExecute instead of calling AnAction.actionPerformed directly
+  - Replace DataProvider/getData with UiDataProvider/uiDataSnapshot(DataSink)
+  - Ensure PROJECT is exposed via DataContext for action execution
+
 ## [0.70.3]
 ### Update
 - Updated IntelliJ Platform target from 2024.2 to 2024.2.1+ 
