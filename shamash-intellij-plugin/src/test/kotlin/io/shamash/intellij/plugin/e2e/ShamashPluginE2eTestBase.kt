@@ -21,12 +21,9 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
-import com.intellij.openapi.actionSystem.DataContext
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.PlatformTestUtil
@@ -57,17 +54,8 @@ abstract class ShamashPluginE2eTestBase : BasePlatformTestCase() {
 
     protected fun fire(action: AnAction) {
         runInEdtAndWait {
-            action.actionPerformed(testEvent(action))
+            ActionManager.getInstance().tryToExecute(action, null, null, ActionPlaces.UNKNOWN, true)
         }
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-    }
-
-    protected fun testEvent(action: AnAction): AnActionEvent {
-        val dc: DataContext =
-            SimpleDataContext
-                .builder()
-                .add(CommonDataKeys.PROJECT, project)
-                .build()
-        return AnActionEvent.createFromAnAction(action, null, ActionPlaces.UNKNOWN, dc)
     }
 }
