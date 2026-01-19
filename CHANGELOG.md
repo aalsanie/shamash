@@ -14,6 +14,10 @@
   - Replace DataProvider/getData with UiDataProvider/uiDataSnapshot(DataSink)
   - Ensure PROJECT is exposed via DataContext for action execution
 
+### Removed
+- Removed grid layout references
+- Removed unused `fromInstant` method
+
 ## [0.70.3]
 ### Update
 - Updated IntelliJ Platform target from 2024.2 to 2024.2.1+ 

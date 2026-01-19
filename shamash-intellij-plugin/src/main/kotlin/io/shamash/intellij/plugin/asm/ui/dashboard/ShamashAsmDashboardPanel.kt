@@ -69,19 +69,6 @@ class ShamashAsmDashboardPanel(
                 add(statusLabel, BorderLayout.SOUTH)
             }
 
-        // Content panel (scrollable as one unit)
-        val content =
-            JBPanel<JBPanel<*>>().apply {
-                layout =
-                    com.intellij.ui.dsl.gridLayout
-                        .GridLayout()
-                border = JBUI.Borders.empty(0)
-
-                // Header sits outside; content only contains sections
-            }
-
-        // If you don't want GridLayout DSL dependency, keep it simple:
-        // We'll use a vertical BoxLayout-like stacking using BorderLayout + nested panels.
         val sections =
             JBPanel<JBPanel<*>>().apply {
                 layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
@@ -311,10 +298,4 @@ class ShamashAsmDashboardPanel(
             font = Font(Font.MONOSPACED, Font.PLAIN, 12)
             border = JBUI.Borders.empty(8)
         }
-
-    private fun formatInstant(i: Instant): String =
-        DateTimeFormatter
-            .ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault())
-            .format(i)
 }
