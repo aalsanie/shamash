@@ -4,10 +4,11 @@
 
 ### Update
 - Refactored baseline and extracted BaselineFingerprint
+- Extend ASM config v1 export with optional `export.artifacts` toggles
 
 ### Added
 - Added a complete IntelliJ Plugin E2E test suite
-- Added export-sidecar artifact to standardize output layout for future exporters
+- Added export-sidecar artifact
   - facts 
   - roles
   - rule plan

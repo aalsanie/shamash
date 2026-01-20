@@ -28,8 +28,13 @@ import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.BytecodeConfig
 import io.shamash.asm.core.config.schema.v1.model.ExceptionDef
 import io.shamash.asm.core.config.schema.v1.model.ExceptionMatch
+import io.shamash.asm.core.config.schema.v1.model.ExportAnalysisArtifactsConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsArtifactConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
+import io.shamash.asm.core.config.schema.v1.model.ExportToggleArtifactConfig
 import io.shamash.asm.core.config.schema.v1.model.GlobSet
 import io.shamash.asm.core.config.schema.v1.model.GodClassScoringConfig
 import io.shamash.asm.core.config.schema.v1.model.GodClassWeights
@@ -462,11 +467,71 @@ object ConfigLoader {
                 s.toEnumOrThrow<ExportFormat>("export.formats[$i]")
             }
 
+        val artifacts = map.optMap("artifacts", "export.artifacts")?.let { bindExportArtifacts(it) }
+
         return ExportConfig(
             enabled = enabled,
             outputDir = outputDir,
             formats = formats,
             overwrite = overwrite,
+            artifacts = artifacts,
+        )
+    }
+
+    private fun bindExportArtifacts(map: Map<String, Any?>): ExportArtifactsConfig {
+        val facts = map.optMap("facts", "export.artifacts.facts")?.let { bindFactsArtifact(it, "export.artifacts.facts") }
+        val roles = map.optMap("roles", "export.artifacts.roles")?.let { bindToggleArtifact(it, "export.artifacts.roles") }
+        val rulePlan = map.optMap("rulePlan", "export.artifacts.rulePlan")?.let { bindToggleArtifact(it, "export.artifacts.rulePlan") }
+        val analysis = map.optMap("analysis", "export.artifacts.analysis")?.let { bindAnalysisArtifacts(it, "export.artifacts.analysis") }
+
+        return ExportArtifactsConfig(
+            facts = facts,
+            roles = roles,
+            rulePlan = rulePlan,
+            analysis = analysis,
+        )
+    }
+
+    private fun bindToggleArtifact(
+        map: Map<String, Any?>,
+        path: String,
+    ): ExportToggleArtifactConfig {
+        val enabled = map.reqBoolean("enabled", "$path.enabled")
+        return ExportToggleArtifactConfig(enabled = enabled)
+    }
+
+    private fun bindFactsArtifact(
+        map: Map<String, Any?>,
+        path: String,
+    ): ExportFactsArtifactConfig {
+        val enabled = map.reqBoolean("enabled", "$path.enabled")
+        val formatRaw = map.optString("format", "$path.format")
+        val format = (formatRaw ?: ExportFactsFormat.JSONL_GZ.name).toEnumOrThrow<ExportFactsFormat>("$path.format")
+        return ExportFactsArtifactConfig(
+            enabled = enabled,
+            format = format,
+        )
+    }
+
+    private fun bindAnalysisArtifacts(
+        map: Map<String, Any?>,
+        path: String,
+    ): ExportAnalysisArtifactsConfig {
+        val enabled = map.reqBoolean("enabled", "$path.enabled")
+
+        // Defaults:
+        // - if analysis artifacts are enabled, exporting all analysis sidecars (graphs/hotspots/scoring)
+        // - if disabled, exporting none
+        val default = enabled
+        val graphs = map.optBoolean("graphs", "$path.graphs") ?: default
+        val hotspots = map.optBoolean("hotspots", "$path.hotspots") ?: default
+        val scoring = map.optBoolean("scoring", "$path.scoring") ?: default
+
+        return ExportAnalysisArtifactsConfig(
+            enabled = enabled,
+            graphs = graphs,
+            hotspots = hotspots,
+            scoring = scoring,
         )
     }
 
@@ -529,7 +594,7 @@ object ConfigLoader {
             null -> null
             is List<*> -> {
                 @Suppress("UNCHECKED_CAST")
-                v
+                v as List<Any?>
             }
             else -> throw ConfigBindException(path, "$path must be a list")
         }
@@ -617,6 +682,16 @@ object ConfigLoader {
         val v = this[key] ?: throw ConfigBindException(path, "$path is required")
         return v as? Boolean ?: throw ConfigBindException(path, "$path must be a boolean")
     }
+
+    private fun Map<String, Any?>.optBoolean(
+        key: String,
+        path: String,
+    ): Boolean? =
+        when (val v = this[key]) {
+            null -> null
+            is Boolean -> v
+            else -> throw ConfigBindException(path, "$path must be a boolean")
+        }
 
     private fun Map<String, Any?>.reqStringList(
         key: String,
