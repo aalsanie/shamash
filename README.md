@@ -53,7 +53,14 @@ These YAML configs define roles, rules, scope, validation behavior, exports, and
 
 ---
 
+<details>
+  <summary><b>Demo (GIF)</b></summary>
+
+  <br/>
+
 ![Shamash IntelliJ demo](./assets/shamash-demo.gif)
+
+</details>
 
 ---
 
