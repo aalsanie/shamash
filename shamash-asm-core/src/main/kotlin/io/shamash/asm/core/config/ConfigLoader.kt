@@ -529,7 +529,7 @@ object ConfigLoader {
             null -> null
             is List<*> -> {
                 @Suppress("UNCHECKED_CAST")
-                v as List<Any?>
+                v
             }
             else -> throw ConfigBindException(path, "$path must be a list")
         }

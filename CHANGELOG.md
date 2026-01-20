@@ -6,7 +6,12 @@
 - Refactored baseline and extracted BaselineFingerprint
 
 ### Added
-- Add a complete IntelliJ Plugin E2E test suite
+- Added a complete IntelliJ Plugin E2E test suite
+- Added export-sidecar artifact to standardize output layout for future exporters
+  - facts 
+  - roles
+  - rule plan
+  - analysis graphs/hotspots/scores
 
 ### Fixed
 - Fix OverrideOnly invocation; migrate panels to UiDataProvider
