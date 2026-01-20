@@ -31,6 +31,7 @@ import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ExceptionDef
 import io.shamash.asm.core.config.schema.v1.model.ExceptionMatch
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
 import io.shamash.asm.core.config.schema.v1.model.Matcher
 import io.shamash.asm.core.config.schema.v1.model.RoleDef
@@ -258,10 +259,18 @@ class ShamashAsmEngine(
                                 generatedAtEpochMillis = generatedAtEpochMillis,
                             )
 
+                        val sidecars = resolveExportSidecarPaths(outputDir, config)
+
                         EngineExportResult(
                             report = report,
                             outputDir = outputDir,
                             baselineWritten = baselineWritten,
+                            factsPath = sidecars.factsPath,
+                            rolesPath = sidecars.rolesPath,
+                            rulePlanPath = sidecars.rulePlanPath,
+                            analysisGraphsPath = sidecars.analysisGraphsPath,
+                            analysisHotspotsPath = sidecars.analysisHotspotsPath,
+                            analysisScoresPath = sidecars.analysisScoresPath,
                         )
                     }
                 }
@@ -721,6 +730,66 @@ class ShamashAsmEngine(
             if (Files.exists(p)) return true
         }
         return false
+    }
+
+    private data class ExportSidecarPaths(
+        val factsPath: Path?,
+        val rolesPath: Path?,
+        val rulePlanPath: Path?,
+        val analysisGraphsPath: Path?,
+        val analysisHotspotsPath: Path?,
+        val analysisScoresPath: Path?,
+    )
+
+    private fun resolveExportSidecarPaths(
+        outputDir: Path,
+        config: ShamashAsmConfigV1,
+    ): ExportSidecarPaths {
+        val artifacts = config.export.artifacts
+
+        val factsPath: Path? =
+            artifacts?.facts?.takeIf { it.enabled }?.let { facts ->
+                val fileName =
+                    when (facts.format) {
+                        ExportFactsFormat.JSONL_GZ -> ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME
+                        ExportFactsFormat.JSON -> ExportOutputLayout.FACTS_JSON_FILE_NAME
+                    }
+                ExportOutputLayout.resolve(outputDir, fileName)
+            }
+
+        val rolesPath: Path? =
+            artifacts?.roles?.takeIf { it.enabled }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ROLES_JSON_FILE_NAME)
+            }
+
+        val rulePlanPath: Path? =
+            artifacts?.rulePlan?.takeIf { it.enabled }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME)
+            }
+
+        val analysisGraphsPath: Path? =
+            artifacts?.analysis?.takeIf { it.enabled && it.graphs }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME)
+            }
+
+        val analysisHotspotsPath: Path? =
+            artifacts?.analysis?.takeIf { it.enabled && it.hotspots }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME)
+            }
+
+        val analysisScoresPath: Path? =
+            artifacts?.analysis?.takeIf { it.enabled && it.scoring }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME)
+            }
+
+        return ExportSidecarPaths(
+            factsPath = factsPath,
+            rolesPath = rolesPath,
+            rulePlanPath = rulePlanPath,
+            analysisGraphsPath = analysisGraphsPath,
+            analysisHotspotsPath = analysisHotspotsPath,
+            analysisScoresPath = analysisScoresPath,
+        )
     }
 
     private fun resolveExportDir(

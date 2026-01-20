@@ -71,6 +71,13 @@ data class EngineExportResult(
     val report: ExportedReport,
     val outputDir: Path,
     val baselineWritten: Boolean,
+    /** Optional exported sidecar artifacts (may be null if not requested). */
+    val factsPath: Path? = null,
+    val rolesPath: Path? = null,
+    val rulePlanPath: Path? = null,
+    val analysisGraphsPath: Path? = null,
+    val analysisHotspotsPath: Path? = null,
+    val analysisScoresPath: Path? = null,
 )
 
 /**
