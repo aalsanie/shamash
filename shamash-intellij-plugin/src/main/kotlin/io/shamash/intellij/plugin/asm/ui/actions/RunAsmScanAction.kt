@@ -42,6 +42,7 @@ import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
 import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
+import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.exists
@@ -82,13 +83,15 @@ class RunAsmScanAction(
                     .getOrElse { Paths.get(vf.path) }
             }
 
+        val settings = ShamashAsmSettingsState.getInstance(project)
+
         val options =
             ScanOptions(
                 projectBasePath = basePath,
                 projectName = project.name,
                 configPath = configPath,
-                // schemaValidator defaults to SchemaValidatorNetworkNt in asm-core
-                includeFactsInResult = false,
+                // Default is false to avoid keeping large graphs in memory.
+                includeFactsInResult = settings.isIncludeFactsInMemory(),
             )
 
         @NlsSafe val configHint =

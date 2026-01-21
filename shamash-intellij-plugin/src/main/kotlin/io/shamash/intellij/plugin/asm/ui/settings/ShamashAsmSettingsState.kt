@@ -55,6 +55,12 @@ class ShamashAsmSettingsState : PersistentStateComponent<ShamashAsmSettingsState
          * Optional last-selected tab name (future-proofing; safe to ignore if you don't use it yet).
          */
         var lastSelectedTab: String? = null,
+        /**
+         * Advanced: include FactIndex in the in-memory scan result.
+         *
+         * Default is false to avoid keeping large graphs in memory.
+         */
+        var includeFactsInMemory: Boolean = false,
     )
 
     private var state: State = State()
@@ -83,6 +89,12 @@ class ShamashAsmSettingsState : PersistentStateComponent<ShamashAsmSettingsState
 
     fun setLastSelectedTab(tab: String?) {
         state.lastSelectedTab = tab?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    fun isIncludeFactsInMemory(): Boolean = state.includeFactsInMemory
+
+    fun setIncludeFactsInMemory(value: Boolean) {
+        state.includeFactsInMemory = value
     }
 
     companion object {

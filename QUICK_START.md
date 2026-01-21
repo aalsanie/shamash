@@ -14,7 +14,7 @@
 
 ## CLI (ASM)
 
-`shamash-cli` runs the ASM engine: validate config, scan bytecode, produce findings, and export reports.
+`shamash-cli` runs the ASM engine: validate config, scan bytecode, produce findings, facts, graphs, analysis and export reports.
 
 ### Install
 
@@ -32,162 +32,11 @@ Unzip it, then run the binary:
 
 ### Schema Examples
 
-```psi.yml:```
+```psi.yml:```[](shamash-psi-core/src/main/resources/shamash/psi/schema/v1/shamash-psi.reference.yml)
 
-```yaml
-version: 1
+```asm.yml:``` [asm reference](shamash-asm-core/src/main/resources/shamash/asm/schema/v1/shamash-asm.reference.yml)
 
-project:
-  validation:
-    unknownRule: ERROR
-  rootPackage:
-    mode: EXPLICIT
-    value: "com.acme.app"
-  sourceGlobs:
-    include:
-      - "src/main/java/**"
-      - "src/main/kotlin/**"
-    exclude:
-      - "**/build/**"
-      - "**/.gradle/**"
-      - "**/out/**"
-      - "**/.idea/**"
-
-roles:
-  controller:
-    priority: 100
-    match:
-      anyOf:
-        - annotation: "org.springframework.web.bind.annotation.RestController"
-        - classNameEndsWith: "Controller"
-
-  service:
-    priority: 80
-    match:
-      anyOf:
-        - annotation: "org.springframework.stereotype.Service"
-        - classNameEndsWith: "Service"
-
-  repository:
-    priority: 60
-    match:
-      anyOf:
-        - annotation: "org.springframework.stereotype.Repository"
-        - classNameEndsWithAny: ["Repository", "Dao"]
-
-rules:
-  - type: "arch"
-    name: "forbiddenRoleDependencies"
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      kinds: ["methodCall", "fieldType", "parameterType", "returnType", "extends", "implements", "annotationType"]
-      forbidden:
-        - from: "controller"
-          to: ["repository"]
-          message: "Controllers must not depend directly on repositories"
-        - from: "service"
-          to: ["controller"]
-```
-
-```asm.yml:```
-```yaml
-version: 1
-
-project:
-  bytecode:
-    roots:
-      - "."
-    outputsGlobs:
-      include:
-        - "**/build/classes/kotlin/main/**"
-        - "**/build/classes/java/main/**"
-      exclude: []
-    jarGlobs:
-      include:
-        - "**/*.jar"
-      exclude:
-        - "**/*-sources.jar"
-        - "**/*-javadoc.jar"
-
-  scan:
-    scope: PROJECT_ONLY
-    followSymlinks: false
-    maxClasses: null
-    maxJarBytes: null
-    maxClassBytes: null
-
-  validation:
-    unknownRule: ERROR
-
-roles:
-  api:
-    priority: 10
-    description: "Public API layer"
-    match:
-      packageContainsSegment: "api"
-
-  service:
-    priority: 20
-    description: "Application/service layer"
-    match:
-      packageContainsSegment: "service"
-
-  data:
-    priority: 30
-    description: "Persistence/infrastructure"
-    match:
-      packageContainsSegment: "data"
-
-analysis:
-  graphs:
-    enabled: true
-    granularity: PACKAGE
-    includeExternalBuckets: false
-
-  hotspots:
-    enabled: false
-    topN: 25
-    includeExternal: false
-
-  scoring:
-    enabled: false
-    model: V1
-    godClass:
-      enabled: true
-      weights: null
-      thresholds: null
-    overall:
-      enabled: true
-      weights: null
-      thresholds: null
-
-rules:
-  - type: arch
-    name: forbiddenRoleDependencies
-    roles: null
-    enabled: true
-    severity: ERROR
-    scope: null
-    params:
-      direction: transitive
-      forbidden:
-        api:
-          - data
-        service:
-          - data
-
-exceptions: []
-
-baseline:
-  mode: NONE
-
-export:
-  enabled: true
-  formats: [JSON,HTML,SARIF,XML]
-  overwrite: false
-```
+> See [pit-violation yaml configurations if you want to see all rules violator](/docs/asm/pit-violation/src/main/resources/shamash/configs/asm.yml)
 
 ### CLI Quick start
 
@@ -247,6 +96,49 @@ shamash scan --fail-on NONE
 
 # Print all findings to stdout
 shamash scan --print-findings
+```
+
+#### `shamash scan --export-facts --facts-format JSONL_GZ`
+Facts are a streamable snapshot of the dependency graph (classes + edges). 
+They’re exported as JSONL (one record per line) and typically compressed as facts.jsonl.gz so large graphs stay manageable.
+
+Enable facts in configuration `asm.yml`:
+```yaml
+export:
+  enabled: true
+  artifacts:
+    facts:
+      enabled: true
+      format: JSONL_GZ #can be json but not advised in large codebases
+```
+
+```shell
+# Build first so bytecode exists
+./gradlew assemble
+
+# Run scan and force facts export (writes under .shamash/ by default)
+shamash scan --export-facts
+
+# Optionally choose output format explicitly
+shamash scan --export-facts --facts-format JSONL_GZ
+shamash scan --export-facts --facts-format JSON
+
+# Use facts command to read exported file and print summaries
+# Summaries: totals + top packages + top fan-in/out
+shamash facts .shamash/facts.jsonl.gz
+
+# JSON is also supported
+shamash facts .shamash/facts.json
+
+# Cap the number of unique keys tracked for fan-in/out and package stats (default: 200000)
+shamash facts .shamash/facts.jsonl.gz --max-keys 100000
+
+# Limit to one class
+shamash facts .shamash/facts.jsonl.gz --class com.acme.app.service.UserService
+
+# Limit to a package prefix
+shamash facts .shamash/facts.jsonl.gz --package com.acme.app.service
+
 ```
 
 ### Exit codes (CI)

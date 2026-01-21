@@ -10,10 +10,13 @@
 ### Added
 - Added a complete IntelliJ Plugin E2E test suite
 - Added export-sidecar artifact
-  - facts 
-  - roles
-  - rule plan
-  - analysis graphs/hotspots/scores
+- Added Facts export as `facts.jsonl.gz` + `facts.json` for ASM scans.
+- Wired Facts export into ASM engine export step and exposed factsPath in export results.
+- Extended CLI to support facts
+  - new facts subcommand to summarize and filter exported facts
+- IntelliJ ASM ToolWindow
+  - new Facts tab with lazy loading.
+added advanced setting includeFactsInMemory to optionally keep facts in scan result.
 
 ### Fixed
 - Fix OverrideOnly invocation; migrate panels to UiDataProvider

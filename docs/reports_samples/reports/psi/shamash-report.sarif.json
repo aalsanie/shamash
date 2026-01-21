@@ -1,0 +1,685 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Shamash PSI",
+          "version": "0.70.4",
+          "informationUri": "https://github.com/aalsanie/shamash",
+          "rules": [
+            {
+              "id": "deadcode.unusedPrivateMembers",
+              "name": "deadcode.unusedPrivateMembers",
+              "shortDescription": { "text": "deadcode.unusedPrivateMembers" }
+            },
+            {
+              "id": "packages.rootPackage",
+              "name": "packages.rootPackage",
+              "shortDescription": { "text": "packages.rootPackage" }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "startTimeUtc": "2026-01-20T02:39:25.850Z"
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.a' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "44bf6ef90d9a6f6a098e7adc290c63fd6ad71975e385246d98cd85eb79b79529" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/a/A.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.a' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "44bf6ef90d9a6f6a098e7adc290c63fd6ad71975e385246d98cd85eb79b79529" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/a/A.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.annotations' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "f16d0c6441761a013f9d21519171bacb223c5b4894655b7aa9e33c80f55062e7" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/annotations/InternalApi.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.annotations' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "f16d0c6441761a013f9d21519171bacb223c5b4894655b7aa9e33c80f55062e7" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/annotations/InternalApi.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "60c79bc55c444d8da1e89ceae4c6201803682286688c8773b4f0461719220b83" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/GeneratedProxy.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "60c79bc55c444d8da1e89ceae4c6201803682286688c8773b4f0461719220b83" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/GeneratedProxy.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "e32097cc5469a3aa614be991b56fa1e45503d42c68f2c037bf866e4d60db4471" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/PublicApi1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "e32097cc5469a3aa614be991b56fa1e45503d42c68f2c037bf866e4d60db4471" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/PublicApi1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "08382b66ff4dfd1248ecc31c5cbf75e05f41807ee48ae94fbbb6703c6ea5c252" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/PublicApi2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "08382b66ff4dfd1248ecc31c5cbf75e05f41807ee48ae94fbbb6703c6ea5c252" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/PublicApi2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "e1e1d64bb25c429ab8f1292a0dda4bad7e9ff80949ba202396c0a21628db8c9b" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/PublicApi3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.api' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "e1e1d64bb25c429ab8f1292a0dda4bad7e9ff80949ba202396c0a21628db8c9b" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/api/PublicApi3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "note",
+          "message": { "text": "Private field 'a' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "fd7ab808ec6bb52e15287419d99b66c28fb8948b4dd46163b508c59ec3110de6" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/b/B.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "note",
+          "message": { "text": "Private field 'a' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "fd7ab808ec6bb52e15287419d99b66c28fb8948b4dd46163b508c59ec3110de6" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/b/B.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.b' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "5fe8d2c16cad4ac51b681498180fc72202c60aa90864bca365b9bedc160ea4f8" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/b/B.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.b' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "5fe8d2c16cad4ac51b681498180fc72202c60aa90864bca365b9bedc160ea4f8" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/b/B.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "8d903201eb9c6e0af926860aba3b081c575cf921e3aa72464cac36c404e16593" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "8d903201eb9c6e0af926860aba3b081c575cf921e3aa72464cac36c404e16593" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "3d22450da97ace21e4387c3fa353c853a4a403189607e031ea54c95b6ecf8fc3" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "3d22450da97ace21e4387c3fa353c853a4a403189607e031ea54c95b6ecf8fc3" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "b0b14d9be243c089032db7349f02638917d3995ecc2b8a8ade4558158ce8eeaa" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "b0b14d9be243c089032db7349f02638917d3995ecc2b8a8ade4558158ce8eeaa" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "1ef87d1ddb311e22d6df053a03764fe8d12f6aaea1bb8c433d40ee4711c50c22" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client4.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "1ef87d1ddb311e22d6df053a03764fe8d12f6aaea1bb8c433d40ee4711c50c22" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client4.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "5dfa06404748cd246293b5cb5566408c981d31e2cfef9409d61c2cfe952ffae0" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client5.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "5dfa06404748cd246293b5cb5566408c981d31e2cfef9409d61c2cfe952ffae0" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client5.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "52dc884472f97bf76ef60d2ada1e948258189c0ef9d7a4b9ad1beea3c81b9c12" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client6.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "52dc884472f97bf76ef60d2ada1e948258189c0ef9d7a4b9ad1beea3c81b9c12" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client6.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "ddf131de98d5509506323d2dc651e71d6d252e75ef281f4bf2f19fc6f03530fe" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client7.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.clients' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "ddf131de98d5509506323d2dc651e71d6d252e75ef281f4bf2f19fc6f03530fe" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/clients/Client7.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.core' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "fec2916c015e8487de19285e7e054a7e3938b5834cad06fd7a4d418acb5a4110" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/core/CoreService.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.core' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "fec2916c015e8487de19285e7e054a7e3938b5834cad06fd7a4d418acb5a4110" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/core/CoreService.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.core' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "ba65eedaf14623e3c32da83f3e6b02135efbb5594e88cef0f8f536dc61d281b6" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/core/TargetHub.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.core' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "ba65eedaf14623e3c32da83f3e6b02135efbb5594e88cef0f8f536dc61d281b6" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/core/TargetHub.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.extra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "d884940213665bf1839198f6f1deacbcf3985ad3a78456b6f6dc02bac8a42959" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/extra/Extra1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.extra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "d884940213665bf1839198f6f1deacbcf3985ad3a78456b6f6dc02bac8a42959" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/extra/Extra1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.extra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "c8f544c1d4901e946c2fa6bd7645404a92363f9c4ce26df4f1add1ca7a1b7959" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/extra/Extra2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.extra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "c8f544c1d4901e946c2fa6bd7645404a92363f9c4ce26df4f1add1ca7a1b7959" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/extra/Extra2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.extra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "8898ce14429a5126c836653bdddb9142b6cda5b76d7d563bf3c18b963b4bda5c" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/extra/Extra3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.extra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "8898ce14429a5126c836653bdddb9142b6cda5b76d7d563bf3c18b963b4bda5c" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/extra/Extra3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.forbidden' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "f55e364eb81b9ff0ab0adc046ba7b55d0a198a7f71988d0317ee5e05dceb4a7e" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/forbidden/BadPlace.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.forbidden' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "f55e364eb81b9ff0ab0adc046ba7b55d0a198a7f71988d0317ee5e05dceb4a7e" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/forbidden/BadPlace.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.infra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "44ea9bd3c16d5a13f240f5c8d1e9f841f864b575f13df5b86c960ca11a402308" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/infra/InfraRepo.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.infra' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "44ea9bd3c16d5a13f240f5c8d1e9f841f864b575f13df5b86c960ca11a402308" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/infra/InfraRepo.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.misc' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "da5d0d5b54b1699acc906461bb31588e39679471fff8605eda184d2839f223a0" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/misc/Misc1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.misc' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "da5d0d5b54b1699acc906461bb31588e39679471fff8605eda184d2839f223a0" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/misc/Misc1.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.misc' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "b46423a9f4d1b4ee6eb72901cf2db4a78ff9290b3e89daf7e5fbd42a3fb95f87" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/misc/Misc2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.misc' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "b46423a9f4d1b4ee6eb72901cf2db4a78ff9290b3e89daf7e5fbd42a3fb95f87" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/misc/Misc2.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.misc' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "a3682432ba31ddcd90b0b67cbe27e7edc94b4c9565ab6ada410b54ca9adb9730" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/misc/Misc3.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "packages.rootPackage",
+          "level": "error",
+          "message": { "text": "Package 'com.acme.misc' is outside configured root package 'com.this.will.never.match'." },
+          "partialFingerprints": { "primaryLocationLineHash": "a3682432ba31ddcd90b0b67cbe27e7edc94b4c9565ab6ada410b54ca9adb9730" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/acme/misc/Misc3.java" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

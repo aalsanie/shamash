@@ -184,8 +184,11 @@ class ShamashAsmEngineTest {
             // Primary report should exist (JSON)
             assertTrue(Files.exists(exp.outputDir.resolve(ExportOutputLayout.JSON_FILE_NAME)))
 
-            // Sidecar paths are computed and carried even if not produced yet.
+            // Facts sidecar is exported.
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME), exp.factsPath)
+            assertNotNull(exp.factsPath)
+            assertTrue(Files.exists(exp.factsPath))
+            assertTrue(Files.size(exp.factsPath) > 0L)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ROLES_JSON_FILE_NAME), exp.rolesPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME), exp.rulePlanPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME), exp.analysisGraphsPath)

@@ -23,6 +23,10 @@ package io.shamash.asm.core.scan
 
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
+import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsArtifactConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportFormat
+import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.facts.FactExtractor
 import io.shamash.asm.core.scan.bytecode.BytecodeScanner
@@ -96,19 +100,27 @@ class ShamashAsmScanRunner(
             )
         }
 
+        // CLI/runner overrides (non-persistent): allow forcing facts export regardless of config.
+        val effectiveConfig: ShamashAsmConfigV1 =
+            if (options.exportFacts) {
+                forceEnableFactsExport(config, options)
+            } else {
+                config
+            }
+
         // scan bytecode
         val scan =
             try {
                 BytecodeScanner().scan(
                     projectBasePath = options.projectBasePath,
-                    bytecode = config.project.bytecode,
-                    scan = config.project.scan,
+                    bytecode = effectiveConfig.project.bytecode,
+                    scan = effectiveConfig.project.scan,
                 )
             } catch (t: Throwable) {
                 return ScanResult(
                     options = options,
                     configPath = configPath,
-                    config = config,
+                    config = effectiveConfig,
                     scanErrors =
                         listOf(
                             ScanError.of(
@@ -138,7 +150,7 @@ class ShamashAsmScanRunner(
                 return ScanResult(
                     options = options,
                     configPath = configPath,
-                    config = config,
+                    config = effectiveConfig,
                     origins = scan.origins,
                     classUnits = scan.units.size,
                     truncated = scan.truncated,
@@ -158,7 +170,7 @@ class ShamashAsmScanRunner(
                 engine.analyze(
                     projectBasePath = options.projectBasePath,
                     projectName = options.projectName,
-                    config = config,
+                    config = effectiveConfig,
                     facts = factsResult.facts,
                     includeFactsInResult = options.includeFactsInResult,
                 )
@@ -166,7 +178,7 @@ class ShamashAsmScanRunner(
                 return ScanResult(
                     options = options,
                     configPath = configPath,
-                    config = config,
+                    config = effectiveConfig,
                     origins = scan.origins,
                     classUnits = scan.units.size,
                     truncated = scan.truncated,
@@ -184,7 +196,7 @@ class ShamashAsmScanRunner(
         return ScanResult(
             options = options,
             configPath = configPath,
-            config = config,
+            config = effectiveConfig,
             configErrors = validation.errors,
             scanErrors = runnerErrors,
             origins = scan.origins,
@@ -193,6 +205,38 @@ class ShamashAsmScanRunner(
             factsErrors = factsResult.errors,
             engine = engineResult,
         )
+    }
+
+    private fun forceEnableFactsExport(
+        config: ShamashAsmConfigV1,
+        options: ScanOptions,
+    ): ShamashAsmConfigV1 {
+        val export0 = config.export
+        val artifacts0 = export0.artifacts ?: ExportArtifactsConfig()
+
+        val format = options.factsFormatOverride ?: artifacts0.facts?.format
+
+        val factsCfg =
+            (artifacts0.facts ?: ExportFactsArtifactConfig(enabled = true)).copy(
+                enabled = true,
+                format = format ?: ExportFactsArtifactConfig(enabled = true).format,
+            )
+
+        val artifacts = artifacts0.copy(facts = factsCfg)
+
+        // Export must be enabled to write sidecars. If config disabled export, we enable it with safe defaults.
+        val outputDir = export0.outputDir.trim().ifEmpty { ".shamash" }
+        val formats = if (export0.formats.isNotEmpty()) export0.formats else listOf(ExportFormat.JSON)
+
+        val export =
+            export0.copy(
+                enabled = true,
+                outputDir = outputDir,
+                formats = formats,
+                artifacts = artifacts,
+            )
+
+        return config.copy(export = export)
     }
 
     private fun discoverConfig(projectBasePath: Path): Path? {

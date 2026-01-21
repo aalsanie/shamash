@@ -43,6 +43,7 @@ import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleRegistry
+import io.shamash.asm.core.export.facts.FactsExporter
 import io.shamash.asm.core.facts.model.ClassFact
 import io.shamash.asm.core.facts.query.FactIndex
 import io.shamash.export.api.Exporters
@@ -261,11 +262,41 @@ class ShamashAsmEngine(
 
                         val sidecars = resolveExportSidecarPaths(outputDir, config)
 
+                        // Facts export (sidecar)
+                        var factsPath = sidecars.factsPath
+                        if (factsPath != null) {
+                            val fmt =
+                                config.export.artifacts
+                                    ?.facts
+                                    ?.format ?: ExportFactsFormat.JSONL_GZ
+                            try {
+                                FactsExporter.export(
+                                    // Export the engine-populated roles + classToRole mapping.
+                                    facts = factsWithRoles,
+                                    outputPath = factsPath,
+                                    format = fmt,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                // Do not discard report export if facts fails; just mark the export as degraded.
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Facts export failed",
+                                        details = mapOf("factsPath" to factsPath.toString(), "format" to fmt.name),
+                                        t = t,
+                                    )
+                                factsPath = null
+                            }
+                        }
+
                         EngineExportResult(
                             report = report,
                             outputDir = outputDir,
                             baselineWritten = baselineWritten,
-                            factsPath = sidecars.factsPath,
+                            factsPath = factsPath,
                             rolesPath = sidecars.rolesPath,
                             rulePlanPath = sidecars.rulePlanPath,
                             analysisGraphsPath = sidecars.analysisGraphsPath,
