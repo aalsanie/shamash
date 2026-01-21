@@ -31,6 +31,7 @@ import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.io.FileUtil
@@ -73,12 +74,9 @@ class RunAsmScanAction(
             return
         }
 
-        // Prefer explicit/auto-discovered config file if available, but the runner can also discover it.
         val configVf: VirtualFile? = ShamashAsmConfigLocator.resolveConfigFile(project)
         val configPath: Path? =
             configVf?.let { vf ->
-                // Use VfsUtil to resolve symlinks/canonical locations where possible.
-                // (If it fails, fall back to the raw path.)
                 runCatching { VfsUtil.virtualToIoFile(vf).toPath() }
                     .getOrElse { Paths.get(vf.path) }
             }
@@ -100,17 +98,19 @@ class RunAsmScanAction(
 
         AsmActionUtil.openAsmToolWindow(project)
 
-        var scanResult: ScanResult? = null
+        val startScan = startScan@{
+            if (project.isDisposed) return@startScan
 
-        ProgressManager.getInstance().run(
             object : Task.Backgroundable(project, "Shamash ASM Scan", true) {
+                @Volatile
+                private var scanResult: ScanResult? = null
+
                 override fun run(indicator: ProgressIndicator) {
                     indicator.isIndeterminate = true
                     indicator.text = "Running ASM scan"
                     indicator.text2 = "Config: $configHint"
 
                     scanResult = runner.run(options)
-
                     ProgressManager.checkCanceled()
                 }
 
@@ -118,33 +118,24 @@ class RunAsmScanAction(
                     val result = scanResult
 
                     ApplicationManager.getApplication().invokeLater {
-                        // Publish result to toolwindow state.
-                        ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = result)
+                        if (project.isDisposed) return@invokeLater
 
+                        ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = result)
                         AsmActionUtil.openAsmToolWindow(project)
 
-                        // Navigate based on result shape.
                         val tw = ShamashAsmToolWindowController.getInstance(project)
 
                         if (result == null) {
                             tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
                             tw.refreshAll()
-
-                            AsmActionUtil.notify(
-                                project,
-                                "Shamash ASM",
-                                "Scan produced no result.",
-                                NotificationType.WARNING,
-                            )
+                            AsmActionUtil.notify(project, "Shamash ASM", "Scan produced no result.", NotificationType.WARNING)
                             return@invokeLater
                         }
 
                         when {
-                            // Hard config failure => Config tab
                             result.hasConfigErrors -> {
                                 tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
                                 tw.refreshAll()
-
                                 AsmActionUtil.notify(
                                     project,
                                     "Shamash ASM",
@@ -153,7 +144,6 @@ class RunAsmScanAction(
                                 )
                             }
 
-                            // Engine executed => Findings tab (even if no findings; it’s the primary output view)
                             result.hasEngineResult -> {
                                 tw.select(ShamashAsmToolWindowController.Tab.FINDINGS)
                                 tw.refreshAll()
@@ -176,11 +166,9 @@ class RunAsmScanAction(
                                 )
                             }
 
-                            // No engine result typically means config discovery/read/scan failures.
                             else -> {
                                 tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
                                 tw.refreshAll()
-
                                 AsmActionUtil.notify(
                                     project,
                                     "Shamash ASM",
@@ -193,6 +181,7 @@ class RunAsmScanAction(
                 }
 
                 override fun onThrowable(error: Throwable) {
+                    if (project.isDisposed) return
                     AsmActionUtil.notify(
                         project,
                         "Shamash ASM",
@@ -200,21 +189,34 @@ class RunAsmScanAction(
                         NotificationType.ERROR,
                     )
                 }
-            },
-        )
+            }.queue()
+        }
+
+        val dumb = DumbService.getInstance(project)
+        if (dumb.isDumb) {
+            AsmActionUtil.notify(
+                project,
+                "Shamash ASM",
+                "Indexing in progress. Scan will start when indexing finishes.",
+                NotificationType.INFORMATION,
+            )
+            dumb.runWhenSmart {
+                if (project.isDisposed) return@runWhenSmart
+                startScan()
+            }
+        } else {
+            startScan()
+        }
     }
 
     private fun resolveProjectBasePath(project: Project): Path? {
         val base = project.basePath ?: return null
         val p = Paths.get(base)
 
-        // Safety: IntelliJ can sometimes yield non-directory paths in special cases;
-        // prefer directory.
         return when {
             p.exists() && p.isDirectory() -> p
             else ->
                 runCatching {
-                    // Try to canonicalize; may still be non-directory if project opened from a file.
                     Paths.get(FileUtil.toCanonicalPath(base))
                 }.getOrNull()
         }
