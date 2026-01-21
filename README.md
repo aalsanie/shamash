@@ -72,3 +72,6 @@ Docs + Test Bed applications: [`./docs/`](./docs)
 
 ## Quick Start
 See [QUICK_START](./QUICK_START.md)
+
+## More
+[JVM architecture enforcement in IDE + CI](https://open.substack.com/pub/aalsanie/p/shamash-architecture-enforcement?utm_campaign=post-expanded-share&utm_medium=web)
