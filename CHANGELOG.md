@@ -2,6 +2,7 @@
 
 ## [unreleased]
 
+## [0.80.0]
 ### Update
 - Refactored baseline and extracted BaselineFingerprint
 - Extend ASM config v1 export with optional `export.artifacts` toggles
