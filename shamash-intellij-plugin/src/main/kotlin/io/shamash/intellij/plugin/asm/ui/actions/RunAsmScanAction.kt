@@ -38,6 +38,7 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.asm.core.config.ProjectLayout
+import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
@@ -92,6 +93,8 @@ class RunAsmScanAction(
                 includeFactsInResult = settings.isIncludeFactsInMemory(),
             )
 
+        val overrides: RunOverrides? = settings.buildRunOverridesOrNull()
+
         @NlsSafe val configHint =
             configPath?.toString()
                 ?: "auto-discovery under ${ProjectLayout.ASM_CONFIG_DIR} (${ProjectLayout.ASM_CONFIG_CANDIDATES.joinToString()})"
@@ -110,7 +113,7 @@ class RunAsmScanAction(
                     indicator.text = "Running ASM scan"
                     indicator.text2 = "Config: $configHint"
 
-                    scanResult = runner.run(options)
+                    scanResult = runner.run(options, overrides = overrides)
                     ProgressManager.checkCanceled()
                 }
 

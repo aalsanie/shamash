@@ -34,6 +34,7 @@ import io.shamash.asm.core.engine.EngineRunSummary
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
+import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.awt.BorderLayout
 import java.awt.Font
 import java.time.Instant
@@ -165,6 +166,8 @@ class ShamashAsmDashboardPanel(
         val summary: EngineRunSummary? = engine?.summary
         val export = engine?.export
         val report = export?.report
+        val settings = ShamashAsmSettingsState.getInstance(project)
+        val showAdvanced = settings.isShowAdvancedTelemetry()
 
         return buildString {
             append("Project: ").append(result.options.projectName).append('\n')
@@ -174,12 +177,25 @@ class ShamashAsmDashboardPanel(
 
             append("Units scanned: ").append(result.classUnits).append('\n')
             append("Truncated: ").append(result.truncated).append('\n')
+
+            val applied = result.appliedOverrides?.scan
+            if (applied != null) {
+                append("Applied overrides: ").append(formatApplied(applied)).append('\n')
+            } else if (showAdvanced) {
+                append("Applied overrides: (none)").append('\n')
+            }
             append('\n')
 
             append("Config errors: ").append(result.configErrors.size).append('\n')
             append("Scan errors: ").append(result.scanErrors.size).append('\n')
             append("Facts errors: ").append(result.factsErrors.size).append('\n')
             append('\n')
+
+            if (showAdvanced) {
+                append("Options: includeFactsInResult=").append(result.options.includeFactsInResult).append('\n')
+                append("Settings: applyOverrides=").append(settings.isApplyOverrides()).append('\n')
+                append('\n')
+            }
 
             if (engine == null) {
                 append("Engine: not executed\n")
@@ -289,6 +305,16 @@ class ShamashAsmDashboardPanel(
                 append("- ").append(it?.toString() ?: "null").append('\n')
             }
         }.trimEnd()
+
+    private fun formatApplied(ov: io.shamash.asm.core.scan.ScanOverrides): String {
+        val parts = ArrayList<String>(5)
+        ov.scope?.let { parts += "scope=$it" }
+        ov.followSymlinks?.let { parts += "followSymlinks=$it" }
+        ov.maxClasses?.let { parts += "maxClasses=$it" }
+        ov.maxJarBytes?.let { parts += "maxJarBytes=$it" }
+        ov.maxClassBytes?.let { parts += "maxClassBytes=$it" }
+        return if (parts.isEmpty()) "(none)" else parts.joinToString(" ")
+    }
 
     private fun monoArea(): JBTextArea =
         JBTextArea().apply {

@@ -2,8 +2,13 @@
 
 ## [unreleased]
 
+### Added
+-Users can set scan knobs in CLI/IntelliJ without editing YAML
+- UI shows which overrides were applied
+- Roles debug is exportable and visible
+
 ### Fixed
-- UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes.
+- UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes
 
 ## [0.80.0]
 ### Update

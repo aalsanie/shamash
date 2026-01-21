@@ -26,10 +26,13 @@ import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
+import io.shamash.asm.core.config.schema.v1.model.ScanScope
 import io.shamash.asm.core.export.facts.FactsClassRecord
 import io.shamash.asm.core.export.facts.FactsEdgeRecord
 import io.shamash.asm.core.export.facts.FactsReader
+import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
+import io.shamash.asm.core.scan.ScanOverrides
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
@@ -305,6 +308,36 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         description = "Project root (default: current directory)",
     ).default(".")
 
+    private val scopeRaw: String? by option(
+        type = ArgType.String,
+        fullName = "scope",
+        description = "Override scan scope: PROJECT_ONLY|ALL_SOURCES|PROJECT_WITH_EXTERNAL_BUCKETS",
+    )
+
+    private val followSymlinksRaw: String? by option(
+        type = ArgType.String,
+        fullName = "follow-symlinks",
+        description = "Override followSymlinks (true|false)",
+    )
+
+    private val maxClassesOverride: Int? by option(
+        type = ArgType.Int,
+        fullName = "max-classes",
+        description = "Override maxClasses (must be > 0)",
+    )
+
+    private val maxJarBytesOverride: Int? by option(
+        type = ArgType.Int,
+        fullName = "max-jar-bytes",
+        description = "Override maxJarBytes (must be > 0)",
+    )
+
+    private val maxClassBytesOverride: Int? by option(
+        type = ArgType.Int,
+        fullName = "max-class-bytes",
+        description = "Override maxClassBytes (must be > 0)",
+    )
+
     private val config: String? by option(
         type = ArgType.String,
         fullName = "config",
@@ -363,6 +396,69 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         if (factsFormatRaw != null && !exportFacts) {
             Console.errln("Ignoring --facts-format because --export-facts was not set.")
         }
+        val scopeOverride =
+            try {
+                parseScanScopeOrNull(scopeRaw)
+            } catch (t: Throwable) {
+                Console.errln(t.message ?: "Invalid --scope")
+                return ExitCode.CONFIG_ERROR
+            }
+
+        val followSymlinksOverride =
+            try {
+                parseBoolOrNull(followSymlinksRaw, "--follow-symlinks")
+            } catch (t: Throwable) {
+                Console.errln(t.message ?: "Invalid --follow-symlinks")
+                return ExitCode.CONFIG_ERROR
+            }
+
+        val maxClasses =
+            maxClassesOverride?.let {
+                if (it > 0) {
+                    it
+                } else {
+                    Console.errln("Invalid --max-classes: $it (must be > 0)")
+                    return ExitCode.CONFIG_ERROR
+                }
+            }
+
+        val maxJarBytes =
+            maxJarBytesOverride?.let {
+                if (it > 0) {
+                    it
+                } else {
+                    Console.errln("Invalid --max-jar-bytes: $it (must be > 0)")
+                    return ExitCode.CONFIG_ERROR
+                }
+            }
+
+        val maxClassBytes =
+            maxClassBytesOverride?.let {
+                if (it > 0) {
+                    it
+                } else {
+                    Console.errln("Invalid --max-class-bytes: $it (must be > 0)")
+                    return ExitCode.CONFIG_ERROR
+                }
+            }
+
+        val scanOverrides =
+            ScanOverrides(
+                scope = scopeOverride,
+                followSymlinks = followSymlinksOverride,
+                maxClasses = maxClasses,
+                maxJarBytes = maxJarBytes,
+                maxClassBytes = maxClassBytes,
+            )
+
+        val overrides =
+            RunOverrides(scan = scanOverrides).takeIf {
+                scanOverrides.scope != null ||
+                    scanOverrides.followSymlinks != null ||
+                    scanOverrides.maxClasses != null ||
+                    scanOverrides.maxJarBytes != null ||
+                    scanOverrides.maxClassBytes != null
+            }
 
         val runner = ShamashAsmScanRunner()
         val res =
@@ -375,6 +471,7 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
                     exportFacts = exportFacts,
                     factsFormatOverride = factsFormatOverride,
                 ),
+                overrides = overrides,
             )
 
         // ----- config problems
@@ -429,6 +526,20 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         Console.println("Base path   : ${summary.projectBasePath}")
         Console.println("Config      : ${res.configPath}")
         Console.println("Classes     : ${res.classUnits}${if (res.truncated) " (truncated)" else ""}")
+
+        val appliedScanOv = res.appliedOverrides?.scan
+        if (appliedScanOv != null) {
+            val parts = ArrayList<String>(5)
+            appliedScanOv.scope?.let { parts += "scope=$it" }
+            appliedScanOv.followSymlinks?.let { parts += "followSymlinks=$it" }
+            appliedScanOv.maxClasses?.let { parts += "maxClasses=$it" }
+            appliedScanOv.maxJarBytes?.let { parts += "maxJarBytes=$it" }
+            appliedScanOv.maxClassBytes?.let { parts += "maxClassBytes=$it" }
+            if (parts.isNotEmpty()) {
+                Console.println("Overrides   : ${parts.joinToString(" ")}")
+            }
+        }
+
         Console.println(
             "Facts       : classes=${summary.factsStats.classes} methods=${summary.factsStats.methods} " +
                 "fields=${summary.factsStats.fields} edges=${summary.factsStats.edges}",
@@ -497,6 +608,30 @@ private fun parseFactsFormatOrNull(
         "JSON" -> ExportFactsFormat.JSON
         "JSONL_GZ", "JSONL", "JSONL.GZ" -> ExportFactsFormat.JSONL_GZ
         else -> throw IllegalArgumentException("Unknown --facts-format: '$raw' (expected: JSON|JSONL_GZ)")
+    }
+}
+
+private fun parseScanScopeOrNull(raw: String?): ScanScope? {
+    val v = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return when (v.uppercase()) {
+        "PROJECT_ONLY" -> ScanScope.PROJECT_ONLY
+        "ALL_SOURCES" -> ScanScope.ALL_SOURCES
+        "PROJECT_WITH_EXTERNAL_BUCKETS" -> ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS
+        else -> throw IllegalArgumentException(
+            "Unknown --scope: '$raw' (expected: PROJECT_ONLY|ALL_SOURCES|PROJECT_WITH_EXTERNAL_BUCKETS)",
+        )
+    }
+}
+
+private fun parseBoolOrNull(
+    raw: String?,
+    optionName: String,
+): Boolean? {
+    val v = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return when (v.lowercase()) {
+        "true" -> true
+        "false" -> false
+        else -> throw IllegalArgumentException("Unknown $optionName: '$raw' (expected: true|false)")
     }
 }
 

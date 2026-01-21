@@ -141,6 +141,17 @@ shamash facts .shamash/facts.jsonl.gz --package com.acme.app.service
 
 ```
 
+### CLI overrides
+
+```shell
+shamash scan --project . \
+  --scope PROJECT_ONLY \      # PROJECT_ONLY | ALL_SOURCES | PROJECT_WITH_EXTERNAL_BUCKETS
+  --follow-symlinks false \   # true | false
+  --max-classes 50000 \
+  --max-jar-bytes 50000000 \
+  --max-class-bytes 2000000
+```
+
 ### Exit codes (CI)
 
 - `0` success (and findings below fail threshold)
