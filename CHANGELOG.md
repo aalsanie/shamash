@@ -2,6 +2,9 @@
 
 ## [unreleased]
 
+### Fixed
+- UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes.
+
 ## [0.80.0]
 ### Update
 - Refactored baseline and extracted BaselineFingerprint
