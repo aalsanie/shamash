@@ -92,7 +92,7 @@ class FactExtractorTest {
             val clazz = facts.classes.singleOrNull { it.fqName == "com.example.Foo" }
             assertTrue(clazz != null, "expected ClassFact for com.example.Foo")
 
-            val loc = clazz!!.location
+            val loc = clazz.location
             assertTrue(loc.originKind == OriginKind.DIR_CLASS)
         } finally {
             project.toFile().deleteRecursively()

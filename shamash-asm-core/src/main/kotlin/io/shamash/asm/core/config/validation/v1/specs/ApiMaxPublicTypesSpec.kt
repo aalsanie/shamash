@@ -83,7 +83,7 @@ class ApiMaxPublicTypesSpec : RuleSpec {
             errors +=
                 ValidationError(
                     path = e.at,
-                    message = e.message ?: "Invalid param",
+                    message = e.message,
                     severity = ValidationSeverity.ERROR,
                 )
         }

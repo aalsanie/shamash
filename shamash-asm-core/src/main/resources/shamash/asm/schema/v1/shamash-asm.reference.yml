@@ -156,7 +156,7 @@ baseline:
   # NONE: do not use baseline
   # GENERATE: produce baseline file from current findings
   # VERIFY: compare current findings to baseline and report drift
-  mode: VERIFY
+  mode: GENERATE
   path: ".shamash/baseline/shamash-asm.baseline.json"
 
 export:
@@ -164,6 +164,29 @@ export:
   outputDir: ".shamash/reports/asm"
   formats: [JSON, SARIF, HTML, XML]
   overwrite: true
+
+  # Optional export sidecar artifacts (data-first; consumed by CLI / IntelliJ UI).
+  # These are separate from report formats (HTML/JSON/SARIF/XML) and are intended
+  # to expose richer machine-readable outputs.
+  # (facts/roles/rulePlan/analysis)
+  artifacts:
+    facts:
+      enabled: false
+      # JSONL_GZ (recommended) | JSON will blow up on large projects
+      format: JSONL_GZ
+
+    roles:
+      enabled: false
+
+    rulePlan:
+      enabled: false
+
+    analysis:
+      enabled: false
+      # When enabled=true, flags default to true if omitted.
+      graphs: false
+      hotspots: false
+      scoring: false
 
 # -----------------------------------------------------------------------------
 # Rules

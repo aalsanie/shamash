@@ -25,10 +25,15 @@ import io.shamash.artifacts.contract.FindingSeverity
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.config.ValidationSeverity
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
+import io.shamash.asm.core.export.facts.FactsClassRecord
+import io.shamash.asm.core.export.facts.FactsEdgeRecord
+import io.shamash.asm.core.export.facts.FactsReader
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
+import kotlinx.cli.ExperimentalCli
 import kotlinx.cli.Subcommand
 import kotlinx.cli.default
 import java.io.PrintWriter
@@ -47,15 +52,17 @@ import kotlin.system.exitProcess
  *
  * v1 goal: CI-friendly ASM runner.
  */
+@OptIn(ExperimentalCli::class)
 fun main(args: Array<String>) {
     val parser = ArgParser(programName = "shamash")
 
     val cmdInit = InitCommand()
     val cmdValidate = ValidateCommand()
     val cmdScan = ScanCommand()
+    val cmdFacts = FactsCommand()
     val cmdVersion = VersionCommand()
 
-    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdVersion)
+    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdVersion)
 
     try {
         parser.parse(args)
@@ -70,6 +77,7 @@ fun main(args: Array<String>) {
             cmdInit.wasInvoked -> cmdInit.exitCode
             cmdValidate.wasInvoked -> cmdValidate.exitCode
             cmdScan.wasInvoked -> cmdScan.exitCode
+            cmdFacts.wasInvoked -> cmdFacts.exitCode
             cmdVersion.wasInvoked -> cmdVersion.exitCode
             else -> ExitCode.OK
         }
@@ -309,6 +317,18 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         description = "Include FactIndex in memory result (debug)",
     ).default(false)
 
+    private val exportFacts by option(
+        type = ArgType.Boolean,
+        fullName = "export-facts",
+        description = "Force facts export (overrides config export.artifacts.facts.enabled=false)",
+    ).default(false)
+
+    private val factsFormatRaw: String? by option(
+        type = ArgType.String,
+        fullName = "facts-format",
+        description = "Facts output format override when --export-facts is set: JSON|JSONL_GZ",
+    )
+
     private val failOnRaw by option(
         type = ArgType.String,
         fullName = "fail-on",
@@ -333,6 +353,17 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
 
         val configPath = config?.let { projectRoot.resolve(it).normalize() }
 
+        val factsFormatOverride =
+            try {
+                parseFactsFormatOrNull(factsFormatRaw, exportFacts)
+            } catch (t: Throwable) {
+                Console.errln(t.message ?: "Invalid --facts-format")
+                return ExitCode.CONFIG_ERROR
+            }
+        if (factsFormatRaw != null && !exportFacts) {
+            Console.errln("Ignoring --facts-format because --export-facts was not set.")
+        }
+
         val runner = ShamashAsmScanRunner()
         val res =
             runner.run(
@@ -341,6 +372,8 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
                     projectName = projectRoot.fileName?.toString() ?: "project",
                     configPath = configPath,
                     includeFactsInResult = includeFacts,
+                    exportFacts = exportFacts,
+                    factsFormatOverride = factsFormatOverride,
                 ),
             )
 
@@ -451,5 +484,236 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
 
         // ----- CI fail threshold
         return if (failOn.shouldFail(findingCounts)) ExitCode.FINDINGS_THRESHOLD else ExitCode.OK
+    }
+}
+
+private fun parseFactsFormatOrNull(
+    raw: String?,
+    enabled: Boolean,
+): ExportFactsFormat? {
+    if (!enabled) return null
+    val v = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return when (v.uppercase()) {
+        "JSON" -> ExportFactsFormat.JSON
+        "JSONL_GZ", "JSONL", "JSONL.GZ" -> ExportFactsFormat.JSONL_GZ
+        else -> throw IllegalArgumentException("Unknown --facts-format: '$raw' (expected: JSON|JSONL_GZ)")
+    }
+}
+
+private fun packageOf(fqn: String): String {
+    val idx = fqn.lastIndexOf('.')
+    return if (idx <= 0) "" else fqn.substring(0, idx)
+}
+
+private class BoundedCounter(
+    private val maxKeys: Int,
+) {
+    private val counts: MutableMap<String, Long> = HashMap()
+    var droppedIncrements: Long = 0
+        private set
+
+    fun increment(
+        key: String,
+        delta: Long = 1L,
+    ) {
+        if (key.isEmpty()) return
+        val cur = counts[key]
+        if (cur != null) {
+            counts[key] = cur + delta
+            return
+        }
+        if (counts.size >= maxKeys) {
+            droppedIncrements += delta
+            return
+        }
+        counts[key] = delta
+    }
+
+    fun get(key: String): Long = counts[key] ?: 0L
+
+    fun top(n: Int): List<Pair<String, Long>> {
+        if (n <= 0) return emptyList()
+        return counts.entries
+            .asSequence()
+            .map { it.key to it.value }
+            .sortedWith(compareByDescending<Pair<String, Long>> { it.second }.thenBy { it.first })
+            .take(n)
+            .toList()
+    }
+}
+
+private class FactsCommand : CommandBase("facts", "Inspect exported facts (facts.jsonl.gz or facts.json)") {
+    private val path by option(
+        type = ArgType.String,
+        fullName = "path",
+        description = "Path to exported facts file (facts.jsonl.gz or facts.json)",
+    )
+
+    private val classFqn: String? by option(
+        type = ArgType.String,
+        fullName = "class",
+        description = "Focus on a specific class FQN",
+    )
+
+    private val packagePrefix: String? by option(
+        type = ArgType.String,
+        fullName = "package",
+        description = "Filter edge listing to FQNs under this package prefix",
+    )
+
+    private val edgeFrom: String? by option(
+        type = ArgType.String,
+        fullName = "edge-from",
+        description = "Filter edge listing: from == FQN",
+    )
+
+    private val edgeTo: String? by option(
+        type = ArgType.String,
+        fullName = "edge-to",
+        description = "Filter edge listing: to == FQN",
+    )
+
+    private val top by option(
+        type = ArgType.Int,
+        fullName = "top",
+        description = "Top-N items to print for summaries",
+    ).default(20)
+
+    private val maxKeys by option(
+        type = ArgType.Int,
+        fullName = "max-keys",
+        description = "Max unique keys to keep in counters (fan-in/out + package stats) to avoid unbounded memory",
+    ).default(200_000)
+
+    override fun run(): ExitCode {
+        val raw = path?.trim().orEmpty()
+        if (raw.isEmpty()) {
+            Console.errln("Missing --path")
+            return ExitCode.CONFIG_ERROR
+        }
+
+        val p = Paths.get(raw).normalize().absolute()
+        if (!p.exists() || !p.isRegularFile()) {
+            Console.errln("Facts file not found: $p")
+            return ExitCode.CONFIG_ERROR
+        }
+
+        val wantEdgeListing =
+            !classFqn.isNullOrBlank() ||
+                !packagePrefix.isNullOrBlank() ||
+                !edgeFrom.isNullOrBlank() ||
+                !edgeTo.isNullOrBlank()
+
+        var projectName: String? = null
+        var tool: String? = null
+        var toolVersion: String? = null
+        var classes = 0
+        var edges = 0
+        var methods: Long = 0
+        var fields: Long = 0
+
+        val pkgClasses = BoundedCounter(maxKeys)
+        val pkgEdgesFrom = BoundedCounter(maxKeys)
+        val fanOut = BoundedCounter(maxKeys)
+        val fanIn = BoundedCounter(maxKeys)
+
+        var targetClass: FactsClassRecord? = null
+        val target = classFqn?.trim()?.takeIf { it.isNotEmpty() }
+        val pkgPrefix = packagePrefix?.trim()?.takeIf { it.isNotEmpty() }
+        val fromFilter = edgeFrom?.trim()?.takeIf { it.isNotEmpty() }
+        val toFilter = edgeTo?.trim()?.takeIf { it.isNotEmpty() }
+
+        fun edgeMatchesFilters(e: FactsEdgeRecord): Boolean {
+            if (fromFilter != null && e.from != fromFilter) return false
+            if (toFilter != null && e.to != toFilter) return false
+            if (target != null && e.from != target && e.to != target) return false
+            if (pkgPrefix != null) {
+                val fp = packageOf(e.from)
+                val tp = packageOf(e.to)
+                if (!fp.startsWith(pkgPrefix) && !tp.startsWith(pkgPrefix)) return false
+            }
+            return true
+        }
+
+        try {
+            FactsReader.read(
+                path = p,
+                onMeta = { meta ->
+                    projectName = meta.projectName
+                    tool = meta.toolName
+                    toolVersion = meta.toolVersion
+                },
+                onClass = { c ->
+                    classes++
+                    methods += c.methodCount.toLong()
+                    fields += c.fieldCount.toLong()
+                    pkgClasses.increment(c.packageName)
+                    if (target != null && c.fqName == target) {
+                        targetClass = c
+                    }
+                },
+                onEdge = { e ->
+                    edges++
+                    fanOut.increment(e.from)
+                    fanIn.increment(e.to)
+                    pkgEdgesFrom.increment(packageOf(e.from))
+
+                    if (wantEdgeListing && edgeMatchesFilters(e)) {
+                        Console.println("${e.from} -> ${e.to} [${e.kind}${e.detail?.let { ":$it" } ?: ""}]")
+                    }
+                },
+            )
+        } catch (t: Throwable) {
+            Console.errln("Failed to read facts: ${t.message ?: t::class.java.simpleName}")
+            return ExitCode.RUNTIME_ERROR
+        }
+
+        Console.println("Project     : ${projectName ?: "?"}")
+        Console.println("Tool        : ${(tool ?: "?")} ${(toolVersion ?: "")}")
+        Console.println("Classes     : $classes")
+        Console.println("Methods     : $methods")
+        Console.println("Fields      : $fields")
+        Console.println("Edges       : $edges")
+        Console.println()
+
+        if (target != null) {
+            val c = targetClass
+            if (c == null) {
+                Console.errln("Class not found in facts: $target")
+            } else {
+                Console.println("--- Class ---")
+                Console.println("FQN         : ${c.fqName}")
+                Console.println("Package     : ${c.packageName}")
+                Console.println("Role        : ${c.role ?: ""}")
+                Console.println("Visibility  : ${c.visibility}")
+                Console.println("Methods     : ${c.methodCount}")
+                Console.println("Fields      : ${c.fieldCount}")
+                Console.println("Fan-out     : ${fanOut.get(c.fqName)}")
+                Console.println("Fan-in      : ${fanIn.get(c.fqName)}")
+                Console.println()
+            }
+        }
+
+        fun printTop(
+            title: String,
+            items: List<Pair<String, Long>>,
+            dropped: Long,
+        ) {
+            Console.println("--- $title ---")
+            for ((i, kv) in items.withIndex()) {
+                Console.println("${i + 1}. ${kv.first} = ${kv.second}")
+            }
+            if (dropped > 0L) {
+                Console.errln("$title: dropped increments due to --max-keys cap: $dropped")
+            }
+            Console.println()
+        }
+
+        printTop("Top packages by classes", pkgClasses.top(top), pkgClasses.droppedIncrements)
+        printTop("Top packages by edges-from", pkgEdgesFrom.top(top), pkgEdgesFrom.droppedIncrements)
+        printTop("Top fan-out", fanOut.top(top), fanOut.droppedIncrements)
+        printTop("Top fan-in", fanIn.top(top), fanIn.droppedIncrements)
+
+        return ExitCode.OK
     }
 }

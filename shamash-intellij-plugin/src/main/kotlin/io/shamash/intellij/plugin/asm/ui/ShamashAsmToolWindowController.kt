@@ -26,13 +26,14 @@ import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBTabbedPane
 import io.shamash.intellij.plugin.asm.ui.config.ShamashAsmConfigTab
 import io.shamash.intellij.plugin.asm.ui.dashboard.ShamashAsmDashboardTab
+import io.shamash.intellij.plugin.asm.ui.facts.ShamashAsmFactsTab
 import io.shamash.intellij.plugin.asm.ui.findings.ShamashAsmFindingsTab
 
 @Service(Service.Level.PROJECT)
 class ShamashAsmToolWindowController(
     private val project: Project,
 ) {
-    enum class Tab { DASHBOARD, FINDINGS, CONFIG }
+    enum class Tab { DASHBOARD, FINDINGS, FACTS, CONFIG }
 
     private val tabIndex = LinkedHashMap<Tab, Int>(8)
 
@@ -45,6 +46,9 @@ class ShamashAsmToolWindowController(
     lateinit var findingsTab: ShamashAsmFindingsTab
         private set
 
+    lateinit var factsTab: ShamashAsmFactsTab
+        private set
+
     lateinit var configTab: ShamashAsmConfigTab
         private set
 
@@ -53,6 +57,7 @@ class ShamashAsmToolWindowController(
 
         dashboardTab = ShamashAsmDashboardTab(project)
         findingsTab = ShamashAsmFindingsTab(project)
+        factsTab = ShamashAsmFactsTab(project)
         configTab = ShamashAsmConfigTab(project)
 
         tabbedPane.removeAll()
@@ -64,6 +69,9 @@ class ShamashAsmToolWindowController(
         tabIndex[Tab.FINDINGS] = tabbedPane.tabCount
         tabbedPane.addTab("Findings", findingsTab.component())
 
+        tabIndex[Tab.FACTS] = tabbedPane.tabCount
+        tabbedPane.addTab("Facts", factsTab.component())
+
         tabIndex[Tab.CONFIG] = tabbedPane.tabCount
         tabbedPane.addTab("Config", configTab.component())
     }
@@ -71,6 +79,7 @@ class ShamashAsmToolWindowController(
     fun refreshAll() {
         if (::dashboardTab.isInitialized) dashboardTab.refresh()
         if (::findingsTab.isInitialized) findingsTab.refresh()
+        if (::factsTab.isInitialized) factsTab.refresh()
         if (::configTab.isInitialized) configTab.refresh()
     }
 

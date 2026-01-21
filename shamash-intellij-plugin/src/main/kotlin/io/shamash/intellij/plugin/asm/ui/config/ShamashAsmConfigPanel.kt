@@ -21,13 +21,10 @@
  */
 package io.shamash.intellij.plugin.asm.ui.config
 
-import com.intellij.ide.DataManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
@@ -87,13 +84,11 @@ class ShamashAsmConfigPanel(
         val actionsRow = buildHeaderActionsRow().apply { alignmentX = JComponent.LEFT_ALIGNMENT }
         headerStack.add(actionsRow)
 
-        // This is the key: real vertical strut, not just border math.
         headerStack.add(Box.createVerticalStrut(JBUI.scale(10)))
 
         val meta = buildMetaPanel().apply { alignmentX = JComponent.LEFT_ALIGNMENT }
         headerStack.add(meta)
 
-        // Put header stack in NORTH, errors scroll fills the rest.
         root.add(headerStack, BorderLayout.NORTH)
         root.add(errorsScroll, BorderLayout.CENTER)
 
@@ -108,24 +103,46 @@ class ShamashAsmConfigPanel(
 
         val resolved = ShamashAsmConfigLocator.resolveConfigPath(project)
         val state = ShamashAsmUiStateService.getInstance(project).getState()
-        val errs = state?.scanResult?.configErrors.orEmpty()
+        val result = state?.scanResult
+
+        val configErrors = result?.configErrors.orEmpty()
 
         pathLabel.text = "Resolved config: ${resolved?.toString() ?: "Not found"}"
 
-        val (errCount, warnCount) = count(errs)
+        // rules:
+        // 1) Not validated -> "No Validation results yet. Press validate config"
+        // 2) Validated -> "Run scan" (if scan not ran)
+        // 3) Validate action redirects (handled in ValidateAsmConfigAction)
+        // 4) Validated + scan ran -> "Navigate to findings tab to view findings"
         summaryLabel.text =
             when {
                 resolved == null ->
                     "No ASM config found. Create one from reference."
-                errs.isEmpty() ->
-                    "No validation results yet. Use Validate or Run Scan."
-                errCount > 0 ->
+
+                // No validation has happened yet (no state/scanResult produced by validation or scan action)
+                result == null ->
+                    "No Validation results yet. Press validate config"
+
+                // Validation (or scan) produced config errors
+                configErrors.isNotEmpty() -> {
+                    val (errCount, warnCount) = count(configErrors)
                     "Invalid config. Errors: $errCount | Warnings: $warnCount"
+                }
+
+                // Config validated AND scan ran (engine result exists)
+                result.config != null && result.hasEngineResult ->
+                    "Navigate to findings tab to view findings"
+
+                // Config validated AND scan NOT ran
+                result.config != null ->
+                    "Run scan"
+
+                // Fallback (should be rare): we have a ScanResult but no errors and no typed config
                 else ->
-                    "Config valid. Warnings: $warnCount"
+                    "No Validation results yet. Press validate config"
             }
 
-        errorsTextArea.text = if (errs.isEmpty()) "" else formatErrors(errs)
+        errorsTextArea.text = if (configErrors.isEmpty()) "" else formatErrors(configErrors)
         errorsTextArea.caretPosition = 0
     }
 
@@ -145,7 +162,7 @@ class ShamashAsmConfigPanel(
         val row =
             JPanel(WrapFlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(6))).apply {
                 isOpaque = false
-                border = JBUI.Borders.empty(0)
+                border = JBUI.Borders.empty(10) // keep 10 for panel not to overlap buttons
             }
 
         row.add(actionButton("Validate Config", "io.shamash.asm.validateConfig"))
@@ -176,15 +193,13 @@ class ShamashAsmConfigPanel(
     }
 
     private fun invokeAction(action: AnAction) {
-        val dataContext: DataContext = DataManager.getInstance().getDataContext(root)
-        val event =
-            AnActionEvent.createFromAnAction(
-                action,
-                null,
-                ActionPlaces.TOOLWINDOW_TOOLBAR_BAR,
-                dataContext,
-            )
-        action.actionPerformed(event)
+        ActionManager.getInstance().tryToExecute(
+            action,
+            null,
+            root,
+            ActionPlaces.TOOLWINDOW_TOOLBAR_BAR,
+            true,
+        )
     }
 
     private fun count(errors: List<ValidationError>): Pair<Int, Int> {

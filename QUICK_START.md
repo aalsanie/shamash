@@ -14,7 +14,7 @@
 
 ## CLI (ASM)
 
-`shamash-cli` runs the ASM engine: validate config, scan bytecode, produce findings, and export reports.
+`shamash-cli` runs the ASM engine: validate config, scan bytecode, produce findings, facts, graphs, analysis and export reports.
 
 ### Install
 
@@ -30,7 +30,15 @@ Unzip it, then run the binary:
 
 (Optional) add the `bin/` directory to your `PATH`.
 
-### Quick start
+### Schema Examples
+
+```psi.yml:```[](shamash-psi-core/src/main/resources/shamash/psi/schema/v1/shamash-psi.reference.yml)
+
+```asm.yml:``` [asm reference](shamash-asm-core/src/main/resources/shamash/asm/schema/v1/shamash-asm.reference.yml)
+
+> See [pit-violation yaml configurations if you want to see all rules violator](/docs/asm/pit-violation/src/main/resources/shamash/configs/asm.yml)
+
+### CLI Quick start
 
 From your project root:
 
@@ -88,6 +96,49 @@ shamash scan --fail-on NONE
 
 # Print all findings to stdout
 shamash scan --print-findings
+```
+
+#### `shamash scan --export-facts --facts-format JSONL_GZ`
+Facts are a streamable snapshot of the dependency graph (classes + edges). 
+They’re exported as JSONL (one record per line) and typically compressed as facts.jsonl.gz so large graphs stay manageable.
+
+Enable facts in configuration `asm.yml`:
+```yaml
+export:
+  enabled: true
+  artifacts:
+    facts:
+      enabled: true
+      format: JSONL_GZ #can be json but not advised in large codebases
+```
+
+```shell
+# Build first so bytecode exists
+./gradlew assemble
+
+# Run scan and force facts export (writes under .shamash/ by default)
+shamash scan --export-facts
+
+# Optionally choose output format explicitly
+shamash scan --export-facts --facts-format JSONL_GZ
+shamash scan --export-facts --facts-format JSON
+
+# Use facts command to read exported file and print summaries
+# Summaries: totals + top packages + top fan-in/out
+shamash facts .shamash/facts.jsonl.gz
+
+# JSON is also supported
+shamash facts .shamash/facts.json
+
+# Cap the number of unique keys tracked for fan-in/out and package stats (default: 200000)
+shamash facts .shamash/facts.jsonl.gz --max-keys 100000
+
+# Limit to one class
+shamash facts .shamash/facts.jsonl.gz --class com.acme.app.service.UserService
+
+# Limit to a package prefix
+shamash facts .shamash/facts.jsonl.gz --package com.acme.app.service
+
 ```
 
 ### Exit codes (CI)

@@ -21,12 +21,9 @@
  */
 package io.shamash.intellij.plugin.asm.ui.dashboard
 
-import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBPanel
 import com.intellij.util.ui.JBUI
@@ -52,7 +49,7 @@ class DashboardToolbarPanel(
         val row =
             JPanel(WrapFlowLayout(FlowLayout.LEFT, JBUI.scale(8), JBUI.scale(6))).apply {
                 isOpaque = false
-                border = JBUI.Borders.empty(0)
+                border = JBUI.Borders.empty(10) // no buttons overlap, keep 10
             }
 
         row.add(actionButton("Run Scan", "io.shamash.asm.runScan"))
@@ -82,15 +79,13 @@ class DashboardToolbarPanel(
     }
 
     private fun invokeAction(action: AnAction) {
-        val dataContext: DataContext = DataManager.getInstance().getDataContext(targetComponent)
-        val event =
-            AnActionEvent.createFromAnAction(
-                action,
-                null,
-                ActionPlaces.TOOLWINDOW_TOOLBAR_BAR,
-                dataContext,
-            )
-        action.actionPerformed(event)
+        ActionManager.getInstance().tryToExecute(
+            action,
+            null,
+            targetComponent,
+            ActionPlaces.TOOLWINDOW_TOOLBAR_BAR,
+            true,
+        )
     }
 
     /**

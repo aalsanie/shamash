@@ -2,7 +2,7 @@
   <img src="assets/shamash_logo.png" alt="Shamash Logo" width="180"/>
 </p>
 
-[![current release](https://img.shields.io/badge/release-0.70.1-green)](https://github.com/aalsanie/shamash/releases) | [![install plugin](https://img.shields.io/badge/jetbrains-plugin-red)](https://plugins.jetbrains.com/plugin/29504-shamash) | [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html) | ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
+[![current release](https://img.shields.io/badge/release-0.80.0-green)](https://github.com/aalsanie/shamash/releases) | [![install plugin](https://img.shields.io/badge/jetbrains-plugin-red)](https://plugins.jetbrains.com/plugin/29504-shamash) | [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html) | ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
 | ![Plugin Verify](https://github.com/aalsanie/shamash/actions/workflows/plugin.yml/badge.svg)
 
 
@@ -53,7 +53,18 @@ These YAML configs define roles, rules, scope, validation behavior, exports, and
 
 ---
 
-## Documentation & hands-on example
+<details>
+  <summary><b>Demo (GIF)</b></summary>
+
+  <br/>
+
+![Shamash IntelliJ demo](./assets/shamash-demo.gif)
+
+</details>
+
+---
+
+## Documentation & Examples
 
 Docs + Test Bed applications: [`./docs/`](./docs)
 

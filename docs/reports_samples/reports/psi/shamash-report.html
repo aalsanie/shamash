@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Shamash Report</title>
+  <style>
+body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:24px; background:#0b0f17; color:#e7eefc;}
+.header{display:flex; flex-direction:column; gap:6px; margin-bottom:16px;}
+.title{font-size:22px; font-weight:700;}
+.meta{font-size:12px; color:#a9b7d0;}
+.card{background:#101826; border:1px solid #1e2a40; border-radius:14px; padding:14px; margin-bottom:14px; box-shadow:0 6px 18px rgba(0,0,0,.25);} 
+.row{display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid #1b263a;}
+.row:last-child{border-bottom:none;}
+.label{color:#a9b7d0; min-width:90px;}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px;}
+.tableWrap{overflow:auto;}
+table{width:100%; border-collapse:separate; border-spacing:0;}
+th,td{padding:10px 10px; text-align:left; vertical-align:top; border-bottom:1px solid #1b263a;}
+th{font-size:12px; color:#a9b7d0; font-weight:600; position:sticky; top:0; background:#101826;}
+td{font-size:13px;}
+.badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700;}
+.badgeError{background:#3b0d14; color:#ffb3bd; border:1px solid #6b1321;}
+.badgeWarn{background:#2b2106; color:#ffe0a3; border:1px solid #6a4a0a;}
+.badgeInfo{background:#0b2235; color:#b8dcff; border:1px solid #123a5a;}
+
+  </style>
+</head>
+<body>
+<header class="header">
+  <div class="title">Shamash Report</div>
+  <div class="meta">Shamash PSI v0.70.4 · schema v1 · 1768876765850</div>
+</header>
+<section class="card">
+  <div class="row"><span class="label">Project</span><span>pit-violation</span></div>
+  <div class="row"><span class="label">Base path</span><span class="mono">/Users/User/IdeaProjects/Shamash/docs/asm/pit-violation</span></div>
+  <div class="row"><span class="label">Findings</span><span>50</span></div>
+</section>
+<section class="card">
+  <div class="tableWrap">
+    <table>
+      <thead>
+        <tr><th>Severity</th><th>Rule</th><th>File</th><th>Owner</th><th>Fingerprint</th><th>Message</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/a/A.java</td>
+          <td class="mono"></td>
+          <td class="mono">44bf6ef90d9a6f6a098e7adc290c63fd6ad71975e385246d98cd85eb79b79529</td>
+          <td>Package &#39;com.acme.a&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/a/A.java</td>
+          <td class="mono"></td>
+          <td class="mono">44bf6ef90d9a6f6a098e7adc290c63fd6ad71975e385246d98cd85eb79b79529</td>
+          <td>Package &#39;com.acme.a&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/annotations/InternalApi.java</td>
+          <td class="mono"></td>
+          <td class="mono">f16d0c6441761a013f9d21519171bacb223c5b4894655b7aa9e33c80f55062e7</td>
+          <td>Package &#39;com.acme.annotations&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/annotations/InternalApi.java</td>
+          <td class="mono"></td>
+          <td class="mono">f16d0c6441761a013f9d21519171bacb223c5b4894655b7aa9e33c80f55062e7</td>
+          <td>Package &#39;com.acme.annotations&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/GeneratedProxy.java</td>
+          <td class="mono"></td>
+          <td class="mono">60c79bc55c444d8da1e89ceae4c6201803682286688c8773b4f0461719220b83</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/GeneratedProxy.java</td>
+          <td class="mono"></td>
+          <td class="mono">60c79bc55c444d8da1e89ceae4c6201803682286688c8773b4f0461719220b83</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/PublicApi1.java</td>
+          <td class="mono"></td>
+          <td class="mono">e32097cc5469a3aa614be991b56fa1e45503d42c68f2c037bf866e4d60db4471</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/PublicApi1.java</td>
+          <td class="mono"></td>
+          <td class="mono">e32097cc5469a3aa614be991b56fa1e45503d42c68f2c037bf866e4d60db4471</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/PublicApi2.java</td>
+          <td class="mono"></td>
+          <td class="mono">08382b66ff4dfd1248ecc31c5cbf75e05f41807ee48ae94fbbb6703c6ea5c252</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/PublicApi2.java</td>
+          <td class="mono"></td>
+          <td class="mono">08382b66ff4dfd1248ecc31c5cbf75e05f41807ee48ae94fbbb6703c6ea5c252</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/PublicApi3.java</td>
+          <td class="mono"></td>
+          <td class="mono">e1e1d64bb25c429ab8f1292a0dda4bad7e9ff80949ba202396c0a21628db8c9b</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/api/PublicApi3.java</td>
+          <td class="mono"></td>
+          <td class="mono">e1e1d64bb25c429ab8f1292a0dda4bad7e9ff80949ba202396c0a21628db8c9b</td>
+          <td>Package &#39;com.acme.api&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeInfo">INFO</span></td>
+          <td class="mono">deadcode.unusedPrivateMembers</td>
+          <td class="mono">src/main/java/com/acme/b/B.java</td>
+          <td class="mono">com.acme.b.B#a</td>
+          <td class="mono">fd7ab808ec6bb52e15287419d99b66c28fb8948b4dd46163b508c59ec3110de6</td>
+          <td>Private field &#39;a&#39; appears unused.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeInfo">INFO</span></td>
+          <td class="mono">deadcode.unusedPrivateMembers</td>
+          <td class="mono">src/main/java/com/acme/b/B.java</td>
+          <td class="mono">com.acme.b.B#a</td>
+          <td class="mono">fd7ab808ec6bb52e15287419d99b66c28fb8948b4dd46163b508c59ec3110de6</td>
+          <td>Private field &#39;a&#39; appears unused.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/b/B.java</td>
+          <td class="mono"></td>
+          <td class="mono">5fe8d2c16cad4ac51b681498180fc72202c60aa90864bca365b9bedc160ea4f8</td>
+          <td>Package &#39;com.acme.b&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/b/B.java</td>
+          <td class="mono"></td>
+          <td class="mono">5fe8d2c16cad4ac51b681498180fc72202c60aa90864bca365b9bedc160ea4f8</td>
+          <td>Package &#39;com.acme.b&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client1.java</td>
+          <td class="mono"></td>
+          <td class="mono">8d903201eb9c6e0af926860aba3b081c575cf921e3aa72464cac36c404e16593</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client1.java</td>
+          <td class="mono"></td>
+          <td class="mono">8d903201eb9c6e0af926860aba3b081c575cf921e3aa72464cac36c404e16593</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client2.java</td>
+          <td class="mono"></td>
+          <td class="mono">3d22450da97ace21e4387c3fa353c853a4a403189607e031ea54c95b6ecf8fc3</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client2.java</td>
+          <td class="mono"></td>
+          <td class="mono">3d22450da97ace21e4387c3fa353c853a4a403189607e031ea54c95b6ecf8fc3</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client3.java</td>
+          <td class="mono"></td>
+          <td class="mono">b0b14d9be243c089032db7349f02638917d3995ecc2b8a8ade4558158ce8eeaa</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client3.java</td>
+          <td class="mono"></td>
+          <td class="mono">b0b14d9be243c089032db7349f02638917d3995ecc2b8a8ade4558158ce8eeaa</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client4.java</td>
+          <td class="mono"></td>
+          <td class="mono">1ef87d1ddb311e22d6df053a03764fe8d12f6aaea1bb8c433d40ee4711c50c22</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client4.java</td>
+          <td class="mono"></td>
+          <td class="mono">1ef87d1ddb311e22d6df053a03764fe8d12f6aaea1bb8c433d40ee4711c50c22</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client5.java</td>
+          <td class="mono"></td>
+          <td class="mono">5dfa06404748cd246293b5cb5566408c981d31e2cfef9409d61c2cfe952ffae0</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client5.java</td>
+          <td class="mono"></td>
+          <td class="mono">5dfa06404748cd246293b5cb5566408c981d31e2cfef9409d61c2cfe952ffae0</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client6.java</td>
+          <td class="mono"></td>
+          <td class="mono">52dc884472f97bf76ef60d2ada1e948258189c0ef9d7a4b9ad1beea3c81b9c12</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client6.java</td>
+          <td class="mono"></td>
+          <td class="mono">52dc884472f97bf76ef60d2ada1e948258189c0ef9d7a4b9ad1beea3c81b9c12</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client7.java</td>
+          <td class="mono"></td>
+          <td class="mono">ddf131de98d5509506323d2dc651e71d6d252e75ef281f4bf2f19fc6f03530fe</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/clients/Client7.java</td>
+          <td class="mono"></td>
+          <td class="mono">ddf131de98d5509506323d2dc651e71d6d252e75ef281f4bf2f19fc6f03530fe</td>
+          <td>Package &#39;com.acme.clients&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/core/CoreService.java</td>
+          <td class="mono"></td>
+          <td class="mono">fec2916c015e8487de19285e7e054a7e3938b5834cad06fd7a4d418acb5a4110</td>
+          <td>Package &#39;com.acme.core&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/core/CoreService.java</td>
+          <td class="mono"></td>
+          <td class="mono">fec2916c015e8487de19285e7e054a7e3938b5834cad06fd7a4d418acb5a4110</td>
+          <td>Package &#39;com.acme.core&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/core/TargetHub.java</td>
+          <td class="mono"></td>
+          <td class="mono">ba65eedaf14623e3c32da83f3e6b02135efbb5594e88cef0f8f536dc61d281b6</td>
+          <td>Package &#39;com.acme.core&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/core/TargetHub.java</td>
+          <td class="mono"></td>
+          <td class="mono">ba65eedaf14623e3c32da83f3e6b02135efbb5594e88cef0f8f536dc61d281b6</td>
+          <td>Package &#39;com.acme.core&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/extra/Extra1.java</td>
+          <td class="mono"></td>
+          <td class="mono">d884940213665bf1839198f6f1deacbcf3985ad3a78456b6f6dc02bac8a42959</td>
+          <td>Package &#39;com.acme.extra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/extra/Extra1.java</td>
+          <td class="mono"></td>
+          <td class="mono">d884940213665bf1839198f6f1deacbcf3985ad3a78456b6f6dc02bac8a42959</td>
+          <td>Package &#39;com.acme.extra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/extra/Extra2.java</td>
+          <td class="mono"></td>
+          <td class="mono">c8f544c1d4901e946c2fa6bd7645404a92363f9c4ce26df4f1add1ca7a1b7959</td>
+          <td>Package &#39;com.acme.extra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/extra/Extra2.java</td>
+          <td class="mono"></td>
+          <td class="mono">c8f544c1d4901e946c2fa6bd7645404a92363f9c4ce26df4f1add1ca7a1b7959</td>
+          <td>Package &#39;com.acme.extra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/extra/Extra3.java</td>
+          <td class="mono"></td>
+          <td class="mono">8898ce14429a5126c836653bdddb9142b6cda5b76d7d563bf3c18b963b4bda5c</td>
+          <td>Package &#39;com.acme.extra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/extra/Extra3.java</td>
+          <td class="mono"></td>
+          <td class="mono">8898ce14429a5126c836653bdddb9142b6cda5b76d7d563bf3c18b963b4bda5c</td>
+          <td>Package &#39;com.acme.extra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/forbidden/BadPlace.java</td>
+          <td class="mono"></td>
+          <td class="mono">f55e364eb81b9ff0ab0adc046ba7b55d0a198a7f71988d0317ee5e05dceb4a7e</td>
+          <td>Package &#39;com.acme.forbidden&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/forbidden/BadPlace.java</td>
+          <td class="mono"></td>
+          <td class="mono">f55e364eb81b9ff0ab0adc046ba7b55d0a198a7f71988d0317ee5e05dceb4a7e</td>
+          <td>Package &#39;com.acme.forbidden&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/infra/InfraRepo.java</td>
+          <td class="mono"></td>
+          <td class="mono">44ea9bd3c16d5a13f240f5c8d1e9f841f864b575f13df5b86c960ca11a402308</td>
+          <td>Package &#39;com.acme.infra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/infra/InfraRepo.java</td>
+          <td class="mono"></td>
+          <td class="mono">44ea9bd3c16d5a13f240f5c8d1e9f841f864b575f13df5b86c960ca11a402308</td>
+          <td>Package &#39;com.acme.infra&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/misc/Misc1.java</td>
+          <td class="mono"></td>
+          <td class="mono">da5d0d5b54b1699acc906461bb31588e39679471fff8605eda184d2839f223a0</td>
+          <td>Package &#39;com.acme.misc&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/misc/Misc1.java</td>
+          <td class="mono"></td>
+          <td class="mono">da5d0d5b54b1699acc906461bb31588e39679471fff8605eda184d2839f223a0</td>
+          <td>Package &#39;com.acme.misc&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/misc/Misc2.java</td>
+          <td class="mono"></td>
+          <td class="mono">b46423a9f4d1b4ee6eb72901cf2db4a78ff9290b3e89daf7e5fbd42a3fb95f87</td>
+          <td>Package &#39;com.acme.misc&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/misc/Misc2.java</td>
+          <td class="mono"></td>
+          <td class="mono">b46423a9f4d1b4ee6eb72901cf2db4a78ff9290b3e89daf7e5fbd42a3fb95f87</td>
+          <td>Package &#39;com.acme.misc&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/misc/Misc3.java</td>
+          <td class="mono"></td>
+          <td class="mono">a3682432ba31ddcd90b0b67cbe27e7edc94b4c9565ab6ada410b54ca9adb9730</td>
+          <td>Package &#39;com.acme.misc&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badgeError">ERROR</span></td>
+          <td class="mono">packages.rootPackage</td>
+          <td class="mono">src/main/java/com/acme/misc/Misc3.java</td>
+          <td class="mono"></td>
+          <td class="mono">a3682432ba31ddcd90b0b67cbe27e7edc94b4c9565ab6ada410b54ca9adb9730</td>
+          <td>Package &#39;com.acme.misc&#39; is outside configured root package &#39;com.this.will.never.match&#39;.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</body>
+</html>

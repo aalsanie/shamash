@@ -26,6 +26,7 @@ import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.AnalysisConfig
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ExceptionMatch
+import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportConfig
 import io.shamash.asm.core.config.schema.v1.model.GlobSet
 import io.shamash.asm.core.config.schema.v1.model.Matcher
@@ -483,11 +484,51 @@ object ConfigSemanticValidatorV1 {
         export: ExportConfig,
         errors: MutableList<ValidationError>,
     ) {
-        if (!export.enabled) return
+        if (export.enabled) {
+            if (export.outputDir.isBlank()) errors += err("export.outputDir", "outputDir must be non-empty when export.enabled is true")
+            if (export.formats.isEmpty()) errors += err("export.formats", "formats must be non-empty when export.enabled is true")
+            if (export.formats.size !=
+                export.formats.distinct().size
+            ) {
+                errors += err("export.formats", "formats must not contain duplicates")
+            }
+        }
 
-        if (export.outputDir.isBlank()) errors += err("export.outputDir", "outputDir must be non-empty when export.enabled is true")
-        if (export.formats.isEmpty()) errors += err("export.formats", "formats must be non-empty when export.enabled is true")
-        if (export.formats.size != export.formats.distinct().size) errors += err("export.formats", "formats must not contain duplicates")
+        export.artifacts?.let { artifacts ->
+            validateExportArtifacts(exportEnabled = export.enabled, artifacts = artifacts, errors = errors)
+        }
+    }
+
+    private fun validateExportArtifacts(
+        exportEnabled: Boolean,
+        artifacts: ExportArtifactsConfig,
+        errors: MutableList<ValidationError>,
+    ) {
+        val anyEnabled =
+            listOfNotNull(
+                artifacts.facts?.enabled,
+                artifacts.roles?.enabled,
+                artifacts.rulePlan?.enabled,
+                artifacts.analysis?.enabled,
+            ).any { it }
+
+        if (anyEnabled && !exportEnabled) {
+            errors += err("export.enabled", "export.enabled must be true when export.artifacts contains enabled artifacts")
+        }
+
+        artifacts.analysis?.let { a ->
+            val path = "export.artifacts.analysis"
+
+            if (a.enabled) {
+                if (!a.graphs && !a.hotspots && !a.scoring) {
+                    errors += err(path, "analysis artifacts are enabled but graphs/hotspots/scoring are all false")
+                }
+            } else {
+                if (a.graphs || a.hotspots || a.scoring) {
+                    errors += err("$path.enabled", "analysis.enabled is false but one or more analysis sidecar flags are true")
+                }
+            }
+        }
     }
 
     private fun validateMatcher(

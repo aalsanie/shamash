@@ -234,7 +234,7 @@ class ForbiddenJarDependenciesRule : Rule {
         val paramsPath = "rules.${rule.type}.${rule.name}.params"
         val p = Params.of(rule.params, path = paramsPath)
 
-        val raw: Any? = rule.params["forbid"] ?: return null
+        val raw: Any = rule.params["forbid"] ?: return null
         val list = raw as? List<*> ?: return null
         if (list.isEmpty()) return null
 

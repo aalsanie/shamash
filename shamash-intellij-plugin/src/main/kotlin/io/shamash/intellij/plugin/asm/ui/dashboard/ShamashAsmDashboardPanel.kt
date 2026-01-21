@@ -55,7 +55,6 @@ class ShamashAsmDashboardPanel(
 ) : Disposable {
     private val root = JBPanel<JBPanel<*>>(BorderLayout())
 
-    private val metaLabel = JBLabel("Config: Not found")
     private val statusLabel = JBLabel("Status: idle")
 
     private val overviewText = monoArea()
@@ -67,23 +66,9 @@ class ShamashAsmDashboardPanel(
         val header =
             JBPanel<JBPanel<*>>(BorderLayout()).apply {
                 border = JBUI.Borders.empty(0, 0, 8, 0)
-                add(metaLabel, BorderLayout.CENTER)
                 add(statusLabel, BorderLayout.SOUTH)
             }
 
-        // Content panel (scrollable as one unit)
-        val content =
-            JBPanel<JBPanel<*>>().apply {
-                layout =
-                    com.intellij.ui.dsl.gridLayout
-                        .GridLayout()
-                border = JBUI.Borders.empty(0)
-
-                // Header sits outside; content only contains sections
-            }
-
-        // If you don't want GridLayout DSL dependency, keep it simple:
-        // We'll use a vertical BoxLayout-like stacking using BorderLayout + nested panels.
         val sections =
             JBPanel<JBPanel<*>>().apply {
                 layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
@@ -128,19 +113,10 @@ class ShamashAsmDashboardPanel(
 
         val state = ShamashAsmUiStateService.getInstance(project).getState()
         val result = state?.scanResult
-        val updatedAt = state?.updatedAt
 
         val resolvedConfig =
             result?.configPath
                 ?: ShamashAsmConfigLocator.resolveConfigPath(project)
-
-        metaLabel.text =
-            buildString {
-                append("Config: ").append(resolvedConfig?.toString() ?: "Not found")
-                if (updatedAt != null) {
-                    append("  |  Updated: ").append(formatInstant(updatedAt))
-                }
-            }
 
         statusLabel.text = statusLine(result)
 
@@ -177,9 +153,11 @@ class ShamashAsmDashboardPanel(
                 Config: ${resolvedConfig?.toString() ?: "Not found"}
 
                 Use:
-                - Run ASM Scan
+                - Build your project (ASM analysis depends on bytecode)
+                - Navigate to Config panel
+                - Create asm.yml Manually or From Reference
                 - Validate ASM Config
-                - Create ASM Config From Reference
+                - Run ASM Scan
                 """.trimIndent()
         }
 
@@ -320,10 +298,4 @@ class ShamashAsmDashboardPanel(
             font = Font(Font.MONOSPACED, Font.PLAIN, 12)
             border = JBUI.Borders.empty(8)
         }
-
-    private fun formatInstant(i: Instant): String =
-        DateTimeFormatter
-            .ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault())
-            .format(i)
 }

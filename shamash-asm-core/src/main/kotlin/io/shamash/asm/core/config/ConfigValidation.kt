@@ -105,7 +105,7 @@ object ConfigValidation {
             } catch (e: Throwable) {
                 val (path, msg) =
                     if (e is ConfigLoader.ConfigBindException) {
-                        e.path to (e.message ?: "Bind error")
+                        e.path to (e.message)
                     } else {
                         "" to (e.message ?: e::class.java.simpleName)
                     }

@@ -20,7 +20,7 @@ import com.diffplug.gradle.spotless.SpotlessExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
-    kotlin("jvm") version "1.9.23" apply false
+    kotlin("jvm") version "2.3.0" apply false
     id("org.jetbrains.intellij.platform") version "2.10.5" apply false
 
     id("com.diffplug.spotless") version "8.1.0" apply false
@@ -29,7 +29,7 @@ plugins {
 
 allprojects {
     group = "io.shamash"
-    version = "0.70.1"
+    version = "0.80.0"
 
     repositories {
         mavenCentral()

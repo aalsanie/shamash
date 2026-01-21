@@ -1,8 +1,51 @@
 # Changelog
-Shamash is currently shipped as an IntelliJ plugin only.
-This changelog tracks changes relevant to the plugin distribution.
 
 ## [unreleased]
+
+## [0.80.0]
+### Update
+- Refactored baseline and extracted BaselineFingerprint
+- Extend ASM config v1 export with optional `export.artifacts` toggles
+- Extend `EngineExportResult` with optional sidecar artifact paths
+
+### Added
+- Added a complete IntelliJ Plugin E2E test suite
+- Added export-sidecar artifact
+- Added Facts export as `facts.jsonl.gz` + `facts.json` for ASM scans.
+- Wired Facts export into ASM engine export step and exposed factsPath in export results.
+- Extended CLI to support facts
+  - new facts subcommand to summarize and filter exported facts
+- IntelliJ ASM ToolWindow
+  - new Facts tab with lazy loading.
+added advanced setting includeFactsInMemory to optionally keep facts in scan result.
+
+### Fixed
+- Fix OverrideOnly invocation; migrate panels to UiDataProvider
+  - Use ActionManager.tryToExecute instead of calling AnAction.actionPerformed directly
+  - Replace DataProvider/getData with UiDataProvider/uiDataSnapshot(DataSink)
+  - Ensure PROJECT is exposed via DataContext for action execution
+
+### Removed
+- Removed grid layout references
+- Removed unused `fromInstant` method
+
+## [0.70.3]
+### Update
+- Updated IntelliJ Platform target from 2024.2 to 2024.2.1+ 
+- Support Kotlin’s supportsKotlinPluginMode descriptor 
+- Eliminate unresolved extension point warnings.
+
+## [0.70.2]
+### Fixed
+- Simplified UI and added clear instructions 
+- UI Dashboard panel overlapping action buttons
+- UI Config panel overlapping action buttons
+- Updated ASM Config tab summary messaging to reflect state accurately
+- Adjusted validate config to redirect to dashboard only on successful validation.
+- Fixed Open Reference YAML action enforcing UTF-8 on the virtual file
+
+### Removed
+- Removed UI redundant labels
 
 ## [0.70.1]
 ### Added
