@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <shamashReport schemaVersion="v1" generatedAtEpochMillis="1768876765850">
   <tool name="Shamash PSI" version="0.70.4"/>
-  <project name="pit-violation" basePath="/Users/Ahmad/IdeaProjects/Shamash/docs/asm/pit-violation"/>
+  <project name="pit-violation" basePath="/Users/User/IdeaProjects/Shamash/docs/asm/pit-violation"/>
   <findings count="50">
     <finding ruleId="packages.rootPackage" severity="ERROR" filePath="src/main/java/com/acme/a/A.java" fingerprint="44bf6ef90d9a6f6a098e7adc290c63fd6ad71975e385246d98cd85eb79b79529">
       <message>Package &apos;com.acme.a&apos; is outside configured root package &apos;com.this.will.never.match&apos;.</message>
