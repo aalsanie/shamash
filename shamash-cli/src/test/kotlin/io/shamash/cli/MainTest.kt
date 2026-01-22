@@ -55,7 +55,7 @@ class MainTest {
     fun `version prints version and exits 0`() {
         val r = runCli("version")
         assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        kotlin.test.assertTrue(r.stdout.trim().startsWith("shamash-cli"), "stdout:\n${r.stdout}")
+        assertTrue(r.stdout.trim().startsWith("shamash-cli"), "stdout:\n${r.stdout}")
     }
 
     @Test
@@ -63,8 +63,8 @@ class MainTest {
         val r = runCli("init", "--stdout")
         assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
         // Keep assertions resilient to minor formatting changes
-        kotlin.test.assertTrue(r.stdout.contains("version:", ignoreCase = true), "stdout:\n${r.stdout}")
-        kotlin.test.assertTrue(r.stdout.contains("project:", ignoreCase = true), "stdout:\n${r.stdout}")
+        assertTrue(r.stdout.contains("version:", ignoreCase = true), "stdout:\n${r.stdout}")
+        assertTrue(r.stdout.contains("project:", ignoreCase = true), "stdout:\n${r.stdout}")
         assertTrue(r.stdout.contains("rules:", ignoreCase = true), "stdout:\n${r.stdout}")
     }
 
@@ -143,6 +143,61 @@ class MainTest {
         val r = runCli("scan", "--max-classes", "0")
         assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
         assertTrue(r.stderr.contains("Invalid --max-classes", ignoreCase = true), "stderr:\n${r.stderr}")
+    }
+
+    @Test
+    fun `registry list prints available providers and exits 0`() {
+        val r = runCli("registry", "list")
+        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+
+        // Keep assertions resilient: we only require the built-in provider to be discoverable.
+        assertTrue(
+            r.stdout.contains("default", ignoreCase = true) || r.stderr.contains("default", ignoreCase = true),
+            "Expected to see built-in registry id 'default'.\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}",
+        )
+        // Prefer stdout, but tolerate tools printing to stderr.
+        val text = (r.stdout + "\n" + r.stderr)
+        assertTrue(
+            text.contains("registry", ignoreCase = true) || text.contains("provider", ignoreCase = true),
+            "Output should mention registries/providers.\n$text",
+        )
+    }
+
+    @Test
+    fun `scan with unknown registry exits 2 and shows actionable message`(
+        @TempDir tmp: Path,
+    ) {
+        ensureBytecodeAndConfig(tmp)
+
+        val r =
+            runCli(
+                "scan",
+                "--project",
+                tmp.toString(),
+                "--registry",
+                "does-not-exist",
+                // keep scan cheap + deterministic
+                "--scope",
+                "PROJECT_ONLY",
+                "--max-classes",
+                "1",
+            )
+
+        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+
+        val text = (r.stderr + "\n" + r.stdout)
+        assertTrue(
+            text.contains("unknown", ignoreCase = true) && text.contains("registry", ignoreCase = true),
+            "Expected an 'unknown registry' style message.\n$text",
+        )
+        assertTrue(
+            text.contains("available", ignoreCase = true) || text.contains("list", ignoreCase = true),
+            "Expected actionable guidance (available ids / registry list).\n$text",
+        )
+        assertTrue(
+            text.contains("default", ignoreCase = true),
+            "Expected message to mention default registry id.\n$text",
+        )
     }
 
     @Test

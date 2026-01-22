@@ -19,6 +19,12 @@
     <depends>com.intellij.modules.java</depends>
     <depends optional="true" config-file="META-INF/shamash-kotlin.xml">org.jetbrains.kotlin</depends>
 
+    <extensionPoints>
+        <extensionPoint qualifiedName="io.shamash.asmRuleRegistryProvider"
+                        interface="io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider"
+                        dynamic="true"/>
+    </extensionPoints>
+
     <extensions defaultExtensionNs="com.intellij">
 
         <!-- Notifications -->

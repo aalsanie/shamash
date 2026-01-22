@@ -3,12 +3,12 @@
 
 1. Install from JetBrains Marketplace (or build locally).
 2. Open the tool windows:
-- **Shamash PSI**: configure architecture and validate rules against source
-- **Shamash ASM**: scan bytecode and export findings
+   - **Shamash PSI**: configure architecture and validate rules against source
+   - **Shamash ASM**: scan bytecode and export findings
 3. Create a config from reference (or write one manually), then:
-- **Validate config**
-- **Run scan**
-- Review findings and export reports
+   - **Validate config**
+   - **Run scan**
+   - Review findings and export reports
 
 > Configs typically live under your project (e.g. `psi.yml`, `asm.yml`) and reports go under `.shamash/` by default.
 
@@ -170,3 +170,6 @@ sha256sum -c shamash-cli-<version>.zip.sha256
 ```powershell
 Get-FileHash .\shamash-cli-<version>.zip -Algorithm SHA256
 ```
+
+### Custom registries (Advanced)
+If you want to provide your own ASM registry (custom rules / contracts), see: **[REGISTRY_GUIDE.md](./REGISTRY_GUIDE.md)**

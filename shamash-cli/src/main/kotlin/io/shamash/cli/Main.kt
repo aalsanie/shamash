@@ -27,6 +27,9 @@ import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import io.shamash.asm.core.config.schema.v1.model.ScanScope
+import io.shamash.asm.core.engine.ShamashAsmEngine
+import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
+import io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
 import io.shamash.asm.core.export.facts.FactsClassRecord
 import io.shamash.asm.core.export.facts.FactsEdgeRecord
 import io.shamash.asm.core.export.facts.FactsReader
@@ -44,6 +47,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.ServiceLoader
 import kotlin.io.path.absolute
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
@@ -63,9 +67,10 @@ fun main(args: Array<String>) {
     val cmdValidate = ValidateCommand()
     val cmdScan = ScanCommand()
     val cmdFacts = FactsCommand()
+    val cmdRegistry = RegistryCommand()
     val cmdVersion = VersionCommand()
 
-    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdVersion)
+    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdRegistry, cmdVersion)
 
     try {
         parser.parse(args)
@@ -81,6 +86,7 @@ fun main(args: Array<String>) {
             cmdValidate.wasInvoked -> cmdValidate.exitCode
             cmdScan.wasInvoked -> cmdScan.exitCode
             cmdFacts.wasInvoked -> cmdFacts.exitCode
+            cmdRegistry.wasInvoked -> cmdRegistry.exitCode
             cmdVersion.wasInvoked -> cmdVersion.exitCode
             else -> ExitCode.OK
         }
@@ -98,6 +104,129 @@ private object Console {
 
     fun errln(line: String = "") {
         err.println(line)
+    }
+}
+
+private object CliMeta {
+    val version: String = CliMeta::class.java.`package`?.implementationVersion ?: "dev"
+}
+
+private object RegistryProviders {
+    data class LoadResult(
+        val providers: Map<String, AsmRuleRegistryProvider>,
+        val errors: List<String>,
+    )
+
+    private val cached: LoadResult by lazy { loadInternal() }
+
+    fun load(): LoadResult = cached
+
+    private fun loadInternal(): LoadResult {
+        val errors = ArrayList<String>(4)
+
+        val loaded =
+            try {
+                val sl = ServiceLoader.load(AsmRuleRegistryProvider::class.java)
+                val it = sl.iterator()
+                buildList {
+                    while (it.hasNext()) {
+                        try {
+                            add(it.next())
+                        } catch (t: Throwable) {
+                            errors += "Failed to load registry provider: ${t.message ?: t::class.java.simpleName}"
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                errors += "ServiceLoader error: ${t.message ?: t::class.java.simpleName}"
+                emptyList()
+            }
+
+        val map = LinkedHashMap<String, AsmRuleRegistryProvider>()
+        val duplicates = ArrayList<String>(2)
+
+        for (p in loaded) {
+            val id = p.id.trim()
+            if (id.isEmpty()) {
+                errors += "Registry provider ${p::class.qualifiedName ?: p::class.java.name} has empty id"
+                continue
+            }
+            val prev = map.putIfAbsent(id, p)
+            if (prev != null) duplicates += id
+        }
+
+        if (duplicates.isNotEmpty()) {
+            val unique = duplicates.distinct().sorted()
+            errors += "Duplicate registry provider ids: ${unique.joinToString()}"
+        }
+
+        return LoadResult(providers = map, errors = errors)
+    }
+}
+
+private object RegistryResolver {
+    data class Resolved(
+        val registryId: String,
+        val registry: io.shamash.asm.core.engine.rules.RuleRegistry,
+        val warnings: List<String> = emptyList(),
+    )
+
+    /**
+     * Resolve a registry id into a [RuleRegistry] with production-safe fallback.
+     *
+     * Safety contract:
+     * - If no id is supplied, we always use the built-in [DefaultRuleRegistry].
+     * - If id == "default", we still fall back to built-in even if SPI loading fails.
+     * - For any other id, the provider must exist and must create successfully.
+     */
+    fun resolve(selectedId: String?): Resolved? {
+        val wanted = selectedId?.trim()?.takeIf { it.isNotEmpty() }
+
+        // Opt-in: if not explicitly set, use built-in (no SPI required).
+        if (wanted == null) {
+            return Resolved(registryId = "default", registry = DefaultRuleRegistry.create())
+        }
+
+        val loaded = RegistryProviders.load()
+
+        // If user asked for default, keep it rock-solid even when SPI is broken.
+        if (wanted == "default") {
+            val provider = loaded.providers["default"]
+            val warnings = loaded.errors
+            if (provider == null) {
+                return Resolved(
+                    registryId = "default",
+                    registry = DefaultRuleRegistry.create(),
+                    warnings = warnings + "Default provider not found on classpath; using built-in DefaultRuleRegistry.",
+                )
+            }
+            val registry =
+                try {
+                    provider.create()
+                } catch (t: Throwable) {
+                    return Resolved(
+                        registryId = "default",
+                        registry = DefaultRuleRegistry.create(),
+                        warnings =
+                            warnings +
+                                "Default provider failed to initialize; using built-in DefaultRuleRegistry: ${t.message ?: t::class.java.simpleName}",
+                    )
+                }
+            return Resolved(registryId = "default", registry = registry, warnings = warnings)
+        }
+
+        // Non-default: SPI must load cleanly.
+        if (loaded.errors.isNotEmpty()) return null
+
+        val provider = loaded.providers[wanted] ?: return null
+        val registry =
+            try {
+                provider.create()
+            } catch (_: Throwable) {
+                return null
+            }
+
+        return Resolved(registryId = wanted, registry = registry)
     }
 }
 
@@ -166,8 +295,57 @@ private abstract class CommandBase(
 
 private class VersionCommand : CommandBase("version", "Print Shamash CLI version") {
     override fun run(): ExitCode {
-        val version = this::class.java.`package`?.implementationVersion ?: "dev"
+        val version = CliMeta.version
         Console.println("shamash-cli $version")
+        return ExitCode.OK
+    }
+}
+
+private class RegistryCommand : CommandBase("registry", "List available ASM rule registry providers") {
+    private val action by argument(
+        type = ArgType.String,
+        description = "Action (only supported: list)",
+    )
+
+    override fun run(): ExitCode {
+        if (action.trim().lowercase() != "list") {
+            Console.errln("Unknown registry action: '$action' (supported: list)")
+            return ExitCode.CONFIG_ERROR
+        }
+
+        val loaded = RegistryProviders.load()
+
+        if (loaded.errors.isNotEmpty()) {
+            Console.errln("Registry provider load errors:")
+            for (e in loaded.errors) Console.errln("- $e")
+            return ExitCode.RUNTIME_ERROR
+        }
+
+        val providers =
+            loaded.providers.values
+                .toList()
+                .sortedBy { it.id.trim() }
+        if (providers.isEmpty()) {
+            Console.println("No registry providers found on the classpath.")
+            return ExitCode.OK
+        }
+
+        val rows =
+            providers.map {
+                val id = it.id.trim()
+                val name = it.displayName.trim().ifEmpty { "(no displayName)" }
+                val impl = it::class.qualifiedName ?: it::class.java.name
+                Triple(id, name, impl)
+            }
+
+        val idW = maxOf(2, rows.maxOf { it.first.length })
+        val nameW = maxOf(4, rows.maxOf { it.second.length })
+
+        Console.println("ID".padEnd(idW) + "  " + "NAME".padEnd(nameW) + "  IMPLEMENTATION")
+        Console.println("-".repeat(idW) + "  " + "-".repeat(nameW) + "  " + "--------------")
+        for ((id, name, impl) in rows) {
+            Console.println(id.padEnd(idW) + "  " + name.padEnd(nameW) + "  " + impl)
+        }
         return ExitCode.OK
     }
 }
@@ -344,6 +522,14 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         description = "Explicit path to asm.yml (if not provided, discovery is used)",
     )
 
+    private val registryId by option(
+        type = ArgType.String,
+        fullName = "registry",
+        description =
+            "Rule registry provider id (opt-in). If omitted (or set to 'default'), " +
+                "built-in rules are used. Use: shamash registry list",
+    )
+
     private val includeFacts by option(
         type = ArgType.Boolean,
         fullName = "include-facts",
@@ -460,7 +646,55 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
                     scanOverrides.maxClassBytes != null
             }
 
-        val runner = ShamashAsmScanRunner()
+        val registryKey = registryId?.trim()?.takeIf { it.isNotEmpty() }
+        val registry =
+            when {
+                // Default path is production-safe and does not depend on SPI discovery.
+                registryKey == null || registryKey == "default" -> DefaultRuleRegistry.create()
+                else -> {
+                    val loadedProviders = RegistryProviders.load()
+                    if (loadedProviders.errors.isNotEmpty()) {
+                        Console.errln("Registry provider load errors:")
+                        for (e in loadedProviders.errors) Console.errln("- $e")
+                        return ExitCode.RUNTIME_ERROR
+                    }
+
+                    val registryProvider = loadedProviders.providers[registryKey]
+                    if (registryProvider == null) {
+                        Console.errln("Unknown registry id: '$registryKey'")
+                        val available =
+                            loadedProviders.providers.keys
+                                .toList()
+                                .sorted()
+                                .joinToString()
+                        Console.errln("Available registry ids: ${if (available.isBlank()) "(none)" else available}")
+                        Console.errln("Tip: omit --registry (or use --registry default) to use built-in rules")
+                        Console.errln("Run: shamash registry list")
+                        return ExitCode.CONFIG_ERROR
+                    }
+
+                    try {
+                        registryProvider.create()
+                    } catch (t: Throwable) {
+                        val impl = registryProvider::class.qualifiedName ?: registryProvider::class.java.name
+                        Console.errln(
+                            "Registry '$registryKey' failed to initialize ($impl): " +
+                                "${t.message ?: t::class.java.simpleName}",
+                        )
+                        return ExitCode.RUNTIME_ERROR
+                    }
+                }
+            }
+
+        val runner =
+            ShamashAsmScanRunner(
+                engine =
+                    ShamashAsmEngine(
+                        registry = registry,
+                        toolName = "Shamash ASM",
+                        toolVersion = CliMeta.version,
+                    ),
+            )
         val res =
             runner.run(
                 ScanOptions(
@@ -677,7 +911,11 @@ private class BoundedCounter(
     }
 }
 
-private class FactsCommand : CommandBase("facts", "Inspect exported facts (facts.jsonl.gz or facts.json)") {
+private class FactsCommand :
+    CommandBase(
+        "facts",
+        "Inspect exported facts (facts.jsonl.gz or facts.json)",
+    ) {
     private val path by option(
         type = ArgType.String,
         fullName = "path",

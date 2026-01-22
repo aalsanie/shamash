@@ -8,9 +8,12 @@
 - Roles debug is exportable and visible
 - ASM export: writes roles.json when `export.artifacts.roles.enabled: true`
 - UI new Roles tab: role search + class search
+- CLI and IntelliJ can select a registry provider
 
 ### Fixed
 - UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes
+- CLI (scan) now constructs ShamashAsmEngine(toolName, toolVersion) using `package.implementationVersion`
+- IntelliJ ASM actions now construct ShamashAsmEngine(toolName, toolVersion) using `PluginManagerCore`
 
 ## [0.80.0]
 ### Update
