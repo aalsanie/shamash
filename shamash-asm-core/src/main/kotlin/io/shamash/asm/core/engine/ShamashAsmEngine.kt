@@ -44,6 +44,7 @@ import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleRegistry
 import io.shamash.asm.core.export.facts.FactsExporter
+import io.shamash.asm.core.export.roles.RolesExporter
 import io.shamash.asm.core.facts.model.ClassFact
 import io.shamash.asm.core.facts.query.FactIndex
 import io.shamash.export.api.Exporters
@@ -292,12 +293,37 @@ class ShamashAsmEngine(
                             }
                         }
 
+                        // Roles export (sidecar)
+                        var rolesPath = sidecars.rolesPath
+                        if (rolesPath != null) {
+                            try {
+                                RolesExporter.export(
+                                    // Export the engine-populated role classification result.
+                                    facts = factsWithRoles,
+                                    roleDefs = config.roles,
+                                    outputPath = rolesPath,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Roles export failed",
+                                        details = mapOf("rolesPath" to rolesPath.toString()),
+                                        t = t,
+                                    )
+                                rolesPath = null
+                            }
+                        }
+
                         EngineExportResult(
                             report = report,
                             outputDir = outputDir,
                             baselineWritten = baselineWritten,
                             factsPath = factsPath,
-                            rolesPath = sidecars.rolesPath,
+                            rolesPath = rolesPath,
                             rulePlanPath = sidecars.rulePlanPath,
                             analysisGraphsPath = sidecars.analysisGraphsPath,
                             analysisHotspotsPath = sidecars.analysisHotspotsPath,

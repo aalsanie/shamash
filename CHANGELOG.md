@@ -3,9 +3,11 @@
 ## [unreleased]
 
 ### Added
--Users can set scan knobs in CLI/IntelliJ without editing YAML
+- Users can set scan knobs in CLI/IntelliJ without editing YAML
 - UI shows which overrides were applied
 - Roles debug is exportable and visible
+- ASM export: writes roles.json when `export.artifacts.roles.enabled: true`
+- UI new Roles tab: role search + class search
 
 ### Fixed
 - UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes

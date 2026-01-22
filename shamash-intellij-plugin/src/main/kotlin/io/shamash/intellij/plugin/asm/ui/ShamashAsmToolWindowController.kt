@@ -28,13 +28,14 @@ import io.shamash.intellij.plugin.asm.ui.config.ShamashAsmConfigTab
 import io.shamash.intellij.plugin.asm.ui.dashboard.ShamashAsmDashboardTab
 import io.shamash.intellij.plugin.asm.ui.facts.ShamashAsmFactsTab
 import io.shamash.intellij.plugin.asm.ui.findings.ShamashAsmFindingsTab
+import io.shamash.intellij.plugin.asm.ui.roles.ShamashAsmRolesTab
 import io.shamash.intellij.plugin.asm.ui.runsettings.ShamashAsmRunSettingsTab
 
 @Service(Service.Level.PROJECT)
 class ShamashAsmToolWindowController(
     private val project: Project,
 ) {
-    enum class Tab { DASHBOARD, FINDINGS, FACTS, CONFIG, SETTINGS }
+    enum class Tab { DASHBOARD, FINDINGS, FACTS, ROLES, CONFIG, SETTINGS }
 
     private val tabIndex = LinkedHashMap<Tab, Int>(8)
 
@@ -50,6 +51,9 @@ class ShamashAsmToolWindowController(
     lateinit var factsTab: ShamashAsmFactsTab
         private set
 
+    lateinit var rolesTab: ShamashAsmRolesTab
+        private set
+
     lateinit var configTab: ShamashAsmConfigTab
         private set
 
@@ -62,6 +66,7 @@ class ShamashAsmToolWindowController(
         dashboardTab = ShamashAsmDashboardTab(project)
         findingsTab = ShamashAsmFindingsTab(project)
         factsTab = ShamashAsmFactsTab(project)
+        rolesTab = ShamashAsmRolesTab(project)
         configTab = ShamashAsmConfigTab(project)
         settingsTab = ShamashAsmRunSettingsTab(project)
 
@@ -77,6 +82,9 @@ class ShamashAsmToolWindowController(
         tabIndex[Tab.FACTS] = tabbedPane.tabCount
         tabbedPane.addTab("Facts", factsTab.component())
 
+        tabIndex[Tab.ROLES] = tabbedPane.tabCount
+        tabbedPane.addTab("Roles", rolesTab.component())
+
         tabIndex[Tab.CONFIG] = tabbedPane.tabCount
         tabbedPane.addTab("Config", configTab.component())
 
@@ -88,6 +96,7 @@ class ShamashAsmToolWindowController(
         if (::dashboardTab.isInitialized) dashboardTab.refresh()
         if (::findingsTab.isInitialized) findingsTab.refresh()
         if (::factsTab.isInitialized) factsTab.refresh()
+        if (::rolesTab.isInitialized) rolesTab.refresh()
         if (::configTab.isInitialized) configTab.refresh()
         if (::settingsTab.isInitialized) settingsTab.refresh()
     }
