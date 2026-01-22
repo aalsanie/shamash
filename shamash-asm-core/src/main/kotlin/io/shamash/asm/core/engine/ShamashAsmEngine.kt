@@ -950,7 +950,7 @@ class ShamashAsmEngine(
         data class PackageRegex(
             val regex: Regex,
         ) : CompiledMatcher {
-            override fun matches(c: ClassFact) = regex.containsMatchIn(c.packageName) || regex.containsMatchIn(c.fqName)
+            override fun matches(c: ClassFact) = regex.containsMatchIn(c.packageName)
         }
 
         data class PackageContainsSegment(
