@@ -35,7 +35,7 @@ import io.shamash.intellij.plugin.asm.ui.runsettings.ShamashAsmRunSettingsTab
 class ShamashAsmToolWindowController(
     private val project: Project,
 ) {
-    enum class Tab { DASHBOARD, FINDINGS, FACTS, ROLES, CONFIG, SETTINGS }
+    enum class Tab { CONFIG, DASHBOARD, FINDINGS, FACTS, ROLES, SETTINGS }
 
     private val tabIndex = LinkedHashMap<Tab, Int>(8)
 
@@ -73,6 +73,9 @@ class ShamashAsmToolWindowController(
         tabbedPane.removeAll()
         tabIndex.clear()
 
+        tabIndex[Tab.CONFIG] = tabbedPane.tabCount
+        tabbedPane.addTab("Config", configTab.component())
+
         tabIndex[Tab.DASHBOARD] = tabbedPane.tabCount
         tabbedPane.addTab("Dashboard", dashboardTab.component())
 
@@ -85,11 +88,10 @@ class ShamashAsmToolWindowController(
         tabIndex[Tab.ROLES] = tabbedPane.tabCount
         tabbedPane.addTab("Roles", rolesTab.component())
 
-        tabIndex[Tab.CONFIG] = tabbedPane.tabCount
-        tabbedPane.addTab("Config", configTab.component())
-
         tabIndex[Tab.SETTINGS] = tabbedPane.tabCount
         tabbedPane.addTab("Settings", settingsTab.component())
+
+        tabbedPane.selectedIndex = tabIndex[Tab.CONFIG] ?: 0
     }
 
     fun refreshAll() {
@@ -110,6 +112,7 @@ class ShamashAsmToolWindowController(
     }
 
     companion object {
-        fun getInstance(project: Project): ShamashAsmToolWindowController = project.getService(ShamashAsmToolWindowController::class.java)
+        fun getInstance(project: Project): ShamashAsmToolWindowController =
+            project.getService(ShamashAsmToolWindowController::class.java)
     }
 }

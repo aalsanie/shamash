@@ -6,7 +6,7 @@
  *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
+ * Plugin: https://plugins.jetbrains.com/plugin/29504/shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,6 +31,7 @@ import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NlsSafe
@@ -54,7 +55,7 @@ import kotlin.io.path.isDirectory
 
 class RunAsmScanAction(
     private val runner: ShamashAsmScanRunner = defaultRunner(),
-) : AnAction() {
+) : AnAction(), DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
@@ -85,6 +86,7 @@ class RunAsmScanAction(
             }
 
         val settings = ShamashAsmSettingsState.getInstance(project)
+
         val activeRunner = buildRunner(project, settings) ?: return
 
         val options =
@@ -104,115 +106,116 @@ class RunAsmScanAction(
 
         AsmActionUtil.openAsmToolWindow(project)
 
-        val startScan = startScan@{
-            if (project.isDisposed) return@startScan
-
-            object : Task.Backgroundable(project, "Shamash ASM Scan", true) {
-                @Volatile
-                private var scanResult: ScanResult? = null
-
-                override fun run(indicator: ProgressIndicator) {
-                    indicator.isIndeterminate = true
-                    indicator.text = "Running ASM scan"
-                    indicator.text2 = "Config: $configHint"
-
-                    scanResult = activeRunner.run(options, overrides = overrides)
-                    ProgressManager.checkCanceled()
-                }
-
-                override fun onSuccess() {
-                    val result = scanResult
-
-                    ApplicationManager.getApplication().invokeLater {
-                        if (project.isDisposed) return@invokeLater
-
-                        ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = result)
-                        AsmActionUtil.openAsmToolWindow(project)
-
-                        val tw = ShamashAsmToolWindowController.getInstance(project)
-
-                        if (result == null) {
-                            tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
-                            tw.refreshAll()
-                            AsmActionUtil.notify(project, "Shamash ASM", "Scan produced no result.", NotificationType.WARNING)
-                            return@invokeLater
-                        }
-
-                        when {
-                            result.hasConfigErrors -> {
-                                tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
-                                tw.refreshAll()
-                                AsmActionUtil.notify(
-                                    project,
-                                    "Shamash ASM",
-                                    "Config invalid. Fix errors in Config tab.",
-                                    NotificationType.WARNING,
-                                )
-                            }
-
-                            result.hasEngineResult -> {
-                                tw.select(ShamashAsmToolWindowController.Tab.FINDINGS)
-                                tw.refreshAll()
-
-                                val findingsCount = result.engine?.findings?.size ?: 0
-                                val hasEngineErrors = result.engine?.hasErrors == true
-
-                                val msg =
-                                    when {
-                                        hasEngineErrors -> "Scan finished with engine errors. See Dashboard for details."
-                                        findingsCount == 0 -> "Scan complete. No findings. Make sure to build before scanning."
-                                        else -> "Scan complete. Findings: $findingsCount"
-                                    }
-
-                                AsmActionUtil.notify(
-                                    project,
-                                    "Shamash ASM",
-                                    msg,
-                                    if (hasEngineErrors) NotificationType.WARNING else NotificationType.INFORMATION,
-                                )
-                            }
-
-                            else -> {
-                                tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
-                                tw.refreshAll()
-                                AsmActionUtil.notify(
-                                    project,
-                                    "Shamash ASM",
-                                    "Scan did not reach engine execution. See Dashboard for details.",
-                                    NotificationType.WARNING,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                override fun onThrowable(error: Throwable) {
-                    if (project.isDisposed) return
-                    AsmActionUtil.notify(
-                        project,
-                        "Shamash ASM",
-                        "Scan failed: ${error.message ?: error::class.java.simpleName}",
-                        NotificationType.ERROR,
-                    )
-                }
-            }.queue()
-        }
-
-        val dumb = DumbService.getInstance(project)
-        if (dumb.isDumb) {
+        // If indexing is active, we still start the task immediately (shows progress),
+        // then wait inside the background thread until the IDE becomes smart.
+        if (DumbService.getInstance(project).isDumb) {
             AsmActionUtil.notify(
                 project,
                 "Shamash ASM",
-                "Indexing in progress. Scan will start when indexing finishes.",
+                "Indexing in progress. Scan will start automatically when indexing finishes.",
                 NotificationType.INFORMATION,
             )
-            dumb.runWhenSmart {
-                if (project.isDisposed) return@runWhenSmart
-                startScan()
-            }
-        } else {
-            startScan()
         }
+
+        object : Task.Backgroundable(project, "Shamash ASM Scan", true) {
+            @Volatile
+            private var scanResult: ScanResult? = null
+
+            override fun run(indicator: ProgressIndicator) {
+                indicator.isIndeterminate = true
+                ProgressManager.checkCanceled()
+
+                val dumb = DumbService.getInstance(project)
+                if (dumb.isDumb) {
+                    indicator.text = "Waiting for indexing to finish"
+                    indicator.text2 = "Scan will start automatically"
+                    dumb.waitForSmartMode()
+                    ProgressManager.checkCanceled()
+                }
+
+                indicator.text = "Running ASM scan"
+                indicator.text2 = "Config: $configHint"
+
+                scanResult = activeRunner.run(options, overrides = overrides)
+                ProgressManager.checkCanceled()
+            }
+
+            override fun onSuccess() {
+                val result = scanResult
+
+                ApplicationManager.getApplication().invokeLater {
+                    if (project.isDisposed) return@invokeLater
+
+                    ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = result)
+                    AsmActionUtil.openAsmToolWindow(project)
+
+                    val tw = ShamashAsmToolWindowController.getInstance(project)
+
+                    if (result == null) {
+                        tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+                        tw.refreshAll()
+                        AsmActionUtil.notify(project, "Shamash ASM", "Scan produced no result.", NotificationType.WARNING)
+                        return@invokeLater
+                    }
+
+                    when {
+                        result.hasConfigErrors -> {
+                            tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
+                            tw.refreshAll()
+                            AsmActionUtil.notify(
+                                project,
+                                "Shamash ASM",
+                                "Config invalid. Fix errors in Config tab.",
+                                NotificationType.WARNING,
+                            )
+                        }
+
+                        result.hasEngineResult -> {
+                            tw.select(ShamashAsmToolWindowController.Tab.FINDINGS)
+                            tw.refreshAll()
+
+                            val findingsCount = result.engine?.findings?.size ?: 0
+                            val hasEngineErrors = result.engine?.hasErrors == true
+
+                            val msg =
+                                when {
+                                    hasEngineErrors -> "Scan finished with engine errors. See Dashboard for details."
+                                    findingsCount == 0 -> "Scan complete. No findings. Make sure to build before scanning."
+                                    else -> "Scan complete. Findings: $findingsCount"
+                                }
+
+                            AsmActionUtil.notify(
+                                project,
+                                "Shamash ASM",
+                                msg,
+                                if (hasEngineErrors) NotificationType.WARNING else NotificationType.INFORMATION,
+                            )
+                        }
+
+                        else -> {
+                            tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+                            tw.refreshAll()
+                            AsmActionUtil.notify(
+                                project,
+                                "Shamash ASM",
+                                "Scan did not reach engine execution. See Dashboard for details.",
+                                NotificationType.WARNING,
+                            )
+                        }
+                    }
+                }
+            }
+
+            override fun onThrowable(error: Throwable) {
+                if (project.isDisposed) return
+                AsmActionUtil.notify(
+                    project,
+                    "Shamash ASM",
+                    "Scan failed: ${error.message ?: error::class.java.simpleName}",
+                    NotificationType.ERROR,
+                )
+            }
+        }.queue()
     }
 
     private fun resolveProjectBasePath(project: Project): Path? {
@@ -231,7 +234,8 @@ class RunAsmScanAction(
     companion object {
         private const val SHAMASH_PLUGIN_ID: String = "io.shamash"
 
-        private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
+        private fun pluginVersion(): String =
+            PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
 
         private fun defaultRunner(): ShamashAsmScanRunner =
             ShamashAsmScanRunner(
@@ -259,8 +263,8 @@ class RunAsmScanAction(
                     project,
                     toolName,
                     "Registry '$registryId' not found. " +
-                        "Available: ${if (available.isBlank()) "(none)" else available}. " +
-                        "Open Run Settings → Registry to pick an installed provider.",
+                            "Available: ${if (available.isBlank()) "(none)" else available}. " +
+                            "Open Run Settings → Registry to pick an installed provider.",
                     NotificationType.ERROR,
                 )
                 return null

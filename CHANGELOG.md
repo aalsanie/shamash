@@ -14,6 +14,7 @@
 - UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes
 - CLI (scan) now constructs ShamashAsmEngine(toolName, toolVersion) using `package.implementationVersion`
 - IntelliJ ASM actions now construct ShamashAsmEngine(toolName, toolVersion) using `PluginManagerCore`
+- ASM Run Scan smart mode during indexing by starting the background progress
 
 ## [0.80.0]
 ### Update
