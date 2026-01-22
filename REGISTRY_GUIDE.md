@@ -81,9 +81,9 @@ interface AsmRuleRegistryProvider {
 ```kotlin
 package com.acme.shamash.registry
 
-import io.shamash.asm.core.rules.DefaultRuleRegistry
-import io.shamash.asm.core.rules.RuleRegistry
-import io.shamash.asm.core.rules.spi.AsmRuleRegistryProvider
+import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
+import io.shamash.asm.core.engine.rules.RuleRegistry
+import io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
 
 class AcmeRuleRegistryProvider : AsmRuleRegistryProvider {
   override val id: String = "acme"
