@@ -84,6 +84,14 @@ class ShamashAsmSettingsState : PersistentStateComponent<ShamashAsmSettingsState
         /** Optional override for scan.maxClassBytes. */
         var overrideMaxClassBytes: Int? = null,
         /**
+         * Engine registry selection (optional).
+         *
+         * When null/blank, the built-in DefaultRuleRegistry is used.
+         *
+         * When set, Shamash will attempt to resolve a registry provider by this id.
+         */
+        var registryId: String? = null,
+        /**
          * UI toggle: show extra debug/telemetry in the ASM toolwindow.
          */
         var showAdvancedTelemetry: Boolean = false,
@@ -133,6 +141,12 @@ class ShamashAsmSettingsState : PersistentStateComponent<ShamashAsmSettingsState
 
     fun setShowAdvancedTelemetry(value: Boolean) {
         state.showAdvancedTelemetry = value
+    }
+
+    fun getRegistryId(): String? = state.registryId?.trim()?.takeIf { it.isNotEmpty() }
+
+    fun setRegistryId(id: String?) {
+        state.registryId = id?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     fun getOverrideScope(): ScanScope? {

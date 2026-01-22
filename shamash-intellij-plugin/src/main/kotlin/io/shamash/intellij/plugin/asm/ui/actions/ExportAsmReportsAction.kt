@@ -37,11 +37,14 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
+import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviders
 import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
+import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -60,7 +63,7 @@ import kotlin.io.path.isDirectory
  * - Updates toolwindow state from the produced ScanResult.
  */
 class ExportAsmReportsAction(
-    private val runner: ShamashAsmScanRunner = ShamashAsmScanRunner(),
+    private val runner: ShamashAsmScanRunner = defaultRunner(),
 ) : AnAction() {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
@@ -89,6 +92,9 @@ class ExportAsmReportsAction(
             runCatching { VfsUtil.virtualToIoFile(vf).toPath() }
                 .getOrElse { Paths.get(vf.path) }
 
+        val settings = ShamashAsmSettingsState.getInstance(project)
+        val activeRunner = buildRunner(project, settings) ?: return
+
         val options =
             ScanOptions(
                 projectBasePath = basePath,
@@ -113,7 +119,7 @@ class ExportAsmReportsAction(
                     indicator.text = "Exporting ASM reports"
                     indicator.text2 = "Config: $configHint"
 
-                    result = runner.run(options)
+                    result = activeRunner.run(options)
                 }
 
                 override fun onSuccess() {
@@ -283,6 +289,60 @@ class ExportAsmReportsAction(
         return if (p.exists() && p.isDirectory()) p else p
     }
 
-    @Suppress("unused")
-    private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"
+    companion object {
+        private const val SHAMASH_PLUGIN_ID: String = "io.shamash"
+
+        private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
+
+        private fun defaultRunner(): ShamashAsmScanRunner =
+            ShamashAsmScanRunner(
+                engine = ShamashAsmEngine(toolName = "Shamash ASM", toolVersion = pluginVersion()),
+            )
+
+        private fun buildRunner(
+            project: Project,
+            settings: ShamashAsmSettingsState,
+        ): ShamashAsmScanRunner? {
+            val toolName = "Shamash ASM"
+            val toolVersion = pluginVersion()
+
+            val registryId = settings.getRegistryId()
+            if (registryId == null) {
+                return ShamashAsmScanRunner(
+                    engine = ShamashAsmEngine(toolName = toolName, toolVersion = toolVersion),
+                )
+            }
+
+            val provider = AsmRuleRegistryProviders.findById(registryId)
+            if (provider == null) {
+                val available = AsmRuleRegistryProviders.list().joinToString { it.id }
+                AsmActionUtil.notify(
+                    project,
+                    toolName,
+                    "Registry '$registryId' not found. " +
+                        "Available: ${if (available.isBlank()) "(none)" else available}. " +
+                        "Open Run Settings → Registry to pick an installed provider.",
+                    NotificationType.ERROR,
+                )
+                return null
+            }
+
+            val registry =
+                try {
+                    provider.create()
+                } catch (t: Throwable) {
+                    AsmActionUtil.notify(
+                        project,
+                        toolName,
+                        "Registry '$registryId' failed to initialize: ${t.message ?: t::class.java.simpleName}",
+                        NotificationType.ERROR,
+                    )
+                    return null
+                }
+
+            return ShamashAsmScanRunner(
+                engine = ShamashAsmEngine(registry = registry, toolName = toolName, toolVersion = toolVersion),
+            )
+        }
+    }
 }

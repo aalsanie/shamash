@@ -32,6 +32,7 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.fields.IntegerField
 import com.intellij.util.ui.JBUI
 import io.shamash.asm.core.config.schema.v1.model.ScanScope
+import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviders
 import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.awt.BorderLayout
@@ -46,6 +47,8 @@ class ShamashAsmRunSettingsPanel(
     private val project: Project,
 ) : Disposable {
     private val root = JBPanel<JBPanel<*>>(BorderLayout())
+
+    private val registryCombo = ComboBox<RegistryChoice>()
 
     private val applyOverrides = JBCheckBox("Apply overrides")
     private val showAdvanced = JBCheckBox("Show advanced telemetry")
@@ -68,6 +71,11 @@ class ShamashAsmRunSettingsPanel(
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
             }
 
+        stack.add(sectionHeader("Engine"))
+        stack.add(Box.createVerticalStrut(JBUI.scale(6)))
+        stack.add(row("Registry", registryCombo))
+        stack.add(Box.createVerticalStrut(JBUI.scale(10)))
+
         stack.add(sectionHeader("Run Overrides"))
         stack.add(Box.createVerticalStrut(JBUI.scale(6)))
         stack.add(row("", applyOverrides))
@@ -86,6 +94,8 @@ class ShamashAsmRunSettingsPanel(
 
         root.add(stack, BorderLayout.NORTH)
 
+        rebuildRegistryChoices()
+
         bind()
         ShamashAsmUiStateService.getInstance(project).addListener(this) { refresh() }
         refresh()
@@ -97,6 +107,8 @@ class ShamashAsmRunSettingsPanel(
         if (project.isDisposed) return
 
         val settings = ShamashAsmSettingsState.getInstance(project)
+
+        selectRegistry(settings.getRegistryId())
 
         applyOverrides.isSelected = settings.isApplyOverrides()
         showAdvanced.isSelected = settings.isShowAdvancedTelemetry()
@@ -129,6 +141,11 @@ class ShamashAsmRunSettingsPanel(
     }
 
     private fun bind() {
+        registryCombo.addActionListener {
+            val choice = registryCombo.selectedItem as? RegistryChoice ?: return@addActionListener
+            ShamashAsmSettingsState.getInstance(project).setRegistryId(choice.id)
+        }
+
         applyOverrides.addActionListener {
             val settings = ShamashAsmSettingsState.getInstance(project)
             settings.setApplyOverrides(applyOverrides.isSelected)
@@ -242,6 +259,54 @@ class ShamashAsmRunSettingsPanel(
         // Ensure it can be cleared to represent null.
         f.text = ""
         return f
+    }
+
+    private fun rebuildRegistryChoices() {
+        val choices = ArrayList<RegistryChoice>()
+        choices += RegistryChoice("(default) Built-in rules", null)
+
+        for (p in AsmRuleRegistryProviders.list()) {
+            val label =
+                if (p.displayName.isBlank()) {
+                    p.id
+                } else {
+                    "${p.displayName} (${p.id})"
+                }
+            choices += RegistryChoice(label, p.id)
+        }
+
+        registryCombo.model = javax.swing.DefaultComboBoxModel(choices.toTypedArray())
+    }
+
+    private fun selectRegistry(registryId: String?) {
+        val wanted = registryId?.trim()?.takeIf { it.isNotEmpty() }
+        if (wanted == null) {
+            registryCombo.selectedIndex = 0
+            return
+        }
+
+        val model = registryCombo.model
+        for (i in 0 until model.size) {
+            val c = model.getElementAt(i)
+            if (c.id == wanted) {
+                registryCombo.selectedIndex = i
+                return
+            }
+        }
+
+        val missing = RegistryChoice("Missing: $wanted", wanted)
+        val list = ArrayList<RegistryChoice>(model.size + 1)
+        for (i in 0 until model.size) list += model.getElementAt(i)
+        list += missing
+        registryCombo.model = javax.swing.DefaultComboBoxModel(list.toTypedArray())
+        registryCombo.selectedItem = missing
+    }
+
+    private data class RegistryChoice(
+        private val label: String,
+        val id: String?,
+    ) {
+        override fun toString(): String = label
     }
 
     private enum class ScopeChoice(
