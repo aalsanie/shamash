@@ -6,7 +6,7 @@
  *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504/shamash
+ * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -55,7 +55,8 @@ import kotlin.io.path.isDirectory
 
 class RunAsmScanAction(
     private val runner: ShamashAsmScanRunner = defaultRunner(),
-) : AnAction(), DumbAware {
+) : AnAction(),
+    DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
@@ -234,8 +235,7 @@ class RunAsmScanAction(
     companion object {
         private const val SHAMASH_PLUGIN_ID: String = "io.shamash"
 
-        private fun pluginVersion(): String =
-            PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
+        private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
 
         private fun defaultRunner(): ShamashAsmScanRunner =
             ShamashAsmScanRunner(
@@ -263,8 +263,8 @@ class RunAsmScanAction(
                     project,
                     toolName,
                     "Registry '$registryId' not found. " +
-                            "Available: ${if (available.isBlank()) "(none)" else available}. " +
-                            "Open Run Settings → Registry to pick an installed provider.",
+                        "Available: ${if (available.isBlank()) "(none)" else available}. " +
+                        "Open Run Settings → Registry to pick an installed provider.",
                     NotificationType.ERROR,
                 )
                 return null

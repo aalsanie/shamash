@@ -112,7 +112,6 @@ class ShamashAsmToolWindowController(
     }
 
     companion object {
-        fun getInstance(project: Project): ShamashAsmToolWindowController =
-            project.getService(ShamashAsmToolWindowController::class.java)
+        fun getInstance(project: Project): ShamashAsmToolWindowController = project.getService(ShamashAsmToolWindowController::class.java)
     }
 }
