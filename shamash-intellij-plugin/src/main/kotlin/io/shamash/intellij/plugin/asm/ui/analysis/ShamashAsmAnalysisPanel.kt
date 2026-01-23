@@ -37,6 +37,7 @@ import com.intellij.ui.components.JBTabbedPane
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import io.shamash.asm.core.analysis.AnalysisResult
 import io.shamash.asm.core.analysis.GraphAnalysisResult
 import io.shamash.asm.core.analysis.HotspotEntry
 import io.shamash.asm.core.analysis.HotspotKind
@@ -111,24 +112,38 @@ class ShamashAsmAnalysisPanel(
             }
 
         val scan = state.scanResult
-        val export = scan?.engine?.export
+        val engine = scan?.engine
+        val export = engine?.export
+        val inMemory = engine?.analysis
 
         val graphsPath = export?.analysisGraphsPath
         val hotspotsPath = export?.analysisHotspotsPath
         val scoresPath = export?.analysisScoresPath
 
-        if (graphsPath == null && hotspotsPath == null && scoresPath == null) {
-            renderEmpty("No analysis artifacts found. Enable export.artifacts.analysis.enabled and re-run scan.")
+        val anySidecar = graphsPath != null || hotspotsPath != null || scoresPath != null
+        val anyInMemory = inMemory != null && !inMemory.isEmpty
+
+        if (!anySidecar && anyInMemory) {
+            status.text = "Showing in-memory analysis (exports are disabled)."
+            render(inMemory?.graphs, inMemory?.hotspots, inMemory?.scoring)
             return
         }
 
-        loadInBackground(graphsPath, hotspotsPath, scoresPath)
+        if (!anySidecar && !anyInMemory) {
+            renderEmpty(
+                "No analysis data found. Enable analysis (engine.analysis.*) or enable export.artifacts.analysis.enabled and re-run scan.",
+            )
+            return
+        }
+
+        loadInBackground(graphsPath, hotspotsPath, scoresPath, inMemory)
     }
 
     private fun loadInBackground(
         graphsPath: Path?,
         hotspotsPath: Path?,
         scoresPath: Path?,
+        inMemory: AnalysisResult?,
     ) {
         status.text = "Loading analysis artifacts…"
 
@@ -136,11 +151,26 @@ class ShamashAsmAnalysisPanel(
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
 
-                val graphs = graphsPath?.let { readGraphs(it) }
-                val hotspots = hotspotsPath?.let { readHotspots(it) }
-                val scoring = scoresPath?.let { readScoring(it) }
+                // Prefer exported sidecars when present, but fall back to the in-memory analysis
+                // (engine already computed these even when export is disabled).
+                val graphs = graphsPath?.let { readGraphs(it) } ?: inMemory?.graphs
+                val hotspots = hotspotsPath?.let { readHotspots(it) } ?: inMemory?.hotspots
+                val scoring = scoresPath?.let { readScoring(it) } ?: inMemory?.scoring
 
                 ApplicationManager.getApplication().invokeLater {
+                    val usedAnySidecar =
+                        (graphsPath != null && graphs != null) ||
+                                (hotspotsPath != null && hotspots != null) ||
+                                (scoresPath != null && scoring != null)
+
+                    status.text =
+                        when {
+                            usedAnySidecar -> ""
+                            graphs != null || hotspots != null || scoring != null ->
+                                "Showing in-memory analysis (analysis artifacts were not exported)."
+                            else -> "No analysis data found."
+                        }
+
                     render(graphs, hotspots, scoring)
                 }
             }
@@ -173,9 +203,6 @@ class ShamashAsmAnalysisPanel(
         hotspots: HotspotsResult?,
         scoring: ScoringResult?,
     ) {
-        val any = graphs != null || hotspots != null || scoring != null
-        status.text = if (any) "" else "No analysis artifacts found."
-
         // Graphs
         if (graphs == null) {
             graphsSummary.text = "Graphs: (no data)"

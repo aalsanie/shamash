@@ -18,6 +18,7 @@
 - CLI (scan) now constructs ShamashAsmEngine(toolName, toolVersion) using `package.implementationVersion`
 - IntelliJ ASM actions now construct ShamashAsmEngine(toolName, toolVersion) using `PluginManagerCore`
 - ASM Run Scan smart mode during indexing by starting the background progress
+- Fall back to in-memory analysis when export artifacts are missing
 
 ## [0.80.0]
 ### Update
