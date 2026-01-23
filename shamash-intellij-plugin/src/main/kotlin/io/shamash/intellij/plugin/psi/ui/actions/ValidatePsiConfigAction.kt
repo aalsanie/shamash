@@ -101,12 +101,21 @@ class ValidatePsiConfigAction(
             }
 
             override fun onSuccess() {
+                if (project.isDisposed) return
+
                 // Update UI state once.
                 ShamashPsiUiStateService.getInstance(project).updateValidation(errors)
 
                 PsiActionUtil.openPsiToolWindow(project)
-                ShamashPsiToolWindowController.getInstance(project).select(ShamashPsiToolWindowController.Tab.CONFIG)
-                ShamashPsiToolWindowController.getInstance(project).refreshAll()
+                val tw = ShamashPsiToolWindowController.getInstance(project)
+
+                // Redirect to Dashboard ONLY upon successful validation (no ERROR).
+                if (ok && errorCount == 0) {
+                    tw.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
+                } else {
+                    tw.select(ShamashPsiToolWindowController.Tab.CONFIG)
+                }
+                tw.refreshAll()
 
                 if (!ok || errorCount > 0) {
                     PsiActionUtil.notify(

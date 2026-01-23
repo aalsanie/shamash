@@ -2,6 +2,7 @@
 
 ## [unreleased]
 
+## [0.90.0]
 ### Added
 - Users can set scan knobs in CLI/IntelliJ without editing YAML
 - UI shows which overrides were applied
@@ -19,6 +20,7 @@
 - IntelliJ ASM actions now construct ShamashAsmEngine(toolName, toolVersion) using `PluginManagerCore`
 - ASM Run Scan smart mode during indexing by starting the background progress
 - Fall back to in-memory analysis when export artifacts are missing
+- Validate psi config should redirect user to dashboard upon successful validation
 
 ## [0.80.0]
 ### Update
