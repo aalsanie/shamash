@@ -47,8 +47,7 @@ class ShamashPsiToolWindowFactory :
         // Initial render
         controller.refreshAll()
 
-        // Default landing tab (keep Dashboard as the overview; scans land on Findings via action)
-        controller.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
+        controller.select(ShamashPsiToolWindowController.Tab.CONFIG)
 
         val content = ContentFactory.getInstance().createContent(tabs, "", false)
         toolWindow.contentManager.addContent(content)

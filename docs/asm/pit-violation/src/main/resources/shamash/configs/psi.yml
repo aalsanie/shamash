@@ -1,0 +1,268 @@
+# Shamash PSI Config v1 (REFERENCE)
+# --------------------------------
+# This file is intended as a living reference + examples. Copy what you need.
+#
+# Pipeline (as shipped):
+# 1) Parse YAML -> raw Map/List primitives
+# 2) Structural validation (JSON Schema)
+# 3) Bind into schema.v1 models
+# 4) Semantic validation (validation.v1) + RuleSpec param validation
+#
+# Canonical rule identity is (type,name,role):
+# - RuleSpec registry is keyed by (type,name) only (role is always null in specs).
+# - Config rules can be wildcard (roles: null) or specific (roles: ["roleA","roleB"]).
+#
+# Severity: ERROR | WARNING | INFO
+
+version: 1
+
+project:
+  validation:
+    # What to do if a rule in config is not registered in RuleSpecRegistryV1
+    # or (optionally) not executable by the engine (depending on wiring).
+    unknownRule: ERROR  # ERROR | WARN | IGNORE (case-insensitive)
+
+  # Root package configuration used by the binder and/or rules.
+  # Note: you can enforce root package consistency via the "packages.rootPackage" rule below.
+  rootPackage:
+    mode: AUTO   # AUTO | EXPLICIT (case-insensitive)
+    value: ""    # When EXPLICIT, set your real root package (e.g., "com.acme.app")
+
+  # Source files scanned by the project runner.
+  # Typical default is src/main/java + src/main/kotlin, but you can widen/narrow as needed.
+  sourceGlobs:
+    # IMPORTANT:
+    # The current scan runner matches globs against VirtualFile.path (absolute path),
+    # NOT a project-relative path. That means patterns like:
+    #   - "src/main/kotlin/**"
+    # will NOT match, and you may get "0 findings" because nothing was scanned.
+    #
+    # Therefore, the reference config uses extension-based includes that work for
+    # both absolute and relative paths:
+    include: []
+    exclude:
+      - "**/build/**"
+      - "**/.gradle/**"
+      - "**/out/**"
+      - "**/.idea/**"
+      - "**/generated/**"
+
+# -----------------------------------------------------------------------------
+# Roles
+# -----------------------------------------------------------------------------
+# roles is a map of: roleId -> { priority, description?, match }
+#
+# priority:
+# - higher wins when multiple roles match a target (validator enforces 0..100)
+#
+# match:
+# - is a recursive matcher expression.
+# - exactly one leaf field OR one operator (anyOf/allOf/not) per matcher object.
+roles:
+  controller:
+    priority: 100
+    description: "Web controllers / adapters"
+    match:
+      anyOf:
+        - annotation: "org.springframework.web.bind.annotation.RestController"
+        - annotation: "org.springframework.stereotype.Controller"
+        - packageRegex: ".*\\.controller(\\..*)?$"
+        - classNameEndsWith: "Controller"
+
+  service:
+    priority: 80
+    description: "Application services"
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Service"
+        - packageRegex: ".*\\.service(\\..*)?$"
+        - classNameEndsWith: "Service"
+
+  repository:
+    priority: 60
+    description: "Persistence adapters"
+    match:
+      anyOf:
+        - annotation: "org.springframework.stereotype.Repository"
+        - packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+        - classNameEndsWithAny: ["Dao", "Repository"]
+
+# -----------------------------------------------------------------------------
+# Rules (LIST)
+# -----------------------------------------------------------------------------
+# rules is a list of rule definitions:
+# - type: string
+# - name: string
+# - roles:
+#     - null  => wildcard rule definition (applies to all roles; uniqueness enforced per (type,name))
+#     - []    => invalid (semantic validator rejects)
+#     - ["roleA","roleB"] => role-specific instances
+# - enabled: boolean
+# - severity: ERROR|WARNING|INFO
+# - scope: optional include/exclude filters (roles, packageRegex filters, globs)
+# - params: free-form object, validated by RuleSpec (unknown keys flagged per policy)
+rules:
+  # ---------------------------------------------------------------------------
+  # naming.bannedSuffixes  (Spec: NamingBannedSuffixesSpec)
+  # params:
+  #   banned: [String] (required, non-empty entries)
+  #   applyToRoles: [RoleId] (optional; if omitted applies to all)
+  #   Any class ending with Action should trigger regardless of roles.
+  #   caseSensitive: Boolean (optional)
+  # ---------------------------------------------------------------------------
+  - type: "naming"
+    name: "bannedSuffixes"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      banned: ["Action"]
+      caseSensitive: true
+
+  # ---------------------------------------------------------------------------
+  # arch.forbiddenRoleDependencies  (Spec: ArchForbiddenRoleDependenciesSpec)
+  # params:
+  #   kinds: [String] (required; allowed:
+  #       methodCall, fieldType, parameterType, returnType, extends, implements, annotationType
+  #   )
+  #   forbidden: [ { from: RoleId, to: [RoleId], message?: String } ] (required)
+  # ---------------------------------------------------------------------------
+  - type: "arch"
+    name: "forbiddenRoleDependencies"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      kinds:
+        - "methodCall"
+        - "fieldType"
+        - "parameterType"
+        - "returnType"
+        - "extends"
+        - "implements"
+        - "annotationType"
+      forbidden:
+        - from: "controller"
+          to: ["repository"]
+          message: "Controllers must not depend directly on repositories"
+        - from: "service"
+          to: ["controller"]
+
+  # ---------------------------------------------------------------------------
+  # metrics.maxMethodsByRole  (Spec: MetricsMaxMethodsByRoleSpec)
+  # NOTE: This spec expects:
+  #   limits: { roleId: maxInt, ... }  (object/map)
+  # and expects ignoreMethodNameRegex to be a LIST (if present).
+  #
+  # params:
+  #   limits: { RoleId: Int } (required)
+  #   countKinds: [String] (optional; allowed:
+  #       declaredMethods, publicMethods, privateMethods
+  #   )
+  #   ignoreMethodNameRegex: [String] (optional; list of regex strings)
+  # ---------------------------------------------------------------------------
+  - type: "metrics"
+    name: "maxMethodsByRole"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      limits:
+        controller: 5
+        service: 8
+        repository: 10
+      countKinds: ["declaredMethods"]
+      ignoreMethodNameRegex:
+        - "^(get|set|toString|equals|hashCode)$"
+
+  # ---------------------------------------------------------------------------
+  # packages.rolePlacement  (Spec: PackagesRolePlacementSpec)
+  # params:
+  #   expected: { roleId: { packageRegex: String }, ... } (required)
+  # ---------------------------------------------------------------------------
+  - type: "packages"
+    name: "rolePlacement"
+    roles: null
+    enabled: true
+    severity: WARNING
+    params:
+      expected:
+        controller:
+          packageRegex: ".*\\.controller(\\..*)?$"
+        service:
+          packageRegex: ".*\\.service(\\..*)?$"
+        repository:
+          packageRegex: ".*\\.(dao|repository)(\\..*)?$"
+
+  # ---------------------------------------------------------------------------
+  # packages.rootPackage  (Spec: PackagesRootPackageSpec)
+  # IMPORTANT:
+  # - When mode is AUTO, "value" must be omitted (if present, it must be non-empty).
+  # - When mode is EXPLICIT, value is required and must be non-empty.
+  #
+  # params:
+  #   mode: AUTO|EXPLICIT (required)
+  #   value: String (required when mode=EXPLICIT)
+  #   mode: "EXPLICIT"
+  #  value: "com.this.will.never.match"
+  #  this rule is added and to demonstrate the engine capability
+  #  it is almost always a violation as no code lives under com.this.will.never.match
+  #  make sure to remove mode and value or add your own rule
+  # ---------------------------------------------------------------------------
+  - type: "packages"
+    name: "rootPackage"
+    roles: null
+    enabled: true
+    severity: ERROR
+    params:
+      mode: "EXPLICIT"
+      value: "com.this.will.never.match"
+
+  # ---------------------------------------------------------------------------
+  # deadcode.unusedPrivateMembers  (Spec: DeadcodeUnusedPrivateMembersSpec)
+  # NOTE: This spec expects ignoreNameRegex to be a LIST (if present).
+  #
+  # params:
+  #   check: { fields: Boolean, methods: Boolean, classes: Boolean } (required)
+  #   ignoreIfAnnotatedWithExact: [String] (optional)
+  #   ignoreIfAnnotatedWithPrefix: [String] (optional)
+  #   ignoreIfContainingClassAnnotatedWithExact: [String] (optional)
+  #   ignoreIfContainingClassAnnotatedWithPrefix: [String] (optional)
+  #   ignoreRoles: [RoleId] (optional)
+  #   ignoreNameRegex: [String] (optional; list of regex strings)
+  # ---------------------------------------------------------------------------
+  - type: "deadcode"
+    name: "unusedPrivateMembers"
+    roles: null
+    enabled: true
+    severity: INFO
+    params:
+      check:
+        fields: true
+        methods: true
+        classes: false
+      ignoreIfAnnotatedWithPrefix:
+        - "org.junit."
+        - "org.springframework.web.bind.annotation."
+        - "jakarta.persistence."
+        - "com.fasterxml.jackson.annotation."
+        - "lombok."
+      ignoreRoles: ["repository"]
+      ignoreNameRegex:
+        - "^_"
+
+# -----------------------------------------------------------------------------
+# Exceptions (Suppressions)
+# -----------------------------------------------------------------------------
+# exceptions is a list of suppressions applied to findings.
+# suppress: list of canonical rule ids (no "*" or "all")
+# match: must contain at least one field (schema enforces minProperties: 1)
+exceptions:
+  - id: "EX-001"
+    reason: "Legacy module; cleanup scheduled"
+    expiresOn: "2026-06-01"
+    suppress:
+      - "deadcode.unusedPrivateMembers"
+      - "metrics.maxMethodsByRole"
+    match:
+      fileGlob: "**/legacy/**"

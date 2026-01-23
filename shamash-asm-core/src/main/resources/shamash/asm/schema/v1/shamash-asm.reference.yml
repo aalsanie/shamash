@@ -1,307 +1,323 @@
-# Shamash ASM Config v1 (REFERENCE)
-# --------------------------------
-# ASM scans bytecode (.class + optionally dependency jars), builds a deterministic index,
-# computes graphs/hotspots/scores, runs ASM rules, then uses the unified export pipeline.
+# Shamash ASM Reference Configuration (Schema v1)
 #
-# Pipeline:
-# 1) Parse YAML -> raw Map/List primitives
-# 2) Structural validation (JSON Schema)
-# 3) Bind into asm-core schema.v1 models
-# 4) Semantic validation (validation.v1) + RuleSpec param validation
+# ASM engine: bytecode analysis (CI-friendly) + dependency graph + hotspots + scoring.
+# This reference aims to be:
+# - non-opinionated (no org-specific package names)
+# - immediately useful (surfaces real issues like cycles, god classes, high coupling)
+# - safe defaults (scans common build outputs; avoids gigantic dependency caches)
 #
-# Notes:
-# - This reference is intentionally conservative and aligned with the currently enforced
-#   RuleSpec parameter contracts.
-# - Some fields are required by schema even if a feature is effectively disabled by scan scope.
+# NOTE: edit based on your team needs and architecture, view ./docs for customization references
 
 version: 1
 
 project:
+  # Bytecode discovery happens by walking each root and matching directories/files using the globs below.
   bytecode:
-    # Roots to scan. Use "." for monorepos; narrow it for faster scans.
     roots:
-      - "."
+      - "."  # project root
 
-    # Discover compiled class outputs (directories).
-    # Important glob semantic:
-    # - "**/build/classes/**" matches both "build/classes/..." and "x/build/classes/..."
+    # Compiled class output directories.
     outputsGlobs:
       include:
+        # Gradle (Java/Kotlin)
         - "**/build/classes/**"
-        - "**/build/intermediates/javac/**"
+        - "**/build/tmp/kotlin-classes/**"   # older Kotlin Gradle plugin
+        # Maven
         - "**/target/classes/**"
-        - "**/target/test-classes/**"
+        # IntelliJ
+        - "**/out/production/**"
+        # Eclipse
+        - "**/bin/**"
+        # Android (common javac intermediates)
+        - "**/build/intermediates/javac/**"
       exclude:
-        - "**/out/**"
-        - "**/.idea/**"
-        - "**/generated/**"
-        - "**/node_modules/**"
-        - "**/.gradle/**"
-        - "**/build/tmp/**"
+        # Exclude test outputs (keep signal focused on production code)
+        - "**/build/classes/**/test/**"
+        - "**/build/tmp/kotlin-classes/**/test/**"
+        - "**/target/test-classes/**"
+        - "**/out/test/**"
+        # Exclude generated outputs where possible
+        - "**/build/**/generated/**"
+        - "**/target/generated-sources/**"
 
-    # Discover dependency jars (schema requires at least one include glob).
-    # Whether jars are actually scanned is controlled by project.scan.scope.
+    # Optional jars to include (useful if your repo produces shaded/fat jars, or publishes a library).
+    # Shamash will only analyze jars present under the configured roots.
     jarGlobs:
       include:
-        - "**/*.jar"
+        - "**/build/libs/*.jar"
+        - "**/target/*.jar"
+        - "**/libs/*.jar"
       exclude:
-        - "**/build/**"                 # usually outputs, not deps
-        - "**/.gradle/**/build/**"      # avoid transient build outputs
-        - "**/.idea/**"
+        - "**/*-sources.jar"
+        - "**/*-javadoc.jar"
+        - "**/.gradle/**"
+        - "**/.m2/**"
         - "**/node_modules/**"
 
   scan:
-    # PROJECT_WITH_EXTERNAL_BUCKETS:
-    # - scan project outputs
-    # - do NOT scan jars
-    # - collapse external references into buckets (java.*, kotlin.*, org.springframework.*, etc.)
-    #
-    # PROJECT_ONLY:
-    # - scan project outputs only
-    # - no buckets
-    #
-    # ALL_SOURCES:
-    # - scan outputs + dependency jars (can be huge)
-    scope: PROJECT_WITH_EXTERNAL_BUCKETS
-
     followSymlinks: false
 
-    # Optional safety caps (null = unlimited)
-    maxClasses: null
-    maxJarBytes: null
-    maxClassBytes: null
+    # PROJECT_ONLY keeps this plug-and-play and fast by focusing on your compiled outputs.
+    # If you want to also ingest dependency jars as separate buckets, switch to:
+    #   PROJECT_WITH_EXTERNAL_BUCKETS
+    scope: PROJECT_ONLY
+
+    # Safety valve for very large repos (increase if you know you have more compiled types).
+    maxClasses: 50000
 
   validation:
-    # What to do if config references a rule that is not implemented in the engine.
-    # IGNORE: no executability checks
-    # WARN  : warnings only
-    # ERROR : fail validation
+    # Reference configs should not hide mistakes.
     unknownRule: ERROR
 
-# -----------------------------------------------------------------------------
-# Roles (optional)
-# -----------------------------------------------------------------------------
-# If you don't need roles, set roles: {}.
+# Role detection (heuristics).
+# These are intentionally broad so they work across frameworks (Spring, JAX-RS, Micronaut, Ktor, plain JVM apps).
 roles:
   controller:
-    priority: 100
-    description: "Web controllers / adapters"
+    description: "Inbound edge of the system: HTTP / RPC / entrypoint handlers"
+    priority: 90
     match:
       anyOf:
-        - annotation: "org.springframework.web.bind.annotation.RestController"
-        - annotation: "org.springframework.stereotype.Controller"
+        - annotationPrefix: "org.springframework.web.bind.annotation."
+        - annotation: "javax.ws.rs.Path"
+        - annotationPrefix: "jakarta.ws.rs."
         - packageContainsSegment: "controller"
+        - packageContainsSegment: "controllers"
+        - packageContainsSegment: "api"
+        - packageContainsSegment: "web"
+        - packageContainsSegment: "rest"
         - classNameEndsWith: "Controller"
+        - classNameEndsWith: "Resource"
+        - classNameEndsWith: "Endpoint"
+        - classNameEndsWith: "Handler"
 
   service:
-    priority: 90
-    description: "Services"
+    description: "Business logic / use-cases"
+    priority: 80
     match:
       anyOf:
         - annotation: "org.springframework.stereotype.Service"
+        - annotationPrefix: "jakarta.inject."
+        - annotationPrefix: "javax.inject."
         - packageContainsSegment: "service"
+        - packageContainsSegment: "services"
+        - packageContainsSegment: "usecase"
+        - packageContainsSegment: "usecases"
+        - packageContainsSegment: "application"
         - classNameEndsWith: "Service"
+        - classNameEndsWith: "UseCase"
+        - classNameEndsWith: "Interactor"
 
   repository:
-    priority: 80
-    description: "Persistence / repositories"
+    description: "Persistence boundary (DB / storage adapters)"
+    priority: 70
     match:
       anyOf:
         - annotation: "org.springframework.stereotype.Repository"
         - packageContainsSegment: "repository"
+        - packageContainsSegment: "repositories"
         - packageContainsSegment: "dao"
+        - packageContainsSegment: "persistence"
         - classNameEndsWith: "Repository"
         - classNameEndsWith: "Dao"
+        - classNameEndsWith: "DAO"
+
+  domain:
+    description: "Domain model / DTOs / entities"
+    priority: 50
+    match:
+      anyOf:
+        - packageContainsSegment: "domain"
+        - packageContainsSegment: "model"
+        - packageContainsSegment: "models"
+        - packageContainsSegment: "entity"
+        - packageContainsSegment: "entities"
+        - packageContainsSegment: "dto"
+        - classNameEndsWith: "Dto"
+
+  config:
+    description: "Configuration / wiring"
+    priority: 40
+    match:
+      anyOf:
+        - packageContainsSegment: "config"
+        - packageContainsSegment: "configuration"
+        - classNameEndsWith: "Config"
+        - classNameEndsWith: "Configuration"
+
+  util:
+    description: "Shared utilities / helpers"
+    priority: 10
+    match:
+      anyOf:
+        - packageContainsSegment: "util"
+        - packageContainsSegment: "utils"
+        - packageContainsSegment: "common"
+        - packageContainsSegment: "shared"
+        - classNameEndsWith: "Util"
+        - classNameEndsWith: "Utils"
+        - classNameEndsWith: "Helper"
 
 analysis:
   graphs:
     enabled: true
     granularity: PACKAGE
-    includeExternalBuckets: true
+    includeExternalBuckets: false
 
   hotspots:
     enabled: true
-    topN: 30
+    topN: 25
     includeExternal: false
 
   scoring:
     enabled: true
     model: V1
 
+    # God-class scoring focuses on unusually large / highly coupled classes.
     godClass:
       enabled: true
-      weights:
-        methods: 0.35
-        fields: 0.10
-        fanOut: 0.30
-        fanIn: 0.15
-        packageSpread: 0.10
-      thresholds:
-        warning: 0.70
-        error: 0.85
+      weights: null
+      thresholds: null
 
+    # Overall scoring summarizes health of the codebase at a glance.
     overall:
       enabled: true
-      weights:
-        cycles: 0.30
-        dependencyDensity: 0.20
-        layeringViolations: 0.25
-        godClassPrevalence: 0.15
-        externalCoupling: 0.10
-      thresholds:
-        warning: 0.70
-        error: 0.85
+      weights: null
+      thresholds: null
 
+# Baseline support.
+# GENERATE writes a baseline file (useful on first run so teams can adopt gradually).
+# Use NONE to disable baselines.
 baseline:
-  # NONE: do not use baseline
-  # GENERATE: produce baseline file from current findings
-  # VERIFY: compare current findings to baseline and report drift
   mode: GENERATE
-  path: ".shamash/baseline/shamash-asm.baseline.json"
+  path: ".shamash/baseline/asm-baseline.json"
 
 export:
   enabled: true
-  outputDir: ".shamash/reports/asm"
-  formats: [JSON, SARIF, HTML, XML]
   overwrite: true
 
-  # Optional export sidecar artifacts (data-first; consumed by CLI / IntelliJ UI).
-  # These are separate from report formats (HTML/JSON/SARIF/XML) and are intended
-  # to expose richer machine-readable outputs.
-  # (facts/roles/rulePlan/analysis)
+  outputDir: ".shamash/out/asm"
+
+  # Human + machine-friendly outputs.
+  formats:
+    - SARIF
+    - JSON
+    - HTML
+    - XML
+
   artifacts:
+    # Facts are the raw data (best for post-processing and debugging).
     facts:
-      enabled: false
-      # JSONL_GZ (recommended) | JSON will blow up on large projects
+      enabled: true
       format: JSONL_GZ
 
+    # Resolved role assignments per class.
     roles:
-      enabled: false
+      enabled: true
 
+    # The evaluated rule plan (what ran, with scopes, resolved rule IDs, etc.).
     rulePlan:
-      enabled: false
+      enabled: true
 
+    # Analysis results derived from facts (graphs + hotspots + scoring).
     analysis:
-      enabled: false
-      # When enabled=true, flags default to true if omitted.
-      graphs: false
-      hotspots: false
-      scoring: false
+      enabled: true
+      graphs: true
+      hotspots: true
+      scoring: true
 
-# -----------------------------------------------------------------------------
-# Rules
-# -----------------------------------------------------------------------------
-# Canonical rule identity is (type,name,role).
-# - Specs are keyed by (type,name).
-# - Config rules can be wildcard (roles: null) or specific (roles: ["roleA","roleB"]).
-#
-# severity: ERROR | WARNING | INFO
 rules:
-  # Architecture: forbid direct dependencies between roles (example layering).
-  # Contract: params.forbidden is a MAP role -> list of roles.
-  - type: arch
-    name: forbiddenRoleDependencies
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      forbidden:
-        controller:
-          - repository
+  # -------- Graph rules (structural health) --------
 
-  # Architecture: forbid packages by regex.
-  # Contract: params.forbidPackages is a LIST of regex strings.
-  - type: arch
-    name: forbiddenPackages
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      forbidPackages:
-        - "^com\\.acme\\.forbidden(\\..*)?$"
-
-  # Graph: no cycles.
+  # NOTE: This spec intentionally has *no params*.
+  # Graph knobs are configured under `analysis.graphs`.
   - type: graph
     name: noCycles
-    roles: null
     enabled: true
     severity: ERROR
-    params: {}
 
-  # Graph: max cycles allowed (0 = none).
-  # Contract: params.maxCycles is an INT.
-  - type: graph
-    name: maxCycles
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      maxCycles: 0
-
-  # Graph: cap dependency density (0..1).
-  # Contract: params.maxDensity is a DOUBLE.
-  - type: graph
-    name: maxDependencyDensity
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      maxDensity: 0.40
-
-  # Graph: cap edge count.
-  # Contract: params.maxEdges is an INT.
   - type: graph
     name: maxEdgeCount
-    roles: null
     enabled: true
     severity: WARNING
     params:
-      maxEdges: 50
+      # A very high edge count usually means high coupling and poor modularity.
+      # (Tweak upward for monorepos / huge libraries.)
+      maxEdges: 2500
 
-  # Metrics: cap methods per class.
-  # Contract: params.maxMethods is an INT.
+  - type: graph
+    name: maxDependencyDensity
+    enabled: true
+    severity: WARNING
+    params:
+      # Density is a normalized coupling indicator (0..1 in typical graphs).
+      maxDensity: 0.10
+
+  # -------- Metrics rules (local complexity) --------
+
   - type: metrics
     name: maxMethodsPerClass
-    roles: null
     enabled: true
     severity: WARNING
     params:
       maxMethods: 50
 
-  # Metrics: cap fields per class.
-  # Contract: params.maxFields is an INT.
   - type: metrics
     name: maxFieldsPerClass
-    roles: null
     enabled: true
     severity: WARNING
     params:
-      maxFields: 30
+      maxFields: 25
 
-  # Origin: forbid jar dependencies.
-  # Contract: params.forbid is a LIST of MAPs with required fields: from, to.
-  - type: origin
-    name: forbiddenJarDependencies
-    roles: null
+  - type: metrics
+    name: maxFanOut
+    enabled: true
+    severity: WARNING
+    params:
+      max: 30
+      includeExternal: false
+
+  - type: metrics
+    name: maxFanIn
+    enabled: true
+    severity: WARNING
+    params:
+      max: 30
+      includeExternal: false
+
+  - type: metrics
+    name: maxPackageSpread
+    enabled: true
+    severity: INFO
+    params:
+      max: 20
+      includeExternal: false
+
+  # -------- API surface rules (encapsulation) --------
+
+  - type: api
+    name: maxPublicTypes
+    enabled: true
+    severity: INFO
+    params:
+      # Large public surface area is often accidental; this pushes teams toward encapsulation.
+      # 'max' is required by the rule spec.
+      max: 300
+      includeNested: true
+      includeInterfaces: true
+      includeEnums: true
+      includeAnnotations: true
+
+  # -------- Architecture rules (layering) --------
+
+  - type: arch
+    name: forbiddenRoleDependencies
     enabled: true
     severity: ERROR
     params:
-      forbid:
-        - from: ".*guava.*"
-          to: ".*"
-        - from: ".*commons-lang3.*"
-          to: ".*"
+      direction: direct
+      # Non-opinionated layering: entrypoints should not talk to persistence directly.
+      forbidden:
+        controller:
+          - repository
 
-# -----------------------------------------------------------------------------
-# Exceptions (suppression)
-# -----------------------------------------------------------------------------
-# Exceptions suppress findings by matching rule + target characteristics.
-# Use sparingly; prefer fixing architecture.
-exceptions:
-  - id: "legacy-controller-repo-bridge"
-    enabled: false
-    reason: "Temporary exception until legacy controller is refactored."
-    match:
-      ruleType: "arch"
-      ruleName: "forbiddenRoleDependencies"
-      classNameRegex: ".*LegacyController.*"
+exceptions: []

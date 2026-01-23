@@ -22,6 +22,7 @@
 package io.shamash.cli
 
 import io.shamash.artifacts.contract.FindingSeverity
+import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.config.ValidationSeverity
@@ -30,6 +31,7 @@ import io.shamash.asm.core.config.schema.v1.model.ScanScope
 import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
+import io.shamash.asm.core.export.analysis.AnalysisSidecarReader
 import io.shamash.asm.core.export.facts.FactsClassRecord
 import io.shamash.asm.core.export.facts.FactsEdgeRecord
 import io.shamash.asm.core.export.facts.FactsReader
@@ -37,6 +39,7 @@ import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanOverrides
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import io.shamash.cli.analysis.AnalysisCliFormatter
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.ExperimentalCli
@@ -67,10 +70,11 @@ fun main(args: Array<String>) {
     val cmdValidate = ValidateCommand()
     val cmdScan = ScanCommand()
     val cmdFacts = FactsCommand()
+    val cmdAnalysis = AnalysisCommand()
     val cmdRegistry = RegistryCommand()
     val cmdVersion = VersionCommand()
 
-    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdRegistry, cmdVersion)
+    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdAnalysis, cmdRegistry, cmdVersion)
 
     try {
         parser.parse(args)
@@ -86,12 +90,54 @@ fun main(args: Array<String>) {
             cmdValidate.wasInvoked -> cmdValidate.exitCode
             cmdScan.wasInvoked -> cmdScan.exitCode
             cmdFacts.wasInvoked -> cmdFacts.exitCode
+            cmdAnalysis.wasInvoked -> cmdAnalysis.exitCode
             cmdRegistry.wasInvoked -> cmdRegistry.exitCode
             cmdVersion.wasInvoked -> cmdVersion.exitCode
             else -> ExitCode.OK
         }
 
     exitProcess(exit.code)
+}
+
+private class AnalysisCommand :
+    CommandBase(
+        "analysis",
+        "Print summaries from exported analysis sidecars (graphs/hotspots/scores)",
+    ) {
+    private val dirRaw by option(
+        type = ArgType.String,
+        fullName = "dir",
+        description = "Export output directory (defaults to ./.shamash/out/asm)",
+    )
+
+    private val top by option(
+        type = ArgType.Int,
+        fullName = "top",
+        description = "How many entries to print per section",
+    ).default(5)
+
+    override fun run(): ExitCode {
+        val projectBase = Paths.get(".").toAbsolutePath().normalize()
+        val defaultOut = ExportOutputLayout.normalizeOutputDir(projectBasePath = projectBase, outputDir = null)
+        val dir = (dirRaw?.let { Paths.get(it) } ?: defaultOut).toAbsolutePath().normalize()
+
+        val graphsPath = dir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME)
+        val hotspotsPath = dir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME)
+        val scoresPath = dir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME)
+
+        val any = Files.exists(graphsPath) || Files.exists(hotspotsPath) || Files.exists(scoresPath)
+        if (!any) {
+            Console.errln("No analysis artifacts found under: $dir")
+            return ExitCode.RUNTIME_ERROR
+        }
+
+        val analysis = AnalysisSidecarReader.readAll(graphsPath = graphsPath, hotspotsPath = hotspotsPath, scoresPath = scoresPath)
+        AnalysisCliFormatter
+            .summaryLines(analysis = analysis, topCycles = top, topHotspots = top, topScores = top)
+            .forEach { Console.println(it) }
+
+        return ExitCode.OK
+    }
 }
 
 private object Console {
@@ -560,6 +606,12 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         description = "Print findings list (in addition to the summary)",
     ).default(false)
 
+    private val printAnalysisSummary by option(
+        type = ArgType.Boolean,
+        fullName = "print-analysis-summary",
+        description = "Print a compact analysis summary (graphs/hotspots/scores) for CI logs",
+    ).default(false)
+
     override fun run(): ExitCode {
         val projectRoot = Paths.get(project).normalize().absolute()
         val failOn =
@@ -798,6 +850,27 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
             Console.println("Baseline    : ${if (export.baselineWritten) "written" else "no-change"}")
         } else {
             Console.println("Export dir  : (disabled)")
+        }
+
+        if (printAnalysisSummary) {
+            val analysisFromExport =
+                export?.let {
+                    AnalysisSidecarReader.readAll(
+                        graphsPath = it.analysisGraphsPath,
+                        hotspotsPath = it.analysisHotspotsPath,
+                        scoresPath = it.analysisScoresPath,
+                    )
+                }
+
+            val analysis = engine.analysis ?: analysisFromExport
+            if (analysis == null || analysis.isEmpty) {
+                Console.println("Analysis    : (none)")
+            } else {
+                Console.println()
+                AnalysisCliFormatter
+                    .summaryLines(analysis = analysis, topCycles = 5, topHotspots = 5, topScores = 5)
+                    .forEach { Console.println(it) }
+            }
         }
 
         if (printFindings && engine.findings.isNotEmpty()) {

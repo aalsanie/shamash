@@ -194,6 +194,17 @@ class ShamashAsmEngineTest {
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME), exp.analysisGraphsPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME), exp.analysisHotspotsPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME), exp.analysisScoresPath)
+
+            // Analysis sidecars are exported.
+            assertNotNull(exp.analysisGraphsPath)
+            assertNotNull(exp.analysisHotspotsPath)
+            assertNotNull(exp.analysisScoresPath)
+            assertTrue(Files.exists(exp.analysisGraphsPath))
+            assertTrue(Files.exists(exp.analysisHotspotsPath))
+            assertTrue(Files.exists(exp.analysisScoresPath))
+            assertTrue(Files.size(exp.analysisGraphsPath) > 0L)
+            assertTrue(Files.size(exp.analysisHotspotsPath) > 0L)
+            assertTrue(Files.size(exp.analysisScoresPath) > 0L)
         } finally {
             project.toFile().deleteRecursively()
         }
@@ -229,14 +240,14 @@ class ShamashAsmEngineTest {
             roles = emptyMap(),
             analysis =
                 AnalysisConfig(
-                    graphs = GraphsConfig(enabled = false, granularity = Granularity.PACKAGE, includeExternalBuckets = false),
-                    hotspots = HotspotsConfig(enabled = false, topN = 10, includeExternal = false),
+                    graphs = GraphsConfig(enabled = true, granularity = Granularity.PACKAGE, includeExternalBuckets = false),
+                    hotspots = HotspotsConfig(enabled = true, topN = 10, includeExternal = false),
                     scoring =
                         ScoringConfig(
-                            enabled = false,
+                            enabled = true,
                             model = ScoreModel.V1,
-                            godClass = GodClassScoringConfig(enabled = false, weights = null, thresholds = null),
-                            overall = OverallScoringConfig(enabled = false, weights = null, thresholds = null),
+                            godClass = GodClassScoringConfig(enabled = true, weights = null, thresholds = null),
+                            overall = OverallScoringConfig(enabled = true, weights = null, thresholds = null),
                         ),
                 ),
             rules = rules,

@@ -193,7 +193,7 @@ internal object RuleUtil {
         fun successors(node: String): Set<String> = outgoing[node] ?: emptySet()
     }
 
-    private const val EXTERNAL_PREFIX = "__external__"
+    const val EXTERNAL_PREFIX = "__external__"
 
     /**
      * Build a dependency graph from facts.edges using analysis.graphs granularity.
