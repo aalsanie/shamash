@@ -160,8 +160,8 @@ class ShamashAsmAnalysisPanel(
                 ApplicationManager.getApplication().invokeLater {
                     val usedAnySidecar =
                         (graphsPath != null && graphs != null) ||
-                                (hotspotsPath != null && hotspots != null) ||
-                                (scoresPath != null && scoring != null)
+                            (hotspotsPath != null && hotspots != null) ||
+                            (scoresPath != null && scoring != null)
 
                     status.text =
                         when {
