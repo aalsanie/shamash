@@ -48,23 +48,25 @@ class ToolWindowControllerE2ETest : ShamashPluginE2eTestBase() {
         val controller = ShamashAsmToolWindowController.getInstance(project)
         controller.init(tabs)
 
-        assertEquals(5, tabs.tabCount)
+        assertEquals(7, tabs.tabCount)
         assertEquals("Dashboard", tabs.getTitleAt(0))
         assertEquals("Findings", tabs.getTitleAt(1))
         assertEquals("Facts", tabs.getTitleAt(2))
-        assertEquals("Config", tabs.getTitleAt(3))
-        assertEquals("Settings", tabs.getTitleAt(4))
+        assertEquals("Analysis", tabs.getTitleAt(3))
+        assertEquals("Roles", tabs.getTitleAt(4))
+        assertEquals("Config", tabs.getTitleAt(5))
+        assertEquals("Settings", tabs.getTitleAt(6))
 
         controller.select(ShamashAsmToolWindowController.Tab.FINDINGS)
         assertEquals(1, tabs.selectedIndex)
 
         controller.select(ShamashAsmToolWindowController.Tab.CONFIG)
-        assertEquals(3, tabs.selectedIndex)
+        assertEquals(5, tabs.selectedIndex)
 
         controller.select(ShamashAsmToolWindowController.Tab.FACTS)
         assertEquals(2, tabs.selectedIndex)
 
         controller.select(ShamashAsmToolWindowController.Tab.SETTINGS)
-        assertEquals(4, tabs.selectedIndex)
+        assertEquals(6, tabs.selectedIndex)
     }
 }

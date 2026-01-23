@@ -152,6 +152,13 @@ shamash scan --project . \
   --max-class-bytes 2000000
 ```
 
+### CLI analysis
+```shell
+shamash analysis                        # print summaries from exported analysis (graphs/hotspots/scores)
+shamash analysis --dir .shamash/out/asm # export output directory (default: ./.shamash/out/asm)
+shamash analysis --top 10               # how many entries to print per section (default: 5)
+```
+
 ### Exit codes (CI)
 
 - `0` success (and findings below fail threshold)

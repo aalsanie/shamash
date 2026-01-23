@@ -9,6 +9,9 @@
 - ASM export: writes roles.json when `export.artifacts.roles.enabled: true`
 - UI new Roles tab: role search + class search
 - CLI and IntelliJ can select a registry provider
+- In memory outputs for graphs + hotspots + scoring
+- Add analysis sidecar
+- Add the Analysis tab (Graphs / Hotspots / Scoring)
 
 ### Fixed
 - UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes
