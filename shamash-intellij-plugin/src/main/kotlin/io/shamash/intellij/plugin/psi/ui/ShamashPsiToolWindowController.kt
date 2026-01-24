@@ -83,6 +83,7 @@ class ShamashPsiToolWindowController(
     }
 
     companion object {
+        @JvmStatic
         fun getInstance(project: Project): ShamashPsiToolWindowController = project.getService(ShamashPsiToolWindowController::class.java)
     }
 }

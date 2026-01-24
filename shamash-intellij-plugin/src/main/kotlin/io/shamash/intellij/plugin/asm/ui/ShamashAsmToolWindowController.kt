@@ -121,6 +121,7 @@ class ShamashAsmToolWindowController(
     }
 
     companion object {
+        @JvmStatic
         fun getInstance(project: Project): ShamashAsmToolWindowController = project.getService(ShamashAsmToolWindowController::class.java)
     }
 }
