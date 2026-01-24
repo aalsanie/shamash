@@ -70,7 +70,24 @@ Docs + Test Bed applications: [`./docs/`](./docs)
 
 ---
 
-## Quick Start
+## Gradle kotlin DSL
+See: [Quick Start — Gradle Kotlin DSL](./QUICK_START.md#gradle-kotlin-dsl)
+
+```shell
+# one-time: generate the starter config in shamash/configs/asm.yml
+gradlew shamashInit
+
+# validate config
+gradlew shamashValidate
+
+# run scan gate (also runs on ./gradlew check now)
+gradlew shamashScan
+gradlew check
+```
+
+---
+
+## Quick Start (CLI + intellij plugin + gradle DSL)
 See [QUICK_START](./QUICK_START.md)
 
 ## More
