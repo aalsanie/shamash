@@ -2,6 +2,9 @@
 
 ## [unreleased]
 
+### Fixed
+- Replaced deprecated ToolWindowFactory overrides by switching Shamash ASM/PSI ToolWindow factories to Java-only implementations
+
 ## [0.90.0]
 ### Added
 - Users can set scan knobs in CLI/IntelliJ without editing YAML
