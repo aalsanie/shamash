@@ -188,182 +188,181 @@ If you want to provide your own ASM registry (custom rules / contracts), see: **
 ```kotlin
 import java.net.URI
 import java.security.MessageDigest
+import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.JavaExec
+import org.gradle.kotlin.dsl.register
+import org.gradle.kotlin.dsl.withType
 
-// ------------------------------
-// Shamash CLI (download + JavaExec)
-// ------------------------------
+plugins {
+   base
+}
+
 val shamashVersion = providers.gradleProperty("shamash.version").orElse("0.90.0")
 val shamashCliUrl = providers.gradleProperty("shamash.cliUrl").orElse(
-  shamashVersion.map { v ->
-    // Default follows GitHub release asset convention.
-    // If your asset name/path differs, override with -Pshamash.cliUrl=...
-    "https://github.com/aalsanie/shamash/releases/download/$v/shamash-cli-$v.zip"
-  }
+   shamashVersion.map { v ->
+      "https://github.com/aalsanie/shamash/releases/download/$v/shamash-cli-$v.zip"
+   }
 )
 val shamashCliSha256 = providers.gradleProperty("shamash.sha256").orNull // optional
 
-val shamashToolsDir = layout.buildDirectory.dir("tools/shamash")
 val shamashZipFile = layout.buildDirectory.file(
-  shamashVersion.map { v -> "tools/shamash/shamash-cli-$v.zip" }
+   shamashVersion.map { v -> "tools/shamash/shamash-cli-$v.zip" }
 )
 val shamashUnpackDir = layout.buildDirectory.dir(
-  shamashVersion.map { v -> "tools/shamash/unpacked/$v" }
+   shamashVersion.map { v -> "tools/shamash/unpacked/$v" }
 )
 
 fun sha256Hex(bytes: ByteArray): String =
-  MessageDigest.getInstance("SHA-256")
-    .digest(bytes)
-    .joinToString("") { "%02x".format(it) }
+   MessageDigest.getInstance("SHA-256")
+      .digest(bytes)
+      .joinToString("") { "%02x".format(it) }
 
 val downloadShamashCli = tasks.register("downloadShamashCli") {
-  group = "verification"
-  description = "Downloads Shamash CLI distribution zip (if missing)."
+   group = "verification"
+   description = "Downloads Shamash CLI distribution zip (cache-correct, checksum optional)."
 
-  outputs.file(shamashZipFile)
+   inputs.property("shamash.version", shamashVersion)
+   inputs.property("shamash.cliUrl", shamashCliUrl)
+   inputs.property("shamash.sha256", shamashCliSha256 ?: "")
 
-  doLast {
-    val outFile = shamashZipFile.get().asFile
-    outFile.parentFile.mkdirs()
+   outputs.file(shamashZipFile)
 
-    // Skip download if present + (optional) checksum matches
-    if (outFile.exists()) {
+   doLast {
+      val outFile = shamashZipFile.get().asFile
+      outFile.parentFile.mkdirs()
+
+      val url = shamashCliUrl.get()
+
+      if (outFile.exists()) {
+         if (shamashCliSha256 != null) {
+            val existing = sha256Hex(outFile.readBytes())
+            check(existing.equals(shamashCliSha256, ignoreCase = true)) {
+               "Shamash CLI zip exists but SHA-256 mismatch.\nExpected: $shamashCliSha256\nActual  : $existing\nFile    : ${outFile.absolutePath}\nDelete the file or fix shamash.sha256."
+            }
+         }
+         return@doLast
+      }
+
+      val bytes = URI(url).toURL().openStream().use { it.readBytes() }
+
       if (shamashCliSha256 != null) {
-        val existing = sha256Hex(outFile.readBytes())
-        check(existing.equals(shamashCliSha256, ignoreCase = true)) {
-          "Shamash CLI zip exists but SHA-256 mismatch.\nExpected: $shamashCliSha256\nActual  : $existing\nDelete ${outFile.absolutePath} and re-run."
-        }
+         val actual = sha256Hex(bytes)
+         check(actual.equals(shamashCliSha256, ignoreCase = true)) {
+            "Downloaded Shamash CLI zip SHA-256 mismatch.\nExpected: $shamashCliSha256\nActual  : $actual\nURL     : $url"
+         }
       }
-      return@doLast
-    }
 
-    val url = shamashCliUrl.get()
-    val bytes = URI(url).toURL().openStream().use { it.readBytes() }
-    outFile.writeBytes(bytes)
-
-    if (shamashCliSha256 != null) {
-      val actual = sha256Hex(bytes)
-      check(actual.equals(shamashCliSha256, ignoreCase = true)) {
-        "Downloaded Shamash CLI zip SHA-256 mismatch.\nExpected: $shamashCliSha256\nActual  : $actual\nURL     : $url"
-      }
-    }
-  }
+      outFile.writeBytes(bytes)
+   }
 }
 
-val unpackShamashCli = tasks.register("unpackShamashCli", Copy::class.java) {
-  group = "verification"
-  description = "Unpacks Shamash CLI distribution zip."
+val unpackShamashCli = tasks.register("unpackShamashCli", Copy::class) {
+   group = "verification"
+   description = "Unpacks Shamash CLI distribution zip."
 
-  dependsOn(downloadShamashCli)
+   dependsOn(downloadShamashCli)
 
-  from(zipTree(shamashZipFile))
-  into(shamashUnpackDir)
+   from(zipTree(shamashZipFile))
+   into(shamashUnpackDir)
 
-  // Make it cache-friendly
-  inputs.file(shamashZipFile)
-  outputs.dir(shamashUnpackDir)
+   inputs.file(shamashZipFile)
+   outputs.dir(shamashUnpackDir)
 }
 
 /**
- * Resolves the "lib" directory inside the unpacked distribution.
- * The application plugin typically produces: <root>/lib/*.jar (and <root>/bin/*).
- * We search robustly to avoid depending on the top-level folder name inside the zip.
+ * Finds the 'lib' directory inside the unpacked distribution without assuming zip root folder name.
  */
-fun resolveShamashLibDir(): File {
-  val base = shamashUnpackDir.get().asFile
-  check(base.exists()) { "Shamash CLI not unpacked at: ${base.absolutePath}" }
+fun resolveShamashLibDir(): java.io.File {
+   val base = shamashUnpackDir.get().asFile
+   check(base.exists()) { "Shamash CLI not unpacked at: ${base.absolutePath}" }
 
-  // 1) common: base/<distRoot>/lib
-  base.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
-    val lib = File(dir, "lib")
-    if (lib.isDirectory) return lib
-  }
+   base.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+      val lib = java.io.File(dir, "lib")
+      if (lib.isDirectory && lib.listFiles()?.any { it.extension == "jar" } == true) return lib
+   }
+   
+   val direct = java.io.File(base, "lib")
+   if (direct.isDirectory && direct.listFiles()?.any { it.extension == "jar" } == true) return direct
 
-  // 2) fallback: base/lib
-  val direct = File(base, "lib")
-  if (direct.isDirectory) return direct
+   val found = base.walkTopDown().firstOrNull {
+      it.isDirectory && it.name == "lib" && it.listFiles()?.any { f -> f.extension == "jar" } == true
+   }
+   check(found != null) { "Could not find Shamash 'lib' directory under: ${base.absolutePath}" }
+   return found
+}
 
-  // 3) last resort: walk
-  val found = base.walkTopDown().firstOrNull { it.isDirectory && it.name == "lib" && it.listFiles()?.any { f -> f.extension == "jar" } == true }
-  check(found != null) { "Could not find Shamash 'lib' directory under: ${base.absolutePath}" }
-  return found
+fun org.gradle.api.Task.dependsOnAllJvmClassesTasks() {
+   val classTasks = rootProject.allprojects.flatMap { p ->
+      p.tasks.matching { it.name == "classes" }.toList()
+   }
+   if (classTasks.isNotEmpty()) dependsOn(classTasks)
 }
 
 // ------------------------------
-// Public tasks you actually run
+// Public tasks
 // ------------------------------
-
-// 1) Generate config (only if you want a Gradle entrypoint for `shamash init`)
 tasks.register<JavaExec>("shamashInit") {
-  group = "verification"
-  description = "Creates shamash/configs/asm.yml from embedded reference (Shamash CLI: init)."
+   group = "verification"
+   description = "Runs Shamash CLI: init."
 
-  dependsOn(unpackShamashCli)
+   dependsOn(unpackShamashCli)
 
-  mainClass.set("io.shamash.cli.MainKt")
+   mainClass.set("io.shamash.cli.MainKt")
 
-  doFirst {
-    val libDir = resolveShamashLibDir()
-    classpath = fileTree(libDir) { include("*.jar") }
-  }
+   doFirst {
+      val libDir = resolveShamashLibDir()
+      classpath = fileTree(libDir) { include("*.jar") }
+   }
 
-  // Writes to shamash/configs/asm.yml under the root project by default
-  args("init", "--project", rootProject.projectDir.absolutePath)
+   args("init", "--project", rootProject.projectDir.absolutePath)
 }
 
-// 2) Validate config (Shamash CLI: validate)
 tasks.register<JavaExec>("shamashValidate") {
-  group = "verification"
-  description = "Validates shamash/configs/asm.yml (Shamash CLI: validate)."
+   group = "verification"
+   description = "Runs Shamash CLI: validate."
 
-  dependsOn(unpackShamashCli)
+   dependsOn(unpackShamashCli)
 
-  mainClass.set("io.shamash.cli.MainKt")
+   mainClass.set("io.shamash.cli.MainKt")
 
-  doFirst {
-    val libDir = resolveShamashLibDir()
-    classpath = fileTree(libDir) { include("*.jar") }
-  }
+   doFirst {
+      val libDir = resolveShamashLibDir()
+      classpath = fileTree(libDir) { include("*.jar") }
+   }
 
-  // If you want an explicit config path:
-  // args("validate", "--project", rootProject.projectDir.absolutePath, "--config", "shamash/configs/asm.yml")
-  args("validate", "--project", rootProject.projectDir.absolutePath)
+   args("validate", "--project", rootProject.projectDir.absolutePath)
 }
 
-// 3) Scan gate (Shamash CLI: scan) — wire this into `check`
-tasks.register<JavaExec>("shamashScan") {
-  group = "verification"
-  description = "Runs Shamash ASM scan as a CI-friendly verification gate (Shamash CLI: scan)."
+val shamashScan = tasks.register<JavaExec>("shamashScan") {
+   group = "verification"
+   description = "Runs Shamash CLI: scan (CI gate)."
 
-  dependsOn(unpackShamashCli)
-  // Ensure build outputs exist. If your build is multi-module, prefer running from root after `build`.
-  dependsOn("classes")
+   dependsOn(unpackShamashCli)
 
-  mainClass.set("io.shamash.cli.MainKt")
+   dependsOnAllJvmClassesTasks()
 
-  // Good defaults for CI logs; you can tweak via -Pshamash.failOn=... etc.
-  val failOn = providers.gradleProperty("shamash.failOn").orElse("ERROR")
-  val printFindings = providers.gradleProperty("shamash.printFindings").orElse("false")
-  val printAnalysisSummary = providers.gradleProperty("shamash.printAnalysisSummary").orElse("true")
+   mainClass.set("io.shamash.cli.MainKt")
 
-  doFirst {
-    val libDir = resolveShamashLibDir()
-    classpath = fileTree(libDir) { include("*.jar") }
-  }
+   val failOn = providers.gradleProperty("shamash.failOn").orElse("ERROR")
+   val printFindings = providers.gradleProperty("shamash.printFindings").orElse("false")
+   val printAnalysisSummary = providers.gradleProperty("shamash.printAnalysisSummary").orElse("true")
 
-  args(
-    "scan",
-    "--project", rootProject.projectDir.absolutePath,
-    "--fail-on", failOn.get(),
-    "--print-findings", printFindings.get(),
-    "--print-analysis-summary", printAnalysisSummary.get(),
-  )
+   doFirst {
+      val libDir = resolveShamashLibDir()
+      classpath = fileTree(libDir) { include("*.jar") }
+   }
 
-  // If you want to force facts export regardless of config:
-  // args("--export-facts")
+   args(
+      "scan",
+      "--project", rootProject.projectDir.absolutePath,
+      "--fail-on", failOn.get(),
+      "--print-findings", printFindings.get(),
+      "--print-analysis-summary", printAnalysisSummary.get(),
+   )
 }
 
-tasks.named("check") {
-  dependsOn("shamashScan")
+tasks.matching { it.name == "check" }.configureEach {
+   dependsOn(shamashScan)
 }
 ```
 
