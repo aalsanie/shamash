@@ -7,13 +7,29 @@
 
 
 # Shamash
+Shamash is a JVM architecture enforcement tool that helps teams **define, validate, and continuously enforce architectural boundaries**.
+It prevents architecture drift in JVM codebases by catching forbidden dependencies and cycles early.
 
-Shamash is a JVM architecture enforcement tool that helps teams **define, validate, and continuously enforce architectural boundaries**
+### Use cases Shamash is built for
 
-It ships two complementary engines:
+- Stop layer violations (controller → repository, service → web, etc.)
+- Detect dependency cycles and show a representative cycle path
+- Catch module boundary breaks during refactors/migrations
+- Generate SARIF/HTML/JSON/XML reports for CI/PR visibility
 
-- **ASM (Bytecode engine):** analyzes compiled `.class` files and (optionally) dependency JARs to detect forbidden dependencies, cycles, coupling hotspots, and architectural drift **without requiring source code**.
-- **PSI (Source engine):** analyzes source code via IntelliJ PSI using a strict YAML schema, providing dashboards, rule validation, suppressions, guided fixes, and exportable reports.
+### Two engines
+
+- PSI (source): dashboards, suppressions, guided fixes
+- ASM (bytecode): deterministic “what ships” verification + CI gates + exports
+
+
+### Try it in 60 seconds (IntelliJ)
+
+- Tools → Shamash ASM Dashboard
+- Create ASM Config (from Reference)
+- Build (`./gradlew assemble`)
+- Run ASM Scan → results + exports in `.shamash/`
+
 ---
 
 ## Why two engines?
@@ -33,7 +49,21 @@ These YAML configs define roles, rules, scope, validation behavior, exports, and
 
 ---
 
+<details>
+  <summary><b>Demo (GIF)</b></summary>
+
+  <br/>
+
+![Shamash IntelliJ demo](./assets/shamash-demo.gif)
+</details>
+
+---
+
 ## What it covers
+
+<details>
+  <summary><b>Show details</b></summary>
+  <br/>
 
 ### Architecture enforcement
 - Roles (e.g., controller/service/repository) and placement rules
@@ -50,15 +80,6 @@ These YAML configs define roles, rules, scope, validation behavior, exports, and
 - Dead code detection
 - Deprecation / shadow usage detection
 - Additional JVM internals visibility and advanced inspections
-
----
-
-<details>
-  <summary><b>Demo (GIF)</b></summary>
-
-  <br/>
-
-![Shamash IntelliJ demo](./assets/shamash-demo.gif)
 
 </details>
 
