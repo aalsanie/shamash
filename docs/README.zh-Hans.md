@@ -61,7 +61,7 @@ Shamash 是一个 JVM 架构执行工具，可帮助团队定义、验证和持�
 
   <br/>
 
-![Shamash IntelliJ demo](./assets/shamash-demo.gif)
+![Shamash IntelliJ demo](../assets/shamash-demo.gif)
 </details>
 
 ---
@@ -95,12 +95,12 @@ Shamash 是一个 JVM 架构执行工具，可帮助团队定义、验证和持�
 
 ## 文档和示例
 
-文档 + 测试平台应用程序: [`./docs/`](./docs)
+文档 + 测试平台应用程序: [`./docs/`](../docs)
 
 ---
 
 ## Gradle kotlin DSL
-看: [Quick Start — Gradle Kotlin DSL](./QUICK_START.md#gradle-kotlin-dsl)
+看: [Quick Start — Gradle Kotlin DSL](../QUICK_START.md#gradle-kotlin-dsl)
 
 ```shell
 # one-time: generate the starter config in shamash/configs/asm.yml
@@ -117,7 +117,7 @@ gradlew check
 ---
 
 ## 快速开始 (CLI + intellij plugin + gradle DSL)
-看 [QUICK_START](./QUICK_START.md)
+看 [QUICK_START](../QUICK_START.md)
 
 ## More
 [JVM architecture enforcement in IDE + CI](https://open.substack.com/pub/aalsanie/p/shamash-architecture-enforcement?utm_campaign=post-expanded-share&utm_medium=web)
