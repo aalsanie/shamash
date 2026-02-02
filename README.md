@@ -30,6 +30,7 @@ It prevents architecture drift in JVM codebases by catching forbidden dependenci
 
 ### Try it in 60 seconds (IntelliJ)
 
+- [Download](https://plugins.jetbrains.com/plugin/29504-shamash)
 - Tools → Shamash ASM Dashboard
 - Create ASM Config (from Reference)
 - Build (`./gradlew assemble`)
