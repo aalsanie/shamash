@@ -23,7 +23,7 @@ plugins {
     kotlin("jvm") version "2.3.0" apply false
     id("org.jetbrains.intellij.platform") version "2.10.5" apply false
 
-    id("com.diffplug.spotless") version "8.1.0" apply false
+    id("com.diffplug.spotless") version "8.2.1" apply false
     id("org.jetbrains.kotlinx.kover") version "0.9.4" apply false
 }
 
