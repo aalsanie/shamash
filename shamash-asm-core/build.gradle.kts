@@ -16,8 +16,8 @@ dependencies {
     implementation(project(":shamash-export"))
 
     // ASM engine deps
-    implementation("org.ow2.asm:asm:9.7.1")
-    implementation("org.ow2.asm:asm-util:9.7.1")
+    implementation("org.ow2.asm:asm:9.9.1")
+    implementation("org.ow2.asm:asm-util:9.9.1")
 
     // Validation
     implementation("com.networknt:json-schema-validator:1.5.9")
