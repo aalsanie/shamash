@@ -1,4 +1,9 @@
 <p align="center">
+  <a href="./README.md">English</a> •
+  <a href="./docs/README.zh-Hans.md">简体中文</a>
+</p>
+
+<p align="center">
   <img src="assets/shamash_logo.png" alt="Shamash Logo" width="180"/>
 </p>
 
@@ -10,7 +15,7 @@
 Shamash is a JVM architecture enforcement tool that helps teams **define, validate, and continuously enforce architectural boundaries**.
 It prevents architecture drift in JVM codebases by catching forbidden dependencies and cycles early.
 
-### Use cases Shamash is built for
+### Use cases
 
 - Stop layer violations (controller → repository, service → web, etc.)
 - Detect dependency cycles and show a representative cycle path
@@ -25,6 +30,7 @@ It prevents architecture drift in JVM codebases by catching forbidden dependenci
 
 ### Try it in 60 seconds (IntelliJ)
 
+- [Download](https://plugins.jetbrains.com/plugin/29504-shamash)
 - Tools → Shamash ASM Dashboard
 - Create ASM Config (from Reference)
 - Build (`./gradlew assemble`)
@@ -37,7 +43,7 @@ It prevents architecture drift in JVM codebases by catching forbidden dependenci
 Use **PSI** when you want source-aware feedback (IDE-native dashboards, suppressions, guided fixes).
 Use **ASM** when you need build-artifact truth (bytecode-level reality, JAR visibility, CI-friendly scans).
 
-Most teams run both:
+Run both:
 - PSI for day-to-day development feedback
 - ASM for “what actually ships” bytecode verification
 
