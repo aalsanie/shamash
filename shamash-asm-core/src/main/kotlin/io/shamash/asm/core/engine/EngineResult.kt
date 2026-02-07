@@ -23,6 +23,7 @@ package io.shamash.asm.core.engine
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.report.schema.v1.ExportedReport
+import io.shamash.asm.core.analysis.AnalysisResult
 import io.shamash.asm.core.facts.query.FactIndex
 import java.nio.file.Path
 import kotlin.math.max
@@ -71,6 +72,13 @@ data class EngineExportResult(
     val report: ExportedReport,
     val outputDir: Path,
     val baselineWritten: Boolean,
+    /** Optional exported sidecar artifacts (may be null if not requested). */
+    val factsPath: Path? = null,
+    val rolesPath: Path? = null,
+    val rulePlanPath: Path? = null,
+    val analysisGraphsPath: Path? = null,
+    val analysisHotspotsPath: Path? = null,
+    val analysisScoresPath: Path? = null,
 )
 
 /**
@@ -84,6 +92,8 @@ data class EngineResult(
     val summary: EngineRunSummary,
     val findings: List<Finding>,
     val errors: List<EngineError> = emptyList(),
+    /** Optional analysis outputs (graphs/hotspots/scoring) computed in-memory. */
+    val analysis: AnalysisResult? = null,
     val export: EngineExportResult? = null,
     val facts: FactIndex? = null,
 ) {
@@ -100,6 +110,7 @@ data class EngineResult(
         fun success(
             summary: EngineRunSummary,
             findings: List<Finding>,
+            analysis: AnalysisResult? = null,
             export: EngineExportResult? = null,
             facts: FactIndex? = null,
         ): EngineResult =
@@ -107,6 +118,7 @@ data class EngineResult(
                 summary = summary,
                 findings = findings,
                 errors = emptyList(),
+                analysis = analysis,
                 export = export,
                 facts = facts,
             )
@@ -115,6 +127,7 @@ data class EngineResult(
             summary: EngineRunSummary,
             errors: List<EngineError>,
             findings: List<Finding> = emptyList(),
+            analysis: AnalysisResult? = null,
             export: EngineExportResult? = null,
             facts: FactIndex? = null,
         ): EngineResult =
@@ -122,6 +135,7 @@ data class EngineResult(
                 summary = summary,
                 findings = findings,
                 errors = errors,
+                analysis = analysis,
                 export = export,
                 facts = facts,
             )

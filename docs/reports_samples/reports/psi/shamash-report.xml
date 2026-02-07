@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shamashReport schemaVersion="v1" generatedAtEpochMillis="1769130614050">
+  <tool name="Shamash PSI" version="0.90.0"/>
+  <project name="atypon-food-api" basePath="/Users/User/IdeaProjects/atypon-food-api"/>
+  <findings count="12">
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/config/SpoonacularConfig.java" fingerprint="4d4e0e4eeba976c9edd1b8ee7458068c58f427c5201e1d8832b0220e846ebf99" classFqn="com.atypon.config.SpoonacularConfig" memberName="apiKey">
+      <message>Private field &apos;apiKey&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/config/SpoonacularConfig.java" fingerprint="4d4e0e4eeba976c9edd1b8ee7458068c58f427c5201e1d8832b0220e846ebf99" classFqn="com.atypon.config.SpoonacularConfig" memberName="baseUrl">
+      <message>Private field &apos;baseUrl&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/ExcludeRequest.java" fingerprint="5c0bcf3599ac9a6e0be3053b0ee0a5f1f4a53f80f1b530fd511fa34c75003eb1" classFqn="com.atypon.model.ExcludeRequest" memberName="excludeIngredients">
+      <message>Private field &apos;excludeIngredients&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Ingredient.java" fingerprint="1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" classFqn="com.atypon.model.Ingredient" memberName="amount">
+      <message>Private field &apos;amount&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Ingredient.java" fingerprint="1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" classFqn="com.atypon.model.Ingredient" memberName="name">
+      <message>Private field &apos;name&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Ingredient.java" fingerprint="1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" classFqn="com.atypon.model.Ingredient" memberName="nutrition">
+      <message>Private field &apos;nutrition&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Ingredient.java" fingerprint="1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" classFqn="com.atypon.model.Ingredient" memberName="unit">
+      <message>Private field &apos;unit&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Nutrition.java" fingerprint="0258d2c35097e1f671f1ec2e2fe0fbb585333b44375a20b8166beac832c183ac" classFqn="com.atypon.model.Nutrition" memberName="calories">
+      <message>Private field &apos;calories&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Recipe.java" fingerprint="3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" classFqn="com.atypon.model.Recipe" memberName="extendedIngredients">
+      <message>Private field &apos;extendedIngredients&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Recipe.java" fingerprint="3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" classFqn="com.atypon.model.Recipe" memberName="id">
+      <message>Private field &apos;id&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Recipe.java" fingerprint="3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" classFqn="com.atypon.model.Recipe" memberName="nutrition">
+      <message>Private field &apos;nutrition&apos; appears unused.</message>
+    </finding>
+    <finding ruleId="deadcode.unusedPrivateMembers" severity="WARNING" filePath="src/main/java/com/atypon/model/Recipe.java" fingerprint="3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" classFqn="com.atypon.model.Recipe" memberName="title">
+      <message>Private field &apos;title&apos; appears unused.</message>
+    </finding>
+  </findings>
+</shamashReport>

@@ -1,0 +1,186 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Shamash PSI",
+          "version": "0.90.0",
+          "informationUri": "https://github.com/aalsanie/shamash",
+          "rules": [
+            {
+              "id": "deadcode.unusedPrivateMembers",
+              "name": "deadcode.unusedPrivateMembers",
+              "shortDescription": { "text": "deadcode.unusedPrivateMembers" }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "startTimeUtc": "2026-01-23T01:10:14.050Z"
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'apiKey' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "4d4e0e4eeba976c9edd1b8ee7458068c58f427c5201e1d8832b0220e846ebf99" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/config/SpoonacularConfig.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'baseUrl' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "4d4e0e4eeba976c9edd1b8ee7458068c58f427c5201e1d8832b0220e846ebf99" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/config/SpoonacularConfig.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'excludeIngredients' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "5c0bcf3599ac9a6e0be3053b0ee0a5f1f4a53f80f1b530fd511fa34c75003eb1" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/ExcludeRequest.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'amount' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Ingredient.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'name' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Ingredient.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'nutrition' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Ingredient.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'unit' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "1cb6a88b7b45797dce2d93fb86e3311fddc88b7902b69010d38c42529c3e51ac" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Ingredient.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'calories' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "0258d2c35097e1f671f1ec2e2fe0fbb585333b44375a20b8166beac832c183ac" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Nutrition.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'extendedIngredients' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Recipe.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'id' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Recipe.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'nutrition' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Recipe.java" }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "deadcode.unusedPrivateMembers",
+          "level": "warning",
+          "message": { "text": "Private field 'title' appears unused." },
+          "partialFingerprints": { "primaryLocationLineHash": "3aa6caccd138453d097e2f82276075a8c29c0cdd76bba11817bc47595cc070bd" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "src/main/java/com/atypon/model/Recipe.java" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

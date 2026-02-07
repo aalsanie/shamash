@@ -7,24 +7,6 @@ This document explains how to contribute in a way that keeps the project clean, 
 
 ---
 
-## Guiding Principles
-
-Shamash is built around a few core principles:
-
-- **Determinism over magic**  
-  Inspections and analysis must be predictable and explainable.
-
-- **Architecture first**  
-  Changes should strengthen or clarify architectural boundaries.
-
-- **Low noise**  
-  Avoid rules or features that produce excessive false positives.
-
-- **Maintainability**  
-  Readable, well-structured code matters more than cleverness.
-
----
-
 ## Ways to Contribute
 
 You can contribute by:
@@ -32,7 +14,7 @@ You can contribute by:
 - Reporting bugs or regressions
 - Improving documentation or examples
 - Adding or refining inspections
-- Improving ASM analysis or dashboard visualization
+- Improving ASM/PSI analysis or dashboard visualization
 - Optimizing performance or memory usage
 - Suggesting architectural improvements
 
@@ -44,6 +26,7 @@ When reporting a bug, please include:
 
 - IntelliJ IDEA version
 - Shamash plugin version
+- Shamash CLI version
 - Operating system
 - Steps to reproduce
 - Expected vs actual behavior
@@ -55,15 +38,28 @@ Use GitHub Issues for all bug reports and feature requests.
 
 ## Development Setup
 
-### Requirements
+### Build
+```shell
+gradlew clean build
+```
 
-- IntelliJ IDEA (Community or Ultimate)
-- JDK compatible with the IntelliJ Platform you are targeting
-- Gradle (wrapper included)
+### Test
+```shell
+gradlew clean test
+```
+
+### CLI
+```shell
+gradlew :shamash-cli:run
+```
 
 ### Running the plugin locally
 
 ```bash
-gradlew.bat spotlessApply --stacktrace
-gradlew runIde
+gradlew clean runIde
+```
+
+### Format
+```shell
+gradlew.bat spotlessApply
 ```

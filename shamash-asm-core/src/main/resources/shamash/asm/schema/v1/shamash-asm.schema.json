@@ -386,6 +386,53 @@
       "enum": ["JSON", "SARIF", "HTML", "XML"]
     },
 
+    "exportFactsFormat": {
+      "type": "string",
+      "enum": ["JSONL_GZ", "JSON"]
+    },
+
+    "exportArtifactToggle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+
+    "exportFactsArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "format": { "$ref": "#/$defs/exportFactsFormat" }
+      }
+    },
+
+    "exportAnalysisArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "graphs": { "type": "boolean" },
+        "hotspots": { "type": "boolean" },
+        "scoring": { "type": "boolean" }
+      }
+    },
+
+    "exportArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "facts": { "$ref": "#/$defs/exportFactsArtifact" },
+        "roles": { "$ref": "#/$defs/exportArtifactToggle" },
+        "rulePlan": { "$ref": "#/$defs/exportArtifactToggle" },
+        "analysis": { "$ref": "#/$defs/exportAnalysisArtifacts" }
+      }
+    },
+
     "export": {
       "type": "object",
       "additionalProperties": false,
@@ -397,6 +444,7 @@
           "type": ["array", "null"],
           "items": { "$ref": "#/$defs/exportFormat" }
         },
+        "artifacts": { "$ref": "#/$defs/exportArtifacts" },
         "overwrite": { "type": "boolean" }
       },
       "allOf": [

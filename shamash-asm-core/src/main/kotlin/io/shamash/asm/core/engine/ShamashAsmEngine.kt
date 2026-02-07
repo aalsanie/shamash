@@ -28,9 +28,12 @@ import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.artifacts.report.schema.v1.ExportedReport
 import io.shamash.artifacts.util.PathNormalizer
 import io.shamash.artifacts.util.glob.GlobMatcher
+import io.shamash.asm.core.analysis.AnalysisResult
+import io.shamash.asm.core.analysis.AsmAnalysisPipeline
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ExceptionDef
 import io.shamash.asm.core.config.schema.v1.model.ExceptionMatch
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
 import io.shamash.asm.core.config.schema.v1.model.Matcher
 import io.shamash.asm.core.config.schema.v1.model.RoleDef
@@ -42,6 +45,9 @@ import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleRegistry
+import io.shamash.asm.core.export.analysis.AnalysisExporter
+import io.shamash.asm.core.export.facts.FactsExporter
+import io.shamash.asm.core.export.roles.RolesExporter
 import io.shamash.asm.core.facts.model.ClassFact
 import io.shamash.asm.core.facts.query.FactIndex
 import io.shamash.export.api.Exporters
@@ -236,6 +242,19 @@ class ShamashAsmEngine(
         // Deterministic findings
         val findings = normalizeAndSortFindings(afterBaseline)
 
+        // --- analysis ----------------------------------------------------------------------
+        val analysisResult: AnalysisResult? =
+            if (!AsmAnalysisPipeline.shouldRun(config.analysis)) {
+                null
+            } else {
+                try {
+                    AsmAnalysisPipeline.run(factsWithRoles, config.analysis)
+                } catch (t: Throwable) {
+                    errors += EngineError.internal("Analysis pipeline failed", t = t)
+                    null
+                }
+            }
+
         // --- export via shamash-export -------------------------------------------------------
         val exportResult: EngineExportResult? =
             try {
@@ -258,10 +277,148 @@ class ShamashAsmEngine(
                                 generatedAtEpochMillis = generatedAtEpochMillis,
                             )
 
+                        val sidecars = resolveExportSidecarPaths(outputDir, config)
+
+                        // Facts export (sidecar)
+                        var factsPath = sidecars.factsPath
+                        if (factsPath != null) {
+                            val fmt =
+                                config.export.artifacts
+                                    ?.facts
+                                    ?.format ?: ExportFactsFormat.JSONL_GZ
+                            try {
+                                FactsExporter.export(
+                                    // Export the engine-populated roles + classToRole mapping.
+                                    facts = factsWithRoles,
+                                    outputPath = factsPath,
+                                    format = fmt,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                // Do not discard report export if facts fails; just mark the export as degraded.
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Facts export failed",
+                                        details = mapOf("factsPath" to factsPath.toString(), "format" to fmt.name),
+                                        t = t,
+                                    )
+                                factsPath = null
+                            }
+                        }
+
+                        // Roles export (sidecar)
+                        var rolesPath = sidecars.rolesPath
+                        if (rolesPath != null) {
+                            try {
+                                RolesExporter.export(
+                                    // Export the engine-populated role classification result.
+                                    facts = factsWithRoles,
+                                    roleDefs = config.roles,
+                                    outputPath = rolesPath,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Roles export failed",
+                                        details = mapOf("rolesPath" to rolesPath.toString()),
+                                        t = t,
+                                    )
+                                rolesPath = null
+                            }
+                        }
+
+                        // Analysis exports (sidecars)
+                        var analysisGraphsPath = sidecars.analysisGraphsPath
+                        if (analysisGraphsPath != null) {
+                            try {
+                                val graphs =
+                                    requireNotNull(analysisResult?.graphs) { "analysis graphs were requested but graphs output is null" }
+                                AnalysisExporter.exportGraphs(
+                                    graphs = graphs,
+                                    outputPath = analysisGraphsPath,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Analysis graphs export failed",
+                                        details = mapOf("analysisGraphsPath" to analysisGraphsPath.toString()),
+                                        t = t,
+                                    )
+                                analysisGraphsPath = null
+                            }
+                        }
+
+                        var analysisHotspotsPath = sidecars.analysisHotspotsPath
+                        if (analysisHotspotsPath != null) {
+                            try {
+                                val hotspots =
+                                    requireNotNull(
+                                        analysisResult?.hotspots,
+                                    ) { "analysis hotspots were requested but hotspots output is null" }
+                                AnalysisExporter.exportHotspots(
+                                    hotspots = hotspots,
+                                    outputPath = analysisHotspotsPath,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Analysis hotspots export failed",
+                                        details = mapOf("analysisHotspotsPath" to analysisHotspotsPath.toString()),
+                                        t = t,
+                                    )
+                                analysisHotspotsPath = null
+                            }
+                        }
+
+                        var analysisScoresPath = sidecars.analysisScoresPath
+                        if (analysisScoresPath != null) {
+                            try {
+                                val scoring =
+                                    requireNotNull(analysisResult?.scoring) { "analysis scores were requested but scoring output is null" }
+                                AnalysisExporter.exportScores(
+                                    scoring = scoring,
+                                    outputPath = analysisScoresPath,
+                                    toolName = toolName,
+                                    toolVersion = toolVersion,
+                                    projectName = projectName,
+                                    generatedAtEpochMillis = generatedAtEpochMillis,
+                                )
+                            } catch (t: Throwable) {
+                                errors +=
+                                    EngineError.exportFailed(
+                                        message = "Analysis scores export failed",
+                                        details = mapOf("analysisScoresPath" to analysisScoresPath.toString()),
+                                        t = t,
+                                    )
+                                analysisScoresPath = null
+                            }
+                        }
+
                         EngineExportResult(
                             report = report,
                             outputDir = outputDir,
                             baselineWritten = baselineWritten,
+                            factsPath = factsPath,
+                            rolesPath = rolesPath,
+                            rulePlanPath = sidecars.rulePlanPath,
+                            analysisGraphsPath = analysisGraphsPath,
+                            analysisHotspotsPath = analysisHotspotsPath,
+                            analysisScoresPath = analysisScoresPath,
                         )
                     }
                 }
@@ -310,6 +467,7 @@ class ShamashAsmEngine(
             EngineResult.success(
                 summary = summary,
                 findings = findings,
+                analysis = analysisResult,
                 export = exportResult,
                 facts = if (includeFactsInResult) facts else null,
             )
@@ -318,6 +476,7 @@ class ShamashAsmEngine(
                 summary = summary,
                 errors = stabilizedErrors,
                 findings = findings,
+                analysis = analysisResult,
                 export = exportResult,
                 facts = if (includeFactsInResult) facts else null,
             )
@@ -721,6 +880,66 @@ class ShamashAsmEngine(
             if (Files.exists(p)) return true
         }
         return false
+    }
+
+    private data class ExportSidecarPaths(
+        val factsPath: Path?,
+        val rolesPath: Path?,
+        val rulePlanPath: Path?,
+        val analysisGraphsPath: Path?,
+        val analysisHotspotsPath: Path?,
+        val analysisScoresPath: Path?,
+    )
+
+    private fun resolveExportSidecarPaths(
+        outputDir: Path,
+        config: ShamashAsmConfigV1,
+    ): ExportSidecarPaths {
+        val artifacts = config.export.artifacts
+
+        val factsPath: Path? =
+            artifacts?.facts?.takeIf { it.enabled }?.let { facts ->
+                val fileName =
+                    when (facts.format) {
+                        ExportFactsFormat.JSONL_GZ -> ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME
+                        ExportFactsFormat.JSON -> ExportOutputLayout.FACTS_JSON_FILE_NAME
+                    }
+                ExportOutputLayout.resolve(outputDir, fileName)
+            }
+
+        val rolesPath: Path? =
+            artifacts?.roles?.takeIf { it.enabled }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ROLES_JSON_FILE_NAME)
+            }
+
+        val rulePlanPath: Path? =
+            artifacts?.rulePlan?.takeIf { it.enabled }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME)
+            }
+
+        val analysisGraphsPath: Path? =
+            artifacts?.analysis?.takeIf { it.enabled && it.graphs }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME)
+            }
+
+        val analysisHotspotsPath: Path? =
+            artifacts?.analysis?.takeIf { it.enabled && it.hotspots }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME)
+            }
+
+        val analysisScoresPath: Path? =
+            artifacts?.analysis?.takeIf { it.enabled && it.scoring }?.let {
+                ExportOutputLayout.resolve(outputDir, ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME)
+            }
+
+        return ExportSidecarPaths(
+            factsPath = factsPath,
+            rolesPath = rolesPath,
+            rulePlanPath = rulePlanPath,
+            analysisGraphsPath = analysisGraphsPath,
+            analysisHotspotsPath = analysisHotspotsPath,
+            analysisScoresPath = analysisScoresPath,
+        )
     }
 
     private fun resolveExportDir(

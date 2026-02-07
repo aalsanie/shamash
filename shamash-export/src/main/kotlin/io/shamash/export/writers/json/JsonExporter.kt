@@ -36,7 +36,7 @@ import java.nio.file.Path
  * JSON exporter for schema v1.
  *
  * Characteristics:
- * - No external JSON library (full control + stability).
+ * - No external JSON library.
  * - Stable field ordering.
  * - UTF-8 encoded.
  */

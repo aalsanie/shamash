@@ -40,4 +40,34 @@ class ExportOutputLayoutTest {
         val out = ExportOutputLayout.normalizeOutputDir(base, provided)
         assertEquals(provided.normalize(), out)
     }
+
+    @Test
+    fun resolve_resolvesKnownSidecarFileNames() {
+        val outDir = Paths.get("/tmp/project/out")
+
+        assertEquals(
+            outDir.resolve(ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME),
+            ExportOutputLayout.resolve(outDir, ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME),
+        )
+        assertEquals(
+            outDir.resolve(ExportOutputLayout.ROLES_JSON_FILE_NAME),
+            ExportOutputLayout.resolve(outDir, ExportOutputLayout.ROLES_JSON_FILE_NAME),
+        )
+        assertEquals(
+            outDir.resolve(ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME),
+            ExportOutputLayout.resolve(outDir, ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME),
+        )
+        assertEquals(
+            outDir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME),
+            ExportOutputLayout.resolve(outDir, ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME),
+        )
+        assertEquals(
+            outDir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME),
+            ExportOutputLayout.resolve(outDir, ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME),
+        )
+        assertEquals(
+            outDir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME),
+            ExportOutputLayout.resolve(outDir, ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME),
+        )
+    }
 }

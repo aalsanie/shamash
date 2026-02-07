@@ -29,7 +29,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.openapi.project.Project
 import com.intellij.testFramework.LightVirtualFile
 import io.shamash.asm.core.config.SchemaResources
 import java.nio.charset.StandardCharsets
@@ -46,7 +45,7 @@ class OpenAsmReferenceConfigAction : AnAction() {
         val project = e.project ?: return
         if (project.isDisposed) return
 
-        val content =
+        val rawContent =
             try {
                 SchemaResources.openReferenceYaml().use { input ->
                     String(input.readBytes(), StandardCharsets.UTF_8)
@@ -61,6 +60,8 @@ class OpenAsmReferenceConfigAction : AnAction() {
                 return
             }
 
+        val content = normalizeYamlText(rawContent)
+
         val fileType = yamlFileType()
         val vf =
             LightVirtualFile(
@@ -68,11 +69,12 @@ class OpenAsmReferenceConfigAction : AnAction() {
                 fileType,
                 content,
             ).apply {
+                // Ensure IDE treats content as UTF-8.
+                charset = StandardCharsets.UTF_8
                 // Reference should be view-only.
                 isWritable = false
             }
 
-        // Open on UI thread.
         val app = ApplicationManager.getApplication()
         val open =
             Runnable {
@@ -89,13 +91,44 @@ class OpenAsmReferenceConfigAction : AnAction() {
         if (app.isDispatchThread) open.run() else app.invokeLater(open)
     }
 
+    /**
+     * Normalizes content to avoid IntelliJ YAML PSI tripping over invisible characters.
+     *
+     * - Removes UTF-8 BOM
+     * - Normalizes line separators to '\n'
+     * - Replaces tab characters with 2 spaces (YAML indentation must not use tabs)
+     * - Replaces non-breaking space with a normal space
+     */
+    private fun normalizeYamlText(text: String): String {
+        var s = text
+
+        // Remove UTF-8 BOM if present.
+        if (s.isNotEmpty() && s[0] == '\uFEFF') {
+            s = s.substring(1)
+        }
+
+        // Normalize line separators.
+        s = s.replace("\r\n", "\n").replace("\r", "\n")
+
+        // YAML forbids tab indentation; sanitize any tabs.
+        s = s.replace('\t', ' ')
+
+        // Replace NBSP with regular space (looks identical but can break parsers/inspections).
+        s = s.replace('\u00A0', ' ')
+
+        return s
+    }
+
     private fun yamlFileType(): FileType {
         val ftm = FileTypeManager.getInstance()
+
         // Prefer yml, fall back to yaml, then to plain text.
         val yml = ftm.getFileTypeByExtension("yml")
         if (!yml.isBinary) return yml
+
         val yaml = ftm.getFileTypeByExtension("yaml")
         if (!yaml.isBinary) return yaml
+
         return ftm.getFileTypeByExtension("txt")
     }
 }

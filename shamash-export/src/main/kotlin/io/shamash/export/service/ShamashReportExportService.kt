@@ -115,11 +115,7 @@ class ShamashReportExportService(
                 // We apply exceptions only (no baseline suppression while generating).
                 val baseAbs = projectBasePath.toAbsolutePath().normalize()
                 val currentFindings =
-                    if (exceptionsPreprocessor != null) {
-                        exceptionsPreprocessor.process(baseAbs, findings)
-                    } else {
-                        findings
-                    }
+                    exceptionsPreprocessor?.process(baseAbs, findings) ?: findings
 
                 val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, currentFindings)
                 baselineCoordinator.writeBaseline(

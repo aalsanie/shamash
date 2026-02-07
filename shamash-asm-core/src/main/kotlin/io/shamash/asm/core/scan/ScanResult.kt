@@ -33,6 +33,8 @@ import java.nio.file.Path
  */
 data class ScanResult(
     val options: ScanOptions,
+    /** Overrides that were applied in-memory for this run. */
+    val appliedOverrides: RunOverrides? = null,
     /** Resolved config path, if any. */
     val configPath: Path? = null,
     /** Typed config when structural + semantic validation passes. */

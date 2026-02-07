@@ -34,6 +34,7 @@ import io.shamash.asm.core.engine.EngineRunSummary
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
+import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.awt.BorderLayout
 import java.awt.Font
 import java.time.Instant
@@ -55,7 +56,6 @@ class ShamashAsmDashboardPanel(
 ) : Disposable {
     private val root = JBPanel<JBPanel<*>>(BorderLayout())
 
-    private val metaLabel = JBLabel("Config: Not found")
     private val statusLabel = JBLabel("Status: idle")
 
     private val overviewText = monoArea()
@@ -67,23 +67,9 @@ class ShamashAsmDashboardPanel(
         val header =
             JBPanel<JBPanel<*>>(BorderLayout()).apply {
                 border = JBUI.Borders.empty(0, 0, 8, 0)
-                add(metaLabel, BorderLayout.CENTER)
                 add(statusLabel, BorderLayout.SOUTH)
             }
 
-        // Content panel (scrollable as one unit)
-        val content =
-            JBPanel<JBPanel<*>>().apply {
-                layout =
-                    com.intellij.ui.dsl.gridLayout
-                        .GridLayout()
-                border = JBUI.Borders.empty(0)
-
-                // Header sits outside; content only contains sections
-            }
-
-        // If you don't want GridLayout DSL dependency, keep it simple:
-        // We'll use a vertical BoxLayout-like stacking using BorderLayout + nested panels.
         val sections =
             JBPanel<JBPanel<*>>().apply {
                 layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS)
@@ -128,19 +114,10 @@ class ShamashAsmDashboardPanel(
 
         val state = ShamashAsmUiStateService.getInstance(project).getState()
         val result = state?.scanResult
-        val updatedAt = state?.updatedAt
 
         val resolvedConfig =
             result?.configPath
                 ?: ShamashAsmConfigLocator.resolveConfigPath(project)
-
-        metaLabel.text =
-            buildString {
-                append("Config: ").append(resolvedConfig?.toString() ?: "Not found")
-                if (updatedAt != null) {
-                    append("  |  Updated: ").append(formatInstant(updatedAt))
-                }
-            }
 
         statusLabel.text = statusLine(result)
 
@@ -177,9 +154,11 @@ class ShamashAsmDashboardPanel(
                 Config: ${resolvedConfig?.toString() ?: "Not found"}
 
                 Use:
-                - Run ASM Scan
+                - Build your project (ASM analysis depends on bytecode)
+                - Navigate to Config panel
+                - Create asm.yml Manually or From Reference
                 - Validate ASM Config
-                - Create ASM Config From Reference
+                - Run ASM Scan
                 """.trimIndent()
         }
 
@@ -187,6 +166,8 @@ class ShamashAsmDashboardPanel(
         val summary: EngineRunSummary? = engine?.summary
         val export = engine?.export
         val report = export?.report
+        val settings = ShamashAsmSettingsState.getInstance(project)
+        val showAdvanced = settings.isShowAdvancedTelemetry()
 
         return buildString {
             append("Project: ").append(result.options.projectName).append('\n')
@@ -196,12 +177,25 @@ class ShamashAsmDashboardPanel(
 
             append("Units scanned: ").append(result.classUnits).append('\n')
             append("Truncated: ").append(result.truncated).append('\n')
+
+            val applied = result.appliedOverrides?.scan
+            if (applied != null) {
+                append("Applied overrides: ").append(formatApplied(applied)).append('\n')
+            } else if (showAdvanced) {
+                append("Applied overrides: (none)").append('\n')
+            }
             append('\n')
 
             append("Config errors: ").append(result.configErrors.size).append('\n')
             append("Scan errors: ").append(result.scanErrors.size).append('\n')
             append("Facts errors: ").append(result.factsErrors.size).append('\n')
             append('\n')
+
+            if (showAdvanced) {
+                append("Options: includeFactsInResult=").append(result.options.includeFactsInResult).append('\n')
+                append("Settings: applyOverrides=").append(settings.isApplyOverrides()).append('\n')
+                append('\n')
+            }
 
             if (engine == null) {
                 append("Engine: not executed\n")
@@ -312,6 +306,16 @@ class ShamashAsmDashboardPanel(
             }
         }.trimEnd()
 
+    private fun formatApplied(ov: io.shamash.asm.core.scan.ScanOverrides): String {
+        val parts = ArrayList<String>(5)
+        ov.scope?.let { parts += "scope=$it" }
+        ov.followSymlinks?.let { parts += "followSymlinks=$it" }
+        ov.maxClasses?.let { parts += "maxClasses=$it" }
+        ov.maxJarBytes?.let { parts += "maxJarBytes=$it" }
+        ov.maxClassBytes?.let { parts += "maxClassBytes=$it" }
+        return if (parts.isEmpty()) "(none)" else parts.joinToString(" ")
+    }
+
     private fun monoArea(): JBTextArea =
         JBTextArea().apply {
             isEditable = false
@@ -320,10 +324,4 @@ class ShamashAsmDashboardPanel(
             font = Font(Font.MONOSPACED, Font.PLAIN, 12)
             border = JBUI.Borders.empty(8)
         }
-
-    private fun formatInstant(i: Instant): String =
-        DateTimeFormatter
-            .ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault())
-            .format(i)
 }

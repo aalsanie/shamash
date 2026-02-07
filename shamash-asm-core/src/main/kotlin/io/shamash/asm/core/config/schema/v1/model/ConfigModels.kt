@@ -289,9 +289,47 @@ enum class ExportFormat {
     XML,
 }
 
+enum class ExportFactsFormat {
+    /**
+     * JSON Lines (.jsonl) compressed with gzip (.gz).
+     *
+     * Recommended for large projects: streamable.
+     */
+    JSONL_GZ,
+
+    /**
+     * A single JSON file. Not recommended for large codebases
+     */
+    JSON,
+}
+
+data class ExportArtifactsConfig(
+    val facts: ExportFactsArtifactConfig? = null,
+    val roles: ExportToggleArtifactConfig? = null,
+    val rulePlan: ExportToggleArtifactConfig? = null,
+    val analysis: ExportAnalysisArtifactsConfig? = null,
+)
+
+data class ExportFactsArtifactConfig(
+    val enabled: Boolean,
+    val format: ExportFactsFormat = ExportFactsFormat.JSONL_GZ,
+)
+
+data class ExportToggleArtifactConfig(
+    val enabled: Boolean,
+)
+
+data class ExportAnalysisArtifactsConfig(
+    val enabled: Boolean,
+    val graphs: Boolean,
+    val hotspots: Boolean,
+    val scoring: Boolean,
+)
+
 data class ExportConfig(
     val enabled: Boolean,
     val outputDir: String,
     val formats: List<ExportFormat>,
     val overwrite: Boolean,
+    val artifacts: ExportArtifactsConfig? = null,
 )

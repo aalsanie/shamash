@@ -26,6 +26,7 @@ import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.AnalysisConfig
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ExceptionMatch
+import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportConfig
 import io.shamash.asm.core.config.schema.v1.model.GlobSet
 import io.shamash.asm.core.config.schema.v1.model.Matcher
@@ -85,7 +86,7 @@ object ConfigSemanticValidatorV1 {
 
         // ---- Baseline / Export ----
         validateBaseline(config, errors)
-        validateExport(config.export, errors)
+        validateExport(config.export, config.analysis, errors)
 
         return errors
     }
@@ -481,13 +482,68 @@ object ConfigSemanticValidatorV1 {
 
     private fun validateExport(
         export: ExportConfig,
+        analysis: AnalysisConfig,
         errors: MutableList<ValidationError>,
     ) {
-        if (!export.enabled) return
+        if (export.enabled) {
+            if (export.outputDir.isBlank()) errors += err("export.outputDir", "outputDir must be non-empty when export.enabled is true")
+            if (export.formats.isEmpty()) errors += err("export.formats", "formats must be non-empty when export.enabled is true")
+            if (export.formats.size !=
+                export.formats.distinct().size
+            ) {
+                errors += err("export.formats", "formats must not contain duplicates")
+            }
+        }
 
-        if (export.outputDir.isBlank()) errors += err("export.outputDir", "outputDir must be non-empty when export.enabled is true")
-        if (export.formats.isEmpty()) errors += err("export.formats", "formats must be non-empty when export.enabled is true")
-        if (export.formats.size != export.formats.distinct().size) errors += err("export.formats", "formats must not contain duplicates")
+        export.artifacts?.let { artifacts ->
+            validateExportArtifacts(exportEnabled = export.enabled, artifacts = artifacts, analysis = analysis, errors = errors)
+        }
+    }
+
+    private fun validateExportArtifacts(
+        exportEnabled: Boolean,
+        artifacts: ExportArtifactsConfig,
+        analysis: AnalysisConfig,
+        errors: MutableList<ValidationError>,
+    ) {
+        val anyEnabled =
+            listOfNotNull(
+                artifacts.facts?.enabled,
+                artifacts.roles?.enabled,
+                artifacts.rulePlan?.enabled,
+                artifacts.analysis?.enabled,
+            ).any { it }
+
+        if (anyEnabled && !exportEnabled) {
+            errors += err("export.enabled", "export.enabled must be true when export.artifacts contains enabled artifacts")
+        }
+
+        artifacts.analysis?.let { a ->
+            val path = "export.artifacts.analysis"
+
+            if (a.enabled) {
+                if (!a.graphs && !a.hotspots && !a.scoring) {
+                    errors += err(path, "analysis artifacts are enabled but graphs/hotspots/scoring are all false")
+                }
+            } else {
+                if (a.graphs || a.hotspots || a.scoring) {
+                    errors += err("$path.enabled", "analysis.enabled is false but one or more analysis sidecar flags are true")
+                }
+            }
+
+            // If analysis artifacts are requested, ensure the analysis pipeline is configured to produce them.
+            if (a.enabled) {
+                if (a.graphs && !analysis.graphs.enabled) {
+                    errors += err("$path.graphs", "analysis.graphs.enabled must be true when exporting analysis graphs")
+                }
+                if (a.hotspots && !analysis.hotspots.enabled) {
+                    errors += err("$path.hotspots", "analysis.hotspots.enabled must be true when exporting analysis hotspots")
+                }
+                if (a.scoring && !analysis.scoring.enabled) {
+                    errors += err("$path.scoring", "analysis.scoring.enabled must be true when exporting analysis scores")
+                }
+            }
+        }
     }
 
     private fun validateMatcher(

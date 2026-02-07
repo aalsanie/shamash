@@ -23,12 +23,18 @@ package io.shamash.asm.core
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.contract.FindingSeverity
+import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.schema.v1.model.AnalysisConfig
 import io.shamash.asm.core.config.schema.v1.model.BaselineConfig
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.BytecodeConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportAnalysisArtifactsConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsArtifactConfig
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
+import io.shamash.asm.core.config.schema.v1.model.ExportToggleArtifactConfig
 import io.shamash.asm.core.config.schema.v1.model.GlobSet
 import io.shamash.asm.core.config.schema.v1.model.GodClassScoringConfig
 import io.shamash.asm.core.config.schema.v1.model.Granularity
@@ -52,6 +58,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ShamashAsmEngineTest {
@@ -110,7 +117,7 @@ class ShamashAsmEngineTest {
 
             val res = engine.analyze(projectBasePath = project, projectName = "demo", config = config, facts = FactIndex.empty())
 
-            assertTrue(res.isSuccess, "engine should succeed; errors: ${'$'}{res.errors}")
+            assertTrue(res.isSuccess, "engine should succeed; errors: ${res.errors}")
             assertEquals(1, res.findings.size)
 
             val f = res.findings.single()
@@ -130,11 +137,85 @@ class ShamashAsmEngineTest {
         }
     }
 
+    @Test
+    fun `engine export result carries sidecar artifact paths when export artifacts are enabled`() {
+        val project = Files.createTempDirectory("shamash-asm-engine-export")
+        try {
+            val rule = AlwaysFindingRule()
+            val engine = ShamashAsmEngine(registry = SingleRuleRegistry(rule))
+
+            val config =
+                minimalConfig(
+                    projectName = "demo",
+                    rules =
+                        listOf(
+                            RuleDef(
+                                type = "test",
+                                name = "alwaysFinding",
+                                roles = null,
+                                enabled = true,
+                                severity = FindingSeverity.ERROR,
+                                scope = null,
+                                params = emptyMap(),
+                            ),
+                        ),
+                    baselineMode = BaselineMode.NONE,
+                    exportEnabled = true,
+                    exportArtifacts =
+                        ExportArtifactsConfig(
+                            facts = ExportFactsArtifactConfig(enabled = true, format = ExportFactsFormat.JSONL_GZ),
+                            roles = ExportToggleArtifactConfig(enabled = true),
+                            rulePlan = ExportToggleArtifactConfig(enabled = true),
+                            analysis =
+                                ExportAnalysisArtifactsConfig(
+                                    enabled = true,
+                                    graphs = true,
+                                    hotspots = true,
+                                    scoring = true,
+                                ),
+                        ),
+                )
+
+            val res = engine.analyze(projectBasePath = project, projectName = "demo", config = config, facts = FactIndex.empty())
+
+            assertTrue(res.isSuccess, "engine should succeed; errors: ${res.errors}")
+            val exp = assertNotNull(res.export, "export must be present when export.enabled=true")
+
+            // Primary report should exist (JSON)
+            assertTrue(Files.exists(exp.outputDir.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+
+            // Facts sidecar is exported.
+            assertEquals(exp.outputDir.resolve(ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME), exp.factsPath)
+            assertNotNull(exp.factsPath)
+            assertTrue(Files.exists(exp.factsPath))
+            assertTrue(Files.size(exp.factsPath) > 0L)
+            assertEquals(exp.outputDir.resolve(ExportOutputLayout.ROLES_JSON_FILE_NAME), exp.rolesPath)
+            assertEquals(exp.outputDir.resolve(ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME), exp.rulePlanPath)
+            assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME), exp.analysisGraphsPath)
+            assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME), exp.analysisHotspotsPath)
+            assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME), exp.analysisScoresPath)
+
+            // Analysis sidecars are exported.
+            assertNotNull(exp.analysisGraphsPath)
+            assertNotNull(exp.analysisHotspotsPath)
+            assertNotNull(exp.analysisScoresPath)
+            assertTrue(Files.exists(exp.analysisGraphsPath))
+            assertTrue(Files.exists(exp.analysisHotspotsPath))
+            assertTrue(Files.exists(exp.analysisScoresPath))
+            assertTrue(Files.size(exp.analysisGraphsPath) > 0L)
+            assertTrue(Files.size(exp.analysisHotspotsPath) > 0L)
+            assertTrue(Files.size(exp.analysisScoresPath) > 0L)
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
     private fun minimalConfig(
         projectName: String,
         rules: List<RuleDef>,
         baselineMode: BaselineMode,
         exportEnabled: Boolean,
+        exportArtifacts: ExportArtifactsConfig? = null,
     ): ShamashAsmConfigV1 =
         ShamashAsmConfigV1(
             version = 1,
@@ -159,14 +240,14 @@ class ShamashAsmEngineTest {
             roles = emptyMap(),
             analysis =
                 AnalysisConfig(
-                    graphs = GraphsConfig(enabled = false, granularity = Granularity.PACKAGE, includeExternalBuckets = false),
-                    hotspots = HotspotsConfig(enabled = false, topN = 10, includeExternal = false),
+                    graphs = GraphsConfig(enabled = true, granularity = Granularity.PACKAGE, includeExternalBuckets = false),
+                    hotspots = HotspotsConfig(enabled = true, topN = 10, includeExternal = false),
                     scoring =
                         ScoringConfig(
-                            enabled = false,
+                            enabled = true,
                             model = ScoreModel.V1,
-                            godClass = GodClassScoringConfig(enabled = false, weights = null, thresholds = null),
-                            overall = OverallScoringConfig(enabled = false, weights = null, thresholds = null),
+                            godClass = GodClassScoringConfig(enabled = true, weights = null, thresholds = null),
+                            overall = OverallScoringConfig(enabled = true, weights = null, thresholds = null),
                         ),
                 ),
             rules = rules,
@@ -176,9 +257,9 @@ class ShamashAsmEngineTest {
                 ExportConfig(
                     enabled = exportEnabled,
                     outputDir = ".shamash/reports/asm",
-                    formats =
-                        listOf(ExportFormat.JSON),
+                    formats = listOf(ExportFormat.JSON),
                     overwrite = true,
+                    artifacts = exportArtifacts,
                 ),
         )
 }

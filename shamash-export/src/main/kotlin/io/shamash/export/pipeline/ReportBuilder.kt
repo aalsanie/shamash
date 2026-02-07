@@ -163,7 +163,6 @@ class ReportBuilder(
 
         private fun severityRank(f: ExportedFinding): Int =
             when (f.severity) {
-                // adjust to your actual enum values if needed
                 FindingSeverity.ERROR -> 0
                 FindingSeverity.WARNING -> 1
                 else -> 2

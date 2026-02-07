@@ -23,6 +23,7 @@ package io.shamash.asm.core.scan
 
 import io.shamash.asm.core.config.SchemaValidator
 import io.shamash.asm.core.config.SchemaValidatorNetworkNt
+import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import java.nio.file.Path
 
 /**
@@ -39,4 +40,14 @@ data class ScanOptions(
     val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
     /** Whether to include [io.shamash.asm.core.facts.query.FactIndex] inside the final result. */
     val includeFactsInResult: Boolean = false,
+    /**
+     * Force-enable facts export regardless of config.
+     *
+     * Used by CLI: `scan --export-facts`.
+     */
+    val exportFacts: Boolean = false,
+    /**
+     * Optional override for facts export format when [exportFacts] is true.
+     */
+    val factsFormatOverride: ExportFactsFormat? = null,
 )

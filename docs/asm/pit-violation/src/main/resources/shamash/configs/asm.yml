@@ -107,12 +107,12 @@ analysis:
     includeExternalBuckets: false
 
   hotspots:
-    enabled: false
+    enabled: true
     topN: 30
     includeExternal: false
 
   scoring:
-    enabled: false
+    enabled: true
     model: V1
     godClass:
       enabled: false
@@ -132,6 +132,24 @@ export:
   outputDir: ".shamash/reports/asm"
   formats: [JSON,HTML,SARIF,XML]
   overwrite: true
+  artifacts:
+    facts:
+      enabled: true
+      # JSONL_GZ (recommended) | JSON will blow up on large projects
+      format: JSONL_GZ
+
+    roles:
+      enabled: true
+
+    rulePlan:
+      enabled: true
+
+    analysis:
+      enabled: true
+      # When enabled=true, flags default to true if omitted.
+      graphs: true
+      hotspots: true
+      scoring: true
 
 rules:
   # ---------------------------------------------------------------------------

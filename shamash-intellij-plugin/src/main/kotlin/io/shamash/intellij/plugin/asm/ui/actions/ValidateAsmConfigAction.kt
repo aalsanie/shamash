@@ -28,6 +28,9 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import io.shamash.asm.core.config.ConfigValidation
@@ -44,15 +47,12 @@ import java.nio.file.Paths
 
 /**
  * Validates the project's Shamash ASM YAML config and shows results in the Config tab.
- *
- * UX feature:
- * - Does not run scan.
- * - Uses locked-in asm-core config validator.
  */
 class ValidateAsmConfigAction(
     // Allow overriding for tests; default is the shipped validator.
     private val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
-) : AnAction() {
+) : AnAction(),
+    DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
@@ -66,7 +66,7 @@ class ValidateAsmConfigAction(
 
         val vf = ShamashAsmConfigLocator.resolveConfigFile(project)
         if (vf == null || !vf.isValid) {
-            // Clear the last result (or keep it; clearing is safer to avoid showing stale validation).
+            // Clear last result to avoid showing stale validation.
             ShamashAsmUiStateService.getInstance(project).clear()
 
             AsmActionUtil.notify(
@@ -99,7 +99,7 @@ class ValidateAsmConfigAction(
             runCatching { VfsUtil.virtualToIoFile(vf).toPath() }
                 .getOrElse { Paths.get(vf.path) }
 
-        val basePath: Path? = resolveProjectBasePath(project.basePath)
+        val basePath: Path? = resolveProjectBasePath(project, project.basePath)
         if (basePath == null) {
             AsmActionUtil.notify(
                 project,
@@ -110,16 +110,36 @@ class ValidateAsmConfigAction(
             return
         }
 
-        object : Task.Backgroundable(project, "Shamash ASM Validate Config", false) {
+        if (DumbService.getInstance(project).isDumb) {
+            AsmActionUtil.notify(
+                project,
+                "Shamash ASM",
+                "Indexing in progress. Validation will start automatically when indexing finishes.",
+                NotificationType.INFORMATION,
+            )
+        }
+
+        object : Task.Backgroundable(project, "Shamash ASM Validate Config", true) {
             private var ok = false
             private var errors: List<ValidationError> = emptyList()
             private var errorCount = 0
             private var warnCount = 0
-            private var typedConfig = null as io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1?
+            private var typedConfig: io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1? = null
 
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
                 ProgressManager.checkCanceled()
+
+                val dumb = DumbService.getInstance(project)
+                if (dumb.isDumb) {
+                    indicator.text = "Waiting for indexing to finish"
+                    indicator.text2 = "Validation will start automatically"
+                    dumb.waitForSmartMode()
+                    ProgressManager.checkCanceled()
+                }
+
+                indicator.text = "Validating ASM config"
+                indicator.text2 = configPath.toString()
 
                 // Allow networknt validator to honor cancellation inside IntelliJ.
                 SchemaValidatorNetworkNt.cancelCheck = { ProgressManager.checkCanceled() }
@@ -142,6 +162,8 @@ class ValidateAsmConfigAction(
             }
 
             override fun onSuccess() {
+                if (project.isDisposed) return
+
                 // Put validation results into UI state as a ScanResult that contains config + configErrors only.
                 val scanResult =
                     ScanResult(
@@ -168,7 +190,13 @@ class ValidateAsmConfigAction(
 
                 AsmActionUtil.openAsmToolWindow(project)
                 val tw = ShamashAsmToolWindowController.getInstance(project)
-                tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
+
+                // Redirect to Dashboard ONLY upon successful validation (no ERROR).
+                if (ok && errorCount == 0) {
+                    tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+                } else {
+                    tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
+                }
                 tw.refreshAll()
 
                 if (!ok || errorCount > 0) {
@@ -189,6 +217,7 @@ class ValidateAsmConfigAction(
             }
 
             override fun onThrowable(error: Throwable) {
+                if (project.isDisposed) return
                 AsmActionUtil.notify(
                     project,
                     "Shamash ASM",
@@ -199,7 +228,10 @@ class ValidateAsmConfigAction(
         }.queue()
     }
 
-    private fun resolveProjectBasePath(basePath: String?): Path? {
+    private fun resolveProjectBasePath(
+        project: Project,
+        basePath: String?,
+    ): Path? {
         val base = basePath?.trim().orEmpty()
         if (base.isEmpty()) return null
 

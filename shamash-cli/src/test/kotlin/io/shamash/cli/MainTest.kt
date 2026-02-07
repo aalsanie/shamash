@@ -55,7 +55,7 @@ class MainTest {
     fun `version prints version and exits 0`() {
         val r = runCli("version")
         assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        kotlin.test.assertTrue(r.stdout.trim().startsWith("shamash-cli"), "stdout:\n${r.stdout}")
+        assertTrue(r.stdout.trim().startsWith("shamash-cli"), "stdout:\n${r.stdout}")
     }
 
     @Test
@@ -63,8 +63,8 @@ class MainTest {
         val r = runCli("init", "--stdout")
         assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
         // Keep assertions resilient to minor formatting changes
-        kotlin.test.assertTrue(r.stdout.contains("version:", ignoreCase = true), "stdout:\n${r.stdout}")
-        kotlin.test.assertTrue(r.stdout.contains("project:", ignoreCase = true), "stdout:\n${r.stdout}")
+        assertTrue(r.stdout.contains("version:", ignoreCase = true), "stdout:\n${r.stdout}")
+        assertTrue(r.stdout.contains("project:", ignoreCase = true), "stdout:\n${r.stdout}")
         assertTrue(r.stdout.contains("rules:", ignoreCase = true), "stdout:\n${r.stdout}")
     }
 
@@ -129,6 +129,105 @@ class MainTest {
         val r = runCli("scan", "--fail-on", "BAD")
         assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
         assertTrue(r.stderr.contains("Unknown fail-on severity", ignoreCase = true), "stderr:\n${r.stderr}")
+    }
+
+    @Test
+    fun `scan with invalid scope exits 2 without needing a project`() {
+        val r = runCli("scan", "--scope", "BAD")
+        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+        assertTrue(r.stderr.contains("Unknown --scope", ignoreCase = true), "stderr:\n${r.stderr}")
+    }
+
+    @Test
+    fun `scan with non-positive max-classes exits 2 without needing a project`() {
+        val r = runCli("scan", "--max-classes", "0")
+        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+        assertTrue(r.stderr.contains("Invalid --max-classes", ignoreCase = true), "stderr:\n${r.stderr}")
+    }
+
+    @Test
+    fun `registry list prints available providers and exits 0`() {
+        val r = runCli("registry", "list")
+        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+
+        // Keep assertions resilient: we only require the built-in provider to be discoverable.
+        assertTrue(
+            r.stdout.contains("default", ignoreCase = true) || r.stderr.contains("default", ignoreCase = true),
+            "Expected to see built-in registry id 'default'.\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}",
+        )
+        // Prefer stdout, but tolerate tools printing to stderr.
+        val text = (r.stdout + "\n" + r.stderr)
+        assertTrue(
+            text.contains("registry", ignoreCase = true) || text.contains("provider", ignoreCase = true),
+            "Output should mention registries/providers.\n$text",
+        )
+    }
+
+    @Test
+    fun `scan with unknown registry exits 2 and shows actionable message`(
+        @TempDir tmp: Path,
+    ) {
+        ensureBytecodeAndConfig(tmp)
+
+        val r =
+            runCli(
+                "scan",
+                "--project",
+                tmp.toString(),
+                "--registry",
+                "does-not-exist",
+                // keep scan cheap + deterministic
+                "--scope",
+                "PROJECT_ONLY",
+                "--max-classes",
+                "1",
+            )
+
+        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+
+        val text = (r.stderr + "\n" + r.stdout)
+        assertTrue(
+            text.contains("unknown", ignoreCase = true) && text.contains("registry", ignoreCase = true),
+            "Expected an 'unknown registry' style message.\n$text",
+        )
+        assertTrue(
+            text.contains("available", ignoreCase = true) || text.contains("list", ignoreCase = true),
+            "Expected actionable guidance (available ids / registry list).\n$text",
+        )
+        assertTrue(
+            text.contains("default", ignoreCase = true),
+            "Expected message to mention default registry id.\n$text",
+        )
+    }
+
+    @Test
+    fun `scan prints applied overrides when provided`(
+        @TempDir tmp: Path,
+    ) {
+        ensureBytecodeAndConfig(tmp)
+
+        val r =
+            runCli(
+                "scan",
+                "--project",
+                tmp.toString(),
+                "--scope",
+                "ALL_SOURCES",
+                "--follow-symlinks",
+                "true",
+                "--max-classes",
+                "1",
+            )
+
+        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
+        assertTrue(r.stdout.contains("Overrides", ignoreCase = false), "stdout:\n${r.stdout}")
+        // Make sure at least one of our overrides is reflected back
+        assertTrue(
+            r.stdout.contains("scope=", ignoreCase = false) ||
+                r.stdout.contains("followSymlinks=", ignoreCase = false) ||
+                r.stdout.contains("maxClasses=", ignoreCase = false),
+            "stdout:\n${r.stdout}",
+        )
     }
 
     private fun runCli(
@@ -208,4 +307,111 @@ class MainTest {
     }
 
     private fun createTempDir(): Path = Files.createTempDirectory("shamash-cli-test-").toAbsolutePath().normalize()
+
+    private fun ensureBytecodeAndConfig(project: Path) {
+        val compiler = javax.tools.ToolProvider.getSystemJavaCompiler()
+        require(compiler != null) { "JDK compiler not available (ToolProvider.getSystemJavaCompiler returned null)" }
+
+        val outDir = project.resolve("build/classes/java/main")
+        Files.createDirectories(outDir)
+
+        compileJava(
+            tmp = project,
+            fqcn = "com.example.App",
+            source = "package com.example; public class App { public static void main(String[] a){} }",
+            outputDir = outDir,
+        )
+
+        val cfgDir = project.resolve("shamash").resolve("configs")
+        Files.createDirectories(cfgDir)
+        val cfgPath = cfgDir.resolve("asm.yml")
+        Files.writeString(cfgPath, minimalAsmConfigYaml(), StandardCharsets.UTF_8)
+    }
+
+    private fun minimalAsmConfigYaml(): String =
+        """
+        version: 1
+
+        project:
+          bytecode:
+            roots: ["build/classes/java/main"]
+
+            outputsGlobs:
+              include: ["**"]
+              exclude: []
+
+            jarGlobs:
+              include: ["**/*.jar"]
+              exclude: ["**/*"]
+
+          scan:
+            scope: PROJECT_ONLY
+            followSymlinks: false
+            maxClasses: null
+            maxJarBytes: null
+            maxClassBytes: null
+
+          validation:
+            unknownRule: IGNORE
+
+        roles: {}
+
+        analysis:
+          graphs:
+            enabled: false
+            granularity: PACKAGE
+            includeExternalBuckets: false
+
+          hotspots:
+            enabled: false
+            topN: 10
+            includeExternal: false
+
+          scoring:
+            enabled: false
+            model: V1
+            godClass:
+              enabled: false
+              weights: null
+              thresholds: null
+            overall:
+              enabled: false
+              weights: null
+              thresholds: null
+
+        rules: []
+        exceptions: []
+
+        baseline:
+          mode: NONE
+          path: .shamash/baseline.json
+
+        export:
+          enabled: false
+          outputDir: .shamash/reports/asm
+          formats: [JSON]
+          overwrite: true
+        """.trimIndent()
+
+    private fun compileJava(
+        tmp: Path,
+        fqcn: String,
+        source: String,
+        outputDir: Path,
+    ) {
+        val compiler = javax.tools.ToolProvider.getSystemJavaCompiler() ?: error("JDK compiler not available")
+
+        val parts = fqcn.split('.')
+        val cls = parts.last()
+        val pkgPath = parts.dropLast(1).joinToString("/")
+
+        val srcDir = tmp.resolve("srcgen").resolve(pkgPath)
+        Files.createDirectories(srcDir)
+
+        val javaFile = srcDir.resolve("$cls.java")
+        Files.writeString(javaFile, source, StandardCharsets.UTF_8)
+
+        val rc = compiler.run(null, null, null, "-d", outputDir.toString(), javaFile.toString())
+        if (rc != 0) error("javac failed with exit code $rc")
+    }
 }
