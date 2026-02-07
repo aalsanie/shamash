@@ -2,6 +2,29 @@
 
 ## [unreleased]
 
+### Fixed
+- Replaced deprecated ToolWindowFactory overrides by switching Shamash ASM/PSI ToolWindow factories to Java-only implementations
+
+## [0.90.0]
+### Added
+- Users can set scan knobs in CLI/IntelliJ without editing YAML
+- UI shows which overrides were applied
+- Roles debug is exportable and visible
+- ASM export: writes roles.json when `export.artifacts.roles.enabled: true`
+- UI new Roles tab: role search + class search
+- CLI and IntelliJ can select a registry provider
+- In memory outputs for graphs + hotspots + scoring
+- Add analysis sidecar
+- Add the Analysis tab (Graphs / Hotspots / Scoring)
+
+### Fixed
+- UI actions (Scan / Validate / Export) now show progress and defer execution until indexing finishes
+- CLI (scan) now constructs ShamashAsmEngine(toolName, toolVersion) using `package.implementationVersion`
+- IntelliJ ASM actions now construct ShamashAsmEngine(toolName, toolVersion) using `PluginManagerCore`
+- ASM Run Scan smart mode during indexing by starting the background progress
+- Fall back to in-memory analysis when export artifacts are missing
+- Validate psi config should redirect user to dashboard upon successful validation
+
 ## [0.80.0]
 ### Update
 - Refactored baseline and extracted BaselineFingerprint

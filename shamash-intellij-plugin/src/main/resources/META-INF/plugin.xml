@@ -10,7 +10,7 @@
         It ships two complementary engines:
         <br/><br/>
         <b>ASM</b>:
-        analyzes compiled bytecode and jars to detect architectural drift, dependency violations, and forbidden couplings.
+        analyzes compiled bytecode and jars to detect architectural drift, dependency violations, hotspots, graphs, scoring and forbidden couplings.
         <br/><br/>
         <b>PSI</b>:
         analyzes source code via IntelliJ PSI using a configurable YAML schema, provides architectural dashboards, inline suppressions, guided fixes, and exportable reports.
@@ -18,6 +18,12 @@
 
     <depends>com.intellij.modules.java</depends>
     <depends optional="true" config-file="META-INF/shamash-kotlin.xml">org.jetbrains.kotlin</depends>
+
+    <extensionPoints>
+        <extensionPoint qualifiedName="io.shamash.asmRuleRegistryProvider"
+                        interface="io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider"
+                        dynamic="true"/>
+    </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">
 
@@ -153,19 +159,21 @@
 
     <change-notes><![CDATA[
   <ul>
-    <li><strong>Added</strong>: ASM <strong>Facts</strong> tab (lazy-loading) to browse dependency facts without keeping the full graph in memory</li>
-    <li><strong>Added</strong>: Facts export artifact (<code>facts.jsonl.gz</code> / <code>facts.json</code>) and <code>factsPath</code> in export results</li>
-    <li><strong>Added</strong>: CLI facts support (<code>scan --export-facts</code> and new <code>facts</code> subcommand for summaries + filters)</li>
-    <li><strong>Added</strong>: Advanced option <code>includeFactsInMemory</code> to include facts in scan result when needed</li>
-
-    <li><strong>Fixed</strong>: Simplified UI and added clearer in-panel instructions</li>
-    <li><strong>Fixed</strong>: Dashboard panel action buttons overlap</li>
-    <li><strong>Fixed</strong>: Config panel action buttons overlap</li>
-    <li><strong>Fixed</strong>: ASM Config tab summary messaging now reflects validation/scan state accurately</li>
-    <li><strong>Fixed</strong>: Validate Config now redirects to Dashboard only on successful validation</li>
-    <li><strong>Fixed</strong>: Open Reference YAML now opens reliably (UTF-8 + content normalization for virtual file)</li>
-
-    <li><strong>Removed</strong>: Removed redundant UI labels</li>
+    <li><strong>Added</strong>: Scan override “knobs” in CLI/IntelliJ so users can tune scans without editing YAML, and the UI shows which overrides were applied</li>
+    <li><strong>Added</strong>: Registry provider selection in both CLI and IntelliJ</li>
+    <li><strong>Added</strong>: Roles debugging is now exportable and visible:
+      <ul>
+        <li>ASM export writes <code>roles.json</code> when <code>export.artifacts.roles.enabled: true</code></li>
+        <li>New UI <strong>Roles</strong> tab with role search + class search</li>
+      </ul>
+    </li>
+    <li><strong>Added</strong>: ASM analysis outputs:
+      <ul>
+        <li>In-memory graphs + hotspots + scoring computed during scan</li>
+        <li>Analysis sidecar artifacts (graphs/hotspots/scoring) when export is enabled</li>
+        <li>New <strong>Analysis</strong> tab (Graphs / Hotspots / Scoring)</li>
+      </ul>
+    </li>
   </ul>
 ]]></change-notes>
 

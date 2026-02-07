@@ -1,268 +1,229 @@
-# Shamash PSI Config v1 (REFERENCE)
-# --------------------------------
-# This file is intended as a living reference + examples. Copy what you need.
+# Shamash PSI Reference Configuration (Schema v1)
 #
-# Pipeline (as shipped):
-# 1) Parse YAML -> raw Map/List primitives
-# 2) Structural validation (JSON Schema)
-# 3) Bind into schema.v1 models
-# 4) Semantic validation (validation.v1) + RuleSpec param validation
+# PSI engine: source analysis inside the IDE (inspections + quick feedback).
+# This reference aims to be:
+# - non-opinionated
+# - plug-and-play (works without knowing the repo's root package)
+# - useful immediately (unused private members, god classes by role, layering violations)
 #
-# Canonical rule identity is (type,name,role):
-# - RuleSpec registry is keyed by (type,name) only (role is always null in specs).
-# - Config rules can be wildcard (roles: null) or specific (roles: ["roleA","roleB"]).
-#
-# Severity: ERROR | WARNING | INFO
+# NOTE: edit based on your team needs and architecture, view ./docs for customization references
 
 version: 1
 
 project:
-  validation:
-    # What to do if a rule in config is not registered in RuleSpecRegistryV1
-    # or (optionally) not executable by the engine (depending on wiring).
-    unknownRule: ERROR  # ERROR | WARN | IGNORE (case-insensitive)
-
-  # Root package configuration used by the binder and/or rules.
-  # Note: you can enforce root package consistency via the "packages.rootPackage" rule below.
+  # Root package is optional.
+  # If you set mode: EXPLICIT and value: "com.yourcompany", you can enable packages.rootPackage.
   rootPackage:
-    mode: AUTO   # AUTO | EXPLICIT (case-insensitive)
-    value: ""    # When EXPLICIT, set your real root package (e.g., "com.acme.app")
+    mode: AUTO
+    value: ""
 
-  # Source files scanned by the project runner.
-  # Typical default is src/main/java + src/main/kotlin, but you can widen/narrow as needed.
+  # Include/exclude globs are applied relative to the project root.
+  # Empty include means "scan everything", then exclusions trim noise.
   sourceGlobs:
-    # IMPORTANT:
-    # The current scan runner matches globs against VirtualFile.path (absolute path),
-    # NOT a project-relative path. That means patterns like:
-    #   - "src/main/kotlin/**"
-    # will NOT match, and you may get "0 findings" because nothing was scanned.
-    #
-    # Therefore, the reference config uses extension-based includes that work for
-    # both absolute and relative paths:
     include: []
     exclude:
+      # build outputs
       - "**/build/**"
-      - "**/.gradle/**"
+      - "**/target/**"
       - "**/out/**"
-      - "**/.idea/**"
+      - "**/bin/**"
+      - "**/.gradle/**"
+      - "**/.m2/**"
+      # typical generated locations
       - "**/generated/**"
+      - "**/node_modules/**"
 
-# -----------------------------------------------------------------------------
-# Roles
-# -----------------------------------------------------------------------------
-# roles is a map of: roleId -> { priority, description?, match }
-#
-# priority:
-# - higher wins when multiple roles match a target (validator enforces 0..100)
-#
-# match:
-# - is a recursive matcher expression.
-# - exactly one leaf field OR one operator (anyOf/allOf/not) per matcher object.
+  validation:
+    unknownRule: ERROR
+
+# Role detection (heuristics).
+# PSI matchers are richer (classNameEndsWithAny, implements/extends, hasMainMethod, etc.).
 roles:
   controller:
-    priority: 100
-    description: "Web controllers / adapters"
+    description: "Inbound edge of the system: HTTP / RPC / entrypoint handlers"
+    priority: 90
     match:
       anyOf:
-        - annotation: "org.springframework.web.bind.annotation.RestController"
-        - annotation: "org.springframework.stereotype.Controller"
-        - packageRegex: ".*\\.controller(\\..*)?$"
-        - classNameEndsWith: "Controller"
+        - annotationPrefix: "org.springframework.web.bind.annotation."
+        - annotation: "javax.ws.rs.Path"
+        - annotationPrefix: "jakarta.ws.rs."
+        - packageContainsSegment: "controller"
+        - packageContainsSegment: "controllers"
+        - packageContainsSegment: "api"
+        - packageContainsSegment: "web"
+        - packageContainsSegment: "rest"
+        - classNameEndsWithAny:
+            - "Controller"
+            - "Resource"
+            - "Endpoint"
+            - "Handler"
 
   service:
+    description: "Business logic / use-cases"
     priority: 80
-    description: "Application services"
     match:
       anyOf:
         - annotation: "org.springframework.stereotype.Service"
-        - packageRegex: ".*\\.service(\\..*)?$"
-        - classNameEndsWith: "Service"
+        - annotationPrefix: "jakarta.inject."
+        - annotationPrefix: "javax.inject."
+        - packageContainsSegment: "service"
+        - packageContainsSegment: "services"
+        - packageContainsSegment: "usecase"
+        - packageContainsSegment: "usecases"
+        - packageContainsSegment: "application"
+        - classNameEndsWithAny:
+            - "Service"
+            - "UseCase"
+            - "Interactor"
 
   repository:
-    priority: 60
-    description: "Persistence adapters"
+    description: "Persistence boundary (DB / storage adapters)"
+    priority: 70
     match:
       anyOf:
         - annotation: "org.springframework.stereotype.Repository"
-        - packageRegex: ".*\\.(dao|repository)(\\..*)?$"
-        - classNameEndsWithAny: ["Dao", "Repository"]
+        - packageContainsSegment: "repository"
+        - packageContainsSegment: "repositories"
+        - packageContainsSegment: "dao"
+        - packageContainsSegment: "persistence"
+        - classNameEndsWithAny:
+            - "Repository"
+            - "Dao"
+            - "DAO"
 
-# -----------------------------------------------------------------------------
-# Rules (LIST)
-# -----------------------------------------------------------------------------
-# rules is a list of rule definitions:
-# - type: string
-# - name: string
-# - roles:
-#     - null  => wildcard rule definition (applies to all roles; uniqueness enforced per (type,name))
-#     - []    => invalid (semantic validator rejects)
-#     - ["roleA","roleB"] => role-specific instances
-# - enabled: boolean
-# - severity: ERROR|WARNING|INFO
-# - scope: optional include/exclude filters (roles, packageRegex filters, globs)
-# - params: free-form object, validated by RuleSpec (unknown keys flagged per policy)
+  domain:
+    description: "Domain model / DTOs / entities"
+    priority: 50
+    match:
+      anyOf:
+        - packageContainsSegment: "domain"
+        - packageContainsSegment: "model"
+        - packageContainsSegment: "models"
+        - packageContainsSegment: "entity"
+        - packageContainsSegment: "entities"
+        - packageContainsSegment: "dto"
+        - classNameEndsWith: "Dto"
+
+  config:
+    description: "Configuration / wiring"
+    priority: 40
+    match:
+      anyOf:
+        - packageContainsSegment: "config"
+        - packageContainsSegment: "configuration"
+        - classNameEndsWithAny:
+            - "Config"
+            - "Configuration"
+
+  util:
+    description: "Shared utilities / helpers"
+    priority: 10
+    match:
+      anyOf:
+        - packageContainsSegment: "util"
+        - packageContainsSegment: "utils"
+        - packageContainsSegment: "common"
+        - packageContainsSegment: "shared"
+        - classNameEndsWithAny:
+            - "Util"
+            - "Utils"
+            - "Helper"
+
 rules:
-  # ---------------------------------------------------------------------------
-  # naming.bannedSuffixes  (Spec: NamingBannedSuffixesSpec)
-  # params:
-  #   banned: [String] (required, non-empty entries)
-  #   applyToRoles: [RoleId] (optional; if omitted applies to all)
-  #   Any class ending with Action should trigger regardless of roles.
-  #   caseSensitive: Boolean (optional)
-  # ---------------------------------------------------------------------------
-  - type: "naming"
-    name: "bannedSuffixes"
-    roles: null
+  # ---- deadcode ----
+
+  - type: deadcode
+    name: unusedPrivateMembers
     enabled: true
     severity: WARNING
-    params:
-      banned: ["Action"]
-      caseSensitive: true
-
-  # ---------------------------------------------------------------------------
-  # arch.forbiddenRoleDependencies  (Spec: ArchForbiddenRoleDependenciesSpec)
-  # params:
-  #   kinds: [String] (required; allowed:
-  #       methodCall, fieldType, parameterType, returnType, extends, implements, annotationType
-  #   )
-  #   forbidden: [ { from: RoleId, to: [RoleId], message?: String } ] (required)
-  # ---------------------------------------------------------------------------
-  - type: "arch"
-    name: "forbiddenRoleDependencies"
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      kinds:
-        - "methodCall"
-        - "fieldType"
-        - "parameterType"
-        - "returnType"
-        - "extends"
-        - "implements"
-        - "annotationType"
-      forbidden:
-        - from: "controller"
-          to: ["repository"]
-          message: "Controllers must not depend directly on repositories"
-        - from: "service"
-          to: ["controller"]
-
-  # ---------------------------------------------------------------------------
-  # metrics.maxMethodsByRole  (Spec: MetricsMaxMethodsByRoleSpec)
-  # NOTE: This spec expects:
-  #   limits: { roleId: maxInt, ... }  (object/map)
-  # and expects ignoreMethodNameRegex to be a LIST (if present).
-  #
-  # params:
-  #   limits: { RoleId: Int } (required)
-  #   countKinds: [String] (optional; allowed:
-  #       declaredMethods, publicMethods, privateMethods
-  #   )
-  #   ignoreMethodNameRegex: [String] (optional; list of regex strings)
-  # ---------------------------------------------------------------------------
-  - type: "metrics"
-    name: "maxMethodsByRole"
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      limits:
-        controller: 5
-        service: 8
-        repository: 10
-      countKinds: ["declaredMethods"]
-      ignoreMethodNameRegex:
-        - "^(get|set|toString|equals|hashCode)$"
-
-  # ---------------------------------------------------------------------------
-  # packages.rolePlacement  (Spec: PackagesRolePlacementSpec)
-  # params:
-  #   expected: { roleId: { packageRegex: String }, ... } (required)
-  # ---------------------------------------------------------------------------
-  - type: "packages"
-    name: "rolePlacement"
-    roles: null
-    enabled: true
-    severity: WARNING
-    params:
-      expected:
-        controller:
-          packageRegex: ".*\\.controller(\\..*)?$"
-        service:
-          packageRegex: ".*\\.service(\\..*)?$"
-        repository:
-          packageRegex: ".*\\.(dao|repository)(\\..*)?$"
-
-  # ---------------------------------------------------------------------------
-  # packages.rootPackage  (Spec: PackagesRootPackageSpec)
-  # IMPORTANT:
-  # - When mode is AUTO, "value" must be omitted (if present, it must be non-empty).
-  # - When mode is EXPLICIT, value is required and must be non-empty.
-  #
-  # params:
-  #   mode: AUTO|EXPLICIT (required)
-  #   value: String (required when mode=EXPLICIT)
-  #   mode: "EXPLICIT"
-  #  value: "com.this.will.never.match"
-  #  this rule is added and to demonstrate the engine capability
-  #  it is almost always a violation as no code lives under com.this.will.never.match
-  #  make sure to remove mode and value or add your own rule
-  # ---------------------------------------------------------------------------
-  - type: "packages"
-    name: "rootPackage"
-    roles: null
-    enabled: true
-    severity: ERROR
-    params:
-      mode: "EXPLICIT"
-      value: "com.this.will.never.match"
-
-  # ---------------------------------------------------------------------------
-  # deadcode.unusedPrivateMembers  (Spec: DeadcodeUnusedPrivateMembersSpec)
-  # NOTE: This spec expects ignoreNameRegex to be a LIST (if present).
-  #
-  # params:
-  #   check: { fields: Boolean, methods: Boolean, classes: Boolean } (required)
-  #   ignoreIfAnnotatedWithExact: [String] (optional)
-  #   ignoreIfAnnotatedWithPrefix: [String] (optional)
-  #   ignoreIfContainingClassAnnotatedWithExact: [String] (optional)
-  #   ignoreIfContainingClassAnnotatedWithPrefix: [String] (optional)
-  #   ignoreRoles: [RoleId] (optional)
-  #   ignoreNameRegex: [String] (optional; list of regex strings)
-  # ---------------------------------------------------------------------------
-  - type: "deadcode"
-    name: "unusedPrivateMembers"
-    roles: null
-    enabled: true
-    severity: INFO
     params:
       check:
         fields: true
         methods: true
         classes: false
-      ignoreIfAnnotatedWithPrefix:
-        - "org.junit."
-        - "org.springframework.web.bind.annotation."
-        - "jakarta.persistence."
-        - "com.fasterxml.jackson.annotation."
-        - "lombok."
-      ignoreRoles: ["repository"]
-      ignoreNameRegex:
-        - "^_"
+      # Keep defaults broad. Users can add ignores for generated/annotated members if needed.
 
-# -----------------------------------------------------------------------------
-# Exceptions (Suppressions)
-# -----------------------------------------------------------------------------
-# exceptions is a list of suppressions applied to findings.
-# suppress: list of canonical rule ids (no "*" or "all")
-# match: must contain at least one field (schema enforces minProperties: 1)
-exceptions:
-  - id: "EX-001"
-    reason: "Legacy module; cleanup scheduled"
-    expiresOn: "2026-06-01"
-    suppress:
-      - "deadcode.unusedPrivateMembers"
-      - "metrics.maxMethodsByRole"
-    match:
-      fileGlob: "**/legacy/**"
+  # ---- metrics ----
+
+  - type: metrics
+    name: maxMethodsByRole
+    enabled: true
+    severity: WARNING
+    params:
+      # Role-based method limits help reveal "god classes" without hardcoding package names.
+      limits:
+        controller: 25
+        service: 35
+        repository: 25
+        domain: 40
+        config: 25
+        util: 40
+      countKinds:
+        - declaredMethods
+      # You can ignore boilerplate by regex if needed (getters/setters/builders/etc.).
+      ignoreMethodNameRegex: []
+
+  # ---- architecture ----
+
+  - type: arch
+    name: forbiddenRoleDependencies
+    enabled: true
+    severity: ERROR
+    params:
+      # This focuses on the highest-signal layering problem that generalizes well.
+      forbidden:
+        - from: controller
+          to:
+            - repository
+          message: "Controllers/entrypoints should depend on services, not directly on persistence."
+
+  # ---- packages ----
+
+  - type: packages
+    name: rolePlacement
+    enabled: true
+    severity: WARNING
+    params:
+      # Broad, framework-agnostic package expectations per role.
+      # Only applies when a role is detected for a class.
+      expected:
+        controller:
+          packageRegex: ".*\\.(controller|controllers|api|web|rest|endpoint)(\\..*)?$"
+        service:
+          packageRegex: ".*\\.(service|services|usecase|usecases|application)(\\..*)?$"
+        repository:
+          packageRegex: ".*\\.(repository|repositories|dao|persistence)(\\..*)?$"
+        domain:
+          packageRegex: ".*\\.(domain|model|models|entity|entities|dto)(\\..*)?$"
+        config:
+          packageRegex: ".*\\.(config|configuration)(\\..*)?$"
+        util:
+          packageRegex: ".*\\.(util|utils|common|shared)(\\..*)?$"
+
+  # ---- naming ----
+
+  - type: naming
+    name: bannedSuffixes
+    enabled: true
+    severity: INFO
+    params:
+      # Small, low-noise default: "Impl" in public types often leaks internal structure.
+      banned:
+        - "Impl"
+      # If you want, limit this to specific roles:
+      # applyToRoles: [service, repository]
+      caseSensitive: true
+
+  # ---- packages.rootPackage ----
+
+  - type: packages
+    name: rootPackage
+    enabled: false
+    severity: WARNING
+    params:
+      # Enable this after setting project.rootPackage.mode=EXPLICIT and providing a value.
+      # When enabled, it flags source files that live outside the declared root package.
+      mode: EXPLICIT
+      value: "com.example"
+
+exceptions: []

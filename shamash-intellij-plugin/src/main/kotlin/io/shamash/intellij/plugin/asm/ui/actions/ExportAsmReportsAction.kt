@@ -23,20 +23,28 @@ package io.shamash.intellij.plugin.asm.ui.actions
 
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
+import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviders
 import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
+import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -48,21 +56,33 @@ import kotlin.io.path.isDirectory
  *
  * Export is produced via the single ASM scan entry point (ShamashAsmScanRunner),
  * and is controlled purely by config.export (enabled/formats/outputDir/overwrite).
+ *
+ * UX:
+ * - Shows progress indicator.
+ * - If indexing is running (Dumb Mode), waits until indexing finishes (Smart Mode) then runs.
+ * - Updates toolwindow state from the produced ScanResult.
  */
 class ExportAsmReportsAction(
-    private val runner: ShamashAsmScanRunner = ShamashAsmScanRunner(),
+    private val runner: ShamashAsmScanRunner = defaultRunner(),
 ) : AnAction() {
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+    override fun update(e: AnActionEvent) {
+        val project = e.project
+        e.presentation.isEnabledAndVisible = project != null && !project.isDisposed
+    }
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         if (project.isDisposed) return
 
-        val basePath = resolveProjectBasePath(project.basePath)
+        val basePath = resolveProjectBasePath(project, project.basePath)
         if (basePath == null) {
             AsmActionUtil.notify(project, "Shamash ASM", "Cannot resolve project base path.", NotificationType.ERROR)
             return
         }
 
-        val vf = ShamashAsmConfigLocator.resolveConfigFile(project)
+        val vf: VirtualFile? = ShamashAsmConfigLocator.resolveConfigFile(project)
         if (vf == null || !vf.isValid) {
             AsmActionUtil.notify(project, "Shamash ASM", "Config file not found; cannot export.", NotificationType.ERROR)
             return
@@ -71,6 +91,9 @@ class ExportAsmReportsAction(
         val configPath: Path =
             runCatching { VfsUtil.virtualToIoFile(vf).toPath() }
                 .getOrElse { Paths.get(vf.path) }
+
+        val settings = ShamashAsmSettingsState.getInstance(project)
+        val activeRunner = buildRunner(project, settings) ?: return
 
         val options =
             ScanOptions(
@@ -81,88 +104,126 @@ class ExportAsmReportsAction(
                 includeFactsInResult = false,
             )
 
-        object : Task.Backgroundable(project, "Shamash ASM Export Reports", false) {
-            private lateinit var result: ScanResult
+        @NlsSafe val configHint = configPath.toString()
 
-            override fun run(indicator: ProgressIndicator) {
-                indicator.isIndeterminate = true
-                result = runner.run(options)
-            }
+        AsmActionUtil.openAsmToolWindow(project)
 
-            override fun onSuccess() {
-                // Single source-of-truth state update.
-                ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = result)
+        val startExport = startExport@{
+            if (project.isDisposed) return@startExport
 
-                AsmActionUtil.openAsmToolWindow(project)
-                ShamashAsmToolWindowController.getInstance(project).select(ShamashAsmToolWindowController.Tab.DASHBOARD)
-                ShamashAsmToolWindowController.getInstance(project).refreshAll()
+            object : Task.Backgroundable(project, "Shamash ASM Export Reports", false) {
+                private var result: ScanResult? = null
 
-                if (result.configErrors.isNotEmpty()) {
-                    AsmActionUtil.notify(
-                        project,
-                        "Shamash ASM",
-                        "Export failed: config invalid.",
-                        NotificationType.ERROR,
-                    )
-                    return
+                override fun run(indicator: ProgressIndicator) {
+                    indicator.isIndeterminate = true
+                    indicator.text = "Exporting ASM reports"
+                    indicator.text2 = "Config: $configHint"
+
+                    result = activeRunner.run(options)
                 }
 
-                val engine = result.engine
-                if (engine == null) {
-                    AsmActionUtil.notify(project, "Shamash ASM", "Export failed.", NotificationType.ERROR)
-                    return
-                }
+                override fun onSuccess() {
+                    if (project.isDisposed) return
 
-                // Export is config-driven inside the engine.
-                val export = engine.export
-                if (export == null) {
-                    val cfg = result.config
-                    if (cfg != null && !cfg.export.enabled) {
+                    val r = result
+
+                    // Single source-of-truth state update (even if null).
+                    ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = r)
+
+                    AsmActionUtil.openAsmToolWindow(project)
+                    val tw = ShamashAsmToolWindowController.getInstance(project)
+                    tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+                    tw.refreshAll()
+
+                    if (r == null) {
+                        AsmActionUtil.notify(project, "Shamash ASM", "Export produced no result.", NotificationType.ERROR)
+                        return
+                    }
+
+                    if (r.configErrors.isNotEmpty()) {
+                        AsmActionUtil.notify(project, "Shamash ASM", "Export failed: config invalid.", NotificationType.ERROR)
+                        return
+                    }
+
+                    val engine = r.engine
+                    if (engine == null) {
+                        AsmActionUtil.notify(project, "Shamash ASM", "Export failed.", NotificationType.ERROR)
+                        return
+                    }
+
+                    // Export is config-driven inside the engine.
+                    val export = engine.export
+                    if (export == null) {
+                        val cfg = r.config
+                        if (cfg != null && !cfg.export.enabled) {
+                            AsmActionUtil.notify(
+                                project,
+                                "Shamash ASM",
+                                "Export is disabled in config (export.enabled=false).",
+                                NotificationType.WARNING,
+                            )
+                            return
+                        }
+
+                        // If enabled but export is null, it's either skipped due to overwrite=false with existing files
+                        // or failed (error already reported in engine.errors).
+                        val exportFailed = engine.errors.any { it.code.name == "EXPORT_FAILED" }
+                        if (exportFailed) {
+                            AsmActionUtil.notify(
+                                project,
+                                "Shamash ASM",
+                                "Export failed. See Dashboard for details.",
+                                NotificationType.ERROR,
+                            )
+                            return
+                        }
+
+                        // Skipped due to overwrite=false + existing reports is the only other "expected" path.
+                        val hint = exportSkipHint(basePath, cfg)
                         AsmActionUtil.notify(
                             project,
                             "Shamash ASM",
-                            "Export is disabled in config (export.enabled=false).",
+                            hint ?: "Export was skipped.",
                             NotificationType.WARNING,
                         )
                         return
                     }
 
-                    // If enabled but export is null, it's either skipped due to overwrite=false with existing files
-                    // or failed (error already reported in engine.errors).
-                    val exportFailed = engine.errors.any { it.code.name == "EXPORT_FAILED" }
-                    if (exportFailed) {
-                        AsmActionUtil.notify(
-                            project,
-                            "Shamash ASM",
-                            "Export failed. See Dashboard for details.",
-                            NotificationType.ERROR,
-                        )
-                        return
-                    }
-
-                    // Skipped due to overwrite=false + existing reports is the only other "expected" path.
-                    val hint = exportSkipHint(basePath, cfg)
                     AsmActionUtil.notify(
                         project,
                         "Shamash ASM",
-                        hint ?: "Export was skipped.",
-                        NotificationType.WARNING,
+                        "Exported reports to: ${export.outputDir}",
+                        NotificationType.INFORMATION,
                     )
-                    return
                 }
 
-                AsmActionUtil.notify(
-                    project,
-                    "Shamash ASM",
-                    "Exported reports to: ${export.outputDir}",
-                    NotificationType.INFORMATION,
-                )
-            }
+                override fun onThrowable(error: Throwable) {
+                    if (project.isDisposed) return
+                    AsmActionUtil.notify(
+                        project,
+                        "Shamash ASM",
+                        error.message ?: "Export failed.",
+                        NotificationType.ERROR,
+                    )
+                }
+            }.queue()
+        }
 
-            override fun onThrowable(error: Throwable) {
-                AsmActionUtil.notify(project, "Shamash ASM", error.message ?: "Export failed.", NotificationType.ERROR)
+        val dumb = DumbService.getInstance(project)
+        if (dumb.isDumb) {
+            AsmActionUtil.notify(
+                project,
+                "Shamash ASM",
+                "Indexing in progress. Export will start when indexing finishes.",
+                NotificationType.INFORMATION,
+            )
+            dumb.runWhenSmart {
+                if (project.isDisposed) return@runWhenSmart
+                startExport()
             }
-        }.queue()
+        } else {
+            startExport()
+        }
     }
 
     private fun exportSkipHint(
@@ -218,12 +279,70 @@ class ExportAsmReportsAction(
         return false
     }
 
-    private fun resolveProjectBasePath(basePath: String?): Path? {
+    private fun resolveProjectBasePath(
+        project: Project,
+        basePath: String?,
+    ): Path? {
         val base = basePath?.trim().orEmpty()
         if (base.isEmpty()) return null
         val p = runCatching { Paths.get(FileUtil.toCanonicalPath(base)).normalize() }.getOrNull() ?: return null
         return if (p.exists() && p.isDirectory()) p else p
     }
 
-    private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"
+    companion object {
+        private const val SHAMASH_PLUGIN_ID: String = "io.shamash"
+
+        private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
+
+        private fun defaultRunner(): ShamashAsmScanRunner =
+            ShamashAsmScanRunner(
+                engine = ShamashAsmEngine(toolName = "Shamash ASM", toolVersion = pluginVersion()),
+            )
+
+        private fun buildRunner(
+            project: Project,
+            settings: ShamashAsmSettingsState,
+        ): ShamashAsmScanRunner? {
+            val toolName = "Shamash ASM"
+            val toolVersion = pluginVersion()
+
+            val registryId = settings.getRegistryId()
+            if (registryId == null) {
+                return ShamashAsmScanRunner(
+                    engine = ShamashAsmEngine(toolName = toolName, toolVersion = toolVersion),
+                )
+            }
+
+            val provider = AsmRuleRegistryProviders.findById(registryId)
+            if (provider == null) {
+                val available = AsmRuleRegistryProviders.list().joinToString { it.id }
+                AsmActionUtil.notify(
+                    project,
+                    toolName,
+                    "Registry '$registryId' not found. " +
+                        "Available: ${if (available.isBlank()) "(none)" else available}. " +
+                        "Open Run Settings → Registry to pick an installed provider.",
+                    NotificationType.ERROR,
+                )
+                return null
+            }
+
+            val registry =
+                try {
+                    provider.create()
+                } catch (t: Throwable) {
+                    AsmActionUtil.notify(
+                        project,
+                        toolName,
+                        "Registry '$registryId' failed to initialize: ${t.message ?: t::class.java.simpleName}",
+                        NotificationType.ERROR,
+                    )
+                    return null
+                }
+
+            return ShamashAsmScanRunner(
+                engine = ShamashAsmEngine(registry = registry, toolName = toolName, toolVersion = toolVersion),
+            )
+        }
+    }
 }

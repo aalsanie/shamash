@@ -24,16 +24,19 @@ package io.shamash.intellij.plugin.asm.ui
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBTabbedPane
+import io.shamash.intellij.plugin.asm.ui.analysis.ShamashAsmAnalysisTab
 import io.shamash.intellij.plugin.asm.ui.config.ShamashAsmConfigTab
 import io.shamash.intellij.plugin.asm.ui.dashboard.ShamashAsmDashboardTab
 import io.shamash.intellij.plugin.asm.ui.facts.ShamashAsmFactsTab
 import io.shamash.intellij.plugin.asm.ui.findings.ShamashAsmFindingsTab
+import io.shamash.intellij.plugin.asm.ui.roles.ShamashAsmRolesTab
+import io.shamash.intellij.plugin.asm.ui.runsettings.ShamashAsmRunSettingsTab
 
 @Service(Service.Level.PROJECT)
 class ShamashAsmToolWindowController(
     private val project: Project,
 ) {
-    enum class Tab { DASHBOARD, FINDINGS, FACTS, CONFIG }
+    enum class Tab { CONFIG, DASHBOARD, FINDINGS, FACTS, ANALYSIS, ROLES, SETTINGS }
 
     private val tabIndex = LinkedHashMap<Tab, Int>(8)
 
@@ -49,7 +52,16 @@ class ShamashAsmToolWindowController(
     lateinit var factsTab: ShamashAsmFactsTab
         private set
 
+    lateinit var analysisTab: ShamashAsmAnalysisTab
+        private set
+
+    lateinit var rolesTab: ShamashAsmRolesTab
+        private set
+
     lateinit var configTab: ShamashAsmConfigTab
+        private set
+
+    lateinit var settingsTab: ShamashAsmRunSettingsTab
         private set
 
     fun init(tabbedPane: JBTabbedPane) {
@@ -58,7 +70,10 @@ class ShamashAsmToolWindowController(
         dashboardTab = ShamashAsmDashboardTab(project)
         findingsTab = ShamashAsmFindingsTab(project)
         factsTab = ShamashAsmFactsTab(project)
+        analysisTab = ShamashAsmAnalysisTab(project)
+        rolesTab = ShamashAsmRolesTab(project)
         configTab = ShamashAsmConfigTab(project)
+        settingsTab = ShamashAsmRunSettingsTab(project)
 
         tabbedPane.removeAll()
         tabIndex.clear()
@@ -72,15 +87,29 @@ class ShamashAsmToolWindowController(
         tabIndex[Tab.FACTS] = tabbedPane.tabCount
         tabbedPane.addTab("Facts", factsTab.component())
 
+        tabIndex[Tab.ANALYSIS] = tabbedPane.tabCount
+        tabbedPane.addTab("Analysis", analysisTab.component())
+
+        tabIndex[Tab.ROLES] = tabbedPane.tabCount
+        tabbedPane.addTab("Roles", rolesTab.component())
+
         tabIndex[Tab.CONFIG] = tabbedPane.tabCount
         tabbedPane.addTab("Config", configTab.component())
+
+        tabIndex[Tab.SETTINGS] = tabbedPane.tabCount
+        tabbedPane.addTab("Settings", settingsTab.component())
+
+        tabbedPane.selectedIndex = tabIndex[Tab.CONFIG] ?: 0
     }
 
     fun refreshAll() {
         if (::dashboardTab.isInitialized) dashboardTab.refresh()
         if (::findingsTab.isInitialized) findingsTab.refresh()
         if (::factsTab.isInitialized) factsTab.refresh()
+        if (::analysisTab.isInitialized) analysisTab.refresh()
+        if (::rolesTab.isInitialized) rolesTab.refresh()
         if (::configTab.isInitialized) configTab.refresh()
+        if (::settingsTab.isInitialized) settingsTab.refresh()
     }
 
     fun select(tab: Tab) {
@@ -92,6 +121,7 @@ class ShamashAsmToolWindowController(
     }
 
     companion object {
+        @JvmStatic
         fun getInstance(project: Project): ShamashAsmToolWindowController = project.getService(ShamashAsmToolWindowController::class.java)
     }
 }

@@ -32,7 +32,7 @@ import io.shamash.intellij.plugin.psi.ui.dashboard.ShamashPsiFindingsTab
 class ShamashPsiToolWindowController(
     private val project: Project,
 ) {
-    enum class Tab { DASHBOARD, FINDINGS, CONFIG }
+    enum class Tab { CONFIG, DASHBOARD, FINDINGS }
 
     private val tabIndex = LinkedHashMap<Tab, Int>(8)
 
@@ -58,14 +58,14 @@ class ShamashPsiToolWindowController(
         tabbedPane.removeAll()
         tabIndex.clear()
 
+        tabIndex[Tab.CONFIG] = tabbedPane.tabCount
+        tabbedPane.addTab("Config", configTab.component())
+
         tabIndex[Tab.DASHBOARD] = tabbedPane.tabCount
         tabbedPane.addTab("Dashboard", dashboardTab.component())
 
         tabIndex[Tab.FINDINGS] = tabbedPane.tabCount
         tabbedPane.addTab("Findings", findingsTab.component())
-
-        tabIndex[Tab.CONFIG] = tabbedPane.tabCount
-        tabbedPane.addTab("Config", configTab.component())
     }
 
     fun refreshAll() {
@@ -83,6 +83,7 @@ class ShamashPsiToolWindowController(
     }
 
     companion object {
+        @JvmStatic
         fun getInstance(project: Project): ShamashPsiToolWindowController = project.getService(ShamashPsiToolWindowController::class.java)
     }
 }

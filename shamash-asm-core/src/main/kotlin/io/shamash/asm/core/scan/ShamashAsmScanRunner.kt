@@ -48,7 +48,10 @@ import kotlin.io.path.isRegularFile
 class ShamashAsmScanRunner(
     private val engine: ShamashAsmEngine = ShamashAsmEngine(),
 ) {
-    fun run(options: ScanOptions): ScanResult {
+    fun run(
+        options: ScanOptions,
+        overrides: RunOverrides? = null,
+    ): ScanResult {
         // config discovery + validation
         val configPath =
             options.configPath
@@ -101,12 +104,14 @@ class ShamashAsmScanRunner(
         }
 
         // CLI/runner overrides (non-persistent): allow forcing facts export regardless of config.
-        val effectiveConfig: ShamashAsmConfigV1 =
+        val effectiveConfig0: ShamashAsmConfigV1 =
             if (options.exportFacts) {
                 forceEnableFactsExport(config, options)
             } else {
                 config
             }
+
+        val (effectiveConfig, appliedOverrides) = applyOverrides(effectiveConfig0, overrides)
 
         // scan bytecode
         val scan =
@@ -119,6 +124,7 @@ class ShamashAsmScanRunner(
             } catch (t: Throwable) {
                 return ScanResult(
                     options = options,
+                    appliedOverrides = appliedOverrides,
                     configPath = configPath,
                     config = effectiveConfig,
                     scanErrors =
@@ -149,6 +155,7 @@ class ShamashAsmScanRunner(
             } catch (t: Throwable) {
                 return ScanResult(
                     options = options,
+                    appliedOverrides = appliedOverrides,
                     configPath = configPath,
                     config = effectiveConfig,
                     origins = scan.origins,
@@ -177,6 +184,7 @@ class ShamashAsmScanRunner(
             } catch (t: Throwable) {
                 return ScanResult(
                     options = options,
+                    appliedOverrides = appliedOverrides,
                     configPath = configPath,
                     config = effectiveConfig,
                     origins = scan.origins,
@@ -195,6 +203,7 @@ class ShamashAsmScanRunner(
 
         return ScanResult(
             options = options,
+            appliedOverrides = appliedOverrides,
             configPath = configPath,
             config = effectiveConfig,
             configErrors = validation.errors,
@@ -205,6 +214,49 @@ class ShamashAsmScanRunner(
             factsErrors = factsResult.errors,
             engine = engineResult,
         )
+    }
+
+    private fun applyOverrides(
+        config: ShamashAsmConfigV1,
+        overrides: RunOverrides?,
+    ): Pair<ShamashAsmConfigV1, RunOverrides?> {
+        val scanOv = overrides?.scan ?: return config to null
+
+        val scan0 = config.project.scan
+        val scan1 =
+            scan0.copy(
+                scope = scanOv.scope ?: scan0.scope,
+                followSymlinks = scanOv.followSymlinks ?: scan0.followSymlinks,
+                maxClasses = scanOv.maxClasses ?: scan0.maxClasses,
+                maxJarBytes = scanOv.maxJarBytes ?: scan0.maxJarBytes,
+                maxClassBytes = scanOv.maxClassBytes ?: scan0.maxClassBytes,
+            )
+
+        if (scan1 == scan0) return config to null
+
+        val applied =
+            ScanOverrides(
+                scope = scanOv.scope?.takeIf { it != scan0.scope },
+                followSymlinks = scanOv.followSymlinks?.takeIf { it != scan0.followSymlinks },
+                maxClasses = scanOv.maxClasses?.takeIf { it != scan0.maxClasses },
+                maxJarBytes = scanOv.maxJarBytes?.takeIf { it != scan0.maxJarBytes },
+                maxClassBytes = scanOv.maxClassBytes?.takeIf { it != scan0.maxClassBytes },
+            )
+
+        val appliedRun =
+            RunOverrides(
+                scan =
+                    applied.takeIf {
+                        it.scope != null ||
+                            it.followSymlinks != null ||
+                            it.maxClasses != null ||
+                            it.maxJarBytes != null ||
+                            it.maxClassBytes != null
+                    },
+            )
+
+        val next = config.copy(project = config.project.copy(scan = scan1))
+        return next to appliedRun
     }
 
     private fun forceEnableFactsExport(

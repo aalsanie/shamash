@@ -86,7 +86,7 @@ object ConfigSemanticValidatorV1 {
 
         // ---- Baseline / Export ----
         validateBaseline(config, errors)
-        validateExport(config.export, errors)
+        validateExport(config.export, config.analysis, errors)
 
         return errors
     }
@@ -482,6 +482,7 @@ object ConfigSemanticValidatorV1 {
 
     private fun validateExport(
         export: ExportConfig,
+        analysis: AnalysisConfig,
         errors: MutableList<ValidationError>,
     ) {
         if (export.enabled) {
@@ -495,13 +496,14 @@ object ConfigSemanticValidatorV1 {
         }
 
         export.artifacts?.let { artifacts ->
-            validateExportArtifacts(exportEnabled = export.enabled, artifacts = artifacts, errors = errors)
+            validateExportArtifacts(exportEnabled = export.enabled, artifacts = artifacts, analysis = analysis, errors = errors)
         }
     }
 
     private fun validateExportArtifacts(
         exportEnabled: Boolean,
         artifacts: ExportArtifactsConfig,
+        analysis: AnalysisConfig,
         errors: MutableList<ValidationError>,
     ) {
         val anyEnabled =
@@ -526,6 +528,19 @@ object ConfigSemanticValidatorV1 {
             } else {
                 if (a.graphs || a.hotspots || a.scoring) {
                     errors += err("$path.enabled", "analysis.enabled is false but one or more analysis sidecar flags are true")
+                }
+            }
+
+            // If analysis artifacts are requested, ensure the analysis pipeline is configured to produce them.
+            if (a.enabled) {
+                if (a.graphs && !analysis.graphs.enabled) {
+                    errors += err("$path.graphs", "analysis.graphs.enabled must be true when exporting analysis graphs")
+                }
+                if (a.hotspots && !analysis.hotspots.enabled) {
+                    errors += err("$path.hotspots", "analysis.hotspots.enabled must be true when exporting analysis hotspots")
+                }
+                if (a.scoring && !analysis.scoring.enabled) {
+                    errors += err("$path.scoring", "analysis.scoring.enabled must be true when exporting analysis scores")
                 }
             }
         }

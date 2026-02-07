@@ -22,15 +22,24 @@
 package io.shamash.cli
 
 import io.shamash.artifacts.contract.FindingSeverity
+import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
+import io.shamash.asm.core.config.schema.v1.model.ScanScope
+import io.shamash.asm.core.engine.ShamashAsmEngine
+import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
+import io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
+import io.shamash.asm.core.export.analysis.AnalysisSidecarReader
 import io.shamash.asm.core.export.facts.FactsClassRecord
 import io.shamash.asm.core.export.facts.FactsEdgeRecord
 import io.shamash.asm.core.export.facts.FactsReader
+import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
+import io.shamash.asm.core.scan.ScanOverrides
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import io.shamash.cli.analysis.AnalysisCliFormatter
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.ExperimentalCli
@@ -41,6 +50,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.ServiceLoader
 import kotlin.io.path.absolute
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
@@ -60,9 +70,11 @@ fun main(args: Array<String>) {
     val cmdValidate = ValidateCommand()
     val cmdScan = ScanCommand()
     val cmdFacts = FactsCommand()
+    val cmdAnalysis = AnalysisCommand()
+    val cmdRegistry = RegistryCommand()
     val cmdVersion = VersionCommand()
 
-    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdVersion)
+    parser.subcommands(cmdInit, cmdValidate, cmdScan, cmdFacts, cmdAnalysis, cmdRegistry, cmdVersion)
 
     try {
         parser.parse(args)
@@ -78,11 +90,54 @@ fun main(args: Array<String>) {
             cmdValidate.wasInvoked -> cmdValidate.exitCode
             cmdScan.wasInvoked -> cmdScan.exitCode
             cmdFacts.wasInvoked -> cmdFacts.exitCode
+            cmdAnalysis.wasInvoked -> cmdAnalysis.exitCode
+            cmdRegistry.wasInvoked -> cmdRegistry.exitCode
             cmdVersion.wasInvoked -> cmdVersion.exitCode
             else -> ExitCode.OK
         }
 
     exitProcess(exit.code)
+}
+
+private class AnalysisCommand :
+    CommandBase(
+        "analysis",
+        "Print summaries from exported analysis sidecars (graphs/hotspots/scores)",
+    ) {
+    private val dirRaw by option(
+        type = ArgType.String,
+        fullName = "dir",
+        description = "Export output directory (defaults to ./.shamash/out/asm)",
+    )
+
+    private val top by option(
+        type = ArgType.Int,
+        fullName = "top",
+        description = "How many entries to print per section",
+    ).default(5)
+
+    override fun run(): ExitCode {
+        val projectBase = Paths.get(".").toAbsolutePath().normalize()
+        val defaultOut = ExportOutputLayout.normalizeOutputDir(projectBasePath = projectBase, outputDir = null)
+        val dir = (dirRaw?.let { Paths.get(it) } ?: defaultOut).toAbsolutePath().normalize()
+
+        val graphsPath = dir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME)
+        val hotspotsPath = dir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME)
+        val scoresPath = dir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME)
+
+        val any = Files.exists(graphsPath) || Files.exists(hotspotsPath) || Files.exists(scoresPath)
+        if (!any) {
+            Console.errln("No analysis artifacts found under: $dir")
+            return ExitCode.RUNTIME_ERROR
+        }
+
+        val analysis = AnalysisSidecarReader.readAll(graphsPath = graphsPath, hotspotsPath = hotspotsPath, scoresPath = scoresPath)
+        AnalysisCliFormatter
+            .summaryLines(analysis = analysis, topCycles = top, topHotspots = top, topScores = top)
+            .forEach { Console.println(it) }
+
+        return ExitCode.OK
+    }
 }
 
 private object Console {
@@ -95,6 +150,129 @@ private object Console {
 
     fun errln(line: String = "") {
         err.println(line)
+    }
+}
+
+private object CliMeta {
+    val version: String = CliMeta::class.java.`package`?.implementationVersion ?: "dev"
+}
+
+private object RegistryProviders {
+    data class LoadResult(
+        val providers: Map<String, AsmRuleRegistryProvider>,
+        val errors: List<String>,
+    )
+
+    private val cached: LoadResult by lazy { loadInternal() }
+
+    fun load(): LoadResult = cached
+
+    private fun loadInternal(): LoadResult {
+        val errors = ArrayList<String>(4)
+
+        val loaded =
+            try {
+                val sl = ServiceLoader.load(AsmRuleRegistryProvider::class.java)
+                val it = sl.iterator()
+                buildList {
+                    while (it.hasNext()) {
+                        try {
+                            add(it.next())
+                        } catch (t: Throwable) {
+                            errors += "Failed to load registry provider: ${t.message ?: t::class.java.simpleName}"
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                errors += "ServiceLoader error: ${t.message ?: t::class.java.simpleName}"
+                emptyList()
+            }
+
+        val map = LinkedHashMap<String, AsmRuleRegistryProvider>()
+        val duplicates = ArrayList<String>(2)
+
+        for (p in loaded) {
+            val id = p.id.trim()
+            if (id.isEmpty()) {
+                errors += "Registry provider ${p::class.qualifiedName ?: p::class.java.name} has empty id"
+                continue
+            }
+            val prev = map.putIfAbsent(id, p)
+            if (prev != null) duplicates += id
+        }
+
+        if (duplicates.isNotEmpty()) {
+            val unique = duplicates.distinct().sorted()
+            errors += "Duplicate registry provider ids: ${unique.joinToString()}"
+        }
+
+        return LoadResult(providers = map, errors = errors)
+    }
+}
+
+private object RegistryResolver {
+    data class Resolved(
+        val registryId: String,
+        val registry: io.shamash.asm.core.engine.rules.RuleRegistry,
+        val warnings: List<String> = emptyList(),
+    )
+
+    /**
+     * Resolve a registry id into a [RuleRegistry] with production-safe fallback.
+     *
+     * Safety contract:
+     * - If no id is supplied, we always use the built-in [DefaultRuleRegistry].
+     * - If id == "default", we still fall back to built-in even if SPI loading fails.
+     * - For any other id, the provider must exist and must create successfully.
+     */
+    fun resolve(selectedId: String?): Resolved? {
+        val wanted = selectedId?.trim()?.takeIf { it.isNotEmpty() }
+
+        // Opt-in: if not explicitly set, use built-in (no SPI required).
+        if (wanted == null) {
+            return Resolved(registryId = "default", registry = DefaultRuleRegistry.create())
+        }
+
+        val loaded = RegistryProviders.load()
+
+        // If user asked for default, keep it rock-solid even when SPI is broken.
+        if (wanted == "default") {
+            val provider = loaded.providers["default"]
+            val warnings = loaded.errors
+            if (provider == null) {
+                return Resolved(
+                    registryId = "default",
+                    registry = DefaultRuleRegistry.create(),
+                    warnings = warnings + "Default provider not found on classpath; using built-in DefaultRuleRegistry.",
+                )
+            }
+            val registry =
+                try {
+                    provider.create()
+                } catch (t: Throwable) {
+                    return Resolved(
+                        registryId = "default",
+                        registry = DefaultRuleRegistry.create(),
+                        warnings =
+                            warnings +
+                                "Default provider failed to initialize; using built-in DefaultRuleRegistry: ${t.message ?: t::class.java.simpleName}",
+                    )
+                }
+            return Resolved(registryId = "default", registry = registry, warnings = warnings)
+        }
+
+        // Non-default: SPI must load cleanly.
+        if (loaded.errors.isNotEmpty()) return null
+
+        val provider = loaded.providers[wanted] ?: return null
+        val registry =
+            try {
+                provider.create()
+            } catch (_: Throwable) {
+                return null
+            }
+
+        return Resolved(registryId = wanted, registry = registry)
     }
 }
 
@@ -163,8 +341,57 @@ private abstract class CommandBase(
 
 private class VersionCommand : CommandBase("version", "Print Shamash CLI version") {
     override fun run(): ExitCode {
-        val version = this::class.java.`package`?.implementationVersion ?: "dev"
+        val version = CliMeta.version
         Console.println("shamash-cli $version")
+        return ExitCode.OK
+    }
+}
+
+private class RegistryCommand : CommandBase("registry", "List available ASM rule registry providers") {
+    private val action by argument(
+        type = ArgType.String,
+        description = "Action (only supported: list)",
+    )
+
+    override fun run(): ExitCode {
+        if (action.trim().lowercase() != "list") {
+            Console.errln("Unknown registry action: '$action' (supported: list)")
+            return ExitCode.CONFIG_ERROR
+        }
+
+        val loaded = RegistryProviders.load()
+
+        if (loaded.errors.isNotEmpty()) {
+            Console.errln("Registry provider load errors:")
+            for (e in loaded.errors) Console.errln("- $e")
+            return ExitCode.RUNTIME_ERROR
+        }
+
+        val providers =
+            loaded.providers.values
+                .toList()
+                .sortedBy { it.id.trim() }
+        if (providers.isEmpty()) {
+            Console.println("No registry providers found on the classpath.")
+            return ExitCode.OK
+        }
+
+        val rows =
+            providers.map {
+                val id = it.id.trim()
+                val name = it.displayName.trim().ifEmpty { "(no displayName)" }
+                val impl = it::class.qualifiedName ?: it::class.java.name
+                Triple(id, name, impl)
+            }
+
+        val idW = maxOf(2, rows.maxOf { it.first.length })
+        val nameW = maxOf(4, rows.maxOf { it.second.length })
+
+        Console.println("ID".padEnd(idW) + "  " + "NAME".padEnd(nameW) + "  IMPLEMENTATION")
+        Console.println("-".repeat(idW) + "  " + "-".repeat(nameW) + "  " + "--------------")
+        for ((id, name, impl) in rows) {
+            Console.println(id.padEnd(idW) + "  " + name.padEnd(nameW) + "  " + impl)
+        }
         return ExitCode.OK
     }
 }
@@ -305,10 +532,48 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         description = "Project root (default: current directory)",
     ).default(".")
 
+    private val scopeRaw: String? by option(
+        type = ArgType.String,
+        fullName = "scope",
+        description = "Override scan scope: PROJECT_ONLY|ALL_SOURCES|PROJECT_WITH_EXTERNAL_BUCKETS",
+    )
+
+    private val followSymlinksRaw: String? by option(
+        type = ArgType.String,
+        fullName = "follow-symlinks",
+        description = "Override followSymlinks (true|false)",
+    )
+
+    private val maxClassesOverride: Int? by option(
+        type = ArgType.Int,
+        fullName = "max-classes",
+        description = "Override maxClasses (must be > 0)",
+    )
+
+    private val maxJarBytesOverride: Int? by option(
+        type = ArgType.Int,
+        fullName = "max-jar-bytes",
+        description = "Override maxJarBytes (must be > 0)",
+    )
+
+    private val maxClassBytesOverride: Int? by option(
+        type = ArgType.Int,
+        fullName = "max-class-bytes",
+        description = "Override maxClassBytes (must be > 0)",
+    )
+
     private val config: String? by option(
         type = ArgType.String,
         fullName = "config",
         description = "Explicit path to asm.yml (if not provided, discovery is used)",
+    )
+
+    private val registryId by option(
+        type = ArgType.String,
+        fullName = "registry",
+        description =
+            "Rule registry provider id (opt-in). If omitted (or set to 'default'), " +
+                "built-in rules are used. Use: shamash registry list",
     )
 
     private val includeFacts by option(
@@ -341,6 +606,12 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         description = "Print findings list (in addition to the summary)",
     ).default(false)
 
+    private val printAnalysisSummary by option(
+        type = ArgType.Boolean,
+        fullName = "print-analysis-summary",
+        description = "Print a compact analysis summary (graphs/hotspots/scores) for CI logs",
+    ).default(false)
+
     override fun run(): ExitCode {
         val projectRoot = Paths.get(project).normalize().absolute()
         val failOn =
@@ -363,8 +634,119 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         if (factsFormatRaw != null && !exportFacts) {
             Console.errln("Ignoring --facts-format because --export-facts was not set.")
         }
+        val scopeOverride =
+            try {
+                parseScanScopeOrNull(scopeRaw)
+            } catch (t: Throwable) {
+                Console.errln(t.message ?: "Invalid --scope")
+                return ExitCode.CONFIG_ERROR
+            }
 
-        val runner = ShamashAsmScanRunner()
+        val followSymlinksOverride =
+            try {
+                parseBoolOrNull(followSymlinksRaw, "--follow-symlinks")
+            } catch (t: Throwable) {
+                Console.errln(t.message ?: "Invalid --follow-symlinks")
+                return ExitCode.CONFIG_ERROR
+            }
+
+        val maxClasses =
+            maxClassesOverride?.let {
+                if (it > 0) {
+                    it
+                } else {
+                    Console.errln("Invalid --max-classes: $it (must be > 0)")
+                    return ExitCode.CONFIG_ERROR
+                }
+            }
+
+        val maxJarBytes =
+            maxJarBytesOverride?.let {
+                if (it > 0) {
+                    it
+                } else {
+                    Console.errln("Invalid --max-jar-bytes: $it (must be > 0)")
+                    return ExitCode.CONFIG_ERROR
+                }
+            }
+
+        val maxClassBytes =
+            maxClassBytesOverride?.let {
+                if (it > 0) {
+                    it
+                } else {
+                    Console.errln("Invalid --max-class-bytes: $it (must be > 0)")
+                    return ExitCode.CONFIG_ERROR
+                }
+            }
+
+        val scanOverrides =
+            ScanOverrides(
+                scope = scopeOverride,
+                followSymlinks = followSymlinksOverride,
+                maxClasses = maxClasses,
+                maxJarBytes = maxJarBytes,
+                maxClassBytes = maxClassBytes,
+            )
+
+        val overrides =
+            RunOverrides(scan = scanOverrides).takeIf {
+                scanOverrides.scope != null ||
+                    scanOverrides.followSymlinks != null ||
+                    scanOverrides.maxClasses != null ||
+                    scanOverrides.maxJarBytes != null ||
+                    scanOverrides.maxClassBytes != null
+            }
+
+        val registryKey = registryId?.trim()?.takeIf { it.isNotEmpty() }
+        val registry =
+            when {
+                // Default path is production-safe and does not depend on SPI discovery.
+                registryKey == null || registryKey == "default" -> DefaultRuleRegistry.create()
+                else -> {
+                    val loadedProviders = RegistryProviders.load()
+                    if (loadedProviders.errors.isNotEmpty()) {
+                        Console.errln("Registry provider load errors:")
+                        for (e in loadedProviders.errors) Console.errln("- $e")
+                        return ExitCode.RUNTIME_ERROR
+                    }
+
+                    val registryProvider = loadedProviders.providers[registryKey]
+                    if (registryProvider == null) {
+                        Console.errln("Unknown registry id: '$registryKey'")
+                        val available =
+                            loadedProviders.providers.keys
+                                .toList()
+                                .sorted()
+                                .joinToString()
+                        Console.errln("Available registry ids: ${if (available.isBlank()) "(none)" else available}")
+                        Console.errln("Tip: omit --registry (or use --registry default) to use built-in rules")
+                        Console.errln("Run: shamash registry list")
+                        return ExitCode.CONFIG_ERROR
+                    }
+
+                    try {
+                        registryProvider.create()
+                    } catch (t: Throwable) {
+                        val impl = registryProvider::class.qualifiedName ?: registryProvider::class.java.name
+                        Console.errln(
+                            "Registry '$registryKey' failed to initialize ($impl): " +
+                                "${t.message ?: t::class.java.simpleName}",
+                        )
+                        return ExitCode.RUNTIME_ERROR
+                    }
+                }
+            }
+
+        val runner =
+            ShamashAsmScanRunner(
+                engine =
+                    ShamashAsmEngine(
+                        registry = registry,
+                        toolName = "Shamash ASM",
+                        toolVersion = CliMeta.version,
+                    ),
+            )
         val res =
             runner.run(
                 ScanOptions(
@@ -375,6 +757,7 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
                     exportFacts = exportFacts,
                     factsFormatOverride = factsFormatOverride,
                 ),
+                overrides = overrides,
             )
 
         // ----- config problems
@@ -429,6 +812,20 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         Console.println("Base path   : ${summary.projectBasePath}")
         Console.println("Config      : ${res.configPath}")
         Console.println("Classes     : ${res.classUnits}${if (res.truncated) " (truncated)" else ""}")
+
+        val appliedScanOv = res.appliedOverrides?.scan
+        if (appliedScanOv != null) {
+            val parts = ArrayList<String>(5)
+            appliedScanOv.scope?.let { parts += "scope=$it" }
+            appliedScanOv.followSymlinks?.let { parts += "followSymlinks=$it" }
+            appliedScanOv.maxClasses?.let { parts += "maxClasses=$it" }
+            appliedScanOv.maxJarBytes?.let { parts += "maxJarBytes=$it" }
+            appliedScanOv.maxClassBytes?.let { parts += "maxClassBytes=$it" }
+            if (parts.isNotEmpty()) {
+                Console.println("Overrides   : ${parts.joinToString(" ")}")
+            }
+        }
+
         Console.println(
             "Facts       : classes=${summary.factsStats.classes} methods=${summary.factsStats.methods} " +
                 "fields=${summary.factsStats.fields} edges=${summary.factsStats.edges}",
@@ -453,6 +850,27 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
             Console.println("Baseline    : ${if (export.baselineWritten) "written" else "no-change"}")
         } else {
             Console.println("Export dir  : (disabled)")
+        }
+
+        if (printAnalysisSummary) {
+            val analysisFromExport =
+                export?.let {
+                    AnalysisSidecarReader.readAll(
+                        graphsPath = it.analysisGraphsPath,
+                        hotspotsPath = it.analysisHotspotsPath,
+                        scoresPath = it.analysisScoresPath,
+                    )
+                }
+
+            val analysis = engine.analysis ?: analysisFromExport
+            if (analysis == null || analysis.isEmpty) {
+                Console.println("Analysis    : (none)")
+            } else {
+                Console.println()
+                AnalysisCliFormatter
+                    .summaryLines(analysis = analysis, topCycles = 5, topHotspots = 5, topScores = 5)
+                    .forEach { Console.println(it) }
+            }
         }
 
         if (printFindings && engine.findings.isNotEmpty()) {
@@ -500,6 +918,30 @@ private fun parseFactsFormatOrNull(
     }
 }
 
+private fun parseScanScopeOrNull(raw: String?): ScanScope? {
+    val v = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return when (v.uppercase()) {
+        "PROJECT_ONLY" -> ScanScope.PROJECT_ONLY
+        "ALL_SOURCES" -> ScanScope.ALL_SOURCES
+        "PROJECT_WITH_EXTERNAL_BUCKETS" -> ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS
+        else -> throw IllegalArgumentException(
+            "Unknown --scope: '$raw' (expected: PROJECT_ONLY|ALL_SOURCES|PROJECT_WITH_EXTERNAL_BUCKETS)",
+        )
+    }
+}
+
+private fun parseBoolOrNull(
+    raw: String?,
+    optionName: String,
+): Boolean? {
+    val v = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return when (v.lowercase()) {
+        "true" -> true
+        "false" -> false
+        else -> throw IllegalArgumentException("Unknown $optionName: '$raw' (expected: true|false)")
+    }
+}
+
 private fun packageOf(fqn: String): String {
     val idx = fqn.lastIndexOf('.')
     return if (idx <= 0) "" else fqn.substring(0, idx)
@@ -542,7 +984,11 @@ private class BoundedCounter(
     }
 }
 
-private class FactsCommand : CommandBase("facts", "Inspect exported facts (facts.jsonl.gz or facts.json)") {
+private class FactsCommand :
+    CommandBase(
+        "facts",
+        "Inspect exported facts (facts.jsonl.gz or facts.json)",
+    ) {
     private val path by option(
         type = ArgType.String,
         fullName = "path",
