@@ -46,7 +46,7 @@ jobs:
         run: ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin
 
       - name: Upload plugin distribution
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: shamash-intellij-plugin
           path: shamash-intellij-plugin/build/distributions/**
@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload verification reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: plugin-verification-reports
           path: |
