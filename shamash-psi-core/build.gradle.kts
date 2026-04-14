@@ -24,7 +24,7 @@ dependencies {
 
     // External libs used by psi-core
     implementation("com.networknt:json-schema-validator:1.5.9")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.0")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
 
     // IntelliJ APIs needed to compile PSI/UAST code
     intellijPlatform {
