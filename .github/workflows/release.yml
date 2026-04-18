@@ -25,7 +25,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v5
+        uses: gradle/actions/wrapper-validation@v6
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -34,7 +34,7 @@ jobs:
           java-version: "17"
 
       - name: Setup Gradle (cache)
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build (format + tests)
         run: ./gradlew --stacktrace spotlessCheck test
