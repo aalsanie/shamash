@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Make Gradle wrapper executable (Unix)
         run: chmod +x gradlew
@@ -54,7 +54,7 @@ jobs:
           (cd release-assets && sha256sum *.zip > SHA256SUMS.txt)
 
       - name: Upload assets to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             release-assets/*.zip
