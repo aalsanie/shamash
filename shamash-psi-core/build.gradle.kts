@@ -23,7 +23,7 @@ dependencies {
     implementation(project(":shamash-export"))
 
     // External libs used by psi-core
-    implementation("com.networknt:json-schema-validator:1.5.9")
+    implementation("com.networknt:json-schema-validator:3.0.6")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.2")
 
     // IntelliJ APIs needed to compile PSI/UAST code
