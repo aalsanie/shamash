@@ -16,12 +16,12 @@ dependencies {
     implementation(project(":shamash-export"))
 
     // ASM engine deps
-    implementation("org.ow2.asm:asm:9.9.1")
-    implementation("org.ow2.asm:asm-util:9.9.1")
+    implementation("org.ow2.asm:asm:9.10.1")
+    implementation("org.ow2.asm:asm-util:9.10.1")
 
     // Validation
     implementation("com.networknt:json-schema-validator:1.5.9")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.21.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.0")
     implementation("org.snakeyaml:snakeyaml-engine:3.0.1")
 
