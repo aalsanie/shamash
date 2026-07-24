@@ -36,7 +36,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v5
+        uses: gradle/actions/wrapper-validation@v6
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -45,7 +45,7 @@ jobs:
           java-version: ${{ matrix.java }}
 
       - name: Setup Gradle (cache)
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
