@@ -107,7 +107,7 @@ gradlew shamashInit
 # validate config
 gradlew shamashValidate
 
-# run scan gate (also runs on ./gradlew check now)
+# run scan gate (also runs on ./gradlew check)
 gradlew shamashScan
 gradlew check
 ```
