@@ -52,7 +52,7 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "253.*"
+            untilBuild = "261.*"
         }
     }
 
@@ -60,6 +60,8 @@ intellijPlatform {
         ides {
             create(IntelliJPlatformType.IntellijIdea, "2024.2")
             create(IntelliJPlatformType.IntellijIdea, "2025.2")
+            create(IntelliJPlatformType.IntellijIdea, "2025.3")
+            create(IntelliJPlatformType.IntellijIdea, "2026.1")
         }
     }
 }
