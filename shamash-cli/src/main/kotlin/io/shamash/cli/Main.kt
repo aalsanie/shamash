@@ -702,7 +702,10 @@ private class ScanCommand : CommandBase("scan", "Run ASM scan + analysis (CI-fri
         val registry =
             when {
                 // Default path is production-safe and does not depend on SPI discovery.
-                registryKey == null || registryKey == "default" -> DefaultRuleRegistry.create()
+                registryKey == null || registryKey == "default" -> {
+                    DefaultRuleRegistry.create()
+                }
+
                 else -> {
                     val loadedProviders = RegistryProviders.load()
                     if (loadedProviders.errors.isNotEmpty()) {
@@ -922,8 +925,11 @@ private fun parseScanScopeOrNull(raw: String?): ScanScope? {
     val v = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     return when (v.uppercase()) {
         "PROJECT_ONLY" -> ScanScope.PROJECT_ONLY
+
         "ALL_SOURCES" -> ScanScope.ALL_SOURCES
+
         "PROJECT_WITH_EXTERNAL_BUCKETS" -> ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS
+
         else -> throw IllegalArgumentException(
             "Unknown --scope: '$raw' (expected: PROJECT_ONLY|ALL_SOURCES|PROJECT_WITH_EXTERNAL_BUCKETS)",
         )

@@ -116,12 +116,14 @@ class ShamashAsmConfigPanel(
         // 4) Validated + scan ran -> "Navigate to findings tab to view findings"
         summaryLabel.text =
             when {
-                resolved == null ->
+                resolved == null -> {
                     "No ASM config found. Create one from reference."
+                }
 
                 // No validation has happened yet (no state/scanResult produced by validation or scan action)
-                result == null ->
+                result == null -> {
                     "No Validation results yet. Press validate config"
+                }
 
                 // Validation (or scan) produced config errors
                 configErrors.isNotEmpty() -> {
@@ -130,16 +132,19 @@ class ShamashAsmConfigPanel(
                 }
 
                 // Config validated AND scan ran (engine result exists)
-                result.config != null && result.hasEngineResult ->
+                result.config != null && result.hasEngineResult -> {
                     "Navigate to findings tab to view findings"
+                }
 
                 // Config validated AND scan NOT ran
-                result.config != null ->
+                result.config != null -> {
                     "Run scan"
+                }
 
                 // Fallback (should be rare): we have a ScanResult but no errors and no typed config
-                else ->
+                else -> {
                     "No Validation results yet. Press validate config"
+                }
             }
 
         errorsTextArea.text = if (configErrors.isEmpty()) "" else formatErrors(configErrors)

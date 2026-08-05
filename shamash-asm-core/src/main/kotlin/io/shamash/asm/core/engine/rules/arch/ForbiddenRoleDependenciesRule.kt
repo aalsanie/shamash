@@ -146,10 +146,13 @@ class ForbiddenRoleDependenciesRule : Rule {
 
         val msg =
             when (mode) {
-                Mode.DIRECT ->
+                Mode.DIRECT -> {
                     "Forbidden role dependency observed: '$fromRole' -> '$toRole'."
-                Mode.TRANSITIVE ->
+                }
+
+                Mode.TRANSITIVE -> {
                     "Forbidden transitive role dependency observed: '$fromRole' -> '$toRole'."
+                }
             }
 
         val data =

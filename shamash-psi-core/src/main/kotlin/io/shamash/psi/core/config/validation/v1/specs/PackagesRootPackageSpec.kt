@@ -90,6 +90,7 @@ class PackagesRootPackageSpec : RuleSpec {
                     err("$rulePath.params.value", "must be non-empty if present")
                 }
             }
+
             Mode.EXPLICIT -> {
                 if (value == null) {
                     err("$rulePath.params.value", "is required when mode=EXPLICIT")

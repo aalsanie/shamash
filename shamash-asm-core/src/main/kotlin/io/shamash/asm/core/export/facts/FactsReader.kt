@@ -93,16 +93,19 @@ object FactsReader {
                                 meta = rec
                                 onMeta(rec)
                             }
+
                             FactsExportSchema.RECORD_CLASS -> {
                                 val rec = parseClass(node)
                                 classes++
                                 onClass(rec)
                             }
+
                             FactsExportSchema.RECORD_EDGE -> {
                                 val rec = parseEdge(node)
                                 edges++
                                 onEdge(rec)
                             }
+
                             else -> {
                                 // ignore unknown records for forward-compatibility
                             }

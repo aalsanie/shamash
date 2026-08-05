@@ -56,7 +56,7 @@ object FactsExporter {
     ) {
         outputPath.parent?.createDirectories()
         when (format) {
-            ExportFactsFormat.JSONL_GZ ->
+            ExportFactsFormat.JSONL_GZ -> {
                 exportJsonlGz(
                     facts = facts,
                     outputPath = outputPath,
@@ -65,7 +65,9 @@ object FactsExporter {
                     projectName = projectName,
                     generatedAtEpochMillis = generatedAtEpochMillis,
                 )
-            ExportFactsFormat.JSON ->
+            }
+
+            ExportFactsFormat.JSON -> {
                 exportJson(
                     facts = facts,
                     outputPath = outputPath,
@@ -74,6 +76,7 @@ object FactsExporter {
                     projectName = projectName,
                     generatedAtEpochMillis = generatedAtEpochMillis,
                 )
+            }
         }
     }
 

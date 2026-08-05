@@ -56,14 +56,18 @@ object RuleDefLookup {
     ): RuleDef? {
         val parsed = parseCanonicalRuleId(canonicalId) ?: return null
         return when (parsed.role) {
-            null -> cfg.rules.firstOrNull { it.type == parsed.type && it.name == parsed.name && it.roles == null }
-            else ->
+            null -> {
+                cfg.rules.firstOrNull { it.type == parsed.type && it.name == parsed.name && it.roles == null }
+            }
+
+            else -> {
                 cfg.rules.firstOrNull {
                     it.type == parsed.type &&
                         it.name == parsed.name &&
                         it.roles != null &&
                         it.roles.contains(parsed.role)
                 }
+            }
         }
     }
 

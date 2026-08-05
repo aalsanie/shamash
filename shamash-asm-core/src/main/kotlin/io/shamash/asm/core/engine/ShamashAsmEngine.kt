@@ -140,9 +140,11 @@ class ShamashAsmEngine(
                     UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> {
                         errors += EngineError.ruleNotFound(baseRuleId)
                     }
+
                     UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {
                         // no-op (validation layer should surface this as WARNING)
                     }
+
                     UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
                         // no-op
                     }
@@ -796,27 +798,50 @@ class ShamashAsmEngine(
                         i++
                         break
                     }
+
                     '\\' -> {
                         if (i + 1 >= slice.length) throw IllegalStateException("Invalid baseline JSON: trailing escape.")
                         val next = slice[i + 1]
                         when (next) {
-                            '"', '\\', '/' -> sb.append(next)
-                            'b' -> sb.append('\b')
-                            'f' -> sb.append('\u000C')
-                            'n' -> sb.append('\n')
-                            'r' -> sb.append('\r')
-                            't' -> sb.append('\t')
+                            '"', '\\', '/' -> {
+                                sb.append(next)
+                            }
+
+                            'b' -> {
+                                sb.append('\b')
+                            }
+
+                            'f' -> {
+                                sb.append('\u000C')
+                            }
+
+                            'n' -> {
+                                sb.append('\n')
+                            }
+
+                            'r' -> {
+                                sb.append('\r')
+                            }
+
+                            't' -> {
+                                sb.append('\t')
+                            }
+
                             'u' -> {
                                 if (i + 5 >= slice.length) throw IllegalStateException("Invalid baseline JSON: incomplete unicode escape.")
                                 val hex = slice.substring(i + 2, i + 6)
                                 sb.append(hex.toInt(16).toChar())
                                 i += 4
                             }
-                            else -> throw IllegalStateException("Invalid baseline JSON: unsupported escape \\$next.")
+
+                            else -> {
+                                throw IllegalStateException("Invalid baseline JSON: unsupported escape \\$next.")
+                            }
                         }
                         i += 2
                         continue
                     }
+
                     else -> {
                         sb.append(ch)
                         i++
@@ -1076,11 +1101,9 @@ class ShamashAsmEngine(
             is Matcher.AnyOf -> CompiledMatcher.AnyOf(m.anyOf.map { compileMatcher(it) })
             is Matcher.AllOf -> CompiledMatcher.AllOf(m.allOf.map { compileMatcher(it) })
             is Matcher.Not -> CompiledMatcher.Not(compileMatcher(m.not))
-
             is Matcher.PackageRegex -> CompiledMatcher.PackageRegex(Regex(m.packageRegex))
             is Matcher.PackageContainsSegment -> CompiledMatcher.PackageContainsSegment(m.packageContainsSegment)
             is Matcher.ClassNameEndsWith -> CompiledMatcher.ClassNameEndsWith(m.classNameEndsWith)
-
             is Matcher.Annotation -> CompiledMatcher.Annotation(m.annotation)
             is Matcher.AnnotationPrefix -> CompiledMatcher.AnnotationPrefix(m.annotationPrefix)
         }

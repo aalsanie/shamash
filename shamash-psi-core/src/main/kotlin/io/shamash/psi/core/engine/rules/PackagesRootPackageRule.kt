@@ -62,12 +62,16 @@ class PackagesRootPackageRule : EngineRule {
 
         val expectedRoot =
             when (mode) {
-                Mode.AUTO ->
+                Mode.AUTO -> {
                     config.project.rootPackage
                         ?.value
                         ?.trim()
                         .orEmpty()
-                Mode.EXPLICIT -> value.orEmpty()
+                }
+
+                Mode.EXPLICIT -> {
+                    value.orEmpty()
+                }
             }.trim().trimEnd('.')
 
         if (expectedRoot.isBlank()) return emptyList()

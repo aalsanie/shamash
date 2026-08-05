@@ -257,15 +257,29 @@ class Params private constructor(
                 if (!v.isFinite()) throw ParamError(at, "must be a finite number")
                 v
             }
+
             is Float -> {
                 val d = v.toDouble()
                 if (!d.isFinite()) throw ParamError(at, "must be a finite number")
                 d
             }
-            is Int -> v.toDouble()
-            is Long -> v.toDouble()
-            is Short -> v.toDouble()
-            is Byte -> v.toDouble()
+
+            is Int -> {
+                v.toDouble()
+            }
+
+            is Long -> {
+                v.toDouble()
+            }
+
+            is Short -> {
+                v.toDouble()
+            }
+
+            is Byte -> {
+                v.toDouble()
+            }
+
             is String -> {
                 val s = v.trim()
                 if (s.isEmpty()) throw ParamError(at, "must be a number")
@@ -273,12 +287,16 @@ class Params private constructor(
                 if (!d.isFinite()) throw ParamError(at, "must be a finite number")
                 d
             }
+
             is Number -> {
                 val d = v.toDouble()
                 if (!d.isFinite()) throw ParamError(at, "must be a finite number")
                 d
             }
-            else -> throw ParamError(at, "must be a number")
+
+            else -> {
+                throw ParamError(at, "must be a number")
+            }
         }
 
     private fun toInt(
@@ -286,15 +304,25 @@ class Params private constructor(
         at: String,
     ): Int =
         when (v) {
-            is Int -> v
+            is Int -> {
+                v
+            }
+
             is Long -> {
                 if (v < Int.MIN_VALUE.toLong() || v > Int.MAX_VALUE.toLong()) {
                     throw ParamError(at, "must fit in 32-bit signed integer range")
                 }
                 v.toInt()
             }
-            is Short -> v.toInt()
-            is Byte -> v.toInt()
+
+            is Short -> {
+                v.toInt()
+            }
+
+            is Byte -> {
+                v.toInt()
+            }
+
             is Double -> {
                 if (!v.isFinite()) throw ParamError(at, "must be a finite number")
                 if (v % 1.0 != 0.0) throw ParamError(at, "must be an integer")
@@ -303,6 +331,7 @@ class Params private constructor(
                 }
                 v.toInt()
             }
+
             is Float -> {
                 if (!v.isFinite()) throw ParamError(at, "must be a finite number")
                 if (v % 1.0f != 0.0f) throw ParamError(at, "must be an integer")
@@ -311,6 +340,7 @@ class Params private constructor(
                 }
                 v.toInt()
             }
+
             is String -> {
                 val s = v.trim()
                 if (s.isEmpty()) throw ParamError(at, "must be an integer")
@@ -320,6 +350,7 @@ class Params private constructor(
                 }
                 n.toInt()
             }
+
             is Number -> {
                 val asLong = v.toLong()
                 if (asLong < Int.MIN_VALUE.toLong() || asLong > Int.MAX_VALUE.toLong()) {
@@ -327,7 +358,10 @@ class Params private constructor(
                 }
                 asLong.toInt()
             }
-            else -> throw ParamError(at, "must be an integer")
+
+            else -> {
+                throw ParamError(at, "must be an integer")
+            }
         }
 
     private fun toLong(
@@ -335,10 +369,22 @@ class Params private constructor(
         at: String,
     ): Long =
         when (v) {
-            is Long -> v
-            is Int -> v.toLong()
-            is Short -> v.toLong()
-            is Byte -> v.toLong()
+            is Long -> {
+                v
+            }
+
+            is Int -> {
+                v.toLong()
+            }
+
+            is Short -> {
+                v.toLong()
+            }
+
+            is Byte -> {
+                v.toLong()
+            }
+
             is Double -> {
                 if (!v.isFinite()) throw ParamError(at, "must be a finite number")
                 if (v % 1.0 != 0.0) throw ParamError(at, "must be an integer")
@@ -348,6 +394,7 @@ class Params private constructor(
                 }
                 v.toLong()
             }
+
             is Float -> {
                 if (!v.isFinite()) throw ParamError(at, "must be a finite number")
                 if (v % 1.0f != 0.0f) throw ParamError(at, "must be an integer")
@@ -358,13 +405,20 @@ class Params private constructor(
                 }
                 d.toLong()
             }
+
             is String -> {
                 val s = v.trim()
                 if (s.isEmpty()) throw ParamError(at, "must be an integer")
                 s.toLongOrNull() ?: throw ParamError(at, "must be an integer")
             }
-            is Number -> v.toLong()
-            else -> throw ParamError(at, "must be an integer")
+
+            is Number -> {
+                v.toLong()
+            }
+
+            else -> {
+                throw ParamError(at, "must be an integer")
+            }
         }
 
     private fun toBoolean(
@@ -372,7 +426,10 @@ class Params private constructor(
         at: String,
     ): Boolean =
         when (v) {
-            is Boolean -> v
+            is Boolean -> {
+                v
+            }
+
             is String -> {
                 when (v.trim().lowercase()) {
                     "true" -> true
@@ -380,7 +437,10 @@ class Params private constructor(
                     else -> throw ParamError(at, "must be a boolean (true/false)")
                 }
             }
-            else -> throw ParamError(at, "must be a boolean (true/false)")
+
+            else -> {
+                throw ParamError(at, "must be a boolean (true/false)")
+            }
         }
 
     private fun List<String>.toLinkedHashSet(): Set<String> {
