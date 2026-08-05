@@ -165,10 +165,17 @@ class ShamashAsmAnalysisPanel(
 
                     status.text =
                         when {
-                            usedAnySidecar -> ""
-                            graphs != null || hotspots != null || scoring != null ->
+                            usedAnySidecar -> {
+                                ""
+                            }
+
+                            graphs != null || hotspots != null || scoring != null -> {
                                 "Showing in-memory analysis (analysis artifacts were not exported)."
-                            else -> "No analysis data found."
+                            }
+
+                            else -> {
+                                "No analysis data found."
+                            }
                         }
 
                     render(graphs, hotspots, scoring)

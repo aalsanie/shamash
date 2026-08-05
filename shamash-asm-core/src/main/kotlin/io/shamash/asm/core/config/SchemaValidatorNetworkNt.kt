@@ -95,7 +95,10 @@ object SchemaValidatorNetworkNt : SchemaValidator {
 
     private fun toJsonNode(value: Any?): JsonNode =
         when (value) {
-            null -> JsonNodeFactory.instance.nullNode()
+            null -> {
+                JsonNodeFactory.instance.nullNode()
+            }
+
             is Map<*, *> -> {
                 val obj = JsonNodeFactory.instance.objectNode()
                 for ((k, v) in value) {
@@ -104,19 +107,44 @@ object SchemaValidatorNetworkNt : SchemaValidator {
                 }
                 obj
             }
+
             is List<*> -> {
                 val arr = JsonNodeFactory.instance.arrayNode()
                 for (item in value) arr.add(toJsonNode(item))
                 arr
             }
-            is String -> JsonNodeFactory.instance.textNode(value)
-            is Boolean -> JsonNodeFactory.instance.booleanNode(value)
-            is Int -> JsonNodeFactory.instance.numberNode(value)
-            is Long -> JsonNodeFactory.instance.numberNode(value)
-            is Float -> JsonNodeFactory.instance.numberNode(value)
-            is Double -> JsonNodeFactory.instance.numberNode(value)
-            is Number -> JsonNodeFactory.instance.numberNode(value.toDouble())
-            else -> JsonNodeFactory.instance.textNode(value.toString())
+
+            is String -> {
+                JsonNodeFactory.instance.textNode(value)
+            }
+
+            is Boolean -> {
+                JsonNodeFactory.instance.booleanNode(value)
+            }
+
+            is Int -> {
+                JsonNodeFactory.instance.numberNode(value)
+            }
+
+            is Long -> {
+                JsonNodeFactory.instance.numberNode(value)
+            }
+
+            is Float -> {
+                JsonNodeFactory.instance.numberNode(value)
+            }
+
+            is Double -> {
+                JsonNodeFactory.instance.numberNode(value)
+            }
+
+            is Number -> {
+                JsonNodeFactory.instance.numberNode(value.toDouble())
+            }
+
+            else -> {
+                JsonNodeFactory.instance.textNode(value.toString())
+            }
         }
 
     private fun ValidationMessage.toValidationError(): ValidationError {

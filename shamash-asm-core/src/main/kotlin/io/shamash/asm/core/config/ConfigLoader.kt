@@ -349,12 +349,19 @@ object ConfigLoader {
                     null
                 } else {
                     when (val any = m["roles"]) {
-                        null -> null
-                        is List<*> ->
+                        null -> {
+                            null
+                        }
+
+                        is List<*> -> {
                             any.mapIndexed { i, r ->
                                 r as? String ?: throw ConfigBindException("$path.roles[$i]", "$path.roles[$i] must be a string")
                             }
-                        else -> throw ConfigBindException("$path.roles", "$path.roles must be a list of strings or null")
+                        }
+
+                        else -> {
+                            throw ConfigBindException("$path.roles", "$path.roles must be a list of strings or null")
+                        }
                     }
                 }
 
@@ -591,12 +598,18 @@ object ConfigLoader {
         path: String,
     ): List<Any?>? =
         when (val v = this[key]) {
-            null -> null
+            null -> {
+                null
+            }
+
             is List<*> -> {
                 @Suppress("UNCHECKED_CAST")
                 v as List<Any?>
             }
-            else -> throw ConfigBindException(path, "$path must be a list")
+
+            else -> {
+                throw ConfigBindException(path, "$path must be a list")
+            }
         }
 
     private fun Map<String, Any?>.reqString(
@@ -637,12 +650,30 @@ object ConfigLoader {
     private fun Any?.toStrictInt(path: String): Int {
         val n = this as? Number ?: throw ConfigBindException(path, "$path must be a number")
         return when (n) {
-            is Int -> n
-            is Long -> n.toIntExact(path)
-            is Short -> n.toInt()
-            is Byte -> n.toInt()
-            is Double -> n.toIntIfWhole(path)
-            is Float -> n.toDouble().toIntIfWhole(path)
+            is Int -> {
+                n
+            }
+
+            is Long -> {
+                n.toIntExact(path)
+            }
+
+            is Short -> {
+                n.toInt()
+            }
+
+            is Byte -> {
+                n.toInt()
+            }
+
+            is Double -> {
+                n.toIntIfWhole(path)
+            }
+
+            is Float -> {
+                n.toDouble().toIntIfWhole(path)
+            }
+
             else -> {
                 val d = n.toDouble()
                 d.toIntIfWhole(path)
@@ -709,12 +740,19 @@ object ConfigLoader {
         path: String,
     ): List<String>? =
         when (val v = this[key]) {
-            null -> null
-            is List<*> ->
+            null -> {
+                null
+            }
+
+            is List<*> -> {
                 v.mapIndexed { i, it ->
                     it as? String ?: throw ConfigBindException("$path[$i]", "$path[$i] must be a string")
                 }
-            else -> throw ConfigBindException(path, "$path must be a list of strings")
+            }
+
+            else -> {
+                throw ConfigBindException(path, "$path must be a list of strings")
+            }
         }
 
     private fun Map<*, *>.toStringKeyMapOrdered(path: String): Map<String, Any?> {

@@ -161,12 +161,19 @@ object ConfigLoader {
                     null
                 } else {
                     when (val any = m["roles"]) {
-                        null -> null
-                        is List<*> ->
+                        null -> {
+                            null
+                        }
+
+                        is List<*> -> {
                             any.mapIndexed { i, r ->
                                 r as? String ?: throw ConfigBindException("$path.roles[$i]", "$path.roles[$i] must be a string")
                             }
-                        else -> throw ConfigBindException("$path.roles", "$path.roles must be a list of strings or null")
+                        }
+
+                        else -> {
+                            throw ConfigBindException("$path.roles", "$path.roles must be a list of strings or null")
+                        }
                     }
                 }
 
@@ -376,12 +383,18 @@ object ConfigLoader {
 
     private fun Map<String, Any?>.optList(key: String): List<Any?>? =
         when (val v = this[key]) {
-            null -> null
+            null -> {
+                null
+            }
+
             is List<*> -> {
                 @Suppress("UNCHECKED_CAST")
                 v
             }
-            else -> throw ConfigBindException(key, "$key must be a list")
+
+            else -> {
+                throw ConfigBindException(key, "$key must be a list")
+            }
         }
 
     private fun Map<String, Any?>.reqString(

@@ -195,18 +195,37 @@ class BaselineStore {
                         i++ // consume closing quote
                         break
                     }
+
                     '\\' -> {
                         if (i + 1 >= slice.length) {
                             throw IllegalStateException("Invalid baseline JSON: trailing escape in string literal.")
                         }
                         val next = slice[i + 1]
                         when (next) {
-                            '"', '\\', '/' -> sb.append(next)
-                            'b' -> sb.append('\b')
-                            'f' -> sb.append('\u000C')
-                            'n' -> sb.append('\n')
-                            'r' -> sb.append('\r')
-                            't' -> sb.append('\t')
+                            '"', '\\', '/' -> {
+                                sb.append(next)
+                            }
+
+                            'b' -> {
+                                sb.append('\b')
+                            }
+
+                            'f' -> {
+                                sb.append('\u000C')
+                            }
+
+                            'n' -> {
+                                sb.append('\n')
+                            }
+
+                            'r' -> {
+                                sb.append('\r')
+                            }
+
+                            't' -> {
+                                sb.append('\t')
+                            }
+
                             'u' -> {
                                 if (i + 5 >= slice.length) {
                                     throw IllegalStateException("Invalid baseline JSON: incomplete unicode escape.")
@@ -216,13 +235,17 @@ class BaselineStore {
                                 sb.append(code.toChar())
                                 i += 4
                             }
-                            else -> throw IllegalStateException(
-                                "Invalid baseline JSON: unsupported escape sequence \\$next.",
-                            )
+
+                            else -> {
+                                throw IllegalStateException(
+                                    "Invalid baseline JSON: unsupported escape sequence \\$next.",
+                                )
+                            }
                         }
                         i += 2
                         continue
                     }
+
                     else -> {
                         sb.append(ch)
                         i++

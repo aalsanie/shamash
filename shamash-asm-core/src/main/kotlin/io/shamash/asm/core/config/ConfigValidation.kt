@@ -166,9 +166,11 @@ object ConfigValidation {
                         if (isImplemented(baseId, engineIds)) return@forEachIndexed
 
                         when (policy) {
-                            UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> Unit
+                            UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
+                                Unit
+                            }
 
-                            UnknownRulePolicy.WARN, UnknownRulePolicy.warn ->
+                            UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {
                                 errors +=
                                     ValidationError(
                                         path = "rules[$i]",
@@ -176,14 +178,16 @@ object ConfigValidation {
                                             "Rule '$baseId' is configured but not implemented in the engine (rule will not run)",
                                         severity = ValidationSeverity.WARNING,
                                     )
+                            }
 
-                            UnknownRulePolicy.ERROR, UnknownRulePolicy.error ->
+                            UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> {
                                 errors +=
                                     ValidationError(
                                         path = "rules[$i]",
                                         message = "Rule '$baseId' is configured but not implemented in the engine",
                                         severity = ValidationSeverity.ERROR,
                                     )
+                            }
                         }
                     }
                 }

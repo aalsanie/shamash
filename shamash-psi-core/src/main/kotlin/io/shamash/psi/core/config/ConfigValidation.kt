@@ -130,13 +130,17 @@ object ConfigValidation {
                         val name = parts[1]
                         if (type.isBlank() || name.isBlank()) null else RuleKey(type = type, name = name, role = null)
                     }
+
                     3 -> {
                         val type = parts[0]
                         val name = parts[1]
                         val role = parts[2]
                         if (type.isBlank() || name.isBlank() || role.isBlank()) null else RuleKey(type = type, name = name, role = role)
                     }
-                    else -> null
+
+                    else -> {
+                        null
+                    }
                 }
 
             if (rk != null) out += rk

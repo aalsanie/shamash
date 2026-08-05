@@ -34,13 +34,34 @@ object JsonEscaper {
         val out = StringBuilder(s.length + 16)
         for (ch in s) {
             when (ch) {
-                '\\' -> out.append("\\\\")
-                '"' -> out.append("\\\"")
-                '\b' -> out.append("\\b")
-                '\u000C' -> out.append("\\f")
-                '\n' -> out.append("\\n")
-                '\r' -> out.append("\\r")
-                '\t' -> out.append("\\t")
+                '\\' -> {
+                    out.append("\\\\")
+                }
+
+                '"' -> {
+                    out.append("\\\"")
+                }
+
+                '\b' -> {
+                    out.append("\\b")
+                }
+
+                '\u000C' -> {
+                    out.append("\\f")
+                }
+
+                '\n' -> {
+                    out.append("\\n")
+                }
+
+                '\r' -> {
+                    out.append("\\r")
+                }
+
+                '\t' -> {
+                    out.append("\\t")
+                }
+
                 else -> {
                     if (ch < ' ') {
                         out.append("\\u")

@@ -30,26 +30,38 @@ import io.shamash.asm.core.facts.model.ClassFact
 internal object MatcherEvaluator {
     fun compile(matcher: Matcher): CompiledMatcher =
         when (matcher) {
-            is Matcher.AnyOf -> CompiledMatcher.AnyOf(matcher.anyOf.map { compile(it) })
-            is Matcher.AllOf -> CompiledMatcher.AllOf(matcher.allOf.map { compile(it) })
-            is Matcher.Not -> CompiledMatcher.Not(compile(matcher.not))
+            is Matcher.AnyOf -> {
+                CompiledMatcher.AnyOf(matcher.anyOf.map { compile(it) })
+            }
+
+            is Matcher.AllOf -> {
+                CompiledMatcher.AllOf(matcher.allOf.map { compile(it) })
+            }
+
+            is Matcher.Not -> {
+                CompiledMatcher.Not(compile(matcher.not))
+            }
 
             is Matcher.PackageRegex -> {
                 val rx = compileRegexOrThrow(matcher.packageRegex, "Matcher.PackageRegex")
                 CompiledMatcher.PackageRegex(rx)
             }
 
-            is Matcher.PackageContainsSegment ->
+            is Matcher.PackageContainsSegment -> {
                 CompiledMatcher.PackageContainsSegment(matcher.packageContainsSegment)
+            }
 
-            is Matcher.ClassNameEndsWith ->
+            is Matcher.ClassNameEndsWith -> {
                 CompiledMatcher.ClassNameEndsWith(matcher.classNameEndsWith)
+            }
 
-            is Matcher.Annotation ->
+            is Matcher.Annotation -> {
                 CompiledMatcher.Annotation(matcher.annotation)
+            }
 
-            is Matcher.AnnotationPrefix ->
+            is Matcher.AnnotationPrefix -> {
                 CompiledMatcher.AnnotationPrefix(matcher.annotationPrefix)
+            }
         }
 
     sealed interface CompiledMatcher {

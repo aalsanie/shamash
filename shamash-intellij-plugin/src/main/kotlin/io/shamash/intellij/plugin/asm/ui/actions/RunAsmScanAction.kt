@@ -224,11 +224,15 @@ class RunAsmScanAction(
         val p = Paths.get(base)
 
         return when {
-            p.exists() && p.isDirectory() -> p
-            else ->
+            p.exists() && p.isDirectory() -> {
+                p
+            }
+
+            else -> {
                 runCatching {
                     Paths.get(FileUtil.toCanonicalPath(base))
                 }.getOrNull()
+            }
         }
     }
 

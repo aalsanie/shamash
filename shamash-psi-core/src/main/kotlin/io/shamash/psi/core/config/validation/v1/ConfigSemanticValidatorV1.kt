@@ -149,21 +149,27 @@ object ConfigSemanticValidatorV1 {
             if (spec == null) {
                 // Unknown (type,name)
                 when (config.project.validation.unknownRule) {
-                    UnknownRulePolicyV1.IGNORE -> Unit
-                    UnknownRulePolicyV1.WARN ->
+                    UnknownRulePolicyV1.IGNORE -> {
+                        Unit
+                    }
+
+                    UnknownRulePolicyV1.WARN -> {
                         errors +=
                             ValidationError(
                                 base,
                                 "Unknown rule '$type.$name' (no RuleSpec registered; rule will not run)",
                                 ValidationSeverity.WARNING,
                             )
-                    UnknownRulePolicyV1.ERROR ->
+                    }
+
+                    UnknownRulePolicyV1.ERROR -> {
                         errors +=
                             ValidationError(
                                 base,
                                 "Unknown rule '$type.$name' (no RuleSpec registered)",
                                 ValidationSeverity.ERROR,
                             )
+                    }
                 }
                 return@forEachIndexed
             }
@@ -181,7 +187,10 @@ object ConfigSemanticValidatorV1 {
                 val baseKey = RuleKey(type = type, name = name, role = null)
                 val isExecutable =
                     when (val roles = rule.roles) {
-                        null -> executableRuleKeys.contains(baseKey) || executableRuleKeys.any { it.type == type && it.name == name }
+                        null -> {
+                            executableRuleKeys.contains(baseKey) || executableRuleKeys.any { it.type == type && it.name == name }
+                        }
+
                         else -> {
                             // Prefer base key, but also accept explicit role keys if the engine ever exposes them.
                             executableRuleKeys.contains(baseKey) ||
@@ -195,21 +204,27 @@ object ConfigSemanticValidatorV1 {
 
                 if (!isExecutable) {
                     when (config.project.validation.unknownRule) {
-                        UnknownRulePolicyV1.IGNORE -> Unit
-                        UnknownRulePolicyV1.WARN ->
+                        UnknownRulePolicyV1.IGNORE -> {
+                            Unit
+                        }
+
+                        UnknownRulePolicyV1.WARN -> {
                             errors +=
                                 ValidationError(
                                     base,
                                     "Rule '$type.$name' is registered but not implemented in engine (rule will not run)",
                                     ValidationSeverity.WARNING,
                                 )
-                        UnknownRulePolicyV1.ERROR ->
+                        }
+
+                        UnknownRulePolicyV1.ERROR -> {
                             errors +=
                                 ValidationError(
                                     base,
                                     "Rule '$type.$name' is registered but not implemented in engine",
                                     ValidationSeverity.ERROR,
                                 )
+                        }
                     }
                     // NOTE: still run spec validation so user sees param issues too
                 }
@@ -304,10 +319,8 @@ object ConfigSemanticValidatorV1 {
             is Matcher.AnyOf -> m.anyOf.forEachIndexed { i, it -> validateMatcher(it, "$path.anyOf[$i]", errors) }
             is Matcher.AllOf -> m.allOf.forEachIndexed { i, it -> validateMatcher(it, "$path.allOf[$i]", errors) }
             is Matcher.Not -> validateMatcher(m.not, "$path.not", errors)
-
             is Matcher.PackageRegex -> compileRegex(m.packageRegex, "$path.packageRegex", errors)
             is Matcher.ClassNameRegex -> compileRegex(m.classNameRegex, "$path.classNameRegex", errors)
-
             else -> Unit
         }
     }

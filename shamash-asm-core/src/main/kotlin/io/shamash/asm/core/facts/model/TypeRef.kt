@@ -56,7 +56,10 @@ data class TypeRef(
 
         fun fromAsmType(type: Type): TypeRef? {
             return when (type.sort) {
-                Type.VOID -> null
+                Type.VOID -> {
+                    null
+                }
+
                 Type.BOOLEAN, Type.CHAR, Type.BYTE, Type.SHORT, Type.INT, Type.FLOAT, Type.LONG, Type.DOUBLE -> {
                     val name = type.className // "int", "boolean", ...
                     TypeRef(
@@ -68,14 +71,24 @@ data class TypeRef(
                         isPrimitive = true,
                     )
                 }
+
                 Type.ARRAY -> {
                     val elem = type.elementType
                     val base = fromAsmType(elem) ?: return null
                     base.copy(isArray = true)
                 }
-                Type.OBJECT -> fromInternalName(type.internalName)
-                Type.METHOD -> null
-                else -> null
+
+                Type.OBJECT -> {
+                    fromInternalName(type.internalName)
+                }
+
+                Type.METHOD -> {
+                    null
+                }
+
+                else -> {
+                    null
+                }
             }
         }
 

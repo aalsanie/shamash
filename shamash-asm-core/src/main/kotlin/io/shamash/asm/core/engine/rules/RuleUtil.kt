@@ -170,7 +170,10 @@ internal object RuleUtil {
         val loc = location.normalized()
 
         return when (loc.originKind) {
-            OriginKind.DIR_CLASS -> PathNormalizer.normalize(loc.originPath)
+            OriginKind.DIR_CLASS -> {
+                PathNormalizer.normalize(loc.originPath)
+            }
+
             OriginKind.JAR_ENTRY -> {
                 val jar = loc.containerPath ?: loc.originPath
                 val entry = loc.entryPath ?: ""
@@ -311,8 +314,11 @@ internal object RuleUtil {
     ): String {
         val pkg =
             when (granularity) {
-                Granularity.CLASS -> t.packageName // bucket by package, not class
+                Granularity.CLASS -> t.packageName
+
+                // bucket by package, not class
                 Granularity.PACKAGE -> t.packageName
+
                 Granularity.MODULE -> moduleIdForPackage(t.packageName)
             }.trim()
 
@@ -386,12 +392,18 @@ internal object RuleUtil {
         val sccs = stronglyConnectedComponents(g)
         return sccs.filter { comp ->
             when {
-                comp.size > 1 -> true
+                comp.size > 1 -> {
+                    true
+                }
+
                 comp.size == 1 -> {
                     val n = comp.first()
                     n in g.successors(n)
                 }
-                else -> false
+
+                else -> {
+                    false
+                }
             }
         }
     }
@@ -456,13 +468,19 @@ internal object RuleUtil {
 
                 val sv = state[v] ?: 0
                 when (sv) {
-                    0 -> dfs(v)
+                    0 -> {
+                        dfs(v)
+                    }
+
                     1 -> {
                         // Back-edge to a node currently in stack => cycle found.
                         val start = indexInStack[v]
                         if (start != null) captureCycle(start, v)
                     }
-                    else -> Unit
+
+                    else -> {
+                        Unit
+                    }
                 }
             }
 

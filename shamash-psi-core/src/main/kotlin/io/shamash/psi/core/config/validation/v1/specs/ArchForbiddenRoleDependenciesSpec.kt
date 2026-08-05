@@ -110,7 +110,11 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
                     err("$rulePath.params.forbidden", "is required")
                     return errors
                 }
-                is List<*> -> raw
+
+                is List<*> -> {
+                    raw
+                }
+
                 else -> {
                     err("$rulePath.params.forbidden", "must be a list")
                     return errors

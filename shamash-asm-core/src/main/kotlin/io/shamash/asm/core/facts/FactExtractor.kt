@@ -532,6 +532,7 @@ object FactExtractor {
                                     ),
                                 )
                             }
+
                             is Handle -> {
                                 val to = TypeRef.fromInternalName(value.owner)
                                 if (owner.internalName == to.internalName) return
@@ -587,6 +588,7 @@ object FactExtractor {
                                         ),
                                     )
                                 }
+
                                 is Handle -> {
                                     val to = TypeRef.fromInternalName(arg.owner)
                                     if (owner.internalName == to.internalName) continue

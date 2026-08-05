@@ -399,7 +399,9 @@ object FactExtractor {
                                 }
                             }
 
-                            else -> Unit
+                            else -> {
+                                Unit
+                            }
                         }
 
                         false

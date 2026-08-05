@@ -116,11 +116,15 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
 
             val toList: List<*> =
                 when (rawToListAny) {
-                    is List<*> -> rawToListAny
+                    is List<*> -> {
+                        rawToListAny
+                    }
+
                     null -> {
                         errors += err(fromPath, "must be a list of role ids")
                         return@forEach
                     }
+
                     else -> {
                         errors += err(fromPath, "must be a list of role ids")
                         return@forEach

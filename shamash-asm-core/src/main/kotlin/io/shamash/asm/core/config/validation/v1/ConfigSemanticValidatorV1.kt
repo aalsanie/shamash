@@ -162,21 +162,27 @@ object ConfigSemanticValidatorV1 {
             val spec = RuleSpecRegistryV1.find(type, name)
             if (spec == null) {
                 when (config.project.validation.unknownRule) {
-                    UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> Unit
-                    UnknownRulePolicy.WARN, UnknownRulePolicy.warn ->
+                    UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
+                        Unit
+                    }
+
+                    UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {
                         errors +=
                             ValidationError(
                                 path = base,
                                 message = "Unknown rule '$type.$name' (no RuleSpec registered; rule will not run)",
                                 severity = ValidationSeverity.WARNING,
                             )
-                    UnknownRulePolicy.ERROR, UnknownRulePolicy.error ->
+                    }
+
+                    UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> {
                         errors +=
                             ValidationError(
                                 path = base,
                                 message = "Unknown rule '$type.$name' (no RuleSpec registered)",
                                 severity = ValidationSeverity.ERROR,
                             )
+                    }
                 }
                 return@forEachIndexed
             }
@@ -355,6 +361,7 @@ object ConfigSemanticValidatorV1 {
                         if (v < 0.0) errors += err("$path.$k", "must be >= 0")
                     }
                 }
+
                 is io.shamash.asm.core.config.schema.v1.model.OverallWeights -> {
                     listOf(
                         "cycles" to weights.cycles,
@@ -367,8 +374,14 @@ object ConfigSemanticValidatorV1 {
                         if (v < 0.0) errors += err("$path.$k", "must be >= 0")
                     }
                 }
-                null -> Unit
-                else -> Unit
+
+                null -> {
+                    Unit
+                }
+
+                else -> {
+                    Unit
+                }
             }
         }
 
@@ -556,22 +569,38 @@ object ConfigSemanticValidatorV1 {
                 if (m.anyOf.isEmpty()) errors += err("$path.anyOf", "anyOf must be non-empty")
                 m.anyOf.forEachIndexed { i, it -> validateMatcher(it, "$path.anyOf[$i]", errors) }
             }
+
             is Matcher.AllOf -> {
                 if (m.allOf.isEmpty()) errors += err("$path.allOf", "allOf must be non-empty")
                 m.allOf.forEachIndexed { i, it -> validateMatcher(it, "$path.allOf[$i]", errors) }
             }
-            is Matcher.Not -> validateMatcher(m.not, "$path.not", errors)
 
-            is Matcher.PackageRegex -> compileRegex(m.packageRegex, "$path.packageRegex", errors)
-            is Matcher.PackageContainsSegment ->
+            is Matcher.Not -> {
+                validateMatcher(m.not, "$path.not", errors)
+            }
+
+            is Matcher.PackageRegex -> {
+                compileRegex(m.packageRegex, "$path.packageRegex", errors)
+            }
+
+            is Matcher.PackageContainsSegment -> {
                 if (m.packageContainsSegment.isBlank()) {
                     errors +=
                         err("$path.packageContainsSegment", "must be non-empty")
                 }
-            is Matcher.ClassNameEndsWith -> if (m.classNameEndsWith.isBlank()) errors += err("$path.classNameEndsWith", "must be non-empty")
+            }
 
-            is Matcher.Annotation -> if (m.annotation.isBlank()) errors += err("$path.annotation", "must be non-empty")
-            is Matcher.AnnotationPrefix -> if (m.annotationPrefix.isBlank()) errors += err("$path.annotationPrefix", "must be non-empty")
+            is Matcher.ClassNameEndsWith -> {
+                if (m.classNameEndsWith.isBlank()) errors += err("$path.classNameEndsWith", "must be non-empty")
+            }
+
+            is Matcher.Annotation -> {
+                if (m.annotation.isBlank()) errors += err("$path.annotation", "must be non-empty")
+            }
+
+            is Matcher.AnnotationPrefix -> {
+                if (m.annotationPrefix.isBlank()) errors += err("$path.annotationPrefix", "must be non-empty")
+            }
         }
     }
 

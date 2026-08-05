@@ -134,7 +134,9 @@ class ShamashAsmUiStateService(
                     when {
                         // ScanResult exposes these helpers in asm-core.
                         result.hasConfigErrors -> controller.select(ShamashAsmToolWindowController.Tab.CONFIG)
+
                         result.hasEngineResult -> controller.select(ShamashAsmToolWindowController.Tab.FINDINGS)
+
                         else -> controller.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
                     }
                 }

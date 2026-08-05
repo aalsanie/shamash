@@ -107,17 +107,13 @@ private object MatcherCompiler {
             is Matcher.AnyOf -> CompiledMatcher.AnyOf(m.anyOf.map { compile(it) })
             is Matcher.AllOf -> CompiledMatcher.AllOf(m.allOf.map { compile(it) })
             is Matcher.Not -> CompiledMatcher.Not(compile(m.not))
-
             is Matcher.Annotation -> CompiledMatcher.Annotation(m.annotation)
             is Matcher.AnnotationPrefix -> CompiledMatcher.AnnotationPrefix(m.annotationPrefix)
-
             is Matcher.PackageRegex -> CompiledMatcher.PackageRegex(Regex(m.packageRegex))
             is Matcher.PackageContainsSegment -> CompiledMatcher.PackageContainsSegment(m.packageContainsSegment)
-
             is Matcher.ClassNameRegex -> CompiledMatcher.ClassNameRegex(Regex(m.classNameRegex))
             is Matcher.ClassNameEndsWith -> CompiledMatcher.ClassNameEndsWith(m.classNameEndsWith)
             is Matcher.ClassNameEndsWithAny -> CompiledMatcher.ClassNameEndsWithAny(m.classNameEndsWithAny)
-
             is Matcher.HasMainMethod -> CompiledMatcher.HasMainMethod(m.hasMainMethod)
             is Matcher.Implements -> CompiledMatcher.Implements(m.implements)
             is Matcher.Extends -> CompiledMatcher.Extends(m.extends)
