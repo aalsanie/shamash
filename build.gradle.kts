@@ -24,7 +24,7 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.10.5" apply false
 
     id("com.diffplug.spotless") version "8.9.0" apply false
-    id("org.jetbrains.kotlinx.kover") version "0.9.8" apply false
+    id("org.jetbrains.kotlinx.kover") version "0.9.9" apply false
 }
 
 allprojects {
