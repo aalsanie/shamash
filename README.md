@@ -76,16 +76,20 @@ Releases also publish `SHA256SUMS.txt` if you want to verify the downloaded ZIP.
 On Linux/macOS:
 
 ```shell
-./shamash-cli-<version>/bin/shamash version
+export SHAMASH_HOME="$PWD/shamash-cli-<version>"
+export PATH="$SHAMASH_HOME/bin:$PATH"
+shamash version
 ```
 
 On Windows:
 
 ```powershell
-.\shamash-cli-<version>\bin\shamash.bat version
+$env:SHAMASH_HOME = "$PWD\shamash-cli-<version>"
+$env:Path = "$env:SHAMASH_HOME\bin;$env:Path"
+shamash version
 ```
 
-It should be available on your `PATH`.
+You can add the same `bin` directory to your shell profile or system/user `PATH` if you want a persistent installation.
 
 ---
 
