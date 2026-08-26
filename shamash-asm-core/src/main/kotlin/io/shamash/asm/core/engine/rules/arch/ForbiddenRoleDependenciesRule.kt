@@ -38,18 +38,19 @@ import java.util.LinkedHashSet
  * arch.forbiddenRoleDependencies
  *
  * Params:
- * - forbid: [ "fromRole->toRole", ... ]   (non-empty)
- * - mode: "direct" | "transitive"         (optional, default "direct")
- * - includeExternal: boolean              (optional, default false)
+ * - forbidden:
+ *     <fromRole>: [<toRole>, <toRole>, ...]
+ * - direction: "direct" | "transitive"   (optional, default "direct")
  *
  * Semantics:
- * - Build role graph from facts.edges using engine-assigned classToRole.
- * - If mode=direct: fail when an observed role edge (from -> to) exists and is forbidden.
- * - If mode=transitive: fail when to is reachable from (path length >= 1) and (from -> to) is forbidden.
+ * - Build the role graph from facts.edges using engine-assigned classToRole.
+ * - If direction=direct: fail when a configured forbidden role edge is observed.
+ * - If direction=transitive: fail when a configured forbidden target role is reachable
+ *   from the source role through one or more role dependencies.
  *
  * Scope semantics:
- * - role filters apply to the "fromRole" (source role).
- * - package/glob scope is applied to the producing "from-class" (via RuleUtil.buildRoleGraph(..., scope)).
+ * - role filters apply to the source role.
+ * - package/glob scope is applied to the producing source class.
  */
 class ForbiddenRoleDependenciesRule : Rule {
     override val id: String = "arch.forbiddenRoleDependencies"
@@ -60,69 +61,114 @@ class ForbiddenRoleDependenciesRule : Rule {
         config: ShamashAsmConfigV1,
     ): List<Finding> {
         val params = readParams(rule) ?: return emptyList()
-        if (params.forbidPairs.isEmpty()) return emptyList()
+        if (params.forbiddenPairs.isEmpty()) return emptyList()
 
         val scope = RuleUtil.compileScope(rule.scope)
 
-        // Useful for anchoring file paths / examples.
-        val classByFqn: Map<String, ClassFact> = facts.classes.associateBy { it.fqName }
+        val classByFqn: Map<String, ClassFact> =
+            facts.classes.associateBy { it.fqName }
 
-        // Graph is already scope-filtered by producing class (from-class).
+        /*
+         * External/unclassified targets cannot participate in configured
+         * role-to-role restrictions because they do not have an assigned role.
+         *
+         * includeExternal is intentionally false here because it is not part of
+         * the arch.forbiddenRoleDependencies V1 parameter contract.
+         */
         val roleGraph =
             RuleUtil.buildRoleGraph(
                 facts = facts,
-                includeExternal = params.includeExternal,
+                includeExternal = false,
                 scope = scope,
             )
 
-        val out = ArrayList<Finding>()
+        val findings = ArrayList<Finding>()
 
-        // Deterministic: iterate forbid list sorted.
-        val forbidPairs =
-            params.forbidPairs
-                .distinct()
-                .sortedWith(compareBy<Pair<String, String>>({ it.first }, { it.second }))
-
-        for ((fromRole, toRole) in forbidPairs) {
+        for ((fromRole, toRole) in params.forbiddenPairs) {
             if (!RuleUtil.roleAllowed(rule, scope, fromRole)) continue
-            if (fromRole == toRole) continue // forbidding self-deps is almost always noise; ignore deterministically
 
-            when (params.mode) {
-                Mode.DIRECT -> {
-                    if (toRole in roleGraph.successors(fromRole)) {
-                        val examples =
-                            collectDirectExamples(
-                                facts = facts,
-                                classByFqn = classByFqn,
-                                scope = scope,
-                                fromRole = fromRole,
-                                toRole = toRole,
-                                limit = 10,
-                            )
-                        out += buildFinding(rule, fromRole, toRole, Mode.DIRECT, examples, null, classByFqn)
-                    }
+            /*
+             * The validator rejects self-dependencies, but retain this guard so
+             * direct evaluator use remains defensive.
+             */
+            if (fromRole == toRole) continue
+
+            when (params.direction) {
+                Direction.DIRECT -> {
+                    if (toRole !in roleGraph.successors(fromRole)) continue
+
+                    val examples =
+                        collectDirectExamples(
+                            facts = facts,
+                            classByFqn = classByFqn,
+                            scope = scope,
+                            fromRole = fromRole,
+                            toRole = toRole,
+                            limit = EXAMPLE_LIMIT,
+                        )
+
+                    findings +=
+                        buildFinding(
+                            rule = rule,
+                            fromRole = fromRole,
+                            toRole = toRole,
+                            direction = Direction.DIRECT,
+                            examples = examples,
+                            path = null,
+                            classByFqn = classByFqn,
+                        )
                 }
 
-                Mode.TRANSITIVE -> {
-                    val path = shortestPath(roleGraph, fromRole, toRole)
-                    if (path != null && path.size >= 2) {
-                        val examples =
-                            collectDirectExamples(
-                                facts = facts,
-                                classByFqn = classByFqn,
-                                scope = scope,
-                                fromRole = fromRole,
-                                toRole = path.getOrNull(1) ?: toRole, // first hop examples help explain
-                                limit = 10,
-                            )
-                        out += buildFinding(rule, fromRole, toRole, Mode.TRANSITIVE, examples, path, classByFqn)
-                    }
+                Direction.TRANSITIVE -> {
+                    val path =
+                        shortestPath(
+                            graph = roleGraph,
+                            start = fromRole,
+                            target = toRole,
+                        ) ?: continue
+
+                    if (path.size < 2) continue
+
+                    /*
+                     * Anchor the finding to evidence for the first edge in the
+                     * discovered path. This gives the user an actionable source
+                     * location even when the forbidden dependency is transitive.
+                     */
+                    val firstHop = path[1]
+
+                    val examples =
+                        collectDirectExamples(
+                            facts = facts,
+                            classByFqn = classByFqn,
+                            scope = scope,
+                            fromRole = fromRole,
+                            toRole = firstHop,
+                            limit = EXAMPLE_LIMIT,
+                        )
+
+                    findings +=
+                        buildFinding(
+                            rule = rule,
+                            fromRole = fromRole,
+                            toRole = toRole,
+                            direction = Direction.TRANSITIVE,
+                            examples = examples,
+                            path = path,
+                            classByFqn = classByFqn,
+                        )
                 }
             }
         }
 
-        // Deterministic: stable sort by (fromRole, toRole, mode)
-        return out.sortedWith(
+        /*
+         * Keep findings deterministic regardless of map/set iteration order in
+         * the input facts.
+         *
+         * "mode" remains the finding-data key for output compatibility even
+         * though the configuration parameter is now correctly named
+         * "direction".
+         */
+        return findings.sortedWith(
             compareBy<Finding>(
                 { it.data["fromRole"].orEmpty() },
                 { it.data["toRole"].orEmpty() },
@@ -135,22 +181,21 @@ class ForbiddenRoleDependenciesRule : Rule {
         rule: RuleDef,
         fromRole: String,
         toRole: String,
-        mode: Mode,
+        direction: Direction,
         examples: List<Pair<String, String>>,
         path: List<String>?,
         classByFqn: Map<String, ClassFact>,
     ): Finding {
         val anchorClassFqn = examples.firstOrNull()?.first
-        val anchorClass = anchorClassFqn?.let { classByFqn[it] }
-        val filePath = anchorClass?.let { RuleUtil.filePathOf(it.location) } ?: ""
+        val anchorClass = anchorClassFqn?.let(classByFqn::get)
 
-        val msg =
-            when (mode) {
-                Mode.DIRECT -> {
+        val message =
+            when (direction) {
+                Direction.DIRECT -> {
                     "Forbidden role dependency observed: '$fromRole' -> '$toRole'."
                 }
 
-                Mode.TRANSITIVE -> {
+                Direction.TRANSITIVE -> {
                     "Forbidden transitive role dependency observed: '$fromRole' -> '$toRole'."
                 }
             }
@@ -159,18 +204,36 @@ class ForbiddenRoleDependenciesRule : Rule {
             buildMap {
                 put("fromRole", fromRole)
                 put("toRole", toRole)
-                put("mode", mode.wire)
-                if (path != null && path.isNotEmpty()) put("path", path.joinToString(" -> "))
+
+                /*
+                 * Preserve the existing exported finding field name.
+                 * Changing this to "direction" would be a separate artifact
+                 * compatibility decision.
+                 */
+                put("mode", direction.wire)
+
+                if (path != null && path.isNotEmpty()) {
+                    put("path", path.joinToString(" -> "))
+                }
+
                 if (examples.isNotEmpty()) {
-                    put("examples", examples.joinToString(",") { (a, b) -> "$a->$b" })
-                    if (examples.size >= 10) put("examplesTruncated", "true")
+                    put(
+                        "examples",
+                        examples.joinToString(",") { (fromClass, toClass) ->
+                            "$fromClass->$toClass"
+                        },
+                    )
+
+                    if (examples.size >= EXAMPLE_LIMIT) {
+                        put("examplesTruncated", "true")
+                    }
                 }
             }
 
         return Finding(
             ruleId = RuleUtil.canonicalRuleId(rule),
-            message = msg,
-            filePath = filePath,
+            message = message,
+            filePath = anchorClass?.let { RuleUtil.filePathOf(it.location) } ?: "",
             severity = rule.severity,
             classFqn = anchorClass?.fqName,
             memberName = null,
@@ -178,91 +241,97 @@ class ForbiddenRoleDependenciesRule : Rule {
         )
     }
 
-    private data class ReadParams(
-        val forbidPairs: List<Pair<String, String>>,
-        val mode: Mode,
-        val includeExternal: Boolean,
-    )
-
-    private enum class Mode(
-        val wire: String,
-    ) {
-        DIRECT("direct"),
-        TRANSITIVE("transitive"),
-        ;
-
-        companion object {
-            fun parse(s: String?): Mode {
-                val v = s?.trim()?.lowercase()
-                return when (v) {
-                    "transitive" -> TRANSITIVE
-                    "direct", null, "" -> DIRECT
-                    else -> DIRECT
-                }
-            }
-        }
-    }
-
     private fun readParams(rule: RuleDef): ReadParams? {
-        val p = Params.of(rule.params, path = "rules.${rule.type}.${rule.name}.params")
+        val params =
+            Params.of(
+                rule.params,
+                path = "rules.${rule.type}.${rule.name}.params",
+            )
 
-        val forbid: List<String> =
+        val forbidden =
             try {
-                p.requireStringList("forbid", nonEmpty = true)
+                params.requireMap("forbidden")
+            } catch (_: ParamError) {
+                /*
+                 * Semantic validation is responsible for reporting malformed
+                 * configuration. The evaluator stays resilient if invoked
+                 * independently.
+                 */
+                return null
+            }
+
+        val direction =
+            try {
+                params.optionalEnum<Direction>("direction") ?: Direction.DIRECT
             } catch (_: ParamError) {
                 return null
             }
 
-        val mode = Mode.parse(runCatching { p.optionalString("mode") }.getOrNull())
-        val includeExternal = runCatching { p.optionalBoolean("includeExternal") }.getOrNull() ?: false
+        val forbiddenPairs = ArrayList<Pair<String, String>>()
 
-        val pairs = ArrayList<Pair<String, String>>(forbid.size)
-        for (edge in forbid) {
-            val s = edge.trim()
-            if (s.isEmpty()) continue
-            val parts = s.split("->")
-            if (parts.size != 2) continue
-            val from = parts[0].trim()
-            val to = parts[1].trim()
-            if (from.isEmpty() || to.isEmpty()) continue
-            pairs += from to to
+        for ((rawFromRole, rawTargets) in forbidden) {
+            val fromRole = rawFromRole.trim()
+            if (fromRole.isEmpty()) continue
+
+            val targets = rawTargets as? List<*> ?: continue
+
+            for (rawTarget in targets) {
+                val toRole = (rawTarget as? String)?.trim() ?: continue
+                if (toRole.isEmpty()) continue
+
+                forbiddenPairs += fromRole to toRole
+            }
         }
 
         return ReadParams(
-            forbidPairs = pairs,
-            mode = mode,
-            includeExternal = includeExternal,
+            forbiddenPairs =
+                forbiddenPairs
+                    .distinct()
+                    .sortedWith(
+                        compareBy<Pair<String, String>>(
+                            { it.first },
+                            { it.second },
+                        ),
+                    ),
+            direction = direction,
         )
     }
 
     /**
      * Deterministic shortest path in a directed graph using BFS.
-     * Returns list [start, ..., target] or null if unreachable.
+     *
+     * Returns [start, ..., target], or null when target is unreachable.
      */
     private fun shortestPath(
-        g: RuleUtil.DirectedGraph,
+        graph: RuleUtil.DirectedGraph,
         start: String,
         target: String,
     ): List<String>? {
         if (start == target) return listOf(start)
-        if (start !in g.nodes || target !in g.nodes) return null
+        if (start !in graph.nodes || target !in graph.nodes) return null
 
-        val q = ArrayDeque<String>()
-        val parent = HashMap<String, String?>(g.nodes.size)
+        val queue = ArrayDeque<String>()
+        val parent = HashMap<String, String?>(graph.nodes.size)
 
-        q.add(start)
+        queue.add(start)
         parent[start] = null
 
-        while (q.isNotEmpty()) {
-            val v = q.removeFirst()
-            for (w in g.successors(v).toList().sorted()) {
-                if (w !in parent) {
-                    parent[w] = v
-                    if (w == target) {
-                        return reconstructPath(parent, target)
-                    }
-                    q.add(w)
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+
+            for (successor in graph.successors(current).sorted()) {
+                if (successor in parent) continue
+
+                parent[successor] = current
+
+                if (successor == target) {
+                    return reconstructPath(
+                        parent = parent,
+                        target = target,
+                    )
                 }
+
+                queue.add(successor)
             }
         }
 
@@ -273,18 +342,23 @@ class ForbiddenRoleDependenciesRule : Rule {
         parent: Map<String, String?>,
         target: String,
     ): List<String> {
-        val out = ArrayDeque<String>()
-        var cur: String? = target
-        while (cur != null) {
-            out.addFirst(cur)
-            cur = parent[cur]
+        val path = ArrayDeque<String>()
+        var current: String? = target
+
+        while (current != null) {
+            path.addFirst(current)
+            current = parent[current]
         }
-        return out.toList()
+
+        return path.toList()
     }
 
     /**
-     * Collect deterministic examples of class edges that produced a role->role edge.
-     * Returns pairs (fromClassFqn -> toClassFqn).
+     * Collect deterministic class-level examples that produced a role edge.
+     *
+     * Returns pairs of:
+     *
+     *     fromClassFqn -> toClassFqn
      */
     private fun collectDirectExamples(
         facts: FactIndex,
@@ -298,24 +372,49 @@ class ForbiddenRoleDependenciesRule : Rule {
 
         val edges =
             facts.edges.sortedWith(
-                compareBy<DependencyEdge>({ it.from.fqName }, { it.to.fqName }, { it.kind.name }, { it.detail ?: "" }),
+                compareBy<DependencyEdge>(
+                    { it.from.fqName },
+                    { it.to.fqName },
+                    { it.kind.name },
+                    { it.detail ?: "" },
+                ),
             )
 
-        for (e in edges) {
-            val fromFqn = e.from.fqName
-            val toFqn = e.to.fqName
+        for (edge in edges) {
+            val fromFqn = edge.from.fqName
+            val toFqn = edge.to.fqName
 
-            val rFrom = facts.classToRole[fromFqn] ?: continue
-            val rTo = facts.classToRole[toFqn] ?: continue
+            val actualFromRole = facts.classToRole[fromFqn] ?: continue
+            val actualToRole = facts.classToRole[toFqn] ?: continue
 
-            if (rFrom != fromRole || rTo != toRole) continue
+            if (actualFromRole != fromRole || actualToRole != toRole) {
+                continue
+            }
 
             val fromClass = classByFqn[fromFqn] ?: continue
             if (!RuleUtil.classInScope(fromClass, scope)) continue
 
-            if (examples.add(fromFqn to toFqn) && examples.size >= limit) break
+            if (examples.add(fromFqn to toFqn) && examples.size >= limit) {
+                break
+            }
         }
 
         return examples.toList()
+    }
+
+    private data class ReadParams(
+        val forbiddenPairs: List<Pair<String, String>>,
+        val direction: Direction,
+    )
+
+    private enum class Direction(
+        val wire: String,
+    ) {
+        DIRECT("direct"),
+        TRANSITIVE("transitive"),
+    }
+
+    private companion object {
+        const val EXAMPLE_LIMIT = 10
     }
 }
