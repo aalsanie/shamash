@@ -108,7 +108,7 @@ class MainTest {
         compileJava(tmp, "com.example.App", "package com.example; public class App {}")
         val r = runCli("scan", "--project", tmp.toString())
         assertEquals(0, r.exitCode, diagnostics(r))
-        assertTrue(r.stdout.contains("discovery scan", ignoreCase = true))
+        assertTrue(r.stdout.contains("Shamash - discovery scan"))
         assertTrue(r.stdout.contains("No project files were changed"))
         assertFalse(tmp.resolve("shamash").exists(), "discovery scan must not materialize config in the project")
         assertFalse(tmp.resolve(".shamash").exists(), "discovery scan must not write reports or baselines")
@@ -133,7 +133,7 @@ class MainTest {
         val r = runCli("scan", "--project", tmp.toString())
         assertEquals(2, r.exitCode, diagnostics(r))
         assertTrue(r.stderr.contains("No compiled JVM classes found"))
-        assertTrue(r.stderr.contains("gradlew"))
+        assertTrue(r.stderr.contains("gradle classes"))
     }
 
     @Test
@@ -190,6 +190,29 @@ class MainTest {
     ) {
         val r = runCli("validate", "--project", tmp.toString())
         assertEquals(2, r.exitCode)
+    }
+
+    @Test
+    fun `scan with missing explicit config exits two`(
+        @TempDir tmp: Path,
+    ) {
+        val r = runCli("scan", "--project", tmp.toString(), "--config", "missing.yml")
+        assertEquals(2, r.exitCode, diagnostics(r))
+        assertTrue(r.stderr.contains("CONFIG_READ"))
+    }
+
+    @Test
+    fun `malformed config is a configuration error`(
+        @TempDir tmp: Path,
+    ) {
+        val config = tmp.resolve("bad.yml")
+        Files.writeString(config, "version: [", StandardCharsets.UTF_8)
+
+        val scan = runCli("scan", "--project", tmp.toString(), "--config", config.fileName.toString())
+        assertEquals(2, scan.exitCode, diagnostics(scan))
+
+        val validate = runCli("validate", "--project", tmp.toString(), "--config", config.fileName.toString())
+        assertEquals(2, validate.exitCode, diagnostics(validate))
     }
 
     @Test
@@ -255,14 +278,35 @@ class MainTest {
     }
 
     @Test
-    fun `build detector prefers gradle and supports maven`(
+    fun `build detector uses wrappers when present and system tools otherwise`(
         @TempDir tmp: Path,
     ) {
+        val windows = System.getProperty("os.name").lowercase().contains("win")
+        val gradleWrapper = if (windows) "gradlew.bat" else "gradlew"
+        val mavenWrapper = if (windows) "mvnw.cmd" else "mvnw"
+
         Files.writeString(tmp.resolve("build.gradle.kts"), "", StandardCharsets.UTF_8)
-        assertEquals("Gradle", ProjectBuildDetector.detect(tmp)?.tool)
+        assertEquals(BuildHint("Gradle", "gradle classes"), ProjectBuildDetector.detect(tmp))
+        Files.delete(tmp.resolve("build.gradle.kts"))
+        Files.writeString(tmp.resolve("settings.gradle.kts"), "", StandardCharsets.UTF_8)
+        assertEquals(BuildHint("Gradle", "gradle classes"), ProjectBuildDetector.detect(tmp))
+        Files.delete(tmp.resolve("settings.gradle.kts"))
+        Files.writeString(tmp.resolve("build.gradle.kts"), "", StandardCharsets.UTF_8)
+        Files.writeString(tmp.resolve(gradleWrapper), "", StandardCharsets.UTF_8)
+        assertEquals(
+            BuildHint("Gradle", if (windows) ".\\gradlew.bat classes" else "./gradlew classes"),
+            ProjectBuildDetector.detect(tmp),
+        )
+
+        Files.delete(tmp.resolve(gradleWrapper))
         Files.delete(tmp.resolve("build.gradle.kts"))
         Files.writeString(tmp.resolve("pom.xml"), "<project/>", StandardCharsets.UTF_8)
-        assertEquals("Maven", ProjectBuildDetector.detect(tmp)?.tool)
+        assertEquals(BuildHint("Maven", "mvn package"), ProjectBuildDetector.detect(tmp))
+        Files.writeString(tmp.resolve(mavenWrapper), "", StandardCharsets.UTF_8)
+        assertEquals(
+            BuildHint("Maven", if (windows) ".\\mvnw.cmd package" else "./mvnw package"),
+            ProjectBuildDetector.detect(tmp),
+        )
     }
 
     private fun diagnostics(r: ProcResult) = "stderr:\n${r.stderr}\nstdout:\n${r.stdout}"

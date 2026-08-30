@@ -38,6 +38,7 @@ import io.shamash.asm.core.export.facts.FactsEdgeRecord
 import io.shamash.asm.core.export.facts.FactsReader
 import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.RunnerOverrides
+import io.shamash.asm.core.scan.ScanError
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanOverrides
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
@@ -266,7 +267,7 @@ private class ValidateCommand : CommandBase("validate", "Validate the project Sh
                 Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { ConfigValidation.loadAndValidateV1(it) }
             } catch (t: Throwable) {
                 Console.errln("Failed to read/validate config: ${t.message ?: t::class.java.simpleName}")
-                return ExitCode.RUNTIME_ERROR
+                return ExitCode.CONFIG_ERROR
             }
         if (validation.errors.isEmpty()) {
             Console.println("OK: $configPath")
@@ -454,14 +455,21 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
         if (res.scanErrors.isNotEmpty()) {
             Console.errln("Scan errors: ${res.scanErrors.size}")
             res.scanErrors.forEach { Console.errln("- ${it.phase.name}: ${it.message}${it.path?.let { p -> " [$p]" } ?: ""}") }
-            return ExitCode.RUNTIME_ERROR
+            val projectConfigReadFailed =
+                projectConfig != null && res.scanErrors.all { it.phase == ScanError.Phase.CONFIG_READ }
+            return if (projectConfigReadFailed) ExitCode.CONFIG_ERROR else ExitCode.RUNTIME_ERROR
         }
         if (res.classUnits == 0) {
             printNoBytecode(projectRoot)
             return ExitCode.CONFIG_ERROR
         }
-        if (res.factsErrors.isNotEmpty() && verbose) {
-            res.factsErrors.forEach { Console.errln("Facts warning: ${it.originId} :: ${it.phase}: ${it.message}") }
+        if (res.factsErrors.isNotEmpty()) {
+            Console.errln("Facts warnings: ${res.factsErrors.size}")
+            if (verbose) {
+                res.factsErrors.forEach { Console.errln("- ${it.originId} :: ${it.phase}: ${it.message}") }
+            } else {
+                Console.errln("Use --verbose for details.")
+            }
         }
         val engine =
             res.engine ?: run {
@@ -476,7 +484,7 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
         val findings = engine.findings
         val counts = findings.groupingBy { it.severity }.eachCount()
         if (discoveryMode) {
-            Console.println("Shamash — discovery scan")
+            Console.println("Shamash - discovery scan")
             Console.println("Report-only mode. No project files were changed.")
             Console.println()
         }
@@ -607,7 +615,7 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
                 Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { ConfigValidation.loadAndValidateV1(it) }
             } catch (t: Throwable) {
                 Console.errln("Failed to read config: ${t.message ?: t::class.java.simpleName}")
-                return ExitCode.RUNTIME_ERROR
+                return ExitCode.CONFIG_ERROR
             }
         val cfg = validation.config
         if (!validation.ok || cfg == null) {

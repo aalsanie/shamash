@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":shamash-export"))
     implementation(project(":shamash-artifacts"))
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
+    runtimeOnly("org.slf4j:slf4j-nop:2.0.17")
 }
 
 application {

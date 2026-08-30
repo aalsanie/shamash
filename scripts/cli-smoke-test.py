@@ -94,10 +94,12 @@ def main() -> None:
         if scan.returncode != 0:
             fail("Packaged CLI discovery scan failed.", scan.stdout)
 
-        output = scan.stdout.lower()
-        if "discovery scan" not in output:
+        combined_output = version.stdout + "\n" + scan.stdout
+        if "SLF4J(W)" in combined_output:
+            fail("Packaged CLI emitted SLF4J provider warnings.", combined_output)
+        if "Shamash - discovery scan" not in scan.stdout:
             fail("Packaged CLI output did not identify a discovery scan.", scan.stdout)
-        if "classes scanned" not in output:
+        if "classes scanned" not in scan.stdout.lower():
             fail("Packaged CLI output did not report scanned classes.", scan.stdout)
         if (fixture / "shamash").exists() or (fixture / ".shamash").exists():
             fail("Configless discovery scan mutated the fixture project.")

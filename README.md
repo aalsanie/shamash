@@ -38,7 +38,7 @@ No configuration is required for this first scan. Discovery mode is report-only:
 Example shape of the output:
 
 ```text
-Shamash — discovery scan
+Shamash - discovery scan
 Report-only mode. No project files were changed.
 
 Shamash found 3 architecture issues

@@ -108,5 +108,12 @@ test "$EXPECTED" = "$ACTUAL"
 Windows PowerShell:
 
 ```powershell
-(Get-FileHash .\shamash-cli-0.91.0.zip -Algorithm SHA256).Hash
+$line = Get-Content .\SHA256SUMS.txt |
+  Where-Object { $_ -match '\s+shamash-cli-0\.91\.0\.zip$' } |
+  Select-Object -First 1
+if (-not $line) { throw "Checksum entry not found" }
+$expected = ($line -split '\s+')[0].ToLowerInvariant()
+$actual = (Get-FileHash .\shamash-cli-0.91.0.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($expected -ne $actual) { throw "Checksum mismatch" }
+"Checksum OK"
 ```

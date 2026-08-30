@@ -140,7 +140,7 @@ class ShamashAsmDashboardPanel(
 
                 Config: ${resolvedConfig?.toString() ?: "Built-in discovery on scan"}
 
-                Build the project, then run Build Scan.
+                Build the project, then run Scan.
                 A project config is optional; Shamash uses built-in discovery when none exists.
                 """.trimIndent()
         }

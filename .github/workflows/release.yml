@@ -13,7 +13,34 @@ env:
   TERM: dumb
 
 jobs:
+  preflight:
+    name: Release preflight
+    runs-on: ubuntu-latest
+    env:
+      JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+      JETBRAINS_CERTIFICATE_CHAIN: ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}
+      JETBRAINS_PRIVATE_KEY: ${{ secrets.JETBRAINS_PRIVATE_KEY }}
+      JETBRAINS_PRIVATE_KEY_PASSWORD: ${{ secrets.JETBRAINS_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Validate release secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in \
+            JETBRAINS_MARKETPLACE_TOKEN \
+            JETBRAINS_CERTIFICATE_CHAIN \
+            JETBRAINS_PRIVATE_KEY \
+            JETBRAINS_PRIVATE_KEY_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is not configured"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+
   verify:
+    needs: preflight
     name: Release verification (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -87,7 +114,7 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v6
-      - run: ./gradlew --stacktrace :shamash-cli:distZip :shamash-intellij-plugin:buildPlugin :shamash-intellij-plugin:signPlugin
+      - run: ./gradlew --stacktrace :shamash-cli:distZip :shamash-intellij-plugin:buildPlugin :shamash-intellij-plugin:signPlugin :shamash-intellij-plugin:verifyPluginSignature
       - name: Prepare exact release assets
         shell: bash
         run: |
