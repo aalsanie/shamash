@@ -22,6 +22,9 @@
 package io.shamash.asm.core
 
 import io.shamash.asm.core.config.ConfigValidation
+import io.shamash.asm.core.config.schema.v1.model.BaselineMode
+import io.shamash.asm.core.scan.RunOverrides
+import io.shamash.asm.core.scan.RunnerOverrides
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
 import org.junit.Assume
@@ -29,7 +32,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import javax.tools.ToolProvider
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ShamashAsmScanRunnerIntegrationTest {
@@ -40,18 +46,15 @@ class ShamashAsmScanRunnerIntegrationTest {
 
         val project = Files.createTempDirectory("shamash-asm-e2e")
         try {
-            // Create bytecode output
             val outDir = project.resolve("build/classes/java/main")
             Files.createDirectories(outDir)
             compileJava(project, "com.example.App", "package com.example; public class App {}", outDir)
 
-            // Write config in discoverable location
             val cfgDir = project.resolve("shamash/configs")
             Files.createDirectories(cfgDir)
             val cfgPath = cfgDir.resolve("asm.yml")
             Files.writeString(cfgPath, minimalConfigYaml())
 
-            // sanity: config validates
             val validation = Files.newBufferedReader(cfgPath).use { reader -> ConfigValidation.loadAndValidateV1(reader) }
             assertTrue(validation.ok, "config should validate: ${validation.errors}")
             assertNotNull(validation.config)
@@ -63,14 +66,36 @@ class ShamashAsmScanRunnerIntegrationTest {
             assertNotNull(result.config)
             assertTrue(result.configErrors.isEmpty(), "config errors should be empty: ${result.configErrors}")
             assertTrue(result.scanErrors.isEmpty(), "scan errors should be empty: ${result.scanErrors}")
-
-            // The whole point of this test is runner wiring → ensure we saw at least one class.
             assertTrue(result.classUnits >= 1, "scanner should find at least one class unit (got ${result.classUnits})")
             assertTrue(result.origins.isNotEmpty(), "scanner should include at least one origin")
 
             val engine = result.engine
             assertNotNull(engine)
             assertTrue(engine.isSuccess, "engine should succeed: ${engine.errors}")
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `runner does not write baseline when no bytecode exists`() {
+        val project = Files.createTempDirectory("shamash-asm-empty")
+        try {
+            val cfgDir = project.resolve("shamash/configs")
+            Files.createDirectories(cfgDir)
+            Files.writeString(cfgDir.resolve("asm.yml"), minimalConfigYaml())
+
+            val result =
+                ShamashAsmScanRunner().run(
+                    ScanOptions(projectBasePath = project, projectName = "empty"),
+                    RunOverrides(runner = RunnerOverrides(baselineMode = BaselineMode.GENERATE, exportEnabled = false)),
+                )
+
+            assertEquals(0, result.classUnits)
+            assertTrue(result.configErrors.isEmpty())
+            assertTrue(result.scanErrors.isEmpty())
+            assertNull(result.engine)
+            assertFalse(Files.exists(project.resolve(".shamash/baseline.json")))
         } finally {
             project.toFile().deleteRecursively()
         }
@@ -89,8 +114,8 @@ class ShamashAsmScanRunnerIntegrationTest {
               exclude: []
 
             jarGlobs:
-              include: ["**/*.jar"]   # required by schema
-              exclude: ["**/*"]       # effectively disables jar discovery
+              include: ["**/*.jar"]
+              exclude: ["**/*"]
 
           scan:
             scope: PROJECT_ONLY

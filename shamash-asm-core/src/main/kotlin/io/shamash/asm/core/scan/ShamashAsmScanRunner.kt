@@ -128,6 +128,20 @@ class ShamashAsmScanRunner(
                 )
             }
 
+        if (scan.units.isEmpty()) {
+            return ScanResult(
+                options = options,
+                appliedOverrides = appliedOverrides,
+                configPath = configPath,
+                config = effectiveConfig,
+                configErrors = validation.errors,
+                scanErrors = runnerErrors,
+                origins = scan.origins,
+                classUnits = 0,
+                truncated = scan.truncated,
+            )
+        }
+
         val factsResult =
             try {
                 FactExtractor.extractAll(scan.units.asSequence())
