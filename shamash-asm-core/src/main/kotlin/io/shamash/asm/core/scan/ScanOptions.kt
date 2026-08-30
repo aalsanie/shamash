@@ -34,7 +34,7 @@ data class ScanOptions(
     val projectBasePath: Path,
     /** Used for report metadata; defaults to [projectBasePath.fileName]. */
     val projectName: String = projectBasePath.fileName?.toString() ?: "project",
-    /** If null, runner will use [io.shamash.asm.core.config.ProjectLayout.ASM_CONFIG_CANDIDATES]. */
+    /** If null, runner checks project config candidates and then uses the built-in discovery config. */
     val configPath: Path? = null,
     /** Structural schema validator. */
     val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,

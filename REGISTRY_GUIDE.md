@@ -1,229 +1,88 @@
-# Registry Guide (ASM Rule Registries)
+# Registry Guide
 
-Shamash ASM ships with a built-in rule registry: **`default`**.
+Shamash ships with the built-in `default` ASM rule registry. Registry selection is optional; if no registry is selected, Shamash uses the built-in registry.
 
-And recently we added **pluggability** so advanced users can supply alternate registries in a controlled way:
+A registry defines which ASM rules are available and how they execute. It is separate from `shamash/configs/asm.yml`, which selects and configures rules for a project.
 
-- **CLI**: Java `ServiceLoader` via `AsmRuleRegistryProvider`
-- **IntelliJ**: IntelliJ **Extension Point** `io.shamash.asmRuleRegistryProvider`
+## CLI registry providers
 
-Registry selection is **opt-in**. If you don’t touch anything, Shamash continues using the built-in registry.
+The CLI discovers external registries with Java `ServiceLoader`.
 
----
-
-## What is a registry?
-
-A **registry** is the engine’s catalogue of:
-
-- which rules exist
-- how rule parameters are validated (RuleSpec contracts)
-- how rules execute
-
-It is **not** your `asm.yml`.
-
-- `asm.yml` selects *which* rules to run + configuration.
-- the registry defines *what rules are available* and *what they mean*.
-
----
-
-## Safety model
-
-1) **Default remains default**
-- If registry selection is omitted (or `default` is chosen), Shamash uses the built-in registry.
-
-2) **Fail fast for unknown registries**
-- CLI: unknown id → exit code `2` + actionable message + available ids
-- IntelliJ: selected provider missing/uninstalled → actionable error
-
-3) **Registry identity is explicit**
-- Each provider has a stable `id` and a human `displayName`.
-
----
-
-## CLI: using registry providers
-
-### List available registries
-
-```bash
-shamash registry list
-```
-
-This prints all registry providers discoverable on the runtime classpath.
-
-### Choose a registry for scan
-
-```bash
-shamash scan --registry default
-shamash scan --registry <id>
-```
-
-Notes:
-
-- `--registry` is **optional**. If omitted, Shamash uses `default`.
-- Unknown id → CLI fails with a config error and prints the available registry ids.
-
----
-
-## CLI: writing a custom registry provider
-
-You implement:
+Implement:
 
 ```kotlin
-interface AsmRuleRegistryProvider {
-  val id: String
-  val displayName: String
-  fun create(): RuleRegistry
-}
-```
-
-### Example provider (Kotlin)
-
-```kotlin
-package com.acme.shamash.registry
+package com.acme.shamash
 
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.RuleRegistry
 import io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
 
 class AcmeRuleRegistryProvider : AsmRuleRegistryProvider {
-  override val id: String = "acme"
-  override val displayName: String = "Acme Rules"
+    override val id: String = "acme"
+    override val displayName: String = "Acme Rules"
 
-  override fun create(): RuleRegistry {
-    // Option A: start from default and add/override
-    val base = DefaultRuleRegistry.create()
-
-    // Add/override rules here depending on your RuleRegistry API
-    // base.register(...)
-    return base
-  }
+    override fun create(): RuleRegistry = DefaultRuleRegistry.create()
 }
 ```
 
-### ServiceLoader file (required)
+Register the provider in:
 
-Create this file in your jar:
-
-**`src/main/resources/META-INF/services/io.shamash.asm.core.rules.spi.AsmRuleRegistryProvider`**
-
-with one line:
-
-```
-com.acme.shamash.registry.AcmeRuleRegistryProvider
+```text
+src/main/resources/META-INF/services/io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
 ```
 
-### Running with your provider jar
+with the provider's fully qualified class name:
 
-Your provider jar must be on the **runtime classpath** of the CLI.
+```text
+com.acme.shamash.AcmeRuleRegistryProvider
+```
 
-Example (manual `java -cp`):
+The provider JAR must be on the Shamash CLI runtime classpath. With the packaged CLI, place the JAR in the distribution's `lib` directory before starting Shamash.
+
+List available registries:
 
 ```bash
-java -cp "shamash-cli.jar:acme-registry.jar" io.shamash.cli.MainKt registry list
-java -cp "shamash-cli.jar:acme-registry.jar" io.shamash.cli.MainKt scan --registry acme --project .
+shamash registry list
 ```
 
----
+Select one for a scan:
 
-## IntelliJ: using registry providers
-
-### Choose registry in the UI
-
-Shamash ASM exposes **Run Settings → Registry**.
-
-- Default: `default`
-- If other plugins contribute registries, they appear in the dropdown
-- Missing registry provider → actionable error
-
----
-
-## IntelliJ: writing a custom registry provider plugin
-
-### 1) Implement provider
-
-Your plugin implements Shamash’s EP interface (the interface exposed by the Shamash plugin for registry providers):
-
-```kotlin
-package com.acme.shamash.intellij
-
-import io.shamash.asm.core.rules.DefaultRuleRegistry
-import io.shamash.asm.core.rules.RuleRegistry
-import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviderEp
-
-class AcmeRegistryProvider : AsmRuleRegistryProviderEp {
-  override val id: String = "acme"
-  override val displayName: String = "Acme Rules"
-
-  override fun create(): RuleRegistry =
-    DefaultRuleRegistry.create()
-}
+```bash
+shamash scan --registry acme
 ```
 
-> The exact package name for the EP interface depends on the Shamash plugin module where it lives. Use your IDE “Go to declaration” from the Shamash EP interface to confirm the import.
+An unknown registry id is a configuration error and Shamash prints the available ids.
 
-### 2) Register in `plugin.xml`
+## IntelliJ registry providers
+
+The IntelliJ plugin exposes this extension point:
+
+```text
+io.shamash.asmRuleRegistryProvider
+```
+
+It uses the same interface as the CLI:
+
+```text
+io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
+```
+
+A companion IntelliJ plugin can implement that interface and register the implementation:
 
 ```xml
-<extensions defaultExtensionNs="io.shamash">
-  <asmRuleRegistryProvider implementation="com.acme.shamash.intellij.AcmeRegistryProvider"/>
-</extensions>
+<idea-plugin>
+    <depends>io.shamash</depends>
+
+    <extensions defaultExtensionNs="io.shamash">
+        <asmRuleRegistryProvider implementation="com.acme.shamash.AcmeRuleRegistryProvider"/>
+    </extensions>
+</idea-plugin>
 ```
 
-Install your plugin alongside Shamash and select it in **Run Settings → Registry**.
+Contributed registries appear in Shamash's registry selection UI. Duplicate or blank ids are ignored and reported by the plugin.
 
----
+## Compatibility
 
-## Compatibility & versioning
+Registry providers are binary-coupled to the Shamash rule-registry API they compile against. Providers should target an explicit Shamash version range and be rebuilt when that API changes.
 
-Registry providers are **binary-coupled** to the Shamash API they compile against.
-
-This implies:
-
-- if Shamash changes the SPI or `RuleRegistry` API, providers must be rebuilt
-- providers should declare compatibility (in release notes / plugin metadata)
-
-Recommended practice:
-
-- target a specific Shamash version range
-- rebuild providers when you upgrade Shamash
-
----
-
-## Known limitation: `asm-core` is not published to Maven
-
-Currently third parties can’t easily compile a standalone CLI provider from scratch without one of these approaches:
-
-- build against Shamash sources (vendored / included)
-- build against an internal/company artifact repository
-- build against a shipped “SDK” (zip containing the needed jars)
-- deliver providers as IntelliJ plugins that compile against the Shamash plugin distribution
-
-ServiceLoader/EP solve discovery, but **they do not solve how provider authors obtain compile-time dependencies**.
-
----
-
-## Troubleshooting
-
-### `registry list` shows only `default`
-
-No other providers were found on the classpath.
-
-Check your provider jar:
-
-- is on the **runtime classpath**
-- contains `META-INF/services/...AsmRuleRegistryProvider`
-- the service file contains the correct fully-qualified class name
-- your provider class is public and loadable (no missing deps)
-
-### Provider crashes during `create()`
-
-Shamash reports:
-
-- provider id
-- provider implementation class
-- error stack (or message)
-
-Then exits with a runtime error (CLI) or shows an error (IntelliJ).
-
----
-
+`shamash-asm-core` is not currently published as a public Maven artifact. External provider authors therefore need a build-time copy of the compatible Shamash API, such as the project sources or artifacts produced from the matching Shamash release. ServiceLoader and the IntelliJ extension point solve runtime discovery; they do not provide the compile-time dependency.

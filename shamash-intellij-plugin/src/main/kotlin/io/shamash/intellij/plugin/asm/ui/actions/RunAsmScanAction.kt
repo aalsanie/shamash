@@ -38,7 +38,6 @@ import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
@@ -95,20 +94,15 @@ class RunAsmScanAction(
                 projectBasePath = basePath,
                 projectName = project.name,
                 configPath = configPath,
-                // Default is false to avoid keeping large graphs in memory.
                 includeFactsInResult = settings.isIncludeFactsInMemory(),
             )
 
         val overrides: RunOverrides? = settings.buildRunOverridesOrNull()
 
-        @NlsSafe val configHint =
-            configPath?.toString()
-                ?: "auto-discovery under ${ProjectLayout.ASM_CONFIG_DIR} (${ProjectLayout.ASM_CONFIG_CANDIDATES.joinToString()})"
+        @NlsSafe val configHint = configPath?.toString() ?: "built-in discovery"
 
         AsmActionUtil.openAsmToolWindow(project)
 
-        // If indexing is active, we still start the task immediately (shows progress),
-        // then wait inside the background thread until the IDE becomes smart.
         if (DumbService.getInstance(project).isDumb) {
             AsmActionUtil.notify(
                 project,
@@ -181,7 +175,7 @@ class RunAsmScanAction(
                             val msg =
                                 when {
                                     hasEngineErrors -> "Scan finished with engine errors. See Dashboard for details."
-                                    findingsCount == 0 -> "Scan complete. No findings. Make sure to build before scanning."
+                                    findingsCount == 0 -> "Scan complete. No findings."
                                     else -> "Scan complete. Findings: $findingsCount"
                                 }
 
@@ -190,6 +184,17 @@ class RunAsmScanAction(
                                 "Shamash ASM",
                                 msg,
                                 if (hasEngineErrors) NotificationType.WARNING else NotificationType.INFORMATION,
+                            )
+                        }
+
+                        result.classUnits == 0 && !result.hasScanErrors -> {
+                            tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+                            tw.refreshAll()
+                            AsmActionUtil.notify(
+                                project,
+                                "Shamash ASM",
+                                "No compiled JVM classes found. Build the project and scan again.",
+                                NotificationType.WARNING,
                             )
                         }
 

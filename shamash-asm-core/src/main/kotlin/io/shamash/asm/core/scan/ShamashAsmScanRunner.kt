@@ -36,15 +36,6 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 
-/**
- * ASM scan runner.
- *
- * This is the orchestration entrypoint that wires:
- * - config load + schema + semantic validation (asm-core config)
- * - bytecode scanning (asm-core scan)
- * - facts extraction (asm-core facts)
- * - analysis execution + export/baseline handling (asm-core engine + shamash-export)
- */
 class ShamashAsmScanRunner(
     private val engine: ShamashAsmEngine = ShamashAsmEngine(),
 ) {
@@ -52,28 +43,22 @@ class ShamashAsmScanRunner(
         options: ScanOptions,
         overrides: RunOverrides? = null,
     ): ScanResult {
-        // config discovery + validation
-        val configPath =
-            options.configPath
-                ?: discoverConfig(options.projectBasePath)
-                ?: return ScanResult(
-                    options = options,
-                    configPath = null,
-                    scanErrors =
-                        listOf(
-                            ScanError.of(
-                                phase = ScanError.Phase.CONFIG_DISCOVERY,
-                                message =
-                                    "ASM config not found under ${ProjectLayout.ASM_CONFIG_DIR} " +
-                                        "(expected one of: ${ProjectLayout.ASM_CONFIG_CANDIDATES.joinToString()})",
-                            ),
-                        ),
-                )
+        val configPath = options.configPath ?: discoverConfig(options.projectBasePath)
+        val configLocation = configPath?.toString() ?: ProjectLayout.DISCOVERY_YML
 
         val validation =
             try {
-                Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { reader ->
-                    ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                if (configPath != null) {
+                    Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { reader ->
+                        ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                    }
+                } else {
+                    val stream =
+                        ProjectLayout::class.java.getResourceAsStream(ProjectLayout.DISCOVERY_YML)
+                            ?: error("Embedded discovery configuration not found: ${ProjectLayout.DISCOVERY_YML}")
+                    stream.bufferedReader(StandardCharsets.UTF_8).use { reader ->
+                        ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                    }
                 }
             } catch (t: Throwable) {
                 return ScanResult(
@@ -83,10 +68,8 @@ class ShamashAsmScanRunner(
                         listOf(
                             ScanError.of(
                                 phase = ScanError.Phase.CONFIG_READ,
-                                message =
-                                    "Failed to read/validate config: " +
-                                        "${t.message ?: t::class.java.simpleName}",
-                                path = configPath.toString(),
+                                message = "Failed to read/validate config: ${t.message ?: t::class.java.simpleName}",
+                                path = configLocation,
                                 t = t,
                             ),
                         ),
@@ -103,17 +86,9 @@ class ShamashAsmScanRunner(
             )
         }
 
-        // CLI/runner overrides (non-persistent): allow forcing facts export regardless of config.
-        val effectiveConfig0: ShamashAsmConfigV1 =
-            if (options.exportFacts) {
-                forceEnableFactsExport(config, options)
-            } else {
-                config
-            }
-
+        val effectiveConfig0 = if (options.exportFacts) forceEnableFactsExport(config, options) else config
         val (effectiveConfig, appliedOverrides) = applyOverrides(effectiveConfig0, overrides)
 
-        // scan bytecode
         val scan =
             try {
                 BytecodeScanner().scan(
@@ -148,7 +123,20 @@ class ShamashAsmScanRunner(
                 )
             }
 
-        // facts
+        if (scan.units.isEmpty()) {
+            return ScanResult(
+                options = options,
+                appliedOverrides = appliedOverrides,
+                configPath = configPath,
+                config = effectiveConfig,
+                configErrors = validation.errors,
+                scanErrors = runnerErrors,
+                origins = scan.origins,
+                classUnits = 0,
+                truncated = scan.truncated,
+            )
+        }
+
         val factsResult =
             try {
                 FactExtractor.extractAll(scan.units.asSequence())
@@ -171,7 +159,6 @@ class ShamashAsmScanRunner(
                 )
             }
 
-        // --- engine
         val engineResult =
             try {
                 engine.analyze(
@@ -220,43 +207,58 @@ class ShamashAsmScanRunner(
         config: ShamashAsmConfigV1,
         overrides: RunOverrides?,
     ): Pair<ShamashAsmConfigV1, RunOverrides?> {
-        val scanOv = overrides?.scan ?: return config to null
+        if (overrides == null) return config to null
 
         val scan0 = config.project.scan
+        val scanOv = overrides.scan
         val scan1 =
-            scan0.copy(
-                scope = scanOv.scope ?: scan0.scope,
-                followSymlinks = scanOv.followSymlinks ?: scan0.followSymlinks,
-                maxClasses = scanOv.maxClasses ?: scan0.maxClasses,
-                maxJarBytes = scanOv.maxJarBytes ?: scan0.maxJarBytes,
-                maxClassBytes = scanOv.maxClassBytes ?: scan0.maxClassBytes,
+            if (scanOv == null) {
+                scan0
+            } else {
+                scan0.copy(
+                    scope = scanOv.scope ?: scan0.scope,
+                    followSymlinks = scanOv.followSymlinks ?: scan0.followSymlinks,
+                    maxClasses = scanOv.maxClasses ?: scan0.maxClasses,
+                    maxJarBytes = scanOv.maxJarBytes ?: scan0.maxJarBytes,
+                    maxClassBytes = scanOv.maxClassBytes ?: scan0.maxClassBytes,
+                )
+            }
+
+        val runnerOv = overrides.runner
+        val baseline1 = config.baseline.copy(mode = runnerOv?.baselineMode ?: config.baseline.mode)
+        val export1 = config.export.copy(enabled = runnerOv?.exportEnabled ?: config.export.enabled)
+
+        val appliedScan =
+            scanOv?.let {
+                ScanOverrides(
+                    scope = it.scope?.takeIf { v -> v != scan0.scope },
+                    followSymlinks = it.followSymlinks?.takeIf { v -> v != scan0.followSymlinks },
+                    maxClasses = it.maxClasses?.takeIf { v -> v != scan0.maxClasses },
+                    maxJarBytes = it.maxJarBytes?.takeIf { v -> v != scan0.maxJarBytes },
+                    maxClassBytes = it.maxClassBytes?.takeIf { v -> v != scan0.maxClassBytes },
+                ).takeIf { a ->
+                    a.scope != null || a.followSymlinks != null || a.maxClasses != null ||
+                        a.maxJarBytes != null || a.maxClassBytes != null
+                }
+            }
+
+        val appliedRunner =
+            runnerOv?.let {
+                RunnerOverrides(
+                    baselineMode = it.baselineMode?.takeIf { v -> v != config.baseline.mode },
+                    exportEnabled = it.exportEnabled?.takeIf { v -> v != config.export.enabled },
+                ).takeIf { a -> a.baselineMode != null || a.exportEnabled != null }
+            }
+
+        val next =
+            config.copy(
+                project = config.project.copy(scan = scan1),
+                baseline = baseline1,
+                export = export1,
             )
 
-        if (scan1 == scan0) return config to null
-
-        val applied =
-            ScanOverrides(
-                scope = scanOv.scope?.takeIf { it != scan0.scope },
-                followSymlinks = scanOv.followSymlinks?.takeIf { it != scan0.followSymlinks },
-                maxClasses = scanOv.maxClasses?.takeIf { it != scan0.maxClasses },
-                maxJarBytes = scanOv.maxJarBytes?.takeIf { it != scan0.maxJarBytes },
-                maxClassBytes = scanOv.maxClassBytes?.takeIf { it != scan0.maxClassBytes },
-            )
-
-        val appliedRun =
-            RunOverrides(
-                scan =
-                    applied.takeIf {
-                        it.scope != null ||
-                            it.followSymlinks != null ||
-                            it.maxClasses != null ||
-                            it.maxJarBytes != null ||
-                            it.maxClassBytes != null
-                    },
-            )
-
-        val next = config.copy(project = config.project.copy(scan = scan1))
-        return next to appliedRun
+        val applied = RunOverrides(scan = appliedScan, runner = appliedRunner).takeIf { appliedScan != null || appliedRunner != null }
+        return next to applied
     }
 
     private fun forceEnableFactsExport(
@@ -265,29 +267,16 @@ class ShamashAsmScanRunner(
     ): ShamashAsmConfigV1 {
         val export0 = config.export
         val artifacts0 = export0.artifacts ?: ExportArtifactsConfig()
-
         val format = options.factsFormatOverride ?: artifacts0.facts?.format
-
         val factsCfg =
             (artifacts0.facts ?: ExportFactsArtifactConfig(enabled = true)).copy(
                 enabled = true,
                 format = format ?: ExportFactsArtifactConfig(enabled = true).format,
             )
-
         val artifacts = artifacts0.copy(facts = factsCfg)
-
-        // Export must be enabled to write sidecars. If config disabled export, we enable it with safe defaults.
         val outputDir = export0.outputDir.trim().ifEmpty { ".shamash" }
         val formats = if (export0.formats.isNotEmpty()) export0.formats else listOf(ExportFormat.JSON)
-
-        val export =
-            export0.copy(
-                enabled = true,
-                outputDir = outputDir,
-                formats = formats,
-                artifacts = artifacts,
-            )
-
+        val export = export0.copy(enabled = true, outputDir = outputDir, formats = formats, artifacts = artifacts)
         return config.copy(export = export)
     }
 

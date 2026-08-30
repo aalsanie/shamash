@@ -21,9 +21,6 @@
  */
 package io.shamash.asm.core.config
 
-/**
- * ASM project layout and embedded resource paths.
- */
 object ProjectLayout {
     const val SRC_MAIN_RESOURCES = "src/main/resources"
     const val SRC_TEST_RESOURCES = "src/test/resources"
@@ -38,6 +35,12 @@ object ProjectLayout {
     const val SCHEMA_JSON: String = "$BASE/shamash-asm.schema.json"
     const val REFERENCE_YML: String = "$BASE/shamash-asm.reference.yml"
     const val EMPTY_YML: String = "$BASE/empty.yaml"
+
+    const val DISCOVERY_YML: String = "$BASE/shamash-asm.discovery.yml"
+
+    const val STARTER_YML: String = "$BASE/shamash-asm.starter.yml"
+
+    const val SPRING_YML: String = "$BASE/shamash-asm.spring.yml"
 
     const val ASM_CONFIG_RELATIVE_YML = "$ASM_CONFIG_DIR/$ASM_CONFIG_FILE_YML"
     const val ASM_CONFIG_RELATIVE_YAML = "$ASM_CONFIG_DIR/$ASM_CONFIG_FILE_YAML"

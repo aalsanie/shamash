@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx2g -Dfile.encoding=UTF-8"
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g -Dfile.encoding=UTF-8"
   TERM: dumb
 
 jobs:
@@ -22,43 +22,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
-        java: [ "17" ]
-
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Make Gradle wrapper executable (Unix)
-        if: runner.os != 'Windows'
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - if: runner.os != 'Windows'
         run: chmod +x gradlew
-
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
-
-      - name: Setup Gradle (cache)
-        uses: gradle/actions/setup-gradle@v6
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
-
-      - name: Spotless + Tests (Linux/macOS)
+      - name: Spotless + tests (Unix)
         if: runner.os != 'Windows'
         run: ./gradlew --stacktrace spotlessCheck test
-
-      - name: Spotless + Tests (Windows)
+      - name: Spotless + tests (Windows)
         if: runner.os == 'Windows'
         run: .\gradlew.bat --stacktrace spotlessCheck test
-
-      - name: Upload test reports (on failure)
-        if: failure()
+      - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: test-reports-${{ matrix.os }}
@@ -66,4 +52,59 @@ jobs:
             **/build/reports/tests/**
             **/build/test-results/**
             **/build/reports/spotless/**
+          if-no-files-found: ignore
+
+  packaged-cli-smoke:
+    name: Packaged CLI smoke (${{ matrix.os }})
+    needs: build-test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - if: runner.os != 'Windows'
+        run: chmod +x gradlew
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build CLI distribution (Unix)
+        if: runner.os != 'Windows'
+        run: ./gradlew --stacktrace :shamash-cli:distZip
+      - name: Build CLI distribution (Windows)
+        if: runner.os == 'Windows'
+        run: .\gradlew.bat --stacktrace :shamash-cli:distZip
+      - name: Smoke packaged CLI
+        run: python scripts/cli-smoke-test.py "shamash-cli/build/distributions/*.zip"
+
+  plugin-verifier:
+    name: IntelliJ Plugin Verifier
+    needs: build-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: chmod +x gradlew
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin :shamash-intellij-plugin:verifyPlugin
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: plugin-verification-reports
+          path: |
+            shamash-intellij-plugin/build/reports/**
+            shamash-intellij-plugin/build/verification/**
           if-no-files-found: ignore

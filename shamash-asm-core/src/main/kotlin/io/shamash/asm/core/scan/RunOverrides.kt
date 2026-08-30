@@ -21,22 +21,14 @@
  */
 package io.shamash.asm.core.scan
 
+import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ScanScope
 
-/**
- * Non-persistent overrides applied at runtime.
- *
- * YAML remains the canonical configuration. These values are applied in-memory
- * for a single run (CLI flags / IDE run settings).
- */
 data class RunOverrides(
     val scan: ScanOverrides? = null,
     val runner: RunnerOverrides? = null,
 )
 
-/**
- * Overrides for scan knobs.
- */
 data class ScanOverrides(
     val scope: ScanScope? = null,
     val followSymlinks: Boolean? = null,
@@ -45,9 +37,9 @@ data class ScanOverrides(
     val maxClassBytes: Int? = null,
 )
 
-/**
- * Reserved for future runner/engine toggles.
- */
 data class RunnerOverrides(
+    val baselineMode: BaselineMode? = null,
+    val exportEnabled: Boolean? = null,
+    // Retained for source/binary compatibility with early 0.x callers.
     val _reserved: Int = 0,
 )

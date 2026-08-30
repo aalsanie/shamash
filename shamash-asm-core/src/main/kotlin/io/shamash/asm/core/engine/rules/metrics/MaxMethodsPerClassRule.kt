@@ -35,12 +35,12 @@ import io.shamash.asm.core.facts.query.FactIndex
  * metrics.maxMethodsPerClass
  *
  * Params:
- * - max: int (required, >= 0)
+ * - maxMethods: int (required, >= 0)
  * - examples: int (optional, default 10) // include up to N method fqNames as examples per violating class
  *
  * Semantics:
  * - Counts declared methods per class (bytecode facts).
- * - For each in-scope class, if methodCount > max -> emit a finding for that class.
+ * - For each in-scope class, if methodCount > maxMethods -> emit a finding for that class.
  */
 class MaxMethodsPerClassRule : Rule {
     override val id: String = "metrics.maxMethodsPerClass"
@@ -119,7 +119,7 @@ class MaxMethodsPerClassRule : Rule {
 
         val max: Int =
             try {
-                p.requireInt("max")
+                p.requireInt("maxMethods")
             } catch (_: ParamError) {
                 return null
             }
