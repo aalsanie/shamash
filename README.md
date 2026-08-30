@@ -118,7 +118,7 @@ After `shamash init`, run:
 shamash baseline create
 ```
 
-This analyzes the current project and writes the configured baseline without editing your YAML. Existing baselines are protected; replacement requires `--force`.
+This analyzes the current project, writes the configured baseline, and ensures `baseline.mode` is `VERIFY`. Existing baselines are protected; replacement requires `--force`.
 
 Commit both:
 
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -207,12 +207,6 @@ Advanced teams can still use:
 - exceptions and baselines
 
 See `docs/asm/` and `REGISTRY_GUIDE.md` for the advanced engine/configuration reference.
-
-## Privacy and telemetry
-
-Shamash does not require a network service to analyze code. Optional telemetry is dormant unless explicitly enabled by the user **and** a HTTPS endpoint is configured. It never sends source code, class/package names, file paths, repository names/remotes, rule definitions, finding contents or configuration contents. Analysis is never dependent on telemetry delivery.
-
-See [`docs/TELEMETRY.md`](./docs/TELEMETRY.md).
 
 ## Security
 

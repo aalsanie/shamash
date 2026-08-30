@@ -241,7 +241,6 @@ private class InitCommand : CommandBase("init", "Create a small production-ready
                 Console.println()
                 Console.println("For an existing project, accept current debt once with:")
                 Console.println("    shamash baseline create")
-                Telemetry.event("config_created", projectRoot, CliMeta.version, mapOf("preset" to preset.trim().lowercase()))
                 ExitCode.OK
             }
         } catch (t: Throwable) {
@@ -531,16 +530,6 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
             if (verbose) printVerbose(res, engine.summary)
             if (printAnalysisSummary) printAnalysis(engine)
 
-            Telemetry.event(
-                "scan_succeeded",
-                projectRoot,
-                CliMeta.version,
-                mapOf(
-                    "mode" to if (discoveryMode) "discovery" else "configured",
-                    "classes" to res.classUnits.toString(),
-                    "findings" to findings.size.toString(),
-                ),
-            )
 
             return if (discoveryMode) {
                 ExitCode.OK
@@ -710,7 +699,6 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
         Console.println("Config baseline mode: VERIFY")
         Console.println("Future scans will report only new violations relative to this baseline.")
         Console.println("Commit the config and baseline together.")
-        Telemetry.event("baseline_created", projectRoot, CliMeta.version, mapOf("findings" to engine.findings.size.toString()))
         return ExitCode.OK
     }
 }

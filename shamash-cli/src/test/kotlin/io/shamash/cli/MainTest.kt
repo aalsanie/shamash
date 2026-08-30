@@ -330,7 +330,7 @@ class MainTest {
           bytecode:
             roots: ["."]
             outputsGlobs: { include: ["**/build/classes/**"], exclude: ["**/test/**"] }
-            jarGlobs: { include: [], exclude: [] }
+            jarGlobs: { include: ["**/build/libs/*.jar"], exclude: [] }
           scan: { scope: PROJECT_ONLY, followSymlinks: false, maxClasses: 50000, maxJarBytes: null, maxClassBytes: null }
           validation: { unknownRule: ERROR }
         roles: {}
