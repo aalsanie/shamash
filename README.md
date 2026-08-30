@@ -11,14 +11,14 @@ Shamash scans compiled Java/Kotlin applications, finds dependency cycles and arc
 - **CLI-first:** standalone Java 17+ tool for local use and CI.
 - **Configless first scan:** see useful architecture risks before learning the configuration model.
 - **Brownfield-friendly:** baseline existing debt once, then fail only on new violations.
-- **IntelliJ:** one Shamash workspace with Build Analysis and Source Analysis.
+- **IntelliJ:** one workspace with Build Analysis and Source Analysis.
 - **Advanced when needed:** custom roles/rules, facts, graphs, hotspots, registries and multiple report formats remain available.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
 
-## Five-minute start
+## Usage
 
 Shamash analyzes compiled bytecode. Build the project first:
 
@@ -33,7 +33,7 @@ Then run:
 shamash scan
 ```
 
-No Shamash configuration is required for this first scan. Discovery mode is report-only: it does not create config, reports or baselines in your project and it never fails because of findings.
+No configuration is required for this first scan. Discovery mode is report-only: it does not create config, reports or baselines in your project, and it never fails because of findings.
 
 Example shape of the output:
 
