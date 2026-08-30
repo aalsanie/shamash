@@ -210,7 +210,7 @@ Consulta `docs/asm/` y `REGISTRY_GUIDE.md` para ver la referencia avanzada del m
 
 ## Seguridad
 
-No divulgues vulnerabilidades en un issue público. Sigue [`/SECURITY.md`](../SECURITY.md).
+No divulgues vulnerabilidades en un issue público. Sigue [`SECURITY.md`](../SECURITY.md).
 
 ## Licencia
 
