@@ -10,9 +10,7 @@
 
 # Shamash
 
-**Stop JVM architecture drift before it reaches main.**
-
-Shamash scans compiled Java/Kotlin applications, finds dependency cycles and architecture violations, and can prevent new violations in CI without requiring architecture-test code.
+Shamash scans compiled Java/Kotlin applications for dependency cycles and architecture violations, helping stop JVM architecture drift before it reaches main and prevent new violations in CI without requiring architecture-test code.
 
 - **CLI-first:** standalone Java 17+ tool for local use and CI.
 - **Configless first scan:** see useful architecture risks before learning the configuration model.
@@ -24,9 +22,11 @@ Shamash scans compiled Java/Kotlin applications, finds dependency cycles and arc
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
 
-## Install the CLI
+## Quick start
 
 Requires Java 17 or newer.
+
+### 1. Install the CLI
 
 Download `shamash-cli-<version>.zip` and `SHA256SUMS.txt` from GitHub Releases, verify the checksum, extract it, then use:
 
@@ -37,7 +37,7 @@ bin/shamash.bat  # Windows
 
 The launcher name is part of the packaged-product contract and is smoke-tested on Linux, Windows and macOS before release.
 
-## Usage
+### 2. Build your project
 
 Shamash analyzes compiled bytecode. Build the project first:
 
@@ -46,7 +46,9 @@ Shamash analyzes compiled bytecode. Build the project first:
 # or: ./mvnw package
 ```
 
-Then run:
+If Shamash cannot find compiled classes, it detects common Gradle/Maven projects and prints the exact build command to run first.
+
+### 3. Run your first scan
 
 ```bash
 shamash scan
@@ -74,9 +76,7 @@ WARN    metrics.maxFanOut
 Ready to enforce architecture? Run: shamash init
 ```
 
-If Shamash cannot find compiled classes, it detects common Gradle/Maven projects and prints the exact build command to run first.
-
-## Enforce architecture in a project
+## Turn discovery into enforcement
 
 Create the small default config:
 
@@ -173,7 +173,7 @@ The action verifies the release checksum before execution.
 
 ## IntelliJ
 
-Install **Shamash** from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamas), then open:
+Install **Shamash** from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash), then open:
 
 ```text
 Tools → Shamash
