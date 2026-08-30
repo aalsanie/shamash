@@ -28,7 +28,6 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.jetbrains.annotations.NotNull;
 
-/** Primary public IDE action. */
 public final class OpenShamashToolWindowAction extends AnAction {
     @Override
     public void actionPerformed(@NotNull AnActionEvent event) {

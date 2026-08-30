@@ -21,9 +21,7 @@
  */
 package io.shamash.intellij.plugin.asm.ui.settings
 
-/** Internal build-analysis UI identifiers. */
 object ShamashAsmUiConstants {
-    /** Both engines now focus the same public product tool window. */
     const val TOOLWINDOW_ID: String = "Shamash"
     const val NOTIFICATION_GROUP_ID: String = "Shamash ASM"
     const val SETTINGS_COMPONENT_NAME: String = "ShamashAsmSettingsState"

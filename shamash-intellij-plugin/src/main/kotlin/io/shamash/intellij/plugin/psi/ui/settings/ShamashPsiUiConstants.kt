@@ -21,9 +21,7 @@
  */
 package io.shamash.intellij.plugin.psi.ui.settings
 
-/** Internal source-analysis UI identifiers. */
 object ShamashPsiUiConstants {
-    /** Both engines now focus the same public product tool window. */
     const val TOOLWINDOW_ID: String = "Shamash"
     const val NOTIFICATION_GROUP_ID: String = "Shamash PSI"
 }

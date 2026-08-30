@@ -27,14 +27,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 
-/**
- * Plans and atomically applies the only persistent config mutation performed by
- * `shamash baseline create`: switching an already-valid baseline block to VERIFY.
- *
- * The editor deliberately supports only the normal block-style schema emitted
- * by Shamash. It refuses unfamiliar YAML shapes rather than rewriting arbitrary
- * user YAML and risking comments, anchors, or formatting.
- */
 internal data class BaselineConfigEditPlan(
     val path: Path,
     val updated: String?,

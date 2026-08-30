@@ -36,7 +36,6 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 
-/** Orchestrates config validation, bytecode scanning, fact extraction, analysis, baseline and export. */
 class ShamashAsmScanRunner(
     private val engine: ShamashAsmEngine = ShamashAsmEngine(),
 ) {

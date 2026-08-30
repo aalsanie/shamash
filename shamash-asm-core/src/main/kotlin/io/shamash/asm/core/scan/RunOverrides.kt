@@ -24,10 +24,6 @@ package io.shamash.asm.core.scan
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ScanScope
 
-/**
- * Non-persistent overrides applied to a single scan.
- * YAML remains the canonical persisted configuration.
- */
 data class RunOverrides(
     val scan: ScanOverrides? = null,
     val runner: RunnerOverrides? = null,
@@ -41,12 +37,9 @@ data class ScanOverrides(
     val maxClassBytes: Int? = null,
 )
 
-/** Runner/engine switches that must never mutate the project configuration. */
 data class RunnerOverrides(
-    /** Override baseline behavior for this run (used by `shamash baseline create`). */
     val baselineMode: BaselineMode? = null,
-    /** Override report export for this run. Baseline generation is independent of report export. */
     val exportEnabled: Boolean? = null,
-    /** Kept for source/binary compatibility with early 0.x callers. */
+    // Retained for source/binary compatibility with early 0.x callers.
     val _reserved: Int = 0,
 )

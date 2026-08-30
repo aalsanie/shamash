@@ -530,7 +530,6 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
             if (verbose) printVerbose(res, engine.summary)
             if (printAnalysisSummary) printAnalysis(engine)
 
-
             return if (discoveryMode) {
                 ExitCode.OK
             } else if (failOn.shouldFail(counts)) {

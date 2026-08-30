@@ -30,7 +30,6 @@ import com.intellij.openapi.wm.ToolWindowManager
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiUiConstants
 import io.shamash.intellij.plugin.ui.ShamashToolWindowNavigator
 
-/** Shared notification/focus handling for Source Analysis actions. */
 object PsiActionUtil {
     fun notify(
         project: Project?,

@@ -30,7 +30,6 @@ import com.intellij.openapi.wm.ToolWindowManager
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmUiConstants
 import io.shamash.intellij.plugin.ui.ShamashToolWindowNavigator
 
-/** Shared notification/focus handling for Build Analysis actions. */
 object AsmActionUtil {
     fun notify(
         project: Project?,

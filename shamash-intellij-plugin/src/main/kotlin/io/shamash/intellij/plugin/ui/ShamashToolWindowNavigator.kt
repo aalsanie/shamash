@@ -25,7 +25,6 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBTabbedPane
 
-/** Coordinates the product-level Build Analysis / Source Analysis tabs. */
 @Service(Service.Level.PROJECT)
 class ShamashToolWindowNavigator {
     enum class Surface { BUILD, SOURCE }

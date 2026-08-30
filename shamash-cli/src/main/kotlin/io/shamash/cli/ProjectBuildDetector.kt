@@ -29,7 +29,6 @@ data class BuildHint(
     val command: String,
 )
 
-/** Detects a likely build tool only to provide an actionable "compile first" message. */
 object ProjectBuildDetector {
     fun detect(projectRoot: Path): BuildHint? {
         val root = projectRoot.toAbsolutePath().normalize()

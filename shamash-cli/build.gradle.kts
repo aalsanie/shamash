@@ -16,7 +16,6 @@ dependencies {
 
 application {
     mainClass.set("io.shamash.cli.MainKt")
-    // Public launcher contract. Do not let the Gradle project name decide this.
     applicationName = "shamash"
 }
 

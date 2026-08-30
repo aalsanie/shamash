@@ -32,11 +32,6 @@ import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController;
 import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * One public Shamash tool window over the existing ASM and PSI engines.
- * The engine split remains internal; the first-level product vocabulary is
- * Build Analysis and Source Analysis.
- */
 public final class ShamashToolWindowFactory implements ToolWindowFactory, DumbAware {
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
