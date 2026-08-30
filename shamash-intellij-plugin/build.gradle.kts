@@ -25,7 +25,7 @@ dependencies {
     implementation(project(":shamash-asm-core"))
 
     intellijPlatform {
-        intellijIdea("2024.2")
+        intellijIdeaCommunity("2024.2")
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
         testFramework(TestFrameworkType.Platform)
