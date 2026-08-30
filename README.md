@@ -10,7 +10,7 @@
 
 # Shamash
 
-Stops JVM architecture drift before it reaches main by scanning compiled Java/Kotlin applications, finds dependency cycles and architecture violations, and can prevent new violations in CI without requiring architecture-test code.
+Shamash is a tool to stop JVM architecture drift before it reaches main by scanning compiled Java/Kotlin applications, finds dependency cycles and architecture violations, and can prevent new violations in CI without requiring architecture-test code.
 
 - **CLI-first:** standalone Java 17+ tool for local use and CI.
 - **Configless first scan:** see useful architecture risks before learning the configuration model.
