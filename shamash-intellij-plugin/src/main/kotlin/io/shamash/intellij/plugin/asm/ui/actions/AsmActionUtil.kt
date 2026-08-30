@@ -28,13 +28,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmUiConstants
+import io.shamash.intellij.plugin.ui.ShamashToolWindowNavigator
 
-/**
- * ASM UI actions should call shamash-asm-core runners/services, then use this helper
- * to notify the user and focus the ASM tool window.
- *
- * Keeps UI-thread handling and notification wiring consistent across ASM actions.
- */
+/** Shared notification/focus handling for Build Analysis actions. */
 object AsmActionUtil {
     fun notify(
         project: Project?,
@@ -62,16 +58,17 @@ object AsmActionUtil {
                     ToolWindowManager
                         .getInstance(project)
                         .getToolWindow(ShamashAsmUiConstants.TOOLWINDOW_ID)
-
-                // activate() brings focus; show() only makes it visible.
-                toolWindow?.activate(null, true)
+                toolWindow?.activate(
+                    {
+                        ShamashToolWindowNavigator
+                            .getInstance(project)
+                            .select(ShamashToolWindowNavigator.Surface.BUILD)
+                    },
+                    true,
+                )
             }
 
         val app = ApplicationManager.getApplication()
-        if (app.isDispatchThread) {
-            runnable.run()
-        } else {
-            app.invokeLater(runnable)
-        }
+        if (app.isDispatchThread) runnable.run() else app.invokeLater(runnable)
     }
 }

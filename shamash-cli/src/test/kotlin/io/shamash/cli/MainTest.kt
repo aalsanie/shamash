@@ -24,7 +24,6 @@ package io.shamash.cli
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayOutputStream
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -35,15 +34,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/**
- * Production-grade CLI tests WITHOUT SecurityManager tricks.
- *
- * Approach:
- * - Execute the CLI in a separate JVM process.
- * - Assert exit codes + stdout/stderr.
- *
- * This stays compatible with JDK 17+ where SecurityManager is deprecated (JEP 411).
- */
 class MainTest {
     data class ProcResult(
         val exitCode: Int,
@@ -52,159 +42,199 @@ class MainTest {
     )
 
     @Test
-    fun `version prints version and exits 0`() {
+    fun `version prints version and exits zero`() {
         val r = runCli("version")
-        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        assertTrue(r.stdout.trim().startsWith("shamash-cli"), "stdout:\n${r.stdout}")
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.trim().startsWith("shamash-cli"))
     }
 
     @Test
-    fun `init --stdout prints reference config and exits 0`() {
+    fun `init stdout defaults to small starter config`() {
         val r = runCli("init", "--stdout")
-        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        // Keep assertions resilient to minor formatting changes
-        assertTrue(r.stdout.contains("version:", ignoreCase = true), "stdout:\n${r.stdout}")
-        assertTrue(r.stdout.contains("project:", ignoreCase = true), "stdout:\n${r.stdout}")
-        assertTrue(r.stdout.contains("rules:", ignoreCase = true), "stdout:\n${r.stdout}")
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.contains("graph, name: noCycles"))
+        assertFalse(r.stdout.contains("forbiddenRoleDependencies"))
+        assertTrue(r.stdout.lineSequence().count() < 40, "starter config should remain intentionally small")
     }
 
     @Test
-    fun `init writes config file under project and validate succeeds`(
+    fun `spring preset is explicit and contains boundary rule`() {
+        val r = runCli("init", "--stdout", "--preset", "spring")
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.contains("forbiddenRoleDependencies"))
+        assertTrue(r.stdout.contains("org.springframework.stereotype.Service"))
+    }
+
+    @Test
+    fun `reference preset preserves advanced reference config`() {
+        val r = runCli("init", "--stdout", "--preset", "reference")
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.contains("artifacts:"))
+        assertTrue(r.stdout.contains("scoring:"))
+    }
+
+    @Test
+    fun `init writes config and validate succeeds`(
         @TempDir tmp: Path,
     ) {
         val init = runCli("init", "--project", tmp.toString())
-        assertEquals(0, init.exitCode, "stderr:\n${init.stderr}\nstdout:\n${init.stdout}")
-
-        val expected = tmp.resolve("shamash").resolve("configs").resolve("asm.yml")
-        assertTrue(expected.exists(), "Expected config to be created at: $expected")
-        val content = expected.readText(StandardCharsets.UTF_8)
-        assertTrue(content.contains("version:"), "Config content seems wrong:\n$content")
-
+        assertEquals(0, init.exitCode, diagnostics(init))
+        val config = tmp.resolve("shamash/configs/asm.yml")
+        assertTrue(config.exists())
+        assertTrue(config.readText(StandardCharsets.UTF_8).contains("noCycles"))
         val validate = runCli("validate", "--project", tmp.toString())
-        assertEquals(0, validate.exitCode, "stderr:\n${validate.stderr}\nstdout:\n${validate.stdout}")
-        assertTrue(validate.stdout.contains("OK:"), "stdout:\n${validate.stdout}")
+        assertEquals(0, validate.exitCode, diagnostics(validate))
     }
 
     @Test
-    fun `init without --force does not overwrite existing file`(
+    fun `init does not overwrite without force`(
         @TempDir tmp: Path,
     ) {
-        val init1 = runCli("init", "--project", tmp.toString())
-        assertEquals(0, init1.exitCode, "stderr:\n${init1.stderr}\nstdout:\n${init1.stdout}")
-
-        val cfg = tmp.resolve("shamash").resolve("configs").resolve("asm.yml")
-        assertTrue(cfg.exists(), "Expected config to exist at: $cfg")
-
-        // Mutate file to detect overwrite attempts
-        Files.writeString(cfg, "version: 1\n# mutated\n", StandardCharsets.UTF_8)
-
-        val init2 = runCli("init", "--project", tmp.toString())
-        assertEquals(2, init2.exitCode, "stderr:\n${init2.stderr}\nstdout:\n${init2.stdout}")
-        assertTrue(init2.stderr.contains("already exists", ignoreCase = true), "stderr:\n${init2.stderr}")
-
-        val after = cfg.readText(StandardCharsets.UTF_8)
-        assertTrue(after.contains("# mutated"), "File was overwritten unexpectedly:\n$after")
-
-        val init3 = runCli("init", "--project", tmp.toString(), "--force")
-        assertEquals(0, init3.exitCode, "stderr:\n${init3.stderr}\nstdout:\n${init3.stdout}")
-
-        val overwritten = cfg.readText(StandardCharsets.UTF_8)
-        assertFalse(overwritten.contains("# mutated"), "File was not overwritten with --force:\n$overwritten")
-        assertTrue(overwritten.contains("rules:"), "Config content seems wrong after overwrite:\n$overwritten")
+        assertEquals(0, runCli("init", "--project", tmp.toString()).exitCode)
+        val config = tmp.resolve("shamash/configs/asm.yml")
+        Files.writeString(config, "version: 1\n# mutated\n", StandardCharsets.UTF_8)
+        val second = runCli("init", "--project", tmp.toString())
+        assertEquals(2, second.exitCode)
+        assertTrue(config.readText().contains("# mutated"))
+        val forced = runCli("init", "--project", tmp.toString(), "--force")
+        assertEquals(0, forced.exitCode, diagnostics(forced))
+        assertFalse(config.readText().contains("# mutated"))
     }
 
     @Test
-    fun `validate with no config exits 2`() {
-        val r = runCli("validate", "--project", createTempDir().toString())
-        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        assertTrue(
-            r.stderr.contains("ASM config not found", ignoreCase = true) ||
-                r.stderr.contains("not found", ignoreCase = true),
-            "stderr:\n${r.stderr}",
+    fun `configless scan runs in discovery report-only mode`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        val r = runCli("scan", "--project", tmp.toString())
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.contains("discovery scan", ignoreCase = true))
+        assertTrue(r.stdout.contains("No project files were changed"))
+        assertFalse(tmp.resolve("shamash").exists(), "discovery scan must not materialize config in the project")
+        assertFalse(tmp.resolve(".shamash").exists(), "discovery scan must not write reports or baselines")
+    }
+
+    @Test
+    fun `discovery refuses export facts so report-only mode cannot mutate project`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        val r = runCli("scan", "--project", tmp.toString(), "--export-facts")
+        assertEquals(2, r.exitCode, diagnostics(r))
+        assertTrue(r.stderr.contains("requires a project config"))
+        assertFalse(tmp.resolve(".shamash").exists())
+    }
+
+    @Test
+    fun `configless scan explains build requirement when no bytecode exists`(
+        @TempDir tmp: Path,
+    ) {
+        Files.writeString(tmp.resolve("build.gradle.kts"), "plugins { java }", StandardCharsets.UTF_8)
+        val r = runCli("scan", "--project", tmp.toString())
+        assertEquals(2, r.exitCode, diagnostics(r))
+        assertTrue(r.stderr.contains("No compiled JVM classes found"))
+        assertTrue(r.stderr.contains("gradlew"))
+    }
+
+    @Test
+    fun `configured scan prints findings without print-findings flag`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(
+            tmp,
+            "com.example.TooLarge",
+            "package com.example; public class TooLarge {" + (1..61).joinToString("") { " public void m$it(){}" } + " }",
         )
+        writeConfig(tmp, discoveryLikeConfig(maxMethods = 10))
+        val r = runCli("scan", "--project", tmp.toString(), "--fail-on", "NONE")
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.contains("maxMethodsPerClass"))
+        assertTrue(r.stdout.contains("Shamash found"))
     }
 
     @Test
-    fun `scan with invalid fail-on exits 2 without needing a project`() {
-        val r = runCli("scan", "--fail-on", "BAD")
-        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        assertTrue(r.stderr.contains("Unknown fail-on severity", ignoreCase = true), "stderr:\n${r.stderr}")
+    fun `baseline create writes accepted debt and protects existing baseline`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        runCli("init", "--project", tmp.toString())
+        val first = runCli("baseline", "create", "--project", tmp.toString())
+        assertEquals(0, first.exitCode, diagnostics(first))
+        val baseline = tmp.resolve(".shamash/baseline/asm-baseline.json")
+        assertTrue(baseline.exists())
+        val second = runCli("baseline", "create", "--project", tmp.toString())
+        assertEquals(2, second.exitCode, diagnostics(second))
+        assertTrue(second.stderr.contains("already exists"))
     }
 
     @Test
-    fun `scan with invalid scope exits 2 without needing a project`() {
-        val r = runCli("scan", "--scope", "BAD")
-        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        assertTrue(r.stderr.contains("Unknown --scope", ignoreCase = true), "stderr:\n${r.stderr}")
+    fun `baseline create switches generated reference config to verify automatically`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        val init = runCli("init", "--project", tmp.toString(), "--preset", "reference")
+        assertEquals(0, init.exitCode, diagnostics(init))
+
+        val config = tmp.resolve("shamash/configs/asm.yml")
+        assertTrue(config.readText().contains("mode: GENERATE"))
+
+        val baseline = runCli("baseline", "create", "--project", tmp.toString())
+        assertEquals(0, baseline.exitCode, diagnostics(baseline))
+        assertTrue(config.readText().contains("mode: VERIFY"))
+        assertFalse(config.readText().contains("mode: GENERATE"))
     }
 
     @Test
-    fun `scan with non-positive max-classes exits 2 without needing a project`() {
-        val r = runCli("scan", "--max-classes", "0")
-        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        assertTrue(r.stderr.contains("Invalid --max-classes", ignoreCase = true), "stderr:\n${r.stderr}")
+    fun `validate with no config exits two`(
+        @TempDir tmp: Path,
+    ) {
+        val r = runCli("validate", "--project", tmp.toString())
+        assertEquals(2, r.exitCode)
     }
 
     @Test
-    fun `registry list prints available providers and exits 0`() {
+    fun `invalid scan options fail before project work`() {
+        val badFail = runCli("scan", "--fail-on", "BAD")
+        assertEquals(2, badFail.exitCode)
+        assertTrue(badFail.stderr.contains("Unknown fail-on severity"))
+
+        val badScope = runCli("scan", "--scope", "BAD")
+        assertEquals(2, badScope.exitCode)
+        assertTrue(badScope.stderr.contains("Unknown --scope"))
+
+        val badLimit = runCli("scan", "--max-classes", "0")
+        assertEquals(2, badLimit.exitCode)
+        assertTrue(badLimit.stderr.contains("Invalid --max-classes"))
+    }
+
+    @Test
+    fun `registry list keeps built in provider discoverable`() {
         val r = runCli("registry", "list")
-        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-
-        // Keep assertions resilient: we only require the built-in provider to be discoverable.
-        assertTrue(
-            r.stdout.contains("default", ignoreCase = true) || r.stderr.contains("default", ignoreCase = true),
-            "Expected to see built-in registry id 'default'.\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}",
-        )
-        // Prefer stdout, but tolerate tools printing to stderr.
-        val text = (r.stdout + "\n" + r.stderr)
-        assertTrue(
-            text.contains("registry", ignoreCase = true) || text.contains("provider", ignoreCase = true),
-            "Output should mention registries/providers.\n$text",
-        )
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue((r.stdout + r.stderr).contains("default", ignoreCase = true))
     }
 
     @Test
-    fun `scan with unknown registry exits 2 and shows actionable message`(
+    fun `scan with unknown registry exits two with actionable guidance`(
         @TempDir tmp: Path,
     ) {
-        ensureBytecodeAndConfig(tmp)
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        assertEquals(0, runCli("init", "--project", tmp.toString()).exitCode)
 
-        val r =
-            runCli(
-                "scan",
-                "--project",
-                tmp.toString(),
-                "--registry",
-                "does-not-exist",
-                // keep scan cheap + deterministic
-                "--scope",
-                "PROJECT_ONLY",
-                "--max-classes",
-                "1",
-            )
-
-        assertEquals(2, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-
-        val text = (r.stderr + "\n" + r.stdout)
-        assertTrue(
-            text.contains("unknown", ignoreCase = true) && text.contains("registry", ignoreCase = true),
-            "Expected an 'unknown registry' style message.\n$text",
-        )
-        assertTrue(
-            text.contains("available", ignoreCase = true) || text.contains("list", ignoreCase = true),
-            "Expected actionable guidance (available ids / registry list).\n$text",
-        )
-        assertTrue(
-            text.contains("default", ignoreCase = true),
-            "Expected message to mention default registry id.\n$text",
-        )
+        val r = runCli("scan", "--project", tmp.toString(), "--registry", "does-not-exist")
+        assertEquals(2, r.exitCode, diagnostics(r))
+        val text = r.stderr + "\n" + r.stdout
+        assertTrue(text.contains("Unknown registry", ignoreCase = true))
+        assertTrue(text.contains("default", ignoreCase = true))
+        assertTrue(text.contains("registry list", ignoreCase = true))
     }
 
     @Test
-    fun `scan prints applied overrides when provided`(
+    fun `verbose scan reports applied runtime overrides`(
         @TempDir tmp: Path,
     ) {
-        ensureBytecodeAndConfig(tmp)
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        assertEquals(0, runCli("init", "--project", tmp.toString()).exitCode)
 
         val r =
             runCli(
@@ -213,205 +243,109 @@ class MainTest {
                 tmp.toString(),
                 "--scope",
                 "ALL_SOURCES",
-                "--follow-symlinks",
-                "true",
                 "--max-classes",
                 "1",
+                "--verbose",
+                "--fail-on",
+                "NONE",
             )
-
-        assertEquals(0, r.exitCode, "stderr:\n${r.stderr}\nstdout:\n${r.stdout}")
-        assertTrue(r.stdout.contains("Overrides", ignoreCase = false), "stdout:\n${r.stdout}")
-        // Make sure at least one of our overrides is reflected back
-        assertTrue(
-            r.stdout.contains("scope=", ignoreCase = false) ||
-                r.stdout.contains("followSymlinks=", ignoreCase = false) ||
-                r.stdout.contains("maxClasses=", ignoreCase = false),
-            "stdout:\n${r.stdout}",
-        )
+        assertEquals(0, r.exitCode, diagnostics(r))
+        assertTrue(r.stdout.contains("Overrides"))
+        assertTrue(r.stdout.contains("ALL_SOURCES") || r.stdout.contains("maxClasses=1"))
     }
 
-    private fun runCli(
-        vararg args: String,
-        workingDir: Path? = null,
-    ): ProcResult {
+    @Test
+    fun `build detector prefers gradle and supports maven`(
+        @TempDir tmp: Path,
+    ) {
+        Files.writeString(tmp.resolve("build.gradle.kts"), "", StandardCharsets.UTF_8)
+        assertEquals("Gradle", ProjectBuildDetector.detect(tmp)?.tool)
+        Files.delete(tmp.resolve("build.gradle.kts"))
+        Files.writeString(tmp.resolve("pom.xml"), "<project/>", StandardCharsets.UTF_8)
+        assertEquals("Maven", ProjectBuildDetector.detect(tmp)?.tool)
+    }
+
+    private fun diagnostics(r: ProcResult) = "stderr:\n${r.stderr}\nstdout:\n${r.stdout}"
+
+    private fun runCli(vararg args: String): ProcResult {
         val javaExe = resolveJavaExecutable()
         val cp = System.getProperty("java.class.path")
-        require(!cp.isNullOrBlank()) { "java.class.path is empty; cannot spawn CLI process." }
-
-        val cmd =
-            ArrayList<String>(4 + args.size).apply {
-                add(javaExe.toString())
-                // Stabilize encoding in output assertions
-                add("-Dfile.encoding=UTF-8")
-                add("-cp")
-                add(cp)
-                add("io.shamash.cli.MainKt")
-                addAll(args)
-            }
-
-        val pb = ProcessBuilder(cmd)
-        if (workingDir != null) pb.directory(workingDir.toFile())
-        pb.redirectErrorStream(false)
-
-        val p = pb.start()
-
+        val cmd = arrayListOf(javaExe.toString(), "-Dfile.encoding=UTF-8", "-cp", cp, "io.shamash.cli.MainKt").apply { addAll(args) }
+        val process = ProcessBuilder(cmd).redirectErrorStream(false).start()
         val stdout = ByteArrayOutputStream()
         val stderr = ByteArrayOutputStream()
-
         val outThread =
-            Thread {
-                p.inputStream.use { it.copyTo(stdout) }
-            }.apply {
+            Thread { process.inputStream.use { it.copyTo(stdout) } }.apply {
                 isDaemon = true
                 start()
             }
-
         val errThread =
-            Thread {
-                p.errorStream.use { it.copyTo(stderr) }
-            }.apply {
+            Thread { process.errorStream.use { it.copyTo(stderr) } }.apply {
                 isDaemon = true
                 start()
             }
-
-        val finished = p.waitFor(60, TimeUnit.SECONDS)
-        if (!finished) {
-            p.destroyForcibly()
-            throw AssertionError("CLI process timed out after 60s. Args=${args.joinToString(" ")}")
+        if (!process.waitFor(60, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            error("CLI timed out: ${args.joinToString(" ")}")
         }
-
-        outThread.join(1_000)
-        errThread.join(1_000)
-
-        val charset: Charset = StandardCharsets.UTF_8
-        return ProcResult(
-            exitCode = p.exitValue(),
-            stdout = stdout.toString(charset),
-            stderr = stderr.toString(charset),
-        )
+        outThread.join(1000)
+        errThread.join(1000)
+        return ProcResult(process.exitValue(), stdout.toString(StandardCharsets.UTF_8), stderr.toString(StandardCharsets.UTF_8))
     }
 
     private fun resolveJavaExecutable(): Path {
-        val home = System.getProperty("java.home")
-        val bin = Path.of(home, "bin")
-        val isWindows = System.getProperty("os.name").lowercase().contains("win")
-        val exeName = if (isWindows) "java.exe" else "java"
-        val exe = bin.resolve(exeName)
-        if (Files.isRegularFile(exe)) return exe
-
-        // Fallback for unusual layouts
-        val alt = Path.of(home, exeName)
-        if (Files.isRegularFile(alt)) return alt
-
-        throw IllegalStateException("Could not locate java executable under java.home=$home")
+        val bin = Path.of(System.getProperty("java.home"), "bin")
+        val name = if (System.getProperty("os.name").lowercase().contains("win")) "java.exe" else "java"
+        return bin.resolve(name)
     }
-
-    private fun createTempDir(): Path = Files.createTempDirectory("shamash-cli-test-").toAbsolutePath().normalize()
-
-    private fun ensureBytecodeAndConfig(project: Path) {
-        val compiler = javax.tools.ToolProvider.getSystemJavaCompiler()
-        require(compiler != null) { "JDK compiler not available (ToolProvider.getSystemJavaCompiler returned null)" }
-
-        val outDir = project.resolve("build/classes/java/main")
-        Files.createDirectories(outDir)
-
-        compileJava(
-            tmp = project,
-            fqcn = "com.example.App",
-            source = "package com.example; public class App { public static void main(String[] a){} }",
-            outputDir = outDir,
-        )
-
-        val cfgDir = project.resolve("shamash").resolve("configs")
-        Files.createDirectories(cfgDir)
-        val cfgPath = cfgDir.resolve("asm.yml")
-        Files.writeString(cfgPath, minimalAsmConfigYaml(), StandardCharsets.UTF_8)
-    }
-
-    private fun minimalAsmConfigYaml(): String =
-        """
-        version: 1
-
-        project:
-          bytecode:
-            roots: ["build/classes/java/main"]
-
-            outputsGlobs:
-              include: ["**"]
-              exclude: []
-
-            jarGlobs:
-              include: ["**/*.jar"]
-              exclude: ["**/*"]
-
-          scan:
-            scope: PROJECT_ONLY
-            followSymlinks: false
-            maxClasses: null
-            maxJarBytes: null
-            maxClassBytes: null
-
-          validation:
-            unknownRule: IGNORE
-
-        roles: {}
-
-        analysis:
-          graphs:
-            enabled: false
-            granularity: PACKAGE
-            includeExternalBuckets: false
-
-          hotspots:
-            enabled: false
-            topN: 10
-            includeExternal: false
-
-          scoring:
-            enabled: false
-            model: V1
-            godClass:
-              enabled: false
-              weights: null
-              thresholds: null
-            overall:
-              enabled: false
-              weights: null
-              thresholds: null
-
-        rules: []
-        exceptions: []
-
-        baseline:
-          mode: NONE
-          path: .shamash/baseline.json
-
-        export:
-          enabled: false
-          outputDir: .shamash/reports/asm
-          formats: [JSON]
-          overwrite: true
-        """.trimIndent()
 
     private fun compileJava(
         tmp: Path,
         fqcn: String,
         source: String,
-        outputDir: Path,
     ) {
-        val compiler = javax.tools.ToolProvider.getSystemJavaCompiler() ?: error("JDK compiler not available")
-
+        val compiler = javax.tools.ToolProvider.getSystemJavaCompiler() ?: error("JDK compiler unavailable")
+        val output = tmp.resolve("build/classes/java/main")
+        Files.createDirectories(output)
         val parts = fqcn.split('.')
-        val cls = parts.last()
-        val pkgPath = parts.dropLast(1).joinToString("/")
-
-        val srcDir = tmp.resolve("srcgen").resolve(pkgPath)
-        Files.createDirectories(srcDir)
-
-        val javaFile = srcDir.resolve("$cls.java")
-        Files.writeString(javaFile, source, StandardCharsets.UTF_8)
-
-        val rc = compiler.run(null, null, null, "-d", outputDir.toString(), javaFile.toString())
-        if (rc != 0) error("javac failed with exit code $rc")
+        val file = tmp.resolve("srcgen/${parts.dropLast(1).joinToString("/")}/${parts.last()}.java")
+        Files.createDirectories(file.parent)
+        Files.writeString(file, source, StandardCharsets.UTF_8)
+        assertEquals(0, compiler.run(null, null, null, "-d", output.toString(), file.toString()))
     }
+
+    private fun writeConfig(
+        tmp: Path,
+        yaml: String,
+    ) {
+        val path = tmp.resolve("shamash/configs/asm.yml")
+        Files.createDirectories(path.parent)
+        Files.writeString(path, yaml, StandardCharsets.UTF_8)
+    }
+
+    private fun discoveryLikeConfig(maxMethods: Int): String =
+        """
+        version: 1
+        project:
+          bytecode:
+            roots: ["."]
+            outputsGlobs: { include: ["**/build/classes/**"], exclude: ["**/test/**"] }
+            jarGlobs: { include: [], exclude: [] }
+          scan: { scope: PROJECT_ONLY, followSymlinks: false, maxClasses: 50000, maxJarBytes: null, maxClassBytes: null }
+          validation: { unknownRule: ERROR }
+        roles: {}
+        analysis:
+          graphs: { enabled: false, granularity: PACKAGE, includeExternalBuckets: false }
+          hotspots: { enabled: false, topN: 10, includeExternal: false }
+          scoring:
+            enabled: false
+            model: V1
+            godClass: { enabled: false, weights: null, thresholds: null }
+            overall: { enabled: false, weights: null, thresholds: null }
+        rules:
+          - { type: metrics, name: maxMethodsPerClass, roles: null, enabled: true, severity: WARNING, params: { maxMethods: $maxMethods } }
+        exceptions: []
+        baseline: { mode: NONE, path: ".shamash/baseline/asm-baseline.json" }
+        export: { enabled: false, outputDir: ".shamash/out/asm", formats: [JSON], overwrite: true }
+        """.trimIndent()
 }

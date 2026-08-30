@@ -28,10 +28,9 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiUiConstants
+import io.shamash.intellij.plugin.ui.ShamashToolWindowNavigator
 
-/**
- * UI should call scan runner, then use this to notify/focus.
- */
+/** Shared notification/focus handling for Source Analysis actions. */
 object PsiActionUtil {
     fun notify(
         project: Project?,
@@ -55,16 +54,21 @@ object PsiActionUtil {
         val runnable =
             Runnable {
                 if (project.isDisposed) return@Runnable
-                val tw = ToolWindowManager.getInstance(project).getToolWindow(ShamashPsiUiConstants.TOOLWINDOW_ID)
-                // activate() brings focus; show() only makes it visible.
-                tw?.activate(null, true)
+                val toolWindow =
+                    ToolWindowManager
+                        .getInstance(project)
+                        .getToolWindow(ShamashPsiUiConstants.TOOLWINDOW_ID)
+                toolWindow?.activate(
+                    {
+                        ShamashToolWindowNavigator
+                            .getInstance(project)
+                            .select(ShamashToolWindowNavigator.Surface.SOURCE)
+                    },
+                    true,
+                )
             }
 
         val app = ApplicationManager.getApplication()
-        if (app.isDispatchThread) {
-            runnable.run()
-        } else {
-            app.invokeLater(runnable)
-        }
+        if (app.isDispatchThread) runnable.run() else app.invokeLater(runnable)
     }
 }

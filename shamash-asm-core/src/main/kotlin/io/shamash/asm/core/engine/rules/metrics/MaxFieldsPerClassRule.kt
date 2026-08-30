@@ -35,12 +35,12 @@ import io.shamash.asm.core.facts.query.FactIndex
  * metrics.maxFieldsPerClass
  *
  * Params:
- * - max: int (required, >= 0)
+ * - maxFields: int (required, >= 0)
  * - examples: int (optional, default 10) // include up to N field fqNames as examples per violating class
  *
  * Semantics:
  * - Counts declared fields per class (bytecode facts).
- * - For each in-scope class, if fieldCount > max -> emit a finding for that class.
+ * - For each in-scope class, if fieldCount > maxFields -> emit a finding for that class.
  */
 class MaxFieldsPerClassRule : Rule {
     override val id: String = "metrics.maxFieldsPerClass"
@@ -119,7 +119,7 @@ class MaxFieldsPerClassRule : Rule {
 
         val max: Int =
             try {
-                p.requireInt("max")
+                p.requireInt("maxFields")
             } catch (_: ParamError) {
                 return null
             }

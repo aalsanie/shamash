@@ -25,13 +25,9 @@ dependencies {
     implementation(project(":shamash-asm-core"))
 
     intellijPlatform {
-        // used for compilation / runIde / tests
         intellijIdea("2024.2")
-
-        // plugin uses Java + Kotlin IDE APIs
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
-
         testFramework(TestFrameworkType.Platform)
     }
 
@@ -41,7 +37,6 @@ dependencies {
 
 tasks.test {
     maxHeapSize = "2g"
-    // useJUnitPlatform()
 }
 
 intellijPlatform {
@@ -52,7 +47,7 @@ intellijPlatform {
 
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "261.*"
+            untilBuild = "262.*"
         }
     }
 
@@ -62,6 +57,18 @@ intellijPlatform {
             create(IntelliJPlatformType.IntellijIdea, "2025.2")
             create(IntelliJPlatformType.IntellijIdea, "2025.3")
             create(IntelliJPlatformType.IntellijIdea, "2026.1")
+            create(IntelliJPlatformType.IntellijIdea, "2026.2")
         }
+    }
+
+    signing {
+        certificateChain = providers.environmentVariable("JETBRAINS_CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("JETBRAINS_PRIVATE_KEY")
+        password = providers.environmentVariable("JETBRAINS_PRIVATE_KEY_PASSWORD")
+    }
+
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
+        channels = listOf("default")
     }
 }

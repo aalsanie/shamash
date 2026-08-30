@@ -1,0 +1,94 @@
+name: Shamash Architecture Check
+description: Scan compiled JVM code for architecture violations with Shamash.
+author: aalsanie
+
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  version:
+    description: Shamash release version to run.
+    required: false
+    default: "0.91.0"
+  java-version:
+    description: Java runtime used by Shamash.
+    required: false
+    default: "17"
+  config:
+    description: Optional path to asm.yml. Omit for configless discovery mode.
+    required: false
+    default: ""
+  fail-on:
+    description: Failure threshold for configured scans (NONE|INFO|WARNING|ERROR).
+    required: false
+    default: "ERROR"
+  all-findings:
+    description: Print every finding instead of the default first 20.
+    required: false
+    default: "false"
+  verbose:
+    description: Print engine diagnostics.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Install Shamash (Unix)
+      if: runner.os != 'Windows'
+      id: install-unix
+      shell: bash
+      run: |
+        set -euo pipefail
+        chmod +x "${{ github.action_path }}/scripts/install-shamash.sh"
+        BIN=$("${{ github.action_path }}/scripts/install-shamash.sh" "${{ inputs.version }}" "$RUNNER_TEMP/shamash-${{ inputs.version }}")
+        echo "bin=$BIN" >> "$GITHUB_OUTPUT"
+
+    - name: Install Shamash (Windows)
+      if: runner.os == 'Windows'
+      id: install-windows
+      shell: pwsh
+      run: |
+        $bin = & "${{ github.action_path }}\scripts\install-shamash.ps1" -Version "${{ inputs.version }}" -Destination "$env:RUNNER_TEMP\shamash-${{ inputs.version }}"
+        "bin=$bin" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Run Shamash (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        SHAMASH_BIN: ${{ steps.install-unix.outputs.bin }}
+        SHAMASH_CONFIG: ${{ inputs.config }}
+        SHAMASH_FAIL_ON: ${{ inputs.fail-on }}
+        SHAMASH_ALL_FINDINGS: ${{ inputs.all-findings }}
+        SHAMASH_VERBOSE: ${{ inputs.verbose }}
+      run: |
+        set -euo pipefail
+        args=(scan --fail-on "$SHAMASH_FAIL_ON")
+        [[ -n "$SHAMASH_CONFIG" ]] && args+=(--config "$SHAMASH_CONFIG")
+        [[ "$SHAMASH_ALL_FINDINGS" == "true" ]] && args+=(--all-findings)
+        [[ "$SHAMASH_VERBOSE" == "true" ]] && args+=(--verbose)
+        "$SHAMASH_BIN" "${args[@]}"
+
+    - name: Run Shamash (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        SHAMASH_BIN: ${{ steps.install-windows.outputs.bin }}
+        SHAMASH_CONFIG: ${{ inputs.config }}
+        SHAMASH_FAIL_ON: ${{ inputs.fail-on }}
+        SHAMASH_ALL_FINDINGS: ${{ inputs.all-findings }}
+        SHAMASH_VERBOSE: ${{ inputs.verbose }}
+      run: |
+        $args = @("scan", "--fail-on", $env:SHAMASH_FAIL_ON)
+        if ($env:SHAMASH_CONFIG) { $args += @("--config", $env:SHAMASH_CONFIG) }
+        if ($env:SHAMASH_ALL_FINDINGS -eq "true") { $args += "--all-findings" }
+        if ($env:SHAMASH_VERBOSE -eq "true") { $args += "--verbose" }
+        & $env:SHAMASH_BIN @args
+        exit $LASTEXITCODE

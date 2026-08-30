@@ -19,11 +19,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.intellij.plugin.psi.ui.settings
+package io.shamash.intellij.plugin.ui.actions;
 
-/** Internal source-analysis UI identifiers. */
-object ShamashPsiUiConstants {
-    /** Both engines now focus the same public product tool window. */
-    const val TOOLWINDOW_ID: String = "Shamash"
-    const val NOTIFICATION_GROUP_ID: String = "Shamash PSI"
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
+import org.jetbrains.annotations.NotNull;
+
+/** Primary public IDE action. */
+public final class OpenShamashToolWindowAction extends AnAction {
+    @Override
+    public void actionPerformed(@NotNull AnActionEvent event) {
+        Project project = event.getProject();
+        if (project == null || project.isDisposed()) return;
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Shamash");
+        if (toolWindow != null) toolWindow.activate(null, true);
+    }
 }

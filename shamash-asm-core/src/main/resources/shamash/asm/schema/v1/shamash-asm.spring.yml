@@ -1,0 +1,56 @@
+version: 1
+project:
+  bytecode:
+    roots: ["."]
+    outputsGlobs:
+      include: ["**/build/classes/**", "**/build/tmp/kotlin-classes/**", "**/target/classes/**", "**/out/production/**"]
+      exclude: ["**/test/**", "**/build/**/generated/**", "**/target/generated-sources/**"]
+    jarGlobs:
+      include: ["**/build/libs/*.jar", "**/target/*.jar"]
+      exclude: ["**/*-sources.jar", "**/*-javadoc.jar", "**/.gradle/**", "**/.m2/**"]
+  scan: { scope: PROJECT_ONLY, followSymlinks: false, maxClasses: 50000, maxJarBytes: null, maxClassBytes: null }
+  validation: { unknownRule: ERROR }
+roles:
+  controller:
+    priority: 90
+    description: "HTTP/API entry points"
+    match:
+      anyOf:
+        - { annotationPrefix: "org.springframework.web.bind.annotation." }
+        - { packageContainsSegment: "controller" }
+        - { classNameEndsWith: "Controller" }
+  service:
+    priority: 80
+    description: "Application services"
+    match:
+      anyOf:
+        - { annotation: "org.springframework.stereotype.Service" }
+        - { packageContainsSegment: "service" }
+        - { classNameEndsWith: "Service" }
+  repository:
+    priority: 70
+    description: "Persistence boundary"
+    match:
+      anyOf:
+        - { annotation: "org.springframework.stereotype.Repository" }
+        - { packageContainsSegment: "repository" }
+        - { classNameEndsWith: "Repository" }
+analysis:
+  graphs: { enabled: true, granularity: PACKAGE, includeExternalBuckets: false }
+  hotspots: { enabled: true, topN: 10, includeExternal: false }
+  scoring:
+    enabled: false
+    model: V1
+    godClass: { enabled: false, weights: null, thresholds: null }
+    overall: { enabled: false, weights: null, thresholds: null }
+rules:
+  - { type: graph, name: noCycles, roles: null, enabled: true, severity: ERROR, params: {} }
+  - type: arch
+    name: forbiddenRoleDependencies
+    roles: null
+    enabled: true
+    severity: ERROR
+    params: { direction: direct, forbidden: { controller: [repository] } }
+exceptions: []
+baseline: { mode: VERIFY, path: ".shamash/baseline/asm-baseline.json" }
+export: { enabled: true, outputDir: ".shamash/out/asm", formats: [SARIF, JSON], overwrite: true }
