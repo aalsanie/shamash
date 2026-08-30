@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/shamash_logo.png" alt="Shamash" width="180"/>
+  <img src="../assets/shamash_logo.png" alt="Shamash" width="180"/>
 </p>
 
 # Shamash
