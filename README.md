@@ -173,7 +173,7 @@ The action verifies the release checksum before execution.
 
 ## IntelliJ
 
-Install **Shamash** from JetBrains Marketplace, then open:
+Install **Shamash** from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamas), then open:
 
 ```text
 Tools → Shamash
