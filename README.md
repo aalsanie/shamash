@@ -24,6 +24,19 @@ Shamash scans compiled Java/Kotlin applications, finds dependency cycles and arc
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
 
+## Install the CLI
+
+Requires Java 17 or newer.
+
+Download `shamash-cli-<version>.zip` and `SHA256SUMS.txt` from GitHub Releases, verify the checksum, extract it, then use:
+
+```text
+bin/shamash      # Linux/macOS
+bin/shamash.bat  # Windows
+```
+
+The launcher name is part of the packaged-product contract and is smoke-tested on Linux, Windows and macOS before release.
+
 ## Usage
 
 Shamash analyzes compiled bytecode. Build the project first:
@@ -62,19 +75,6 @@ Ready to enforce architecture? Run: shamash init
 ```
 
 If Shamash cannot find compiled classes, it detects common Gradle/Maven projects and prints the exact build command to run first.
-
-## Install the CLI
-
-Requires Java 17 or newer.
-
-Download `shamash-cli-<version>.zip` and `SHA256SUMS.txt` from GitHub Releases, verify the checksum, extract it, then use:
-
-```text
-bin/shamash      # Linux/macOS
-bin/shamash.bat  # Windows
-```
-
-The launcher name is part of the packaged-product contract and is smoke-tested on Linux, Windows and macOS before release.
 
 ## Enforce architecture in a project
 
