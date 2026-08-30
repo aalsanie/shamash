@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/shamash_logo.png" alt="Shamash" width="180"/>
+  <img src="../assets/shamash_logo.png" alt="Shamash" width="180"/>
 </p>
 
 # Shamash
@@ -16,7 +16,7 @@ Shamash 扫描已编译的 Java/Kotlin 应用，发现依赖循环和架构违�
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
-[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
 
 ## 使用方法
 
@@ -210,8 +210,8 @@ ASM 和 PSI 在内部仍然存在，因为它们解决不同的技术问题；�
 
 ## 安全
 
-请不要在公开 issue 中披露漏洞。请遵循 [`SECURITY.md`](./SECURITY.md)。
+请不要在公开 issue 中披露漏洞。请遵循 [`SECURITY.md`](../SECURITY.md)。
 
 ## 许可证
 
-Apache License 2.0。请参阅 [`LICENSE`](./LICENSE)。
+Apache License 2.0。请参阅 [`LICENSE`](../LICENSE)。

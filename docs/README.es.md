@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/shamash_logo.png" alt="Shamash" width="180"/>
+  <img src="../assets/shamash_logo.png" alt="Shamash" width="180"/>
 </p>
 
 # Shamash
@@ -16,7 +16,7 @@ Shamash analiza aplicaciones Java/Kotlin compiladas, detecta ciclos de dependenc
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
-[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
 
 ## Uso
 
@@ -210,8 +210,8 @@ Consulta `docs/asm/` y `REGISTRY_GUIDE.md` para ver la referencia avanzada del m
 
 ## Seguridad
 
-No divulgues vulnerabilidades en un issue público. Sigue [`SECURITY.md`](./SECURITY.md).
+No divulgues vulnerabilidades en un issue público. Sigue [`SECURITY.md`](../SECURITY.md).
 
 ## Licencia
 
-Apache License 2.0. Consulta [`LICENSE`](./LICENSE).
+Apache License 2.0. Consulta [`LICENSE`](../LICENSE).
