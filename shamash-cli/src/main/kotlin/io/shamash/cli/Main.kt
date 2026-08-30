@@ -426,119 +426,99 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
             Console.errln("--export-facts requires a project config. Run `shamash init` first.")
             return ExitCode.CONFIG_ERROR
         }
-        var temporaryConfig: Path? = null
-        val effectiveConfig =
-            if (discoveryMode) {
-                val bytes =
-                    loadResourceBytes(ProjectLayout.DISCOVERY_YML) ?: run {
-                        Console.errln("Embedded discovery configuration is missing.")
-                        return ExitCode.RUNTIME_ERROR
-                    }
-                Files.createTempFile("shamash-discovery-", ".yml").also {
-                    Files.write(it, bytes)
-                    temporaryConfig = it
-                }
-            } else {
-                projectConfig
+        val scanOverrides = ScanOverrides(scope, follow, maxClasses, maxJarBytes, maxClassBytes)
+        val overrides =
+            RunOverrides(scan = scanOverrides).takeIf {
+                listOf(scope, follow, maxClasses, maxJarBytes, maxClassBytes).any { value -> value != null }
             }
-
-        try {
-            val scanOverrides = ScanOverrides(scope, follow, maxClasses, maxJarBytes, maxClassBytes)
-            val overrides =
-                RunOverrides(scan = scanOverrides).takeIf {
-                    listOf(scope, follow, maxClasses, maxJarBytes, maxClassBytes).any { value -> value != null }
-                }
-            val registry = resolveRegistry(registryId) ?: return ExitCode.CONFIG_ERROR
-            val runner = ShamashAsmScanRunner(ShamashAsmEngine(registry = registry, toolName = "Shamash", toolVersion = CliMeta.version))
-            val res =
-                runner.run(
-                    ScanOptions(
-                        projectBasePath = projectRoot,
-                        projectName = projectRoot.fileName?.toString() ?: "project",
-                        configPath = effectiveConfig,
-                        includeFactsInResult = includeFacts,
-                        exportFacts = exportFacts,
-                        factsFormatOverride = factsFormat,
-                    ),
-                    overrides,
-                )
-
-            if (res.configErrors.isNotEmpty()) {
-                Console.errln("Config issues: ${res.configErrors.size}")
-                res.configErrors.forEach { Console.errln("- ${it.severity.name} ${it.path}: ${it.message}") }
-                return ExitCode.CONFIG_ERROR
-            }
-            if (res.scanErrors.isNotEmpty()) {
-                Console.errln("Scan errors: ${res.scanErrors.size}")
-                res.scanErrors.forEach { Console.errln("- ${it.phase.name}: ${it.message}${it.path?.let { p -> " [$p]" } ?: ""}") }
-                return ExitCode.RUNTIME_ERROR
-            }
-            if (res.classUnits == 0) {
-                printNoBytecode(projectRoot)
-                return ExitCode.CONFIG_ERROR
-            }
-            if (res.factsErrors.isNotEmpty() && verbose) {
-                res.factsErrors.forEach { Console.errln("Facts warning: ${it.originId} :: ${it.phase}: ${it.message}") }
-            }
-            val engine =
-                res.engine ?: run {
-                    Console.errln("Engine did not run.")
-                    return ExitCode.RUNTIME_ERROR
-                }
-            if (engine.errors.isNotEmpty()) {
-                engine.errors.forEach { Console.errln("Engine error: ${it.message}") }
-                return ExitCode.RUNTIME_ERROR
-            }
-
-            val findings = engine.findings
-            val counts = findings.groupingBy { it.severity }.eachCount()
-            if (discoveryMode) {
-                Console.println("Shamash — discovery scan")
-                Console.println("Report-only mode. No project files were changed.")
-                Console.println()
-            }
-            if (findings.isEmpty()) {
-                Console.println("No architecture issues found.")
-            } else {
-                Console.println("Shamash found ${findings.size} architecture issue${if (findings.size == 1) "" else "s"}")
-                Console.println()
-                val limit = if (allFindings || printFindings) findings.size else 20
-                findings.take(limit).forEach { finding ->
-                    val location = buildLocation(finding.filePath, finding.classFqn, finding.memberName)
-                    Console.println("${finding.severity.toString().padEnd(7)} ${finding.ruleId}")
-                    Console.println("        ${finding.message}")
-                    if (location.isNotBlank()) Console.println("        $location")
-                    Console.println()
-                }
-                if (findings.size > limit) {
-                    Console.println("Showing $limit of ${findings.size} findings. Use --all-findings to print everything.")
-                    Console.println()
-                }
-            }
-
-            Console.println("${res.classUnits}${if (res.truncated) "+" else ""} classes scanned")
-            Console.println(
-                "${counts[FindingSeverity.ERROR] ?: 0} errors, " +
-                    "${counts[FindingSeverity.WARNING] ?: 0} warnings, ${counts[FindingSeverity.INFO] ?: 0} info",
+        val registry = resolveRegistry(registryId) ?: return ExitCode.CONFIG_ERROR
+        val runner = ShamashAsmScanRunner(ShamashAsmEngine(registry = registry, toolName = "Shamash", toolVersion = CliMeta.version))
+        val res =
+            runner.run(
+                ScanOptions(
+                    projectBasePath = projectRoot,
+                    projectName = projectRoot.fileName?.toString() ?: "project",
+                    configPath = projectConfig,
+                    includeFactsInResult = includeFacts,
+                    exportFacts = exportFacts,
+                    factsFormatOverride = factsFormat,
+                ),
+                overrides,
             )
 
-            if (discoveryMode) {
+        if (res.configErrors.isNotEmpty()) {
+            Console.errln("Config issues: ${res.configErrors.size}")
+            res.configErrors.forEach { Console.errln("- ${it.severity.name} ${it.path}: ${it.message}") }
+            return ExitCode.CONFIG_ERROR
+        }
+        if (res.scanErrors.isNotEmpty()) {
+            Console.errln("Scan errors: ${res.scanErrors.size}")
+            res.scanErrors.forEach { Console.errln("- ${it.phase.name}: ${it.message}${it.path?.let { p -> " [$p]" } ?: ""}") }
+            return ExitCode.RUNTIME_ERROR
+        }
+        if (res.classUnits == 0) {
+            printNoBytecode(projectRoot)
+            return ExitCode.CONFIG_ERROR
+        }
+        if (res.factsErrors.isNotEmpty() && verbose) {
+            res.factsErrors.forEach { Console.errln("Facts warning: ${it.originId} :: ${it.phase}: ${it.message}") }
+        }
+        val engine =
+            res.engine ?: run {
+                Console.errln("Engine did not run.")
+                return ExitCode.RUNTIME_ERROR
+            }
+        if (engine.errors.isNotEmpty()) {
+            engine.errors.forEach { Console.errln("Engine error: ${it.message}") }
+            return ExitCode.RUNTIME_ERROR
+        }
+
+        val findings = engine.findings
+        val counts = findings.groupingBy { it.severity }.eachCount()
+        if (discoveryMode) {
+            Console.println("Shamash — discovery scan")
+            Console.println("Report-only mode. No project files were changed.")
+            Console.println()
+        }
+        if (findings.isEmpty()) {
+            Console.println("No architecture issues found.")
+        } else {
+            Console.println("Shamash found ${findings.size} architecture issue${if (findings.size == 1) "" else "s"}")
+            Console.println()
+            val limit = if (allFindings || printFindings) findings.size else 20
+            findings.take(limit).forEach { finding ->
+                val location = buildLocation(finding.filePath, finding.classFqn, finding.memberName)
+                Console.println("${finding.severity.toString().padEnd(7)} ${finding.ruleId}")
+                Console.println("        ${finding.message}")
+                if (location.isNotBlank()) Console.println("        $location")
                 Console.println()
-                Console.println("Ready to enforce architecture? Run: shamash init")
             }
-
-            if (verbose) printVerbose(res, engine.summary)
-            if (printAnalysisSummary) printAnalysis(engine)
-
-            return if (discoveryMode) {
-                ExitCode.OK
-            } else if (failOn.shouldFail(counts)) {
-                ExitCode.FINDINGS_THRESHOLD
-            } else {
-                ExitCode.OK
+            if (findings.size > limit) {
+                Console.println("Showing $limit of ${findings.size} findings. Use --all-findings to print everything.")
+                Console.println()
             }
-        } finally {
-            temporaryConfig?.let { runCatching { Files.deleteIfExists(it) } }
+        }
+
+        Console.println("${res.classUnits}${if (res.truncated) "+" else ""} classes scanned")
+        Console.println(
+            "${counts[FindingSeverity.ERROR] ?: 0} errors, " +
+                "${counts[FindingSeverity.WARNING] ?: 0} warnings, ${counts[FindingSeverity.INFO] ?: 0} info",
+        )
+
+        if (discoveryMode) {
+            Console.println()
+            Console.println("Ready to enforce architecture? Run: shamash init")
+        }
+
+        if (verbose) printVerbose(res, engine.summary)
+        if (printAnalysisSummary) printAnalysis(engine)
+
+        return if (discoveryMode) {
+            ExitCode.OK
+        } else if (failOn.shouldFail(counts)) {
+            ExitCode.FINDINGS_THRESHOLD
+        } else {
+            ExitCode.OK
         }
     }
 

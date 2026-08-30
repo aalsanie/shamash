@@ -78,6 +78,61 @@ class ShamashAsmScanRunnerIntegrationTest {
     }
 
     @Test
+    fun `runner uses built in discovery for configless Maven bytecode`() {
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        Assume.assumeNotNull(compiler)
+
+        val project = Files.createTempDirectory("shamash-asm-discovery")
+        try {
+            val outDir = project.resolve("target/classes")
+            Files.createDirectories(outDir)
+            compileJava(project, "com.example.App", "package com.example; public class App {}", outDir)
+
+            val result = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = project, projectName = "maven-demo"))
+
+            assertNull(result.configPath)
+            assertNotNull(result.config)
+            assertTrue(result.configErrors.isEmpty(), "config errors should be empty: ${result.configErrors}")
+            assertTrue(result.scanErrors.isEmpty(), "scan errors should be empty: ${result.scanErrors}")
+            assertTrue(result.classUnits >= 1, "scanner should find Maven bytecode (got ${result.classUnits})")
+            assertTrue(result.origins.isNotEmpty(), "scanner should include at least one origin")
+            val engine = result.engine
+            assertNotNull(engine)
+            assertTrue(engine.isSuccess, "engine should succeed: ${engine.errors}")
+            assertFalse(Files.exists(project.resolve("shamash/configs/asm.yml")))
+            assertFalse(Files.exists(project.resolve(".shamash")))
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `runner does not bypass an invalid project config with discovery`() {
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        Assume.assumeNotNull(compiler)
+
+        val project = Files.createTempDirectory("shamash-asm-invalid-config")
+        try {
+            val outDir = project.resolve("target/classes")
+            Files.createDirectories(outDir)
+            compileJava(project, "com.example.App", "package com.example; public class App {}", outDir)
+
+            val cfgDir = project.resolve("shamash/configs")
+            Files.createDirectories(cfgDir)
+            val cfgPath = cfgDir.resolve("asm.yml")
+            Files.writeString(cfgPath, "version: 2\nproject: {}\n")
+
+            val result = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = project, projectName = "invalid-config"))
+
+            assertEquals(cfgPath, result.configPath)
+            assertTrue(result.configErrors.isNotEmpty())
+            assertNull(result.engine)
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `runner does not write baseline when no bytecode exists`() {
         val project = Files.createTempDirectory("shamash-asm-empty")
         try {

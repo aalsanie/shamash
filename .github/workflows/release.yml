@@ -25,7 +25,7 @@ jobs:
         with:
           persist-credentials: false
       - if: runner.os != 'Windows'
-        run: chmod +x gradlew scripts/cli-smoke-test.sh
+        run: chmod +x gradlew
       - uses: gradle/actions/wrapper-validation@v6
       - uses: actions/setup-java@v5
         with:
@@ -48,8 +48,7 @@ jobs:
         if: runner.os == 'Windows'
         run: .\gradlew.bat --stacktrace spotlessCheck test :shamash-cli:distZip
       - name: Smoke packaged CLI
-        shell: bash
-        run: scripts/cli-smoke-test.sh shamash-cli/build/distributions/*.zip
+        run: python scripts/cli-smoke-test.py "shamash-cli/build/distributions/*.zip"
 
   plugin-verifier:
     name: Verify IntelliJ plugin

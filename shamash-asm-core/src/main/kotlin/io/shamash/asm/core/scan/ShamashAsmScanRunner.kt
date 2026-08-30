@@ -43,27 +43,22 @@ class ShamashAsmScanRunner(
         options: ScanOptions,
         overrides: RunOverrides? = null,
     ): ScanResult {
-        val configPath =
-            options.configPath
-                ?: discoverConfig(options.projectBasePath)
-                ?: return ScanResult(
-                    options = options,
-                    configPath = null,
-                    scanErrors =
-                        listOf(
-                            ScanError.of(
-                                phase = ScanError.Phase.CONFIG_DISCOVERY,
-                                message =
-                                    "ASM config not found under ${ProjectLayout.ASM_CONFIG_DIR} " +
-                                        "(expected one of: ${ProjectLayout.ASM_CONFIG_CANDIDATES.joinToString()})",
-                            ),
-                        ),
-                )
+        val configPath = options.configPath ?: discoverConfig(options.projectBasePath)
+        val configLocation = configPath?.toString() ?: ProjectLayout.DISCOVERY_YML
 
         val validation =
             try {
-                Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { reader ->
-                    ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                if (configPath != null) {
+                    Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { reader ->
+                        ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                    }
+                } else {
+                    val stream =
+                        ProjectLayout::class.java.getResourceAsStream(ProjectLayout.DISCOVERY_YML)
+                            ?: error("Embedded discovery configuration not found: ${ProjectLayout.DISCOVERY_YML}")
+                    stream.bufferedReader(StandardCharsets.UTF_8).use { reader ->
+                        ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                    }
                 }
             } catch (t: Throwable) {
                 return ScanResult(
@@ -74,7 +69,7 @@ class ShamashAsmScanRunner(
                             ScanError.of(
                                 phase = ScanError.Phase.CONFIG_READ,
                                 message = "Failed to read/validate config: ${t.message ?: t::class.java.simpleName}",
-                                path = configPath.toString(),
+                                path = configLocation,
                                 t = t,
                             ),
                         ),

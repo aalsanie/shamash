@@ -37,20 +37,9 @@ import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
 import java.awt.BorderLayout
 import java.awt.Font
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import java.nio.file.Path
 import javax.swing.JComponent
 
-/**
- * Pure renderer for ASM dashboard state (NO toolbar here).
- *
- * Surfaces:
- * - config path
- * - EngineRunSummary stats (EngineResult.summary)
- * - scan/facts/engine errors (ScanResult)
- * - export dir + report info (EngineResult.export)
- */
 class ShamashAsmDashboardPanel(
     private val project: Project,
 ) : Disposable {
@@ -124,19 +113,17 @@ class ShamashAsmDashboardPanel(
         overviewText.text = buildOverview(result, resolvedConfig)
         errorsText.text = buildErrors(result)
 
-        // keep top visible
         overviewText.caretPosition = 0
         errorsText.caretPosition = 0
     }
 
-    override fun dispose() {
-        // listener auto-unregistered by state service
-    }
+    override fun dispose() = Unit
 
     private fun statusLine(result: ScanResult?): String {
         if (result == null) return "Status: idle"
         return when {
             result.hasConfigErrors -> "Status: config invalid"
+            result.classUnits == 0 && !result.hasScanErrors -> "Status: no compiled bytecode"
             !result.hasEngineResult -> "Status: scan did not reach engine"
             result.engine?.hasErrors == true -> "Status: engine completed with errors"
             else -> "Status: success"
@@ -145,20 +132,16 @@ class ShamashAsmDashboardPanel(
 
     private fun buildOverview(
         result: ScanResult?,
-        resolvedConfig: java.nio.file.Path?,
+        resolvedConfig: Path?,
     ): String {
         if (result == null) {
             return """
-                No ASM run yet.
+                No Build Analysis run yet.
 
-                Config: ${resolvedConfig?.toString() ?: "Not found"}
+                Config: ${resolvedConfig?.toString() ?: "Built-in discovery on scan"}
 
-                Use:
-                - Build your project (ASM analysis depends on bytecode)
-                - Navigate to Config panel
-                - Create asm.yml Manually or From Reference
-                - Validate ASM Config
-                - Run ASM Scan
+                Build the project, then run Build Scan.
+                A project config is optional; Shamash uses built-in discovery when none exists.
                 """.trimIndent()
         }
 
@@ -172,7 +155,7 @@ class ShamashAsmDashboardPanel(
         return buildString {
             append("Project: ").append(result.options.projectName).append('\n')
             append("Base: ").append(result.options.projectBasePath).append('\n')
-            append("Config: ").append(result.configPath?.toString() ?: resolvedConfig?.toString() ?: "Not found").append('\n')
+            append("Config: ").append(configLabel(result, resolvedConfig)).append('\n')
             append('\n')
 
             append("Units scanned: ").append(result.classUnits).append('\n')
@@ -252,6 +235,17 @@ class ShamashAsmDashboardPanel(
             }
         }.trimEnd()
     }
+
+    private fun configLabel(
+        result: ScanResult,
+        resolvedConfig: Path?,
+    ): String =
+        when {
+            result.configPath != null -> result.configPath.toString()
+            result.options.configPath == null -> "Built-in discovery"
+            resolvedConfig != null -> resolvedConfig.toString()
+            else -> "Not found"
+        }
 
     private fun buildErrors(result: ScanResult?): String {
         if (result == null) return ""
