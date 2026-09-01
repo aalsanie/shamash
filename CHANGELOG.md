@@ -2,8 +2,12 @@
 
 ## [unreleased]
 
+## [0.91.1]
+
 ### Fixed
 - Replaced deprecated ToolWindowFactory overrides by switching Shamash ASM/PSI ToolWindow factories to Java-only implementations
+- Removed IntelliJ Platform internal API usage from plugin version reporting
+- Declared Kotlin K2 compatibility for supported IDEs
 
 ## [0.90.0]
 ### Added

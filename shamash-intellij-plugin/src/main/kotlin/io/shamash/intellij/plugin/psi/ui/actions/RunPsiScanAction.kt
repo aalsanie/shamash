@@ -21,12 +21,10 @@
  */
 package io.shamash.intellij.plugin.psi.ui.actions
 
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
@@ -35,6 +33,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import io.shamash.artifacts.baseline.BaselineConfig
 import io.shamash.artifacts.contract.Finding
+import io.shamash.intellij.plugin.ShamashPluginInfo
 import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiConfigLocator
 import io.shamash.psi.core.config.ValidationError
@@ -104,7 +103,7 @@ class RunPsiScanAction(
                         configReader = StringReader(yaml),
                         options =
                             ShamashScanOptions.ide(
-                                toolVersion = pluginVersion(),
+                                toolVersion = ShamashPluginInfo.version,
                                 baseline = BaselineConfig.OFF,
                                 exportReports = false,
                             ),
@@ -168,6 +167,4 @@ class RunPsiScanAction(
             }
         }.queue()
     }
-
-    private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"
 }

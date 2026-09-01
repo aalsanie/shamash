@@ -25,7 +25,7 @@ dependencies {
     implementation(project(":shamash-asm-core"))
 
     intellijPlatform {
-        intellijIdeaCommunity("2024.2")
+        intellijIdeaCommunity("2024.2.1")
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
         testFramework(TestFrameworkType.Platform)
@@ -39,6 +39,15 @@ tasks.test {
     maxHeapSize = "2g"
 }
 
+tasks.jar {
+    manifest {
+        attributes(
+            "Implementation-Title" to "shamash-intellij-plugin",
+            "Implementation-Version" to project.version.toString(),
+        )
+    }
+}
+
 intellijPlatform {
     pluginConfiguration {
         id = "io.shamash"
@@ -46,14 +55,14 @@ intellijPlatform {
         version = rootProject.version.toString()
 
         ideaVersion {
-            sinceBuild = "242"
+            sinceBuild = "242.21829.142"
             untilBuild = "262.*"
         }
     }
 
     pluginVerification {
         ides {
-            create(IntelliJPlatformType.IntellijIdea, "2024.2")
+            create(IntelliJPlatformType.IntellijIdea, "2024.2.1")
             create(IntelliJPlatformType.IntellijIdea, "2025.2")
             create(IntelliJPlatformType.IntellijIdea, "2025.3")
             create(IntelliJPlatformType.IntellijIdea, "2026.1")

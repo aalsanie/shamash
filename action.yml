@@ -10,7 +10,7 @@ inputs:
   version:
     description: Shamash release version to run.
     required: false
-    default: "0.91.0"
+    default: "0.91.1"
   java-version:
     description: Java runtime used by Shamash.
     required: false
