@@ -34,6 +34,10 @@
         <applicationService serviceImplementation="io.shamash.intellij.plugin.settings.ShamashSettings"/>
     </extensions>
 
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK2="true"/>
+    </extensions>
+
     <actions>
         <action id="io.shamash.open"
                 class="io.shamash.intellij.plugin.ui.actions.OpenShamashToolWindowAction"
@@ -85,12 +89,11 @@
     </actions>
 
     <change-notes><![CDATA[
-      <h3>0.91.0 — Activation Release</h3>
+      <h3>0.91.1 — Marketplace Compatibility Fix</h3>
       <ul>
-        <li>One Shamash tool window instead of separate ASM/PSI product surfaces</li>
-        <li>Build Analysis / Source Analysis product vocabulary</li>
-        <li>Compatibility and verification extended through IntelliJ IDEA 2026.2</li>
-        <li>CLI configless discovery, human-first findings and one-command baseline creation</li>
+        <li>Removed IntelliJ Platform internal API usage from plugin version reporting</li>
+        <li>Declared Kotlin K2 compatibility for supported IDEs</li>
+        <li>Minimum supported IntelliJ IDEA version is now 2024.2.1</li>
       </ul>
     ]]></change-notes>
 </idea-plugin>

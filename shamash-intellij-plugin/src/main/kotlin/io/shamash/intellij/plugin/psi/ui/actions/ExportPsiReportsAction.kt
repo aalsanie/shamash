@@ -21,13 +21,12 @@
  */
 package io.shamash.intellij.plugin.psi.ui.actions
 
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
+import io.shamash.intellij.plugin.ShamashPluginInfo
 import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiConfigLocator
 import io.shamash.psi.core.scan.ShamashProjectScanRunner
@@ -65,7 +64,7 @@ class ExportPsiReportsAction(
                 // baseline mode is controlled by config/options elsewhere; export action should not override it.
                 // If you later add baseline controls in UI settings, wire it here.
                 toolName = "Shamash PSI",
-                toolVersion = pluginVersion(),
+                toolVersion = ShamashPluginInfo.version,
             )
 
         object : Task.Backgroundable(project, "Shamash PSI Export Reports", false) {
@@ -115,6 +114,4 @@ class ExportPsiReportsAction(
             }
         }.queue()
     }
-
-    private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId("io.shamash"))?.version ?: "unknown"
 }

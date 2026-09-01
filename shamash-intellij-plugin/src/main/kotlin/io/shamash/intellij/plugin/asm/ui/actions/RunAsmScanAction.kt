@@ -21,13 +21,11 @@
  */
 package io.shamash.intellij.plugin.asm.ui.actions
 
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
@@ -43,6 +41,7 @@ import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import io.shamash.intellij.plugin.ShamashPluginInfo
 import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviders
 import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
@@ -242,13 +241,9 @@ class RunAsmScanAction(
     }
 
     companion object {
-        private const val SHAMASH_PLUGIN_ID: String = "io.shamash"
-
-        private fun pluginVersion(): String = PluginManagerCore.getPlugin(PluginId.getId(SHAMASH_PLUGIN_ID))?.version ?: "unknown"
-
         private fun defaultRunner(): ShamashAsmScanRunner =
             ShamashAsmScanRunner(
-                engine = ShamashAsmEngine(toolName = "Shamash ASM", toolVersion = pluginVersion()),
+                engine = ShamashAsmEngine(toolName = "Shamash ASM", toolVersion = ShamashPluginInfo.version),
             )
 
         private fun buildRunner(
@@ -256,7 +251,7 @@ class RunAsmScanAction(
             settings: ShamashAsmSettingsState,
         ): ShamashAsmScanRunner? {
             val toolName = "Shamash ASM"
-            val toolVersion = pluginVersion()
+            val toolVersion = ShamashPluginInfo.version
 
             val registryId = settings.getRegistryId()
             if (registryId == null) {
