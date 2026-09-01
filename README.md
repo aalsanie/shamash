@@ -12,6 +12,7 @@
 
 Shamash scans compiled Java/Kotlin applications for dependency cycles and architecture violations, helping stop JVM architecture drift before it reaches main and prevent new violations in CI without requiring architecture-test code.
 
+- **No tests:** no test dependency and no architecture-test code.
 - **CLI-first:** standalone Java 17+ tool for local use and CI.
 - **Configless first scan:** see useful architecture risks before learning the configuration model.
 - **Brownfield-friendly:** baseline existing debt once, then fail only on new violations.
