@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,24 +30,8 @@ import java.util.LinkedHashMap
 import java.util.LinkedHashSet
 
 /**
- * metrics.maxPackageSpread
- *
- * Params:
- * - max: int (required, >= 0)
- * - includeExternal: boolean (optional, default false)
- * - includeSelf: boolean (optional, default false)
- * - top: int (optional, default 20) // number of violators to include in examples list
- *
- * Definition:
- * - For each PACKAGE P, compute the number of distinct packages it depends on (outgoing),
- *   based on class dependency edges aggregated to package level:
- *       spread(P) = | { pkg(to) } |
- *
- * Semantics:
- * - Package scope is applied using producing class (from-class) via RuleUtil scope filters.
- * - If includeExternal=false, ignore dependencies to packages with no classes in facts.
- * - If includeSelf=false, ignore dependencies where pkg(from) == pkg(to).
- * - If any package spread > max -> emit a single finding listing top violators.
+ * Counts distinct target packages per source package. Scope applies to the producing class;
+ * externality is determined by whether the target package occurs in project facts.
  */
 class MaxPackageSpreadRule : Rule {
     override val id: String = "metrics.maxPackageSpread"
@@ -66,14 +46,12 @@ class MaxPackageSpreadRule : Rule {
 
         if (facts.edges.isEmpty() || facts.classes.isEmpty()) return emptyList()
 
-        // Set of project packages (present in facts.classes).
         val projectPackages: Set<String> =
             facts.classes
                 .asSequence()
                 .map { it.packageName }
                 .toSet()
 
-        // Map of classFqn -> (packageName, inScope)
         val classPkg = facts.classes.associate { it.fqName to it.packageName }
         val inScopeFromClass =
             facts.classes.associate { c ->
@@ -81,7 +59,6 @@ class MaxPackageSpreadRule : Rule {
                 c.fqName to (RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope))
             }
 
-        // Compute spread: package -> set<package>
         val spread = LinkedHashMap<String, LinkedHashSet<String>>()
 
         val edges =
@@ -90,7 +67,6 @@ class MaxPackageSpreadRule : Rule {
             )
 
         for (e in edges) {
-            // anchor on from-class scope
             if (inScopeFromClass[e.from.fqName] != true) continue
 
             val fromPkg = classPkg[e.from.fqName] ?: e.from.packageName
@@ -98,13 +74,11 @@ class MaxPackageSpreadRule : Rule {
 
             if (!params.includeSelf && fromPkg == toPkg) continue
 
-            // external handling: if includeExternal=false, only count toPkg if it's in projectPackages.
             if (!params.includeExternal && toPkg !in projectPackages) continue
 
             spread.getOrPut(fromPkg) { LinkedHashSet() }.add(toPkg)
         }
 
-        // Compute violating packages
         val violators =
             spread
                 .map { (pkg, tos) -> pkg to tos.size }
@@ -116,7 +90,6 @@ class MaxPackageSpreadRule : Rule {
         val top = violators.take(params.top)
         val examples = top.joinToString(",") { (p, c) -> "$p:$c" }
 
-        // Anchor on first class in-scope (stable).
         val anchor =
             facts.classes
                 .asSequence()

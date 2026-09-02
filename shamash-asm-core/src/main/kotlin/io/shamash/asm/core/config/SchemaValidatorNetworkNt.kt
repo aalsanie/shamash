@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,12 +27,7 @@ import com.networknt.schema.ValidationMessage
 import java.io.InputStream
 import java.lang.reflect.Method
 
-/**
- * Structural validation of ASM YAML (parsed to Map/List primitives)
- * against JSON Schema stored in resources.
- */
 object SchemaValidatorNetworkNt : SchemaValidator {
-    // cancellation hook
     @Volatile
     var cancelCheck: (() -> Unit)? = null
 
@@ -173,7 +164,7 @@ object SchemaValidatorNetworkNt : SchemaValidator {
     }
 
     private fun extractBestEffortPath(msg: ValidationMessage): String {
-        // networknt versions differ; use reflection for best compatibility
+        // Use reflection to support networknt versions with different accessors.
         reflectToString(msg, "getInstanceLocation").takeIf { it.isNotBlank() }?.let { return it }
         reflectToString(msg, "getEvaluationPath").takeIf { it.isNotBlank() }?.let { return it }
         reflectToString(msg, "getSchemaLocation").takeIf { it.isNotBlank() }?.let { return it }

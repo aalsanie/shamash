@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -41,25 +37,13 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.objectweb.asm.util.Printer
 
-/**
- * Bytecode facts extraction.
- *
- * best-effort extraction (never throws for user bytecode)
- */
+/** Extracts best-effort facts and records failures per bytecode unit. */
 object FactExtractor {
     /** Back-compat API: returns facts only (errors are dropped). */
     fun extract(unit: BytecodeUnit): FactIndex = extractResult(unit).facts
 
-    /** Production API: facts + structured errors. */
     fun extractResult(unit: BytecodeUnit): FactsResult = extractAll(sequenceOf(unit))
 
-    /**
-     * Extract and aggregate facts for multiple units.
-     *
-     * Notes:
-     * - This does not scan; it just aggregates what you pass in.
-     * - Errors are per-unit.
-     */
     fun extractAll(units: Sequence<BytecodeUnit>): FactsResult {
         val errors = mutableListOf<FactsError>()
         var acc = FactIndex.empty()
@@ -128,8 +112,7 @@ object FactExtractor {
             )
 
         try {
-            // We don't need frames for facts;
-            // skipping frames improves speed and reduces verifier sensitivity.
+            // Frames are unnecessary for facts; skipping them avoids verifier sensitivity.
             reader.accept(visitor, ClassReader.SKIP_FRAMES)
         } catch (t: Throwable) {
             record("ClassReader.accept", t)
@@ -145,10 +128,6 @@ object FactExtractor {
             classToRole = emptyMap(),
         )
     }
-
-    // ---------------------------------------------------------------------------------------------
-    // Visitors
-    // ---------------------------------------------------------------------------------------------
 
     private class CollectingClassVisitor(
         private val baseLocation: SourceLocation,
@@ -182,7 +161,6 @@ object FactExtractor {
             superInternalName = superName
             interfaceInternalNames = interfaces?.toList().orEmpty()
 
-            // Structural deps: extends/implements.
             val from = TypeRef.fromInternalName(name)
             if (superName != null) {
                 TypeRef.fromInternalName(superName).let { to ->
@@ -358,7 +336,6 @@ object FactExtractor {
 
             val methodBaseLoc = baseLocation.withSourceFile(sourceFile)
 
-            // Signature-level dependencies.
             for (p in params) {
                 if (p.internalName != owner.internalName) {
                     onEdge(
@@ -556,7 +533,6 @@ object FactExtractor {
                         bootstrapMethodHandle: Handle,
                         vararg bootstrapMethodArguments: Any?,
                     ) {
-                        // Bootstrap handle owner is a type dependency.
                         runCatching {
                             val to = TypeRef.fromInternalName(bootstrapMethodHandle.owner)
                             if (owner.internalName != to.internalName) {
@@ -572,7 +548,6 @@ object FactExtractor {
                             }
                         }.onFailure { onError("method:visitInvokeDynamicInsn", it) }
 
-                        // Some bsm args can contain Type/Handle.
                         for (arg in bootstrapMethodArguments) {
                             when (arg) {
                                 is Type -> {
@@ -651,8 +626,6 @@ object FactExtractor {
                 ),
             )
 
-            // Annotation types as deps at class end too
-            // (visitAnnotation already records edges; this is just in case).
             for (a in classAnnotations) {
                 val to = TypeRef.fromInternalName(a.replace('.', '/'))
                 if (type.internalName != to.internalName) {
@@ -815,10 +788,6 @@ object FactExtractor {
     private object NoopMethodVisitor : MethodVisitor(Opcodes.ASM9)
 
     private object NoopFieldVisitor : FieldVisitor(Opcodes.ASM9)
-
-    // ---------------------------------------------------------------------------------------------
-    // Determinism
-    // ---------------------------------------------------------------------------------------------
 
     private fun FactsResult.stabilize(): FactsResult =
         copy(

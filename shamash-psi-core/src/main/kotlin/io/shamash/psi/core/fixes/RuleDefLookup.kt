@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,18 +20,11 @@ package io.shamash.psi.core.fixes
 import io.shamash.psi.core.config.schema.v1.model.RuleDef
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 
-/**
- * Fix-layer lookup helpers for RuleDef identity resolution.
- *
- * Config contract:
- * - wildcard ruleDef: roles == null  -> canonical ids: type.name
- * - specific ruleDef: roles != null  -> canonical ids: type.name.<role> for each role
- */
 object RuleDefLookup {
     data class CanonicalRuleId(
         val type: String,
         val name: String,
-        val role: String?, // null => wildcard canonical id
+        val role: String?,
     ) {
         fun canonicalId(): String = if (role == null) "$type.$name" else "$type.$name.$role"
     }

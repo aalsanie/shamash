@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,17 +25,9 @@ import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.artifacts.contract.Finding
 
 /**
- * Inline suppression support.
- *
- * Supported formats:
- *  - Line comment directive: // shamash:ignore <ruleId>|all
- *    - Directive on the first non-empty line is treated as file-wide suppression.
- *    - Directive can appear on the same line as the declaration or up to 2 lines above it.
- *
- *  - Kotlin annotation: @Suppress("shamash:<ruleId>") or @Suppress("shamash:all")
- *    - Works without Kotlin PSI dependency: scans up to 3 lines above the declaration.
- *
- *  - Java annotation: @SuppressWarnings("shamash:<ruleId>") or @SuppressWarnings("shamash:all")
+ * `// shamash:ignore <ruleId>|all` suppresses the file on its first non-empty line,
+ * otherwise the declaration on that line or within the next two lines.
+ * Annotations use `shamash:<ruleId>` or `shamash:all`; Kotlin lookup scans three preceding lines.
  */
 internal object InlineSuppressor {
     private const val COMMENT_PREFIX = "shamash:ignore"
@@ -59,24 +47,20 @@ internal object InlineSuppressor {
 
         val out = ArrayList<Finding>(findings.size)
         for (f in findings) {
-            // 1) file-wide comment suppression
             if (hasFileWideAll || fileWideSuppressed.contains(f.ruleId)) {
                 continue
             }
 
-            // 2) find an anchor offset
             val anchorOffset =
                 f.startOffset
                     ?: locateAnchorOffset(file, f)
                     ?: guessAnchorOffsetFromText(text, f)
 
-            // 3) line-comment suppression near anchor
             val anchorLine = anchorOffset?.let { commentDirectives.lineOfOffset(it) }
             if (anchorLine != null && commentDirectives.isSuppressedAtLine(anchorLine, f.ruleId)) {
                 continue
             }
 
-            // 4) annotation suppression (Java PSI annotations, Kotlin text window)
             if (isSuppressedByAnnotation(file, text, f, anchorOffset, commentDirectives)) {
                 continue
             }
@@ -96,7 +80,6 @@ internal object InlineSuppressor {
     ): Boolean {
         val element = findTargetElement(file, f)
 
-        // --- Java-style: PSI annotations when available (also works for Kotlin light classes sometimes) ---
         val owner = element as? PsiModifierListOwner
         if (owner != null) {
             val annotations = owner.modifierList?.annotations.orEmpty()
@@ -111,22 +94,15 @@ internal object InlineSuppressor {
             }
         }
 
-        // --- Kotlin-style: do NOT rely on Document; use file text window (works in tests + non-physical PSI) ---
+        // Use file text because non-physical Kotlin PSI may have no Document.
         val isKotlin = file.virtualFile?.extension?.lowercase() == "kt"
         if (!isKotlin) return false
 
-        /**
-         * IMPORTANT:
-         * Kotlin PSI elements (e.g., KtClass) frequently report textRange.startOffset at the *first modifier*,
-         * which can be the '@Suppress' line. Our window extraction is [fromLine, toLine) (exclusive of toLine),
-         * so if declLine is the annotation line, the window will NOT include the annotation itself.
-         *
-         * Therefore, for Kotlin we must prefer an anchor that points at the *declaration keyword* line
-         * (e.g., "class BadService"), which is exactly what [anchorOffset] / [guessAnchorOffsetFromText] provides.
+        /*
+         * Kotlin PSI may start at an annotation. Anchor at the declaration keyword so
+         * the preceding-line window includes @Suppress itself.
          */
         val declOffset =
-            // For Kotlin PSI, element/textRange often starts at the first modifier/annotation.
-            // We want the *declaration* line (e.g., "class BadService") so the window includes @Suppress above it.
             guessAnchorOffsetFromText(fileText, f)
                 ?: anchorOffset
                 ?: element?.textRange?.startOffset
@@ -136,7 +112,6 @@ internal object InlineSuppressor {
         val fromLine = maxOf(0, declLine - 3)
         val window = commentDirectives.linesWindow(fromLine, declLine)
 
-        // Accept both @Suppress("shamash:...") and @kotlin.Suppress("shamash:...")
         return window.contains("@Suppress(\"${TOKEN_PREFIX}all\"") ||
             window.contains("@Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"") ||
             window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}all\"") ||

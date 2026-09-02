@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,23 +27,7 @@ import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * graph.noCycles
- *
- * Params:
- * - granularity: "class" | "package" | "module" (optional, default "package")
- * - includeExternal: boolean (optional, default false)
- * - maxCyclesReported: int (optional, default 10)
- *
- * Semantics:
- * - Build dependency graph at requested granularity.
- * - If any cycle exists, emit findings up to maxCyclesReported.
- * - Each finding includes a representative cycle path for debugging.
- *
- * Notes:
- * - Cycle existence is determined using a full sweep (cyclicComponents).
- * - Representative cycle extraction is bounded (memory-safe) via representativeCyclesBounded.
- */
+/** Detects violations with a full SCC sweep; bounded cycle samples only explain the findings. */
 class NoCyclesRule : Rule {
     override val id: String = "graph.noCycles"
 
@@ -67,14 +47,12 @@ class NoCyclesRule : Rule {
                 scope = scope,
             )
 
-        // Full sweep: determines truth of violation.
         val cyclic = RuleUtil.cyclicComponents(g)
         if (cyclic.isEmpty()) return emptyList()
 
         val limit = params.maxCyclesReported
         if (limit <= 0) return emptyList()
 
-        // Anchor: stable class in-scope so findings have a deterministic filePath/classFqn.
         val anchorClass =
             facts.classes
                 .asSequence()
@@ -86,11 +64,9 @@ class NoCyclesRule : Rule {
 
         val anchorPath = anchorClass?.let { RuleUtil.filePathOf(it.location) } ?: ""
 
-        // Memory-safe cycle examples (do NOT attempt to enumerate all cycles).
-        // Important: outgoing is a MAP, so we must provide a lambda.
         val repCycles =
             RuleUtil.representativeCyclesBounded(
-                nodes = g.nodes.sorted(), // stable traversal order
+                nodes = g.nodes.sorted(),
                 outgoing = { n -> g.outgoing[n].orEmpty() },
                 maxCycles = limit,
                 maxCycleNodes = 120,
@@ -122,7 +98,7 @@ class NoCyclesRule : Rule {
                 )
         }
 
-        // If repCycles ended up empty (edge-case: very constrained bounds), still emit *one* generic finding.
+        // A sampling limit must not suppress a finding from the full SCC sweep.
         if (out.isEmpty()) {
             out +=
                 Finding(

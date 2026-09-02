@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,14 +35,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
-/**
- * Creates a PSI config file from the shipped reference YAML, if one does not already exist,
- * then opens it in the editor and focuses the Shamash PSI tool window.
- *
- * UI contract:
- * - UI does not "invent" config content; it uses SchemaResources from the config module.
- * - UI does not validate; scan/config validator handles correctness on execution.
- */
 class CreatePsiConfigFromReferenceAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
@@ -56,7 +44,6 @@ class CreatePsiConfigFromReferenceAction : AnAction() {
             return
         }
 
-        // If config already exists (whatever locator resolves), open it and stop.
         val existing = ShamashPsiConfigLocator.resolveConfigFile(project)
         if (existing != null && existing.isValid) {
             notify(project, "PSI config already exists: ${existing.path}", NotificationType.INFORMATION)
@@ -87,7 +74,6 @@ class CreatePsiConfigFromReferenceAction : AnAction() {
             return
         }
 
-        // Refresh VFS + open file on EDT.
         ApplicationManager.getApplication().invokeLater {
             val vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target)
             if (vf != null && vf.isValid) {
@@ -122,7 +108,6 @@ class CreatePsiConfigFromReferenceAction : AnAction() {
             ResourceBaseLookup.bestResourceRootPath(project)
                 ?: ResourceBaseLookup.fallbackResourceRootPath(projectBase)
 
-        // Reference path is owned by config module.
         return resourceRoot.resolve(ProjectLayout.PSI_CONFIG_RELATIVE_YML).normalize()
     }
 

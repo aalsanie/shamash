@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,19 +19,10 @@ package io.shamash.asm.core.facts.model
 
 import io.shamash.artifacts.util.PathNormalizer
 
-/**
- * Origin + best-effort source attribution.
- *
- * Facts package does not scan; callers provide these. The extractor will enrich [sourceFile] and [line]
- * when debug info is present.
- */
+/** Callers provide the bytecode origin; the extractor adds source file/line data when debug info exists. */
 data class SourceLocation(
     val originKind: OriginKind,
-    /**
-     * Stable normalized path representing the origin of the class bytes.
-     * - For DIR_CLASS: class file path
-     * - For JAR_ENTRY: jar path
-     */
+    /** Normalized class-file path for directories, or jar path for jar entries. */
     val originPath: String,
     /** Present only for jar entries. */
     val containerPath: String? = null,

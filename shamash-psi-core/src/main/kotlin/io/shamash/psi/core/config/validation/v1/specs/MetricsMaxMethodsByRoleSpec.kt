@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,14 +26,6 @@ import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.validation.v1.RuleSpec
 
-/**
- * Spec for `metrics.maxMethodsByRole`.
- *
- * Params:
- * - `limits`: required non-empty map of `{ roleId: <non-negative int> }`.
- * - `countKinds`: optional list of counting strategies.
- * - `ignoreMethodNameRegex`: optional list of regex strings (must compile).
- */
 class MetricsMaxMethodsByRoleSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "metrics", name = "maxMethodsByRole", role = null)
 
@@ -65,13 +53,11 @@ class MetricsMaxMethodsByRoleSpec : RuleSpec {
             errors += ValidationError(at, message, ValidationSeverity.ERROR)
         }
 
-        // Unknown params (typos)
         val unknown = p.unknownKeys(allowedParamKeys)
         if (unknown.isNotEmpty()) {
             err("$rulePath.params", "Unknown params: ${unknown.sorted().joinToString(", ")}")
         }
 
-        // limits: required map(roleId -> int)
         val limits =
             try {
                 p.requireMap("limits")
@@ -85,7 +71,6 @@ class MetricsMaxMethodsByRoleSpec : RuleSpec {
             return errors
         }
 
-        // Validate each (roleId -> limit)
         limits.entries.forEach { (rawRoleId, rawLimit) ->
             val roleId = rawRoleId.trim()
             val entryPath = "$rulePath.params.limits.$rawRoleId"
@@ -99,14 +84,12 @@ class MetricsMaxMethodsByRoleSpec : RuleSpec {
             }
 
             try {
-                // Read single value via a scoped Params; enforces numeric coercion & >= 0.
                 Params.of(mapOf("v" to rawLimit), entryPath).requireInt("v", min = 0)
             } catch (e: ParamError) {
                 err(e.at, e.message)
             }
         }
 
-        // countKinds: optional list
         val countKinds =
             try {
                 p.optionalStringList("countKinds")
@@ -127,7 +110,6 @@ class MetricsMaxMethodsByRoleSpec : RuleSpec {
             }
         }
 
-        // ignoreMethodNameRegex: optional list; must compile
         val ignoreRegexes =
             try {
                 p.optionalStringList("ignoreMethodNameRegex")

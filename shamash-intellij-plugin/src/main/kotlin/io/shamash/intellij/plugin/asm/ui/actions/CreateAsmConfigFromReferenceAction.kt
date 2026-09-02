@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,10 +35,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
-/**
- * Creates an ASM config file from the shipped reference YAML, if one does not already exist,
- * then opens it in the editor and focuses the Shamash ASM tool window.
- */
 class CreateAsmConfigFromReferenceAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
@@ -52,7 +44,6 @@ class CreateAsmConfigFromReferenceAction : AnAction() {
             return
         }
 
-        // If config already exists (whatever locator resolves), open it and stop.
         val existing = ShamashAsmConfigLocator.resolveConfigFile(project)
         if (existing != null && existing.isValid) {
             notify(project, "ASM config already exists: ${existing.path}", NotificationType.INFORMATION)
@@ -86,7 +77,6 @@ class CreateAsmConfigFromReferenceAction : AnAction() {
             return
         }
 
-        // Refresh VFS + open file on EDT.
         ApplicationManager.getApplication().invokeLater {
             val vf = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target)
             if (vf != null && vf.isValid) {
@@ -115,7 +105,6 @@ class CreateAsmConfigFromReferenceAction : AnAction() {
         if (override.isNotEmpty()) {
             val p = Path.of(override)
             val resolved = (if (p.isAbsolute) p else projectBase.resolve(p)).normalize()
-            // If override points to a directory, create asm.yml inside it.
             return if (Files.isDirectory(resolved)) {
                 resolved.resolve(ProjectLayout.ASM_CONFIG_FILE_YML).normalize()
             } else {
@@ -127,7 +116,6 @@ class CreateAsmConfigFromReferenceAction : AnAction() {
             AsmResourceBaseLookup.bestResourceRootPath(project)
                 ?: AsmResourceBaseLookup.fallbackResourceRootPath(projectBase)
 
-        // Reference path is owned by asm-core config module.
         return resourceRoot.resolve(ProjectLayout.ASM_CONFIG_RELATIVE_YML).normalize()
     }
 

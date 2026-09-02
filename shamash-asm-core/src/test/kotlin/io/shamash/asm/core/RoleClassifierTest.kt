@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -67,10 +63,8 @@ class RoleClassifierTest {
 
         val result = classifier.classify(classes)
 
-        // UserService matches both 'top' and ('alpha'/'beta'), highest priority wins.
         assertEquals("top", result.classToRole["com.acme.service.UserService"])
 
-        // Other does not match any role.
         assertTrue("com.acme.other.Other" !in result.classToRole)
     }
 

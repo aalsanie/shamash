@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,11 +29,6 @@ import io.shamash.psi.core.scan.ShamashProjectScanRunner
 import io.shamash.psi.core.scan.ShamashScanOptions
 import java.io.StringReader
 
-/**
- * UI export action.
- *
- * Export is produced via the single scan entry point.
- */
 class ExportPsiReportsAction(
     private val runner: ShamashProjectScanRunner = ShamashProjectScanRunner(),
 ) : AnAction() {
@@ -62,7 +53,6 @@ class ExportPsiReportsAction(
             ShamashScanOptions(
                 exportReports = true,
                 // baseline mode is controlled by config/options elsewhere; export action should not override it.
-                // If you later add baseline controls in UI settings, wire it here.
                 toolName = "Shamash PSI",
                 toolVersion = ShamashPluginInfo.version,
             )
@@ -76,7 +66,6 @@ class ExportPsiReportsAction(
             }
 
             override fun onSuccess() {
-                // Update UI state from the *single* source of truth result.
                 ShamashPsiUiStateService.getInstance(project).updateFindings(result.findings)
                 ShamashPsiUiStateService.getInstance(project).updateExport(result.outputDir, result.exportedReport)
 

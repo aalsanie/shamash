@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -58,20 +54,16 @@ class JsonExporterTest {
 
         val json = Files.readString(out.resolve(ExportOutputLayout.JSON_FILE_NAME))
 
-        // Key structure
         assertTrue(json.contains("\"tool\""))
         assertTrue(json.contains("\"project\""))
         assertTrue(json.contains("\"findings\""))
 
-        // Escaping
         assertTrue(json.contains("\"ruleId\": \"R\\\\\\\\1\"")) // R\\1 in JSON
         assertTrue(json.contains("Hello \\\"world\\\"\\nline2"))
 
-        // Optional fields present
         assertTrue(json.contains("\"classFqn\": \"com.A\""))
         assertTrue(json.contains("\"memberName\": \"m\""))
 
-        // Fingerprint always present
         assertTrue(json.contains("\"fingerprint\": \"abc123\""))
 
         deleteRecursively(out)

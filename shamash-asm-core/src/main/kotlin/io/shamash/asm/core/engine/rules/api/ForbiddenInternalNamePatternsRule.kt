@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,18 +28,7 @@ import io.shamash.asm.core.facts.model.Visibility
 import io.shamash.asm.core.facts.query.FactIndex
 import java.util.regex.Pattern
 
-/**
- * api.forbiddenInternalNamePatterns
- *
- * Params:
- * - forbid (required list<string>, non-empty)
- *     Each entry is a REGEX matched against JVM internal names (slash-separated),
- *     e.g. "com/acme/api/Foo" or "com/acme/api/Foo$Nested".
- *
- * Engine semantics:
- * - Enforced against PUBLIC classes only.
- * - Role/scope filtering is honored if roles were assigned into facts (engine-owned).
- */
+/** Matches JVM internal names (slash-separated) of public classes only. */
 class ForbiddenInternalNamePatternsRule : Rule {
     override val id: String = "api.forbiddenInternalNamePatterns"
 
@@ -59,18 +44,14 @@ class ForbiddenInternalNamePatternsRule : Rule {
 
         val out = ArrayList<Finding>()
 
-        // deterministic iteration
         val classes = facts.classes.sortedBy { it.fqName }
 
         for (c in classes) {
-            // public API types only
             if (c.visibility != Visibility.PUBLIC) continue
 
-            // role-aware filtering (engine may run role-scoped instances; still safe)
             val roleId = facts.classToRole[c.fqName]
             if (!RuleUtil.roleAllowed(rule, scope, roleId)) continue
 
-            // package/path scope
             if (!RuleUtil.classInScope(c, scope)) continue
 
             val internalName = c.type.internalName
@@ -92,7 +73,6 @@ class ForbiddenInternalNamePatternsRule : Rule {
                 )
         }
 
-        // already deterministic due to sorted classes + first match only
         return out
     }
 
@@ -103,7 +83,6 @@ class ForbiddenInternalNamePatternsRule : Rule {
             try {
                 p.requireStringList("forbid", nonEmpty = true)
             } catch (_: ParamError) {
-                // validator should catch, engine stays resilient
                 return null
             }
 
@@ -117,7 +96,6 @@ class ForbiddenInternalNamePatternsRule : Rule {
         patterns: List<Pattern>,
         internalName: String,
     ): String? {
-        // internalName is expected slash-separated; patterns are validated already
         for (p in patterns) {
             if (p.matcher(internalName).find()) return p.pattern()
         }

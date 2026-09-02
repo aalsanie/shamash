@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -58,12 +54,10 @@ class FactsCliE2ETest {
             "Expected exitCode=0 but was ${res.exitCode}\nSTDOUT:\n${res.stdout}\nSTDERR:\n${res.stderr}"
         }
 
-        // Totals
         assert(res.stdout.contains("Classes")) { res.stdout }
         assert(res.stdout.contains("Edges")) { res.stdout }
         assert(res.stdout.contains("Total")) { res.stdout }
 
-        // Package + fan-in/out sections
         assert(res.stdout.contains("Top packages")) { res.stdout }
         assert(res.stdout.contains("Top fan-out")) { res.stdout }
         assert(res.stdout.contains("Top fan-in")) { res.stdout }
@@ -89,7 +83,6 @@ class FactsCliE2ETest {
             "Expected exitCode=0 but was ${res.exitCode}\nSTDOUT:\n${res.stdout}\nSTDERR:\n${res.stderr}"
         }
         assert(res.stdout.contains("com.example.A")) { res.stdout }
-        // Should show edges to/from the class
         assert(res.stdout.contains("->")) { res.stdout }
     }
 

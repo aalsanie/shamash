@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,11 +21,6 @@ import io.shamash.asm.core.analysis.GraphAnalysisResult
 import io.shamash.asm.core.analysis.HotspotsResult
 import io.shamash.asm.core.analysis.ScoringResult
 
-/**
- * JSON wrapper documents for analysis sidecars.
- *
- * These are intentionally small and stable because IntelliJ + CLI read them.
- */
 internal data class AnalysisGraphsDocument(
     val schemaId: String,
     val schemaVersion: Int,

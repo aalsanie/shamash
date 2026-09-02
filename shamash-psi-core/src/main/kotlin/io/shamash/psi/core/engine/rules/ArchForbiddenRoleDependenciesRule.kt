@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,17 +28,7 @@ import io.shamash.psi.core.facts.model.v1.DependencyKind
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 import java.util.LinkedHashMap
 
-/**
- * Enforces forbidden role-to-role dependencies.
- *
- * Params (v1):
- *  - forbidden: required non-empty list of objects: [{from: "controller", to: ["service","repo"], message?: "..."}]
- *  - kinds (optional): list of dependency kinds to restrict matching.
- *
- * Notes:
- * - Engine treats config as validated, but still produces ParamError for corrupt/invalid runtime values.
- * - This rule relies on facts.classToRole being populated by the engine pipeline.
- */
+/** Requires the engine's project-wide classToRole map; unclassified targets are ignored. */
 class ArchForbiddenRoleDependenciesRule : EngineRule {
     override val id: String = "arch.forbiddenRoleDependencies"
 
@@ -55,16 +41,13 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
         val ruleInstanceId = RuleUtil.ruleInstanceId(rule, fallbackEngineRuleId = id)
         val p = Params.of(rule.params, "rules.${rule.type}.${rule.name}.params")
 
-        // kinds: optional (validated upstream); still safe-map here.
         val kindsRaw = p.optionalStringList("kinds") ?: emptyList()
         val allowedKinds = parseKinds(kindsRaw)
 
-        // forbidden: required list of maps
         val forbiddenRaw = rule.params["forbidden"] ?: throw ParamError("${p.currentPath}.forbidden", "is required")
         if (forbiddenRaw !is List<*>) throw ParamError("${p.currentPath}.forbidden", "must be a list")
         if (forbiddenRaw.isEmpty()) throw ParamError("${p.currentPath}.forbidden", "must be non-empty")
 
-        // Build map: fromRole -> list of ForbiddenEntry(toRoles, message?)
         val forbMap = LinkedHashMap<String, List<ForbiddenEntry>>()
 
         forbiddenRaw.forEachIndexed { i, item ->
@@ -97,7 +80,7 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
             if (allowedKinds != null && d.kind !in allowedKinds) continue
 
             val fromRole = facts.classToRole[d.fromClassFqn] ?: continue
-            val toRole = facts.classToRole[d.toTypeFqn] ?: continue // external types have no role -> ignore
+            val toRole = facts.classToRole[d.toTypeFqn] ?: continue
 
             val entries = forbMap[fromRole] ?: continue
             val hit = entries.firstOrNull { toRole in it.toRoles } ?: continue

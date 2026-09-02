@@ -2,7 +2,7 @@ package com.this.will.never.match.com.pit.app.controller;
 
 import com.pit.app.data.UserRepository;
 
-// Role: controller (package .controller) OK, but packages.rootPackage rule will still fail (we set mismatch)
+// The configured root-package mismatch is intentional.
 public class AdminController {
     private final UserRepository repo;
     private int unusedCount = 0; // deadcode: unused private field

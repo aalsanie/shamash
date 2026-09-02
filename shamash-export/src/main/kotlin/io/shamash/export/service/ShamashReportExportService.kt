@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,16 +28,6 @@ import io.shamash.export.pipeline.FindingPreprocessor
 import java.nio.file.Files
 import java.nio.file.Path
 
-/**
- * Exports Shamash reports to `<projectRoot>/.shamash` and optionally applies / generates a baseline.
- *
- * This class wires:
- * - output directory resolution + normalization,
- * - baseline load/suppress,
- * - finding preprocessing,
- * - export orchestration (ALL formats by default),
- * - baseline generation/merge.
- */
 class ShamashReportExportService(
     private val baselineCoordinator: BaselineCoordinator = BaselineCoordinator(),
 ) {
@@ -51,14 +37,6 @@ class ShamashReportExportService(
         val baselineWritten: Boolean,
     )
 
-    /**
-     * Primary entrypoint.
-     *
-     * - Exports ALL formats by default (JSON/SARIF/XML/HTML).
-     * - Applies preprocessors in order:
-     *   1) exceptionsPreprocessor (if present)
-     *   2) baselinePreprocessor (if baseline USE and baseline exists)
-     */
     fun export(
         projectBasePath: Path,
         projectName: String,
@@ -79,8 +57,7 @@ class ShamashReportExportService(
                 emptySet()
             }
 
-        // Adapt baseline's preprocessor type into the export-layer preprocessor hook
-        // to preserve layering (baseline stays independent of export).
+        // Adapt the preprocessor here to keep the baseline module independent of export.
         val baselinePreprocessor: FindingPreprocessor? =
             if (baseline.mode == BaselineMode.USE && baselineFingerprints.isNotEmpty()) {
                 baselineCoordinator
@@ -111,8 +88,7 @@ class ShamashReportExportService(
 
         val baselineWritten =
             if (baseline.mode == BaselineMode.GENERATE) {
-                // Baseline generation must match the exported "current findings" definition.
-                // We apply exceptions only (no baseline suppression while generating).
+                // Generate from exception-filtered findings without suppressing the existing baseline.
                 val baseAbs = projectBasePath.toAbsolutePath().normalize()
                 val currentFindings =
                     exceptionsPreprocessor?.process(baseAbs, findings) ?: findings

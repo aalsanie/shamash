@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,9 +30,6 @@ object Exporters {
         HTML,
     }
 
-    /**
-     * Create exporters for the given set of formats.
-     */
     fun create(formats: Set<Format>): List<Exporter> {
         if (formats.isEmpty()) return emptyList()
         return Format.entries

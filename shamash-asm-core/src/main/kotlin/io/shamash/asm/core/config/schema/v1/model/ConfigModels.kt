@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,9 +21,6 @@ import io.shamash.artifacts.contract.FindingSeverity
 
 typealias RoleId = String
 
-/**
- * ASM Config V1 models.
- */
 data class ShamashAsmConfigV1(
     val version: Int,
     val project: ProjectConfig,
@@ -38,10 +31,6 @@ data class ShamashAsmConfigV1(
     val baseline: BaselineConfig,
     val export: ExportConfig,
 )
-
-/* -----------------------------------------------------------------------------
- * Project / Scan
- * -------------------------------------------------------------------------- */
 
 data class ProjectConfig(
     val bytecode: BytecodeConfig,
@@ -90,22 +79,12 @@ data class ValidationConfig(
     val unknownRule: UnknownRulePolicy,
 )
 
-/* -----------------------------------------------------------------------------
- * Roles
- * -------------------------------------------------------------------------- */
-
 data class RoleDef(
     val priority: Int,
     val description: String?,
     val match: Matcher,
 )
 
-/**
- * Sealed matcher: enforces schema "oneOf" at the type level.
- *
- * Decoder responsibility:
- * - Convert the raw YAML object into exactly one of these variants.
- */
 sealed interface Matcher {
     data class AnyOf(
         val anyOf: List<Matcher>,
@@ -139,10 +118,6 @@ sealed interface Matcher {
         val annotationPrefix: String,
     ) : Matcher
 }
-
-/* -----------------------------------------------------------------------------
- * Analysis
- * -------------------------------------------------------------------------- */
 
 enum class Granularity {
     CLASS,
@@ -181,14 +156,14 @@ data class ScoringConfig(
 
 data class GodClassScoringConfig(
     val enabled: Boolean,
-    val weights: GodClassWeights?, // optional override
-    val thresholds: ScoreThresholds?, // optional override
+    val weights: GodClassWeights?,
+    val thresholds: ScoreThresholds?,
 )
 
 data class OverallScoringConfig(
     val enabled: Boolean,
-    val weights: OverallWeights?, // optional override
-    val thresholds: ScoreThresholds?, // optional override
+    val weights: OverallWeights?,
+    val thresholds: ScoreThresholds?,
 )
 
 data class GodClassWeights(
@@ -211,10 +186,6 @@ data class ScoreThresholds(
     val warning: Double,
     val error: Double,
 )
-
-/* -----------------------------------------------------------------------------
- * Rules / Exceptions
- * -------------------------------------------------------------------------- */
 
 data class RuleDef(
     val type: String,
@@ -266,10 +237,6 @@ data class ExceptionMatch(
     val originPathRegex: String?,
     val glob: String?,
 )
-
-/* -----------------------------------------------------------------------------
- * Baseline / Export
- * -------------------------------------------------------------------------- */
 
 enum class BaselineMode {
     NONE,

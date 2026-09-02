@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,9 +21,6 @@ import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.ScoreModel
 import io.shamash.asm.core.config.schema.v1.model.ScoreThresholds
 
-/**
- * Engine-side analysis outputs.
- */
 data class AnalysisResult(
     val graphs: GraphAnalysisResult? = null,
     val hotspots: HotspotsResult? = null,
@@ -49,14 +42,14 @@ data class GraphAnalysisResult(
     val sccCount: Int,
     /** SCCs that represent cycles (size>1 or self-loop). Each SCC list is sorted. */
     val cyclicSccs: List<List<String>>,
-    /** Representative cycle paths (bounded, best-effort). */
+    /** Bounded samples; may be truncated and do not enumerate every cycle. */
     val representativeCycles: List<List<String>>,
 )
 
 data class HotspotsResult(
     val topN: Int,
     val includeExternal: Boolean,
-    /** Hotspots aggregated across metrics. Stable order: by maxMetricValue desc, then id asc. */
+    /** Sorted by maxMetricValue descending, then id ascending. */
     val classHotspots: List<HotspotEntry>,
     val packageHotspots: List<HotspotEntry>,
 )
@@ -110,7 +103,6 @@ data class ClassScoreRow(
     /** 0..1 */
     val score: Double,
     val band: SeverityBand,
-    /** Raw metrics used by the model. */
     val raw: Map<String, Int>,
     /** Normalized components (0..1) used in the score. */
     val normalized: Map<String, Double>,

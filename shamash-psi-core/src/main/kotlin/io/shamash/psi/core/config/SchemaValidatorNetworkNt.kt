@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,19 +27,8 @@ import com.networknt.schema.ValidationMessage
 import java.io.InputStream
 import java.lang.reflect.Method
 
-/**
- * Structural validation of PSI YAML (parsed to Map/List primitives)
- * against JSON Schema stored in resources.
- *
- * NOTE: Despite the name, this validator does NOT perform network I/O.
- * It uses networknt-json-schema (the library), not the network.
- */
 object SchemaValidatorNetworkNt : SchemaValidator {
-    /**
-     * Optional cancellation hook.
-     * IntelliJ can set this to ProgressManager::checkCanceled via wiring in plugin code.
-     * CLI can leave it null.
-     */
+    /** IntelliJ callers can supply ProgressManager::checkCanceled. */
     @Volatile
     var cancelCheck: (() -> Unit)? = null
 

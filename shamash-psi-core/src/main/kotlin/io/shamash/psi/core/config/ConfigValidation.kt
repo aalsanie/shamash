@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -38,7 +34,6 @@ object ConfigValidation {
         reader: Reader,
         schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
     ): Result {
-        // 1) Parse YAML
         val raw =
             try {
                 ConfigLoader.loadRaw(reader)
@@ -56,13 +51,11 @@ object ConfigValidation {
                 )
             }
 
-        // 2) Structural schema validation (shape-level), before binding
         val structural = schemaValidator.validate(raw)
         if (structural.isNotEmpty()) {
             return Result(config = null, errors = structural)
         }
 
-        // 3) Bind to typed schema models
         val typed =
             try {
                 ConfigLoader.bindV1(raw)
@@ -87,41 +80,26 @@ object ConfigValidation {
                 )
             }
 
-        // 4) Optional: validate that enabled rules are executable by the engine.
-        //    Engine currently exposes ids as strings; we parse them into RuleKey using schema.v1 canonical format:
-        //    - "type.name"
-        //    - "type.name.role"
         val executableRuleKeys: Set<RuleKey>? =
             try {
                 // TODO: migrate engine ruleRegistry outside of config layer. config should never depends on engine
                 val ids: Set<String> = RuleRegistry.allIds()
                 parseRuleKeysOrNull(ids)
             } catch (_: Throwable) {
-                // If engine registry isn't available in some contexts, degrade gracefully.
                 null
             }
 
-        // 5) Semantic validation (dedicated validation layer)
         val semantic = ConfigValidator.validateSemantic(typed, executableRuleKeys)
         return Result(config = typed, errors = semantic)
     }
 
-    /**
-     * Parse canonical rule ids into RuleKey.
-     *
-     * Schema v1 canonical id contract (RuleKey.canonicalId()):
-     * - role == null => "type.name"
-     * - role != null => "type.name.role"
-     *
-     * Any ids that don't match this contract are ignored (engine can have internal ids).
-     */
+    /** Accepts `type.name` and `type.name.role`; ignores internal ids outside that format. */
     private fun parseRuleKeysOrNull(ids: Set<String>): Set<RuleKey> {
         val out = LinkedHashSet<RuleKey>(ids.size)
         ids.forEach { id ->
             val trimmed = id.trim()
             if (trimmed.isEmpty()) return@forEach
 
-            // Strict per schema.v1 canonicalId() format.
             val parts = trimmed.split('.')
             val rk: RuleKey? =
                 when (parts.size) {

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,21 +26,6 @@ import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * arch.allowOnlyRoot
- *
- * Params:
- * - root: string (required)  e.g. "com.acme"
- * - allowDefaultPackage: boolean (optional, default false)
- *
- * Semantics:
- * - For classes in scope (roles + scope filters), their package must:
- *   - equal root, OR
- *   - start with root + "."
- * - If allowDefaultPackage=false, default package ("") is forbidden.
- *
- * This is a stricter/simpler variant of AllowedPackagesRule when you want a single root.
- */
 class AllowOnlyRootRule : Rule {
     override val id: String = "arch.allowOnlyRoot"
 
@@ -67,7 +48,7 @@ class AllowOnlyRootRule : Rule {
             if (!RuleUtil.roleAllowed(rule, scope, roleId)) continue
             if (!RuleUtil.classInScope(c, scope)) continue
 
-            val pkg = c.packageName // "" allowed (default package)
+            val pkg = c.packageName
             val ok =
                 when {
                     pkg.isEmpty() -> params.allowDefaultPackage

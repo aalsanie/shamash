@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -49,7 +45,6 @@ class ShamashPsiFindingsPanel(
     private val details = FindingDetailsPanel()
     private val fixes = FixesPanel(project)
 
-    // stable selection across refresh
     private var selectedKey: String? = null
 
     init {
@@ -96,7 +91,6 @@ class ShamashPsiFindingsPanel(
         val findings = ShamashPsiUiStateService.getInstance(project).lastFindings
         model.setFindings(findings)
 
-        // restore selection by key
         val key = selectedKey
         if (key != null) {
             val modelRow = findModelRowByKey(findings, key)

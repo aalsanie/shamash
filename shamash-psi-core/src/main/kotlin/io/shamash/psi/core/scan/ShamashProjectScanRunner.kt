@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,18 +41,7 @@ import io.shamash.psi.core.engine.ShamashPsiEngine
 import java.io.Reader
 import java.nio.file.Path
 
-/**
- * Project-wide scan runner for Shamash PSI.
- *
- * One entry point:
- * - Loads + validates config (config module).
- * - Scans project PSI files (engine module).
- * - Optionally exports reports + baseline behavior (export + baseline modules).
- *
- * Threading:
- * - All PSI access is performed inside DumbService.runReadActionInSmartMode { ... } to avoid
- *   read-action and indexing crashes.
- */
+/** All PSI access runs inside DumbService.runReadActionInSmartMode to respect indexing and read locks. */
 class ShamashProjectScanRunner(
     private val engine: ShamashPsiEngine = ShamashPsiEngine(),
     private val exportService: ShamashReportExportService = ShamashReportExportService(),
@@ -69,9 +54,6 @@ class ShamashProjectScanRunner(
         val configErrors: List<ValidationError> = emptyList(),
     )
 
-    /**
-     * Single production entrypoint: validates config, scans project, and optionally exports reports.
-     */
     fun scanProject(
         project: Project,
         configReader: Reader,
@@ -142,7 +124,6 @@ class ShamashProjectScanRunner(
         val out = ArrayList<Finding>(1024)
         val engineErrors = ArrayList<EngineError>(256)
 
-        // One smart+read block for the whole scan: PSI work stays safe, avoids per-file read-action overhead.
         dumb.runReadActionInSmartMode {
             ProgressManager.checkCanceled()
 
@@ -157,7 +138,6 @@ class ShamashProjectScanRunner(
 
                     val path = GlobMatcher.normalizePath(vf.path)
 
-                    // Apply include/exclude globs early (cheap).
                     if (includeGlobs.isNotEmpty() && includeGlobs.none { GlobMatcher.matches(it, path) }) {
                         return@iterateChildrenRecursively true
                     }
@@ -179,7 +159,6 @@ class ShamashProjectScanRunner(
             }
         }
 
-        // Notify once (no spam), after scan completes.
         if (engineErrors.isNotEmpty()) {
             Notifications.Bus.notify(
                 Notification(
@@ -199,10 +178,8 @@ class ShamashProjectScanRunner(
     private fun collectContentRoots(project: Project): List<VirtualFile> {
         val out = ArrayList<VirtualFile>(8)
 
-        // Project content roots.
         out.addAll(ProjectRootManager.getInstance(project).contentRoots)
 
-        // Module roots (helps in multi-module layouts).
         val modules =
             com.intellij.openapi.module.ModuleManager
                 .getInstance(project)
@@ -211,7 +188,6 @@ class ShamashProjectScanRunner(
             out.addAll(ModuleRootManager.getInstance(m).contentRoots)
         }
 
-        // De-dup by path, keep order.
         val seen = LinkedHashSet<String>(out.size)
         val deduped = ArrayList<VirtualFile>(out.size)
         for (vf in out) {

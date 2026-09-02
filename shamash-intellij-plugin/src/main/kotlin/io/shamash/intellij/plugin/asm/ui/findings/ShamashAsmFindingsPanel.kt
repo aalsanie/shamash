@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -62,7 +58,7 @@ class ShamashAsmFindingsPanel(
         val splitter =
             OnePixelSplitter(false, 0.62f).apply {
                 firstComponent = ScrollPaneFactory.createScrollPane(table)
-                secondComponent = detailsPanel // <-- direct component, no .component()
+                secondComponent = detailsPanel
             }
 
         add(splitter, BorderLayout.CENTER)
@@ -99,7 +95,6 @@ class ShamashAsmFindingsPanel(
     }
 
     override fun dispose() {
-        // listener auto-unregistered by state service
     }
 
     private fun getSelectedFinding(): Finding? {

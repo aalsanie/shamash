@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,14 +27,7 @@ import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.artifacts.contract.Finding
 
-/**
- * Resolves PSI targets for a given [Finding].
- *
- * Must remain:
- *  - null-safe
- *  - non-throwing
- *  - language-agnostic (works for Java + Kotlin using generic PSI abstractions)
- */
+/** Resolve Java/Kotlin targets through generic PSI; missing or stale targets must return null. */
 object PsiResolver {
     fun resolveFile(
         project: Project,
@@ -52,27 +41,17 @@ object PsiResolver {
         }.getOrNull()
     }
 
-    /**
-     * Resolve the most specific PSI element for this finding.
-     *
-     * Priority:
-     *  1) [Finding.startOffset] anchor -> nearest meaningful parent (named/member-ish), else leaf, else file
-     *  2) member (by [Finding.memberName]) inside class
-     *  3) class (by [Finding.classFqn])
-     *  4) file
-     */
+    /** Prefer an offset anchor, then member, class, and finally file. */
     fun resolveElement(
         project: Project,
         finding: Finding,
     ): PsiElement? {
         val file = resolveFile(project, finding.filePath) ?: return null
 
-        // 1) Offset-based resolution (best effort)
         val off = finding.startOffset
         if (off != null && off in 0 until file.textLength) {
             val leaf = runCatching { file.findElementAt(off) }.getOrNull()
             if (leaf != null) {
-                // Prefer a "meaningful" element over a leaf token/whitespace.
                 val meaningful =
                     PsiTreeUtil.getParentOfType(
                         leaf,
@@ -97,7 +76,6 @@ object PsiResolver {
             return classElement ?: file
         }
 
-        // If class exists, search within it first; else search the file.
         val scopeRoot = classElement ?: file
         val member = findNamed(scopeRoot, memberName)
         return member ?: (classElement ?: file)
@@ -112,12 +90,6 @@ object PsiResolver {
         return findClassLike(file, simpleNameOf(classFqn))
     }
 
-    /**
-     * Resolve a member-ish element.
-     *
-     * If [resolveElement] returns a leaf token, we try to lift it to a named element.
-     * If it returns file, we fallback to searching by memberName.
-     */
     fun resolveMember(
         project: Project,
         finding: Finding,
@@ -137,8 +109,6 @@ object PsiResolver {
     }
 
     private fun normalizePath(path: String): String {
-        // LocalFileSystem expects system-independent paths with '/'.
-        // Also strips accidental "file://" prefixes if any caller passes URLs.
         val p = path.removePrefix("file://").removePrefix("file:")
         return p.replace('\\', '/')
     }
@@ -153,7 +123,6 @@ object PsiResolver {
         val candidates = all.filter { it.name == simpleName }
         if (candidates.isEmpty()) return null
 
-        // Heuristic: prefer likely type declarations.
         val preferred =
             candidates.firstOrNull {
                 val t = (it as? PsiElement)?.text ?: return@firstOrNull false

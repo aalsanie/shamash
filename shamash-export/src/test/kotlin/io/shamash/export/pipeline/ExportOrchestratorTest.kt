@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -55,7 +51,6 @@ class ExportOrchestratorTest {
                 findingPreprocessors =
                     listOf(
                         FindingPreprocessor { _, fs ->
-                            // Touch the pipeline to ensure it still works
                             fs
                         },
                     ),
@@ -100,7 +95,6 @@ class ExportOrchestratorTest {
         assertEquals(2, built.size)
         assertNotNull(returned)
 
-        // Both exporters see the exact same report instance that is returned to the caller.
         assertEquals(System.identityHashCode(returned), System.identityHashCode(built[0]))
         assertEquals(System.identityHashCode(returned), System.identityHashCode(built[1]))
 

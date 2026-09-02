@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,15 +26,6 @@ import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.RuleSpec
 
-/**
- * Spec: arch.forbiddenRoleDependencies
- *
- * params:
- *   forbidden:
- *     <fromRole>: [<toRole>, <toRole>, ...]
- *     <fromRole2>: [ ... ]
- *   direction: "direct" | "transitive"   # optional; validated if present
- */
 class ArchForbiddenRoleDependenciesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "arch", name = "forbiddenRoleDependencies", role = null)
 
@@ -54,7 +41,6 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
         val errors = mutableListOf<ValidationError>()
         val p = Params.of(rule.params, path = "$rulePath.params")
 
-        // Strict allowed keys
         val allowed = setOf("forbidden", "direction")
         val unknown = p.unknownKeys(allowed)
         if (unknown.isNotEmpty()) {
@@ -66,10 +52,8 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
                             "Allowed: ${allowed.sorted().joinToString(", ")}",
                     severity = ValidationSeverity.ERROR,
                 )
-            // show all failures at once
         }
 
-        // direction (optional)
         val direction =
             try {
                 p.optionalString("direction")?.trim()
@@ -85,7 +69,6 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
             }
         }
 
-        // forbidden: required map<fromRole, list<toRole>>
         val forbiddenMap: Map<String, Any?> =
             try {
                 p.requireMap("forbidden")
@@ -176,10 +159,6 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
         msg: String,
     ): ValidationError = ValidationError(path = path, message = msg, severity = ValidationSeverity.ERROR)
 
-    /**
-     * Best-effort escape for map keys in error paths.
-     * (Avoids breaking paths when keys contain '.' etc.)
-     */
     private fun escapeKey(key: String): String {
         val k = key.trim()
         if (k.isEmpty()) return "\"\""

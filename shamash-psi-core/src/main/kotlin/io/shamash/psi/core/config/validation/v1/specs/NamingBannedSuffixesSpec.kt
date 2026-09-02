@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,14 +26,6 @@ import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.validation.v1.RuleSpec
 
-/**
- * Spec for `naming.bannedSuffixes`.
- *
- * Params:
- * - `banned`: required non-empty list of suffix strings.
- * - `applyToRoles`: optional list of existing roleIds.
- * - `caseSensitive`: optional boolean.
- */
 class NamingBannedSuffixesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "naming", name = "bannedSuffixes", role = null)
 
@@ -58,13 +46,11 @@ class NamingBannedSuffixesSpec : RuleSpec {
             errors += ValidationError(at, message, ValidationSeverity.ERROR)
         }
 
-        // Unknown params (typos)
         val unknown = p.unknownKeys(allowedParamKeys)
         if (unknown.isNotEmpty()) {
             err("$rulePath.params", "Unknown params: ${unknown.sorted().joinToString(", ")}")
         }
 
-        // banned: required non-empty list
         val banned =
             try {
                 p.requireStringList("banned", nonEmpty = true)
@@ -80,7 +66,6 @@ class NamingBannedSuffixesSpec : RuleSpec {
             }
         }
 
-        // applyToRoles: optional list of existing roleIds
         val roles =
             try {
                 p.optionalStringList("applyToRoles")
@@ -98,7 +83,6 @@ class NamingBannedSuffixesSpec : RuleSpec {
             }
         }
 
-        // caseSensitive: optional boolean
         try {
             p.optionalBoolean("caseSensitive")
         } catch (e: ParamError) {

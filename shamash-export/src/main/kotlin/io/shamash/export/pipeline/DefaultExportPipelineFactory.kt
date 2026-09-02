@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,20 +19,7 @@ package io.shamash.export.pipeline
 
 import io.shamash.export.api.Exporters
 
-/**
- * Create the default export pipeline.
- *
- * This factory intentionally depends only on exporter-layer types.
- * Callers (plugin UI, CLI, inspection integration) are responsible for building preprocessors
- * using their available engine/schema context.
- *
- * Preprocessor order is intentional and stable:
- *  1) exceptionsPreprocessor (drops/adjusts findings based on explicit "ignore"/exceptions rules)
- *  2) baselinePreprocessor (drops findings already present in baseline fingerprints)
- *
- * baseline suppression should be applied after exceptions filtering, so exceptions
- * can remove/shape findings before baseline comparison/export.
- */
+/** Apply exceptions before baseline suppression so fingerprints reflect the filtered findings. */
 object DefaultExportPipelineFactory {
     fun create(
         exceptionsPreprocessor: FindingPreprocessor? = null,

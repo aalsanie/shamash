@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -58,17 +54,7 @@ import org.jetbrains.uast.UastCallKind
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
-/**
- * Kotlin+Java facts extraction.
- *
- * - Uses UAST when available (covers Kotlin bodies/calls/properties and Java too).
- * - Falls back to Java PSI when UAST isn't available.
- *
- * IDE-safe:
- * - cancellation aware
- * - deterministic output
- * - best-effort extraction + structured errors
- */
+/** Uses UAST with Java PSI fallback; returns partial facts and structured errors while honoring cancellation. */
 object FactExtractor {
     private val log = Logger.getInstance(FactExtractor::class.java)
 
@@ -79,15 +65,9 @@ object FactExtractor {
 
     private val CACHE_KEY: Key<CacheEntry> = Key.create("shamash.psi.facts.cache.v2")
 
-    /**
-     * Back-compat API: returns facts only.
-     * Prefer [extractResult] for production usage.
-     */
+    /** Compatibility API that drops structured errors; use [extractResult] to retain them. */
     fun extract(file: PsiFile): FactsIndex = extractResult(file).facts
 
-    /**
-     * Production API: facts + structured errors.
-     */
     fun extractResult(file: PsiFile): FactsResult {
         ProgressManager.checkCanceled()
 
@@ -103,7 +83,6 @@ object FactExtractor {
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (t: Throwable) {
-                // Keep scan alive. Provide error to caller. Log only debug to avoid noisy logs in real projects.
                 log.debug("Facts extraction failed for file=$fileId", t)
                 FactsResult(
                     facts = emptyFacts(),
@@ -119,7 +98,6 @@ object FactExtractor {
                 )
             }
 
-        // Determinism barrier: sort facts + errors.
         val stabilized = result.stabilize()
 
         file.putUserData(CACHE_KEY, CacheEntry(stamp, stabilized))
@@ -651,8 +629,6 @@ object FactExtractor {
             classToRole = emptyMap(),
         )
     }
-
-    // ---------- determinism + helpers ----------
 
     private fun FactsResult.stabilize(): FactsResult =
         copy(

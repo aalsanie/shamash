@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,24 +35,8 @@ import java.util.LinkedHashSet
 import java.util.regex.Pattern
 
 /**
- * origin.forbiddenJarDependencies
- *
- * Params:
- * - forbid (required, non-empty list<object>)
- *     Each object:
- *       - from (required string): regex matched against depender origin (jar path OR jar file name)
- *       - to   (required string): regex matched against dependency origin (jar path OR jar file name)
- *
- * Matching semantics (per your instruction):
- * - "forbid.from" matches if it matches EITHER:
- *     - normalized jar path (e.g., /home/me/.m2/.../foo-1.2.3.jar)
- *     - jar file name (e.g., foo-1.2.3.jar)
- * - same for "forbid.to"
- *
- * Enforcement semantics:
- * - Uses facts.edges and resolves each endpoint TypeRef to its ClassFact (if present) to infer origin.
- * - Applies rule scope filtering to the *from-class* (package/glob) and role filters to *fromRole*.
- * - Emits one finding per (forbid[i], fromJar, toJar) with examples (truncated).
+ * Each origin regex matches either a normalized path or a jar filename.
+ * Scope applies to the source class; findings are grouped by pattern and origin pair.
  */
 class ForbiddenJarDependenciesRule : Rule {
     override val id: String = "origin.forbiddenJarDependencies"
@@ -72,7 +52,6 @@ class ForbiddenJarDependenciesRule : Rule {
         val scope = RuleUtil.compileScope(rule.scope)
         val classByFqn: Map<String, ClassFact> = facts.classes.associateBy { it.fqName }
 
-        // Deterministic edge iteration.
         val edges =
             facts.edges.sortedWith(
                 compareBy<DependencyEdge>({ it.from.fqName }, { it.to.fqName }, { it.kind.name }, { it.detail ?: "" }),
@@ -98,7 +77,6 @@ class ForbiddenJarDependenciesRule : Rule {
             val fromClass = classByFqn[e.from.fqName] ?: continue
             val toClass = classByFqn[e.to.fqName] ?: continue
 
-            // Apply scope on from-class and role filters on fromRole.
             val fromRole = facts.classToRole[fromClass.fqName]
             if (!RuleUtil.roleAllowed(rule, scope, fromRole)) continue
             if (!RuleUtil.classInScope(fromClass, scope)) continue
@@ -106,7 +84,6 @@ class ForbiddenJarDependenciesRule : Rule {
             val fromOrigin = originId(fromClass.location)
             val toOrigin = originId(toClass.location)
 
-            // This rule is about origins; if either side can't be identified, skip.
             if (fromOrigin.key.isEmpty() || toOrigin.key.isEmpty()) continue
 
             forbids.forEachIndexed { idx, fp ->
@@ -127,7 +104,6 @@ class ForbiddenJarDependenciesRule : Rule {
 
                 if (bucket.anchorEdge == null) bucket.anchorEdge = e
 
-                // Deterministic compact example format; keep bounded later.
                 if (bucket.examples.size < EXAMPLES_LIMIT) {
                     bucket.examples += "${e.from.fqName} -> ${e.to.fqName}"
                 }
@@ -136,7 +112,6 @@ class ForbiddenJarDependenciesRule : Rule {
 
         if (buckets.isEmpty()) return emptyList()
 
-        // Deterministic ordering of findings.
         val out = ArrayList<Finding>(buckets.size)
         val ordered =
             buckets.entries.sortedWith(
@@ -205,11 +180,6 @@ class ForbiddenJarDependenciesRule : Rule {
         val path: String,
         val name: String,
     ) {
-        /**
-         * Stable key for grouping:
-         * - jar => normalized jar path
-         * - dir => normalized origin path (class file path)
-         */
         val key: String get() = path
     }
 
@@ -267,13 +237,11 @@ class ForbiddenJarDependenciesRule : Rule {
                     )
             }
         } catch (_: ParamError) {
-            // validator should catch; engine stays resilient
             return null
         } catch (_: Throwable) {
             return null
         }
 
-        // Deterministic de-dupe (by raw strings).
         return out.distinctBy { it.fromRaw to it.toRaw }
     }
 

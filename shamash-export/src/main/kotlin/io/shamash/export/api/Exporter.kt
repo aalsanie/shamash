@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,19 +20,8 @@ package io.shamash.export.api
 import io.shamash.artifacts.report.schema.v1.ExportedReport
 import java.nio.file.Path
 
-/**
- * Common exporter interface.
- *
- * Each exporter:
- * - consumes a fully-built ExportedReport
- * - writes artifacts into the provided output directory
- * - no reordering, stable formatting
- * - must not mutate the report
- */
+/** Write reports without mutating them or reordering findings; keep formatting deterministic. */
 interface Exporter {
-    /**
-     * Export the given report into the output directory.
-     */
     fun export(
         report: ExportedReport,
         outputDir: Path,

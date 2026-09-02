@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,23 +27,7 @@ import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * graph.maxCycles
- *
- * Params:
- * - max: int (required, >= 0)
- * - granularity: "class" | "package" | "module" (optional, default "package")
- * - includeExternal: boolean (optional, default false)
- *
- * Semantics:
- * - Build dependency graph at the requested granularity.
- * - Count cyclic SCCs (each SCC that forms a cycle).
- * - If count > max -> emit a single finding, with representative cycles summary (truncated).
- *
- * Scope:
- * - include/exclude package/glob filters are applied to "from" classes producing edges.
- * - role filters apply to "fromRole" by running this rule role-scoped (engine) or via scope includeRoles/excludeRoles.
- */
+/** Counts cyclic strongly connected components, not individual cycle paths. */
 class MaxCyclesRule : Rule {
     override val id: String = "graph.maxCycles"
 
@@ -72,10 +52,8 @@ class MaxCyclesRule : Rule {
         val count = cyclic.size
         if (count <= params.max) return emptyList()
 
-        // Representative cycles for debugging; keep small.
         val cycleLimit = 10
 
-        // Anchor on first class in scope (stable) for filePath.
         val anchor =
             facts.classes
                 .asSequence()

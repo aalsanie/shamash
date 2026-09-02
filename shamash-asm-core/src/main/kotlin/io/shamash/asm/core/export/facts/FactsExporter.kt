@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,14 +28,7 @@ import java.nio.file.Path
 import java.util.zip.GZIPOutputStream
 import kotlin.io.path.createDirectories
 
-/**
- * Facts exporter.
- *
- * Default output format is JSONL_GZ:
- * - First record: meta
- * - Then N class records
- * - Then M edge records
- */
+/** JSONL records are ordered: metadata, classes, then edges. */
 object FactsExporter {
     private val mapper: ObjectMapper =
         jacksonObjectMapper()
@@ -113,7 +102,6 @@ object FactsExporter {
         Files.newOutputStream(outputPath).use { fos ->
             GZIPOutputStream(fos).use { gz ->
                 gz.bufferedWriter(StandardCharsets.UTF_8).use { out ->
-                    // meta first
                     out.write(
                         mapper.writeValueAsString(
                             FactsMetaRecord(

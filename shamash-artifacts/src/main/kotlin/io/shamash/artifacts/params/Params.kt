@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,9 +20,6 @@ package io.shamash.artifacts.params
 import java.util.LinkedHashMap
 import kotlin.collections.iterator
 
-/**
- * Typed parameter reader for rule params.
- */
 class Params private constructor(
     private val raw: Map<String, Any?>,
     private val path: String,
@@ -152,8 +145,6 @@ class Params private constructor(
         } ?: throw ParamError(at, "must be one of: ${enumValues<E>().joinToString { it.name }}")
     }
 
-    // Collections
-
     fun requireStringList(
         key: String,
         nonEmpty: Boolean = false,
@@ -245,8 +236,6 @@ class Params private constructor(
         if (max != null && n > max) throw ParamError(at, "must be <= $max")
         return n
     }
-
-    // -------- Converters --------
 
     private fun toDouble(
         v: Any,
@@ -398,7 +387,6 @@ class Params private constructor(
             is Float -> {
                 if (!v.isFinite()) throw ParamError(at, "must be a finite number")
                 if (v % 1.0f != 0.0f) throw ParamError(at, "must be an integer")
-                // Avoid overflow surprises for float -> long.
                 val d = v.toDouble()
                 if (d < Long.MIN_VALUE.toDouble() || d > Long.MAX_VALUE.toDouble()) {
                     throw ParamError(at, "must fit in 64-bit signed integer range")

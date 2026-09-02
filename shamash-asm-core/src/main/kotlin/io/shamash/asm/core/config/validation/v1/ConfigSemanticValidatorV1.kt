@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -41,23 +37,17 @@ import java.util.LinkedHashSet
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
-/**
- * Semantic validation for Shamash ASM config V1.
- */
 object ConfigSemanticValidatorV1 {
     fun validateSemantic(config: ShamashAsmConfigV1): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
-        // ---- Version ----
         if (config.version != 1) {
             errors += err("version", "Unsupported schema version: ${config.version}")
             return errors
         }
 
-        // ---- Project ----
         validateProject(config.project, errors)
 
-        // ---- Roles ----
         config.roles.forEach { (roleId, role) ->
             val base = "roles.$roleId"
             if (roleId.isBlank()) {
@@ -72,28 +62,21 @@ object ConfigSemanticValidatorV1 {
             validateMatcher(role.match, "$base.match", errors)
         }
 
-        // ---- Analysis ----
         validateAnalysis(config.analysis, errors)
 
-        // ---- Rules (uniqueness/scope/spec validation) ----
         val indexed = validateRules(config, errors)
 
-        // ---- Cross-rule invariants (ERROR) ----
         errors += enforceMutuallyExclusiveRuleKinds(config, indexed)
 
-        // ---- Exceptions ----
         validateExceptions(config, errors)
 
-        // ---- Baseline / Export ----
         validateBaseline(config, errors)
         validateExport(config.export, config.analysis, errors)
 
         return errors
     }
 
-    /**
-     * Returns indexed rules so cross-rule checks can point to stable paths.
-     */
+    /** Indices preserve config paths for cross-rule diagnostics. */
     private fun validateRules(
         config: ShamashAsmConfigV1,
         errors: MutableList<ValidationError>,
@@ -103,7 +86,6 @@ object ConfigSemanticValidatorV1 {
 
         val indexed = ArrayList<IndexedRule>(config.rules.size)
 
-        // ---- Basic sanity + uniqueness + scope ----
         config.rules.forEachIndexed { i, rule ->
             val base = "rules[$i]"
             val type = rule.type.trim()
@@ -150,7 +132,6 @@ object ConfigSemanticValidatorV1 {
             validateScope(rule.scope, "$base.scope", config, errors)
         }
 
-        // ---- Specs (only for enabled rules) ----
         config.rules.forEachIndexed { i, rule ->
             if (!rule.enabled) return@forEachIndexed
 
@@ -187,27 +168,19 @@ object ConfigSemanticValidatorV1 {
                 return@forEachIndexed
             }
 
-            // Keep validating other rules regardless of spec failures so user gets full picture.
             errors += spec.validate(rulePath = base, rule = rule, config = config)
         }
 
         return indexed
     }
 
-    /**
-     * Hard invariant: disallow both "allowedX" and "forbiddenX" for the same effective role target.
-     *
-     * This is an ERROR because:
-     * - It prevents ambiguous configs.
-     * - It keeps engine enforcement simple and predictable.
-     */
+    /** Allow and forbid rules must not target the same effective role. */
     private fun enforceMutuallyExclusiveRuleKinds(
         config: ShamashAsmConfigV1,
         rules: List<IndexedRule>,
     ): List<ValidationError> {
         val out = mutableListOf<ValidationError>()
 
-        // Pairs we disallow. (type, allowName, forbidName)
         val pairs =
             listOf(
                 Triple("arch", "allowedRoleDependencies", "forbiddenRoleDependencies"),
@@ -220,8 +193,6 @@ object ConfigSemanticValidatorV1 {
 
             if (allowRules.isEmpty() || forbidRules.isEmpty()) continue
 
-            // Compute per-rule effective role targets.
-            // wildcard roles=null => all roles in config
             val allRoles = config.roles.keys
 
             data class Targeted(
@@ -246,7 +217,6 @@ object ConfigSemanticValidatorV1 {
             val allowTargets = targets(allowRules)
             val forbidTargets = targets(forbidRules)
 
-            // If roles set is empty (should already be caught by semantic validation), skip it here.
             for (a in allowTargets) {
                 if (a.roles.isEmpty()) continue
                 for (f in forbidTargets) {
@@ -544,7 +514,6 @@ object ConfigSemanticValidatorV1 {
                 }
             }
 
-            // If analysis artifacts are requested, ensure the analysis pipeline is configured to produce them.
             if (a.enabled) {
                 if (a.graphs && !analysis.graphs.enabled) {
                     errors += err("$path.graphs", "analysis.graphs.enabled must be true when exporting analysis graphs")

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,13 +29,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * In-memory state holder for the ASM toolwindow.
- *
- * - Stores the latest ASM run (config path + ScanResult)
- * - Notifies listeners (tabs/panels) on updates
- * - Refreshes toolwindow tabs opportunistically (if toolwindow is initialized)
- *
- * NOTE: This service is intentionally NOT persisted. It is session state.
+ * Session-only ASM results. Listeners run on the updating thread; tab refreshes are dispatched to the EDT.
  */
 @Service(Service.Level.PROJECT)
 class ShamashAsmUiStateService(
@@ -68,11 +58,6 @@ class ShamashAsmUiStateService(
         updateInternal(null)
     }
 
-    /**
-     * Update the latest state and trigger UI refresh/notifications.
-     *
-     * Call this from ASM actions after a run or after a validation-only flow.
-     */
     fun update(
         configPath: Path?,
         scanResult: ScanResult?,
@@ -104,7 +89,6 @@ class ShamashAsmUiStateService(
     }
 
     private fun fireListeners(newState: AsmUiState?) {
-        // Listener callbacks should be safe regardless of thread.
         for (l in listeners) {
             runCatching { l.onAsmStateChanged(newState) }
         }
@@ -122,21 +106,13 @@ class ShamashAsmUiStateService(
                     project.getService(ShamashAsmToolWindowController::class.java)
                         ?: return@Runnable
 
-                // Tabs should re-render based on state.
                 controller.refreshAll()
 
-                // Sensible default navigation:
-                // - Config errors => Config tab
-                // - Engine results => Findings tab
-                // - Otherwise => Dashboard
                 val result = newState?.scanResult
                 if (result != null) {
                     when {
-                        // ScanResult exposes these helpers in asm-core.
                         result.hasConfigErrors -> controller.select(ShamashAsmToolWindowController.Tab.CONFIG)
-
                         result.hasEngineResult -> controller.select(ShamashAsmToolWindowController.Tab.FINDINGS)
-
                         else -> controller.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
                     }
                 }

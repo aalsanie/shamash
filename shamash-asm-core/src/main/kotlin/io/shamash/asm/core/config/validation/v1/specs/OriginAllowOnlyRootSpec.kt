@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,17 +26,6 @@ import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.RuleSpec
 
-/**
- * origin.allowOnlyRoot
- *
- * params:
- *   roots: [ <string>, ... ]   // required, non-empty
- *
- * Meaning is engine-defined (e.g., class originPath must start with one of these roots),
- * but this spec only validates the config param bag:
- * - roots present, is list<string>, non-empty, entries non-blank
- * - unknown params then ERROR
- */
 class OriginAllowOnlyRootSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "origin", name = "allowOnlyRoot", role = null)
 
@@ -55,7 +40,6 @@ class OriginAllowOnlyRootSpec : RuleSpec {
 
         val allowed = setOf("roots")
 
-        // Unknown keys => ERROR (matches your "allowed params must be explicit" contract)
         p.unknownKeys(allowed).forEach { k ->
             errors +=
                 ValidationError(

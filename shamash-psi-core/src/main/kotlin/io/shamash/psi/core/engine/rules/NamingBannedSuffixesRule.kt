@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,14 +25,6 @@ import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.engine.EngineRule
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 
-/**
- * Bans class name suffixes.
- *
- * Params (v1):
- * - banned: required non-empty list of suffixes.
- * - applyToRoles: optional list of roleIds (if present, only classes in these roles are checked).
- * - caseSensitive: optional boolean.
- */
 class NamingBannedSuffixesRule : EngineRule {
     override val id: String = "naming.bannedSuffixes"
 

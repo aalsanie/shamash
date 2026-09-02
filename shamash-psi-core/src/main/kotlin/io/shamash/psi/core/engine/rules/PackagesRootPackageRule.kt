@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,19 +26,7 @@ import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.engine.EngineRule
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 
-/**
- * Rule: packages.rootPackage
- *
- * Params (v1):
- * - mode: optional enum { AUTO, EXPLICIT } (case-insensitive). Defaults to AUTO.
- * - value: required when mode=EXPLICIT.
- *
- * Behavior:
- * - AUTO: use config.project.rootPackage.value (if present)
- * - EXPLICIT: use params.value
- * - If file has an explicit package and it does not start with expected root => finding.
- * - If file has no package statement => no finding (default package is allowed).
- */
+/** AUTO reads the project root; EXPLICIT reads the rule value. Files without a package are allowed. */
 class PackagesRootPackageRule : EngineRule {
     override val id: String = "packages.rootPackage"
 
@@ -93,7 +77,7 @@ class PackagesRootPackageRule : EngineRule {
                 filePath = path,
                 severity = RuleUtil.severity(rule),
                 startOffset = start,
-                endOffset = start?.let { it + "package".length }, // highlight keyword area
+                endOffset = start?.let { it + "package".length },
                 data =
                     mapOf(
                         "package" to pkg,
@@ -104,16 +88,10 @@ class PackagesRootPackageRule : EngineRule {
         )
     }
 
-    /**
-     * Extract package name from file text.
-     *
-     * We avoid PSI language-specific classes; this works for both Kotlin and Java.
-     */
+    /** Read the header as text to support both Kotlin and Java without language-specific PSI. */
     private fun extractPackageName(file: PsiFile): String? {
         val text = file.text ?: return null
 
-        // Fast scan: iterate lines until we see a package directive or a non-header statement.
-        // Header can contain blank lines, comments, and annotations.
         var inBlockComment = false
 
         for (rawLine in text.lineSequence()) {
@@ -125,7 +103,6 @@ class PackagesRootPackageRule : EngineRule {
             val t = line.trim()
             if (t.isEmpty()) continue
 
-            // Basic block comment skipping (good enough for header parsing)
             if (inBlockComment) {
                 if (t.contains("*/")) inBlockComment = false
                 continue
@@ -135,12 +112,10 @@ class PackagesRootPackageRule : EngineRule {
                 continue
             }
             if (t.startsWith("//")) continue
-            if (t.startsWith("*")) continue // javadoc interior lines
+            if (t.startsWith("*")) continue
 
-            // Kotlin/Java package statement
             if (t.startsWith("package ")) {
                 val after = t.removePrefix("package ").trim()
-                // Java allows trailing semicolon; Kotlin doesn't
                 val token =
                     after
                         .trimEnd(';')
@@ -150,8 +125,6 @@ class PackagesRootPackageRule : EngineRule {
                 return token.takeIf { it.isNotBlank() }
             }
 
-            // If we hit imports or declarations without a package statement, stop.
-            // Kotlin requires package before imports; Java too. If absent, it's default package.
             if (t.startsWith("import ") ||
                 t.startsWith("class ") || t.startsWith("interface ") ||
                 t.startsWith("object ") || t.startsWith("enum ") || t.startsWith("fun ") ||
@@ -160,7 +133,6 @@ class PackagesRootPackageRule : EngineRule {
                 break
             }
 
-            // Allow annotations as "header noise" before package in weird cases, keep scanning a bit.
             if (!t.startsWith("@")) break
         }
 

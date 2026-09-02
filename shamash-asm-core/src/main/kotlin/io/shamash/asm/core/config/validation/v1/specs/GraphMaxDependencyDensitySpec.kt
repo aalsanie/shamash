@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,13 +26,6 @@ import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.RuleSpec
 
-/**
- * graph.maxDependencyDensity
- *
- * Contract (non-opinionated):
- * - Params:
- *   - maxDensity: Double (>= 0, finite)
- */
 class GraphMaxDependencyDensitySpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "graph", name = "maxDependencyDensity", role = null)
 
@@ -74,7 +63,6 @@ class GraphMaxDependencyDensitySpec : RuleSpec {
                 null
             }
 
-        // Non-blocking sanity hint (not a semantic error) – helps catch misconfigs early.
         if (maxDensity != null && maxDensity > 1.0) {
             errors +=
                 ValidationError(
@@ -84,7 +72,6 @@ class GraphMaxDependencyDensitySpec : RuleSpec {
                 )
         }
 
-        // If graphs are disabled, rule has no effect.
         if (!config.analysis.graphs.enabled) {
             errors +=
                 ValidationError(

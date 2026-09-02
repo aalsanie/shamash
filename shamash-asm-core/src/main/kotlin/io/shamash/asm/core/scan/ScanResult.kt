@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,24 +24,14 @@ import io.shamash.asm.core.facts.FactsError
 import io.shamash.asm.core.scan.bytecode.BytecodeOrigin
 import java.nio.file.Path
 
-/**
- * Full orchestration output of a scan + analyze run.
- */
 data class ScanResult(
     val options: ScanOptions,
-    /** Overrides that were applied in-memory for this run. */
     val appliedOverrides: RunOverrides? = null,
-    /** Resolved config path, if any. */
     val configPath: Path? = null,
-    /** Typed config when structural + semantic validation passes. */
     val config: ShamashAsmConfigV1? = null,
-    /** Config validation errors (schema/binding/semantic). */
     val configErrors: List<ValidationError> = emptyList(),
-    /** Runner-level errors (config discovery, IO, etc.). */
     val scanErrors: List<ScanError> = emptyList(),
-    /** Bytecode origins that were included in the scan. */
     val origins: List<BytecodeOrigin> = emptyList(),
-    /** How many classes were successfully read into units. */
     val classUnits: Int = 0,
     /** True when [io.shamash.asm.core.config.schema.v1.model.ScanConfig.maxClasses] truncated the scan. */
     val truncated: Boolean = false,
@@ -59,11 +45,6 @@ data class ScanResult(
     val hasFactsErrors: Boolean get() = factsErrors.isNotEmpty()
     val hasEngineResult: Boolean get() = engine != null
 
-    /**
-     * Orchestration success:
-     * - config validated
-     * - engine executed
-     * - engine had no internal errors
-     */
+    /** A successful run may still contain policy findings; success requires no validation or execution errors. */
     val isSuccess: Boolean get() = engine?.isSuccess == true && !hasConfigErrors
 }

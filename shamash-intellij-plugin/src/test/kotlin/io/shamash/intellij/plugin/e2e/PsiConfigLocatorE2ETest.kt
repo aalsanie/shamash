@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,7 +24,6 @@ import io.shamash.psi.core.config.ProjectLayout as PsiProjectLayout
 
 class PsiConfigLocatorE2ETest : ShamashPluginE2eTestBase() {
     fun testResolveConfigFileFindsDefaultDiscoveryPathUnderProjectRoot() {
-        // Put config in the most preferred repo-root location.
         val base = Path.of(project.basePath!!)
         val path = base.resolve("shamash/config/psi.yml").normalize()
         writeFile(path, "version: 1\n")
@@ -41,10 +36,8 @@ class PsiConfigLocatorE2ETest : ShamashPluginE2eTestBase() {
     fun testResolveConfigFilePrefersSettingsOverrideOverDefaults() {
         val base = Path.of(project.basePath!!)
 
-        // Default location (would be found if override didn't exist)
         writeFile(base.resolve("shamash/config/psi.yml"), "version: 1\n")
 
-        // Override location
         val overrideRel = "custom/psi.yml"
         val overrideAbs = base.resolve(overrideRel).normalize()
         writeFile(overrideAbs, "version: 1\n# override\n")
@@ -70,10 +63,8 @@ class PsiConfigLocatorE2ETest : ShamashPluginE2eTestBase() {
         val candidates = ShamashPsiConfigLocator.buildCandidatePaths(project)
         assertTrue(candidates.isNotEmpty())
 
-        // First candidate should be the configured override resolved to an absolute path.
         assertEquals(base.resolve(overrideRel).normalize(), candidates.first())
 
-        // The config module's canonical relative path should be present (under at least one base).
         val expectedSuffix = PsiProjectLayout.PSI_CONFIG_RELATIVE_YML
         assertTrue(
             candidates.any {

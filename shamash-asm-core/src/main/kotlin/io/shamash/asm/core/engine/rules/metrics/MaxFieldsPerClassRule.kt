@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,17 +27,6 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.model.FieldRef
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * metrics.maxFieldsPerClass
- *
- * Params:
- * - maxFields: int (required, >= 0)
- * - examples: int (optional, default 10) // include up to N field fqNames as examples per violating class
- *
- * Semantics:
- * - Counts declared fields per class (bytecode facts).
- * - For each in-scope class, if fieldCount > maxFields -> emit a finding for that class.
- */
 class MaxFieldsPerClassRule : Rule {
     override val id: String = "metrics.maxFieldsPerClass"
 
@@ -55,7 +40,6 @@ class MaxFieldsPerClassRule : Rule {
 
         if (facts.classes.isEmpty() || facts.fields.isEmpty()) return emptyList()
 
-        // Group fields by owner class FQN deterministically.
         val fieldsByOwner: Map<String, List<FieldRef>> =
             facts.fields
                 .asSequence()
@@ -64,7 +48,6 @@ class MaxFieldsPerClassRule : Rule {
 
         val out = ArrayList<Finding>()
 
-        // Deterministic iteration over classes.
         val classes = facts.classes.sortedBy { it.fqName }
         for (c in classes) {
             val roleId = facts.classToRole[c.fqName]

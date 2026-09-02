@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,22 +31,8 @@ import java.util.ArrayDeque
 import java.util.LinkedHashSet
 
 /**
- * arch.forbiddenRoleDependencies
- *
- * Params:
- * - forbidden:
- *     <fromRole>: [<toRole>, <toRole>, ...]
- * - direction: "direct" | "transitive"   (optional, default "direct")
- *
- * Semantics:
- * - Build the role graph from facts.edges using engine-assigned classToRole.
- * - If direction=direct: fail when a configured forbidden role edge is observed.
- * - If direction=transitive: fail when a configured forbidden target role is reachable
- *   from the source role through one or more role dependencies.
- *
- * Scope semantics:
- * - role filters apply to the source role.
- * - package/glob scope is applied to the producing source class.
+ * Transitive restrictions follow paths through the role graph.
+ * Role and package/path scope filters apply to the producing source class.
  */
 class ForbiddenRoleDependenciesRule : Rule {
     override val id: String = "arch.forbiddenRoleDependencies"
@@ -68,13 +50,7 @@ class ForbiddenRoleDependenciesRule : Rule {
         val classByFqn: Map<String, ClassFact> =
             facts.classes.associateBy { it.fqName }
 
-        /*
-         * External/unclassified targets cannot participate in configured
-         * role-to-role restrictions because they do not have an assigned role.
-         *
-         * includeExternal is intentionally false here because it is not part of
-         * the arch.forbiddenRoleDependencies V1 parameter contract.
-         */
+        // Unclassified targets have no role and cannot participate in role restrictions.
         val roleGraph =
             RuleUtil.buildRoleGraph(
                 facts = facts,
@@ -87,10 +63,6 @@ class ForbiddenRoleDependenciesRule : Rule {
         for ((fromRole, toRole) in params.forbiddenPairs) {
             if (!RuleUtil.roleAllowed(rule, scope, fromRole)) continue
 
-            /*
-             * The validator rejects self-dependencies, but retain this guard so
-             * direct evaluator use remains defensive.
-             */
             if (fromRole == toRole) continue
 
             when (params.direction) {
@@ -129,11 +101,7 @@ class ForbiddenRoleDependenciesRule : Rule {
 
                     if (path.size < 2) continue
 
-                    /*
-                     * Anchor the finding to evidence for the first edge in the
-                     * discovered path. This gives the user an actionable source
-                     * location even when the forbidden dependency is transitive.
-                     */
+                    // Anchor transitive findings to the first edge so the source location is actionable.
                     val firstHop = path[1]
 
                     val examples =
@@ -160,14 +128,6 @@ class ForbiddenRoleDependenciesRule : Rule {
             }
         }
 
-        /*
-         * Keep findings deterministic regardless of map/set iteration order in
-         * the input facts.
-         *
-         * "mode" remains the finding-data key for output compatibility even
-         * though the configuration parameter is now correctly named
-         * "direction".
-         */
         return findings.sortedWith(
             compareBy<Finding>(
                 { it.data["fromRole"].orEmpty() },
@@ -205,11 +165,7 @@ class ForbiddenRoleDependenciesRule : Rule {
                 put("fromRole", fromRole)
                 put("toRole", toRole)
 
-                /*
-                 * Preserve the existing exported finding field name.
-                 * Changing this to "direction" would be a separate artifact
-                 * compatibility decision.
-                 */
+                // Keep the exported "mode" key for compatibility with existing report consumers.
                 put("mode", direction.wire)
 
                 if (path != null && path.isNotEmpty()) {
@@ -252,11 +208,6 @@ class ForbiddenRoleDependenciesRule : Rule {
             try {
                 params.requireMap("forbidden")
             } catch (_: ParamError) {
-                /*
-                 * Semantic validation is responsible for reporting malformed
-                 * configuration. The evaluator stays resilient if invoked
-                 * independently.
-                 */
                 return null
             }
 
@@ -297,11 +248,7 @@ class ForbiddenRoleDependenciesRule : Rule {
         )
     }
 
-    /**
-     * Deterministic shortest path in a directed graph using BFS.
-     *
-     * Returns [start, ..., target], or null when target is unreachable.
-     */
+    /** Returns the deterministic shortest path, including both endpoints, or null if unreachable. */
     private fun shortestPath(
         graph: RuleUtil.DirectedGraph,
         start: String,
@@ -353,13 +300,6 @@ class ForbiddenRoleDependenciesRule : Rule {
         return path.toList()
     }
 
-    /**
-     * Collect deterministic class-level examples that produced a role edge.
-     *
-     * Returns pairs of:
-     *
-     *     fromClassFqn -> toClassFqn
-     */
     private fun collectDirectExamples(
         facts: FactIndex,
         classByFqn: Map<String, ClassFact>,

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,29 +35,15 @@ import io.shamash.psi.core.facts.FactExtractor
 import io.shamash.psi.core.facts.FactsResult
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 
-/**
- * Shamash engine entrypoint.
- *
- * - Use a project-wide role index so dependencies and role matching are not file-local.
- * - Keeps per-file fact extraction cached by modification stamp.
- * - Never crashes the IDE: cancellation-aware and exception-safe per rule.
- * - Deterministic output ordering (stable across runs).
- */
 class ShamashPsiEngine {
     private val log: Logger = Logger.getInstance(ShamashPsiEngine::class.java)
 
-    /**
-     * Back-compat API: returns findings only.
-     * Prefer [analyzeFileResult] for production usage.
-     */
+    /** Compatibility API that drops structured errors; use [analyzeFileResult] to retain them. */
     fun analyzeFile(
         file: PsiFile,
         config: ShamashPsiConfigV1,
     ): List<Finding> = analyzeFileResult(file, config).findings
 
-    /**
-     * Production API: findings + structured engine errors.
-     */
     fun analyzeFileResult(
         file: PsiFile,
         config: ShamashPsiConfigV1,
@@ -95,7 +77,6 @@ class ShamashPsiEngine {
             } catch (e: ProcessCanceledException) {
                 throw e
             } catch (t: Throwable) {
-                // FactExtractor is already best-effort, but keep engine safe in case of unexpected throw.
                 record("facts:extractResult", t)
                 FactsResult(
                     facts =
@@ -111,7 +92,6 @@ class ShamashPsiEngine {
                 )
             }
 
-        // Propagate facts extraction errors into engine error channel.
         for (e in factsResult.errors) {
             errors +=
                 EngineError(
@@ -145,9 +125,6 @@ class ShamashPsiEngine {
             ProgressManager.checkCanceled()
             if (!ruleDef.enabled) continue
 
-            // Expand authored RuleDef into concrete rule instances:
-            // - roles == null => wildcard instance (type.name)
-            // - roles != null => one instance per role (type.name.role)
             val roles = ruleDef.roles
             val instanceRoles: List<String?> =
                 if (roles == null) {
@@ -167,7 +144,6 @@ class ShamashPsiEngine {
             val baseId = "${ruleDef.type}.${ruleDef.name}"
             val rule = RuleRegistry.find(baseId)
             if (rule == null) {
-                // Validation layer controls unknown-rule policy; engine stays safe.
                 log.debug("Unknown rule '$baseId' (enabled=${ruleDef.enabled})")
                 continue
             }
@@ -175,7 +151,6 @@ class ShamashPsiEngine {
             for (role in instanceRoles) {
                 ProgressManager.checkCanceled()
 
-                // If a concrete role instance contradicts the authored scope, skip.
                 if (role != null && ruleDef.scope?.excludeRoles?.contains(role) == true) continue
 
                 val effectiveRule =
@@ -194,8 +169,7 @@ class ShamashPsiEngine {
                                     excludeGlobs = null,
                                 )
                             } else {
-                                // A role-specific rule instance must only apply to that role.
-                                // If authored includeRoles exists, we still override it to match the instance.
+                                // Constrain includeRoles to the concrete instance after checking authored scope.
                                 scope0.copy(includeRoles = listOf(role))
                             }
 
@@ -210,7 +184,6 @@ class ShamashPsiEngine {
                     } catch (e: ProcessCanceledException) {
                         throw e
                     } catch (e: ParamError) {
-                        // Param errors must be explicit and must not crash the scan.
                         errors +=
                             EngineError(
                                 fileId = fileId,
@@ -225,9 +198,6 @@ class ShamashPsiEngine {
                         emptyList()
                     }
 
-                // Normalize findings defensively:
-                // - ensure filePath
-                // - force canonical (expanded) ruleId
                 for (f in produced) {
                     val fixedPath = if (f.filePath.isBlank()) filePath else f.filePath
                     rawFindings +=
@@ -282,7 +252,6 @@ class ShamashPsiEngine {
     private fun normalizeAndSort(findings: List<Finding>): List<Finding> {
         if (findings.isEmpty()) return findings
 
-        // Deduplicate and stable sort exports and UI presentation.
         val unique = findings.distinctBy { key(it) }
 
         return unique.sortedWith(

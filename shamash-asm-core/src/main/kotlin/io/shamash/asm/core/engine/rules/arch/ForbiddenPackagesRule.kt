@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,16 +27,6 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 import java.util.regex.Pattern
 
-/**
- * arch.forbiddenPackages
- *
- * Params:
- * - forbidPackages: [ "<regex>", ... ]  (non-empty)
- *
- * Semantics:
- * - For classes in scope (roles + scope filters), their package MUST NOT match any forbidPackages regex.
- * - If it matches, emit a finding for that class.
- */
 class ForbiddenPackagesRule : Rule {
     override val id: String = "arch.forbiddenPackages"
 
@@ -56,7 +42,6 @@ class ForbiddenPackagesRule : Rule {
 
         val out = ArrayList<Finding>()
 
-        // deterministic iteration
         val classes = facts.classes.sortedBy { it.fqName }
 
         for (c in classes) {
@@ -103,7 +88,6 @@ class ForbiddenPackagesRule : Rule {
             try {
                 p.requireStringList("forbidPackages", nonEmpty = true)
             } catch (_: ParamError) {
-                // validator should catch; engine stays resilient
                 return null
             }
 

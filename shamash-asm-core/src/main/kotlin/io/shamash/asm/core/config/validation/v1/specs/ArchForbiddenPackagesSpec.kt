@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,12 +28,6 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
-/**
- * Forbids packages (regex) from appearing in a role scope.
- *
- * Params:
- * - forbidPackages: [ "<regex>", ... ]   (non-empty; each must compile)
- */
 class ArchForbiddenPackagesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "arch", name = "forbiddenPackages", role = null)
 
@@ -87,7 +77,6 @@ class ArchForbiddenPackagesSpec : RuleSpec {
             }
         }
 
-        // Optional sanity: if rule targets roles explicitly, ensure they exist.
         rule.roles?.forEachIndexed { i, roleId ->
             val rid = roleId.trim()
             val at = "$rulePath.roles[$i]"

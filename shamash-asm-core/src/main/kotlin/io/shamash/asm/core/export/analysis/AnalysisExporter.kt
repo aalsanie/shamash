@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,14 +29,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 
-/**
- * Analysis sidecar exporters.
- *
- * Stage 2 exports three dedicated JSON artifacts:
- * - analysis-graphs.json
- * - analysis-hotspots.json
- * - analysis-scores.json
- */
 object AnalysisExporter {
     private val mapper: ObjectMapper =
         jacksonObjectMapper()
@@ -124,11 +112,6 @@ object AnalysisExporter {
         }
     }
 
-    /**
-     * Export all available analysis sidecars next to the main report.
-     *
-     * Files are only written when the corresponding section exists in [result].
-     */
     fun export(
         result: AnalysisResult,
         outputDir: Path,

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,23 +28,6 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
-/**
- * api.forbiddenAnnotationUsage
- *
- * Non-opinionated param contract:
- *
- * params:
- *   forbid: [ <regex>, ... ]
- *
- * Where each entry is a regex that matches an annotation type identifier
- * (engine-defined: could be internal name, binary name, descriptor, etc).
- *
- * This spec only validates:
- * - param presence / types
- * - non-empty list
- * - regex compilation
- * - unknown params (ERROR)
- */
 class ApiForbiddenAnnotationUsageSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "api", name = "forbiddenAnnotationUsage", role = null)
 
@@ -63,7 +42,6 @@ class ApiForbiddenAnnotationUsageSpec : RuleSpec {
 
         val allowed = setOf("forbid")
 
-        // Unknown keys: ERROR
         p.unknownKeys(allowed).forEach { k ->
             errors +=
                 ValidationError(
@@ -74,7 +52,6 @@ class ApiForbiddenAnnotationUsageSpec : RuleSpec {
         }
 
         try {
-            // forbid: required, non-empty list<string>
             val raw = rule.params["forbid"] ?: throw ParamError("$paramsPath.forbid", "is required")
             val list = raw as? List<*> ?: throw ParamError("$paramsPath.forbid", "must be a list")
             if (list.isEmpty()) throw ParamError("$paramsPath.forbid", "must be non-empty")

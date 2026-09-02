@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -77,15 +73,12 @@ class SarifExporterTest {
         val sarif = Files.readString(out.resolve(ExportOutputLayout.SARIF_FILE_NAME))
 
         assertTrue(sarif.contains("\"version\": \"2.1.0\""))
-        // Start time from epoch 0
         assertTrue(sarif.contains("\"startTimeUtc\": \"1970-01-01T00:00:00Z\""))
 
-        // Rules are catalogued (ids appear in tool.rules)
         assertTrue(sarif.contains("\"id\": \"R1\""))
         assertTrue(sarif.contains("\"id\": \"R2\""))
         assertTrue(sarif.contains("\"id\": \"R3\""))
 
-        // Level mapping
         assertTrue(sarif.contains("\"ruleId\": \"R1\""))
         assertTrue(sarif.contains("\"level\": \"error\""))
         assertTrue(sarif.contains("\"ruleId\": \"R2\""))
@@ -93,7 +86,6 @@ class SarifExporterTest {
         assertTrue(sarif.contains("\"ruleId\": \"R3\""))
         assertTrue(sarif.contains("\"level\": \"note\""))
 
-        // Fingerprint is emitted as partial fingerprint
         assertTrue(sarif.contains("\"primaryLocationLineHash\": \"fp1\""))
 
         deleteRecursively(out)

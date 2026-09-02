@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,10 +20,8 @@ package io.shamash.asm.core.facts.model
 import org.objectweb.asm.Type
 
 /**
- * Canonical JVM type identity.
- *
- * - For arrays, identity is normalized to the element type with [isArray]=true.
- * - For primitives, [internalName] is the JVM primitive name (e.g. "int").
+ * Arrays use their element type identity with [isArray] set.
+ * Primitive [internalName] values are JVM names such as `int`.
  */
 data class TypeRef(
     val internalName: String,
@@ -61,7 +55,7 @@ data class TypeRef(
                 }
 
                 Type.BOOLEAN, Type.CHAR, Type.BYTE, Type.SHORT, Type.INT, Type.FLOAT, Type.LONG, Type.DOUBLE -> {
-                    val name = type.className // "int", "boolean", ...
+                    val name = type.className
                     TypeRef(
                         internalName = name,
                         fqName = name,
@@ -92,12 +86,7 @@ data class TypeRef(
             }
         }
 
-        /**
-         * Convert a JVM internal name or descriptor into a dependency target.
-         *
-         * - primitives and void are excluded (return null)
-         * - arrays are normalized to element type (isArray=true)
-         */
+        /** Returns null for primitives/void; reference arrays use their element type with isArray=true. */
         fun dependencyTargetFromType(type: Type): TypeRef? {
             val ref = fromAsmType(type) ?: return null
             return if (ref.isPrimitive) null else ref

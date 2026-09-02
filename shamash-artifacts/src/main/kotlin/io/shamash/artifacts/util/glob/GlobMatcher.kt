@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,17 +20,9 @@ package io.shamash.artifacts.util.glob
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Simple glob matcher with stable cross-platform normalization.
- *
- * Supported:
- * - '*'  : matches within a single path segment (no '/')
- * - '?'  : matches a single non-'/' character
- * - '**' : matches across path segments
- *
- * Important semantic:
- * - A glob segment of ** matches *zero or more* directories.
-*   This means "xx/build/xx" must match both "build/..." and "x/build/...".
-*/
+ * `*` and `?` stay within a path segment; `**` crosses segments.
+ * A double-star directory segment also matches zero directories. Relative globs match at any path depth.
+ */
 object GlobMatcher {
     private val cache = ConcurrentHashMap<String, Regex>()
 
@@ -48,10 +36,6 @@ object GlobMatcher {
         val rx = cache.computeIfAbsent(nGlob) { compile(it) }
         if (rx.matches(nPath)) return true
 
-        // If the glob is relative-ish, allow it to match anywhere in the path by prefixing "**/".
-        // With the "**/" semantics implemented in [compile], this will match both:
-        // - "build/..." (zero directories)
-        // - "x/build/..." (one or more directories)
         if (!nGlob.startsWith("/")) {
             val anyKey = normalizePath("**/$nGlob")
             val anyRx = cache.computeIfAbsent(anyKey) { compile(it) }
@@ -85,19 +69,15 @@ object GlobMatcher {
                         val hasSlashAfter = (i + 2 < g.length && g[i + 2] == '/')
                         if (hasSlashAfter) {
                             // "**/" matches zero or more directories.
-                            // Use a non-capturing optional group so root-level matches work:
-                            // - "**/build" matches "build" and "a/build"
                             sb.append("(?:.*/)?")
-                            i += 3 // consume "**/"
+                            i += 3
                             continue
                         } else {
-                            // Plain "**" (not immediately followed by '/'): match anything (including '/')
                             sb.append(".*")
-                            i += 2 // consume "**"
+                            i += 2
                             continue
                         }
                     } else {
-                        // "*" within a segment
                         sb.append("[^/]*")
                         i += 1
                         continue
@@ -110,7 +90,6 @@ object GlobMatcher {
                     continue
                 }
 
-                // Escape regex metacharacters
                 '.', '(', ')', '+', '|', '^', '$', '@', '%', '{', '}', '[', ']', '\\' -> {
                     sb.append('\\').append(c)
                     i += 1

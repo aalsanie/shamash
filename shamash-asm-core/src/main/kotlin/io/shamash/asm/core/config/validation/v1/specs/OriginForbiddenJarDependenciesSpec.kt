@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,17 +28,6 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
-/**
- * origin.forbiddenJarDependencies
- *
- * Validates config params only (engine enforces the jar -> jar dependency checks).
- *
- * Params:
- * - forbid (required, non-empty list<object>)
- *     Each object:
- *       - from (required string): regex that matches the "origin jar id/path" of the depender
- *       - to   (required string): regex that matches the "target jar id/path" being depended on
- */
 class OriginForbiddenJarDependenciesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "origin", name = "forbiddenJarDependencies", role = null)
 
@@ -57,7 +42,6 @@ class OriginForbiddenJarDependenciesSpec : RuleSpec {
 
         val allowed = setOf("forbid")
 
-        // Unknown keys: ERROR
         p.unknownKeys(allowed).forEach { k ->
             errors +=
                 ValidationError(
@@ -84,7 +68,6 @@ class OriginForbiddenJarDependenciesSpec : RuleSpec {
                     item as? Map<*, *>
                         ?: throw ParamError(at, "must be an object/map")
 
-                // Coerce keys to string for stable lookups (same behavior as Params.requireMap)
                 val map = LinkedHashMap<String, Any?>(obj.size)
                 for ((k, v) in obj) {
                     if (k == null) throw ParamError(at, "map key must not be null")

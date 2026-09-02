@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,22 +29,6 @@ import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.engine.index.ProjectRoleIndexSnapshot
 import java.time.LocalDate
 
-/**
- * Production-ready suppression (exceptions) matching.
- *
- * Supported matchers (v1.0):
- * - fileGlob (supports **,*,?)
- * - packageRegex
- * - classNameRegex (simple name)
- * - methodNameRegex / fieldNameRegex (uses Finding.memberName)
- * - role (class role)
- * - hasAnnotation / hasAnnotationPrefix (class or member, best-effort)
- * - expiresOn (if expired, suppression is NOT applied)
- *
- * Suppress list supports:
- * - explicit rule ids
- * - "*" or "all" to suppress any rule
- */
 internal object ExceptionSuppressor {
     private val WILDCARD_SUPPRESS: Set<String> = setOf("*", "all")
 
@@ -72,7 +52,6 @@ internal object ExceptionSuppressor {
 
                 if (!suppressesThisRule) return@any false
 
-                // expiry enforcement
                 ex.expiresOn?.let { dateStr ->
                     runCatching { dateStr }.getOrNull()?.let { exp ->
                         if (LocalDate.now().isAfter(exp)) return@any false
@@ -91,7 +70,6 @@ internal object ExceptionSuppressor {
         project: Project,
         basePath: String?,
     ): Boolean {
-        // file glob
         match.fileGlob?.let { g ->
             val fp = f.filePath
             val rel =
@@ -105,28 +83,24 @@ internal object ExceptionSuppressor {
             if (!ok) return false
         }
 
-        // role
         match.role?.let { expected ->
             val cls = f.classFqn ?: return false
             val role = roleIndex.classToRole[cls] ?: return false
             if (role != expected) return false
         }
 
-        // package regex
         match.packageRegex?.let { rx ->
             val cls = f.classFqn ?: return false
             val pkg = cls.substringBeforeLast('.', "")
             if (!Regex(rx).containsMatchIn(pkg)) return false
         }
 
-        // class name regex (simple)
         match.classNameRegex?.let { rx ->
             val cls = f.classFqn ?: return false
             val simple = cls.substringAfterLast('.')
             if (!Regex(rx).containsMatchIn(simple)) return false
         }
 
-        // member regex
         match.methodNameRegex?.let { rx ->
             val name = f.memberName ?: return false
             if (!Regex(rx).containsMatchIn(name)) return false
@@ -136,7 +110,6 @@ internal object ExceptionSuppressor {
             if (!Regex(rx).containsMatchIn(name)) return false
         }
 
-        // annotation match
         if (match.hasAnnotation != null || match.hasAnnotationPrefix != null) {
             val cls = f.classFqn ?: return false
             val has = hasMatchingAnnotation(match, f, cls, roleIndex, project)
@@ -162,24 +135,20 @@ internal object ExceptionSuppressor {
             return false
         }
 
-        // 1) Fast path: class annotations from index
         val classAnns = roleIndex.classToAnnotations[clsFqn]
         if (classAnns != null && classAnns.any(::annOk)) return true
 
-        // 2) Best-effort member annotations via PSI resolution
         val memberName = f.memberName ?: return false
         val psiClass =
             JavaPsiFacade.getInstance(project).findClass(clsFqn, GlobalSearchScope.projectScope(project))
                 ?: return false
 
-        // Check method first
         psiClass.findMethodsByName(memberName, true).forEach { m ->
             ProgressManager.checkCanceled()
             m.modifierList.annotations
                 .mapNotNull { it.qualifiedName }
                 .forEach { if (annOk(it)) return true }
         }
-        // Check field
         psiClass.findFieldByName(memberName, true)?.let { fld ->
             fld.modifierList
                 ?.annotations

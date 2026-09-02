@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,17 +20,7 @@ package io.shamash.intellij.plugin.asm.ui.findings
 import io.shamash.artifacts.contract.Finding
 import javax.swing.table.AbstractTableModel
 
-/**
- * Table model for ASM findings.
- *
- * Columns are intentionally stable and minimal:
- * - Severity
- * - Rule
- * - File
- * - Message
- *
- * All view-layer filtering/sorting should be done via JTable RowSorter.
- */
+/** Keep filtering and sorting in JTable RowSorter so model indices remain stable. */
 class FindingTableModel : AbstractTableModel() {
     companion object {
         const val COL_SEVERITY: Int = 0

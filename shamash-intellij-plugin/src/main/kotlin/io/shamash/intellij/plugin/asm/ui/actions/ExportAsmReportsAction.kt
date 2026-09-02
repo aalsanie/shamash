@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -50,17 +46,7 @@ import java.nio.file.Paths
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 
-/**
- * UI export action.
- *
- * Export is produced via the single ASM scan entry point (ShamashAsmScanRunner),
- * and is controlled purely by config.export (enabled/formats/outputDir/overwrite).
- *
- * UX:
- * - Shows progress indicator.
- * - If indexing is running (Dumb Mode), waits until indexing finishes (Smart Mode) then runs.
- * - Updates toolwindow state from the produced ScanResult.
- */
+/** Export settings, including overwrite behavior, are controlled by config.export in the scan runner. */
 class ExportAsmReportsAction(
     private val runner: ShamashAsmScanRunner = defaultRunner(),
 ) : AnAction() {
@@ -99,7 +85,6 @@ class ExportAsmReportsAction(
                 projectBasePath = basePath,
                 projectName = project.name,
                 configPath = configPath,
-                // schemaValidator defaults to SchemaValidatorNetworkNt (asm-core)
                 includeFactsInResult = false,
             )
 
@@ -126,7 +111,6 @@ class ExportAsmReportsAction(
 
                     val r = result
 
-                    // Single source-of-truth state update (even if null).
                     ShamashAsmUiStateService.getInstance(project).update(configPath = configPath, scanResult = r)
 
                     AsmActionUtil.openAsmToolWindow(project)
@@ -150,7 +134,6 @@ class ExportAsmReportsAction(
                         return
                     }
 
-                    // Export is config-driven inside the engine.
                     val export = engine.export
                     if (export == null) {
                         val cfg = r.config
@@ -164,8 +147,7 @@ class ExportAsmReportsAction(
                             return
                         }
 
-                        // If enabled but export is null, it's either skipped due to overwrite=false with existing files
-                        // or failed (error already reported in engine.errors).
+                        // A null export can mean overwrite=false skipped existing reports; check engine errors for failures.
                         val exportFailed = engine.errors.any { it.code.name == "EXPORT_FAILED" }
                         if (exportFailed) {
                             AsmActionUtil.notify(
@@ -177,7 +159,6 @@ class ExportAsmReportsAction(
                             return
                         }
 
-                        // Skipped due to overwrite=false + existing reports is the only other "expected" path.
                         val hint = exportSkipHint(basePath, cfg)
                         AsmActionUtil.notify(
                             project,

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,14 +19,6 @@ package io.shamash.psi.core.engine
 
 import io.shamash.artifacts.contract.Finding
 
-/**
- * Production-friendly engine output:
- * - findings: best-effort findings (never null)
- * - errors: structured execution issues (never throws unless canceled)
- *
- * Deterministic:
- * - callers can compare EngineResult across runs for the same file.
- */
 data class EngineResult(
     val findings: List<Finding>,
     val errors: List<EngineError>,
@@ -38,9 +26,6 @@ data class EngineResult(
     val hasErrors: Boolean get() = errors.isNotEmpty()
 }
 
-/**
- * Structured engine error without leaking huge stack traces into the model.
- */
 data class EngineError(
     val fileId: String,
     val phase: String, // e.g. "facts:toUElementOfType", "roleIndex:getOrBuild", "rule:params", "rule:crash", "suppress:exceptions"

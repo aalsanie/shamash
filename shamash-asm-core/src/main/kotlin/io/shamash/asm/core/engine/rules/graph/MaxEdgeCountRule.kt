@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,19 +27,6 @@ import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * graph.maxEdgeCount
- *
- * Params:
- * - max: int (required, >= 0)
- * - granularity: "class" | "package" | "module" (optional, default "package")
- * - includeExternal: boolean (optional, default false)
- *
- * Semantics:
- * - Build dependency graph at requested granularity.
- * - Count distinct directed edges (excluding self edges).
- * - If edgeCount > max -> emit a single finding.
- */
 class MaxEdgeCountRule : Rule {
     override val id: String = "graph.maxEdgeCount"
 
@@ -67,7 +50,6 @@ class MaxEdgeCountRule : Rule {
         val count = g.edgeCount
         if (count <= params.max) return emptyList()
 
-        // Anchor on first class in scope (stable).
         val anchor =
             facts.classes
                 .asSequence()

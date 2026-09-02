@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,33 +22,15 @@ import io.shamash.artifacts.util.PathNormalizer
 import java.nio.file.Path
 import java.nio.file.Paths
 
-/**
- * Coordinates baseline read/write and fingerprint computation for scan/export wiring.
- *
- * Baseline owns:
- * - stable fingerprinting spec (SHA-256 over normalized finding identity fields)
- * - baseline.json persistence
- */
 class BaselineCoordinator(
     private val store: BaselineStore = BaselineStore(),
 ) {
-    /**
-     * Loads baseline fingerprints from `<outputDir>/baseline.json`.
-     *
-     * Returns an empty set when no baseline exists.
-     */
     fun loadBaselineFingerprints(outputDir: Path): Set<String> {
         val baseline = store.load(outputDir) ?: return emptySet()
         return baseline.fingerprints
     }
 
-    /**
-     * Computes stable fingerprints for the provided findings.
-     *
-     * Fingerprinting uses:
-     * - a normalized project-relative path derived from [projectBasePath] + finding.filePath
-     * - finding identity fields (ruleId, severity, offsets, data) with deterministic ordering
-     */
+    /** Uses project-relative paths and the identity contract in [BaselineFingerprint]. */
     fun computeFingerprints(
         projectBasePath: Path,
         findings: List<Finding>,
@@ -72,11 +50,6 @@ class BaselineCoordinator(
         return out
     }
 
-    /**
-     * Writes baseline to `<outputDir>/baseline.json`.
-     *
-     * If [mergeWithExisting] is true and an existing baseline exists, the union is written.
-     */
     fun writeBaseline(
         outputDir: Path,
         fingerprints: Set<String>,
@@ -99,11 +72,6 @@ class BaselineCoordinator(
         store.write(outputDir, merged)
     }
 
-    /**
-     * Creates a baseline suppression preprocessor.
-     *
-     * Returns null when [baselineFingerprints] is empty.
-     */
     fun createSuppressionPreprocessor(baselineFingerprints: Set<String>): BaselineFindingPreprocessor? {
         if (baselineFingerprints.isEmpty()) return null
         return BaselineFindingPreprocessor(baselineFingerprints)

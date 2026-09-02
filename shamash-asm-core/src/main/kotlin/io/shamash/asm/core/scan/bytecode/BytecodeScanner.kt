@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,17 +39,7 @@ import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 
-/**
- * Bytecode scanner:
- * - discovers class output directories and jar files under [BytecodeConfig.roots]
- * - filters by [BytecodeConfig.outputsGlobs] and [BytecodeConfig.jarGlobs]
- * - respects [ScanScope] for project/external bucketing
- * - produces [BytecodeUnit] suitable for FactExtractor
- *
- * Scanner is best-effort:
- * - IO errors are captured into [BytecodeScanResult.errors]
- * - scan can be truncated using [ScanConfig.maxClasses]
- */
+/** Captures IO failures in [BytecodeScanResult.errors]; [ScanConfig.maxClasses] may truncate output. */
 class BytecodeScanner {
     data class BytecodeScanError(
         val message: String,
@@ -79,7 +65,6 @@ class BytecodeScanner {
         val followLinks = scan.followSymlinks
         val visitOpts = if (followLinks) EnumSet.of(FileVisitOption.FOLLOW_LINKS) else EnumSet.noneOf(FileVisitOption::class.java)
 
-        // Resolve roots
         val roots: List<Path> =
             bytecode.roots
                 .asSequence()
@@ -92,7 +77,6 @@ class BytecodeScanner {
                 .distinct()
                 .toList()
 
-        // Discover output dirs + jars
         val outDirs = LinkedHashSet<Path>()
         val jarFiles = LinkedHashSet<Path>()
 
@@ -167,7 +151,6 @@ class BytecodeScanner {
             }
         }
 
-        // Build origins
         val origins = mutableListOf<BytecodeOrigin>()
 
         fun bucketFor(path: Path): BytecodeOrigin.Bucket =
@@ -179,8 +162,6 @@ class BytecodeScanner {
                 ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS -> true
                 ScanScope.ALL_SOURCES -> true
             }
-
-        // For ALL_SOURCES, we still bucket by location for display, but callers can ignore bucket.
 
         val includedDirs =
             outDirs
@@ -246,13 +227,11 @@ class BytecodeScanner {
                 )
         }
 
-        // Deterministic order by stablePath
         val sortedOrigins =
             origins.sortedWith(
                 compareBy<BytecodeOrigin> { it.bucket.name }.thenBy { it.kind.name }.thenBy { it.stablePath },
             )
 
-        // Emit units
         val maxClasses = scan.maxClasses
         val maxClassBytes = scan.maxClassBytes
         val units = ArrayList<BytecodeUnit>(maxClasses?.coerceAtMost(4096) ?: 4096)
@@ -287,7 +266,6 @@ class BytecodeScanner {
         ): ByteArray? {
             try {
                 open().use { input ->
-                    // Read with an upper bound if configured.
                     if (maxClassBytes == null) {
                         return input.readBytes()
                     }
@@ -354,7 +332,6 @@ class BytecodeScanner {
                                     val originId = stableFile
                                     if (!seenOriginIds.add(originId)) return FileVisitResult.CONTINUE
 
-                                    // Quick size check for dirs
                                     if (maxClassBytes != null) {
                                         try {
                                             val size = Files.size(file)
@@ -455,7 +432,6 @@ class BytecodeScanner {
             }
         }
 
-        // Deterministic unit ordering by originId
         val stableUnits = units.sortedBy { it.originId }
         val stableErrors = errors.sortedWith(compareBy<BytecodeScanError> { it.path ?: "" }.thenBy { it.message })
 

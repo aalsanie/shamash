@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,14 +29,7 @@ import io.shamash.psi.core.fixes.FixProvider
 import io.shamash.psi.core.fixes.PsiResolver
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Provides suppression fixes for any finding.
- *
- * Supported formats (must match engine suppressors):
- *  - Line comment directive: // shamash:ignore <ruleId>|all
- *  - Kotlin: @Suppress("shamash:<ruleId>|all")
- *  - Java: @SuppressWarnings("shamash:<ruleId>|all")
- */
+/** Generated directives and annotations must match [io.shamash.psi.core.engine.InlineSuppressor]. */
 class SuppressFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = true
 
@@ -78,7 +67,6 @@ class SuppressFixProvider : FixProvider {
             val directive = "$indent// shamash:ignore $ruleId\n"
 
             WriteCommandAction.runWriteCommandAction(project) {
-                // De-dup where it matters: current line or the line directly above.
                 if (hasTokenOnLineOrPrev(doc, line, "shamash:ignore $ruleId") ||
                     hasTokenOnLineOrPrev(doc, line, "shamash:ignore all")
                 ) {
@@ -121,7 +109,6 @@ class SuppressFixProvider : FixProvider {
             val annLine = "$indent$annCore\n"
 
             WriteCommandAction.runWriteCommandAction(project) {
-                // De-dup locally (annotation can be above the declaration line).
                 if (hasTokenOnLineOrPrev(doc, line, "shamash:$ruleId") ||
                     hasTokenOnLineOrPrev(doc, line, "shamash:all")
                 ) {
@@ -133,18 +120,11 @@ class SuppressFixProvider : FixProvider {
             }
         }
 
-        /**
-         * We want class/member suppression, so we insert ABOVE the declaration.
-         *
-         * If the finding has no class/member anchor (file-scoped rules),
-         * we fallback to the first top-level declaration (class/object/interface/fun/val/var),
-         * never before the package/imports.
-         */
+        /** Anchor annotations above a declaration, after package/imports, including for file-scoped findings. */
         private fun computeInsertionLineStartOffset(doc: Document): Int? {
             val text = file.text
             val headerEnd = headerEndOffset(text)
 
-            // 1) If this is declaration-scoped, try to anchor directly to PSI element.
             val hasAnchorInfo = !finding.classFqn.isNullOrBlank() || !finding.memberName.isNullOrBlank()
             if (hasAnchorInfo) {
                 val offset = element.textRange?.startOffset
@@ -154,31 +134,23 @@ class SuppressFixProvider : FixProvider {
                 }
             }
 
-            // 2) Fallback: first top-level declaration after header.
             val firstDeclaration = firstTopLevelDeclarationOffset(text)
             if (firstDeclaration != null) {
                 val line = doc.getLineNumber(firstDeclaration)
                 return doc.getLineStartOffset(line)
             }
 
-            // 3) Last resort: insert after header end (never at 0).
             val line = doc.getLineNumber(minOf(headerEnd, doc.textLength))
             return doc.getLineStartOffset(line)
         }
 
-        /**
-         * Returns the offset right AFTER the last import line (or after package line if no imports).
-         * Text-based so it works for Kotlin + Java consistently.
-         */
         private fun headerEndOffset(text: String): Int {
             var last = 0
 
-            // end of package line
             Regex("(?m)^\\s*package\\s+[^\\n]+\\n").find(text)?.let {
                 last = maxOf(last, it.range.last + 1)
             }
 
-            // end of last import line
             Regex("(?m)^\\s*import\\s+[^\\n]+\\n")
                 .findAll(text)
                 .forEach { last = maxOf(last, it.range.last + 1) }
@@ -186,9 +158,6 @@ class SuppressFixProvider : FixProvider {
             return last
         }
 
-        /**
-         * Find the first top-level declaration after the header (package/imports).
-         */
         private fun firstTopLevelDeclarationOffset(text: String): Int? {
             val start = headerEndOffset(text)
             if (start >= text.length) return null

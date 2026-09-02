@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,15 +39,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import java.util.LinkedHashMap
 
-/**
- * Loads YAML and binds it into the locked schema v1 models.
- *
- * IMPORTANT BOUNDARY:
- * - This is a binder, not a semantic validator.
- * - It only enforces *shape/type* constraints required to construct schema models.
- * - Semantic rules (non-empty strings, priority ranges, wildcard rules, known roles, regex compilation, etc.)
- *   are enforced by the dedicated validation layer.
- */
+/** Enforces only shape/type constraints needed to construct models; semantic checks belong to validation. */
 object ConfigLoader {
     private val load: Load =
         Load(
@@ -61,14 +49,9 @@ object ConfigLoader {
                 .build(),
         )
 
-    /** Low-level YAML parse (raw tree). */
     fun loadRaw(reader: Reader): Any? = load.loadFromReader(reader)
 
-    /**
-     * Bind schema v1.
-     *
-     * @throws ConfigBindException if the raw YAML cannot be bound into schema v1 types.
-     */
+    /** @throws ConfigBindException if YAML values cannot be bound to schema v1 types. */
     fun bindV1(raw: Any?): io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1 {
         val root = raw.asMap("root") ?: throw ConfigBindException("root", "Config root must be a mapping/object")
 
@@ -88,11 +71,9 @@ object ConfigLoader {
     }
 
     private fun bindProject(map: Map<String, Any?>): ProjectConfigV1 {
-        // Binder-only: optional fields remain optional; defaults are handled by validation layer if needed.
         val rootPackage = map.optMap("rootPackage")?.let { bindRootPackage(it) }
         val sourceGlobs = map.reqMap("sourceGlobs", "project.sourceGlobs").let { bindSourceGlobs(it) }
 
-        // Binder-only: allow missing validation block; apply minimal default for binding.
         val validation =
             map.optMap("validation")?.let { bindValidation(it) }
                 ?: ValidationConfigV1(unknownRule = UnknownRulePolicyV1.ERROR)
@@ -108,7 +89,6 @@ object ConfigLoader {
         val modeRaw = map.reqString("mode", "project.rootPackage.mode")
         val mode = modeRaw.toEnumOrThrow<RootPackageModeV1>("project.rootPackage.mode")
 
-        // Binder-only: keep value as-is (string type); whether it must be present/non-blank depends on mode and is semantic.
         val value = map.optString("value")
         return RootPackageConfigV1(mode = mode, value = value ?: "")
     }
@@ -152,10 +132,6 @@ object ConfigLoader {
             val type = m.reqString("type", "$path.type")
             val name = m.reqString("name", "$path.name")
 
-            // Binder-only:
-            // - roles may be missing => treat as null (semantic validator can require explicit presence if desired).
-            // - roles may be null => wildcard.
-            // - roles list values must be strings if present (type binding).
             val roles: List<RoleId>? =
                 if (!m.containsKey("roles")) {
                     null
@@ -183,7 +159,6 @@ object ConfigLoader {
 
             val scope = m.optMap("scope")?.let { bindScope(it, "$path.scope") }
 
-            // Binder-only: params may be missing or null => emptyMap
             val params: Map<String, Any?> =
                 if (!m.containsKey("params") || m["params"] == null) {
                     emptyMap()
@@ -330,8 +305,6 @@ object ConfigLoader {
 
         throw ConfigBindException(path, "$path must define a valid matcher object")
     }
-
-    // ---------------- errors + helpers ----------------
 
     class ConfigBindException(
         val path: String,
