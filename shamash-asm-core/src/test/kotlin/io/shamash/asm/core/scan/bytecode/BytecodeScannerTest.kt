@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -50,10 +46,6 @@ class BytecodeScannerTest {
             val bytecode =
                 BytecodeConfig(
                     roots = listOf("."),
-                    // IMPORTANT:
-                    // Use "build/classes/**" (not "**/build/classes/**") because stable paths are relative
-                    // ("build/classes/...") and "**/build/..." requires a leading slash somewhere before "build".
-                    // GlobMatcher already provides "match anywhere" fallback for relative globs.
                     outputsGlobs = GlobSet(include = listOf("build/classes/**"), exclude = emptyList()),
                     jarGlobs = GlobSet(include = emptyList(), exclude = emptyList()),
                 )
