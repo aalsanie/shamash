@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,16 +24,6 @@ import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.psi.core.config.ProjectLayout
 import java.nio.file.Path
 
-/**
- * Central resolver for where Shamash PSI configs should live inside a project.
- *
- * Goal: one source of truth used by:
- *  - locator (read)
- *  - action (create)
- *
- * We prefer module src/main/resources if present, else any resources root,
- * else fallback to <projectRoot>/src/main/resources.
- */
 object ResourceBaseLookup {
     fun bestResourceRootPath(project: Project): Path? {
         val modules =

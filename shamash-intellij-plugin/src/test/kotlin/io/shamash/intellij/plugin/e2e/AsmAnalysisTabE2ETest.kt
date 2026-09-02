@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -57,12 +53,6 @@ import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
 import io.shamash.intellij.plugin.asm.ui.analysis.ShamashAsmAnalysisPanel
 import java.nio.file.Files
 
-/**
- * End-to-end (plugin) coverage
- * - analysis artifacts exported (graphs/hotspots/scores)
- * - ASM toolwindow shows "Analysis" tab
- * - panel loads from exported JSON files and renders tables
- */
 class AsmAnalysisTabE2ETest : ShamashPluginE2eTestBase() {
     fun testAnalysisTabLoadsFromExportedArtifacts() {
         val tmp = Files.createTempDirectory("shamash-analysis-e2e-").toAbsolutePath().normalize()
@@ -163,7 +153,6 @@ class AsmAnalysisTabE2ETest : ShamashPluginE2eTestBase() {
         waitUntil(10_000) {
             PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
             val tables = UIUtil.findComponentsOfType(panel, JBTable::class.java)
-            // Expect at least one table (hotspots or scoring) with rows.
             tables.any { it.model.rowCount > 0 }
         }
 

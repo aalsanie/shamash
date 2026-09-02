@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,13 +26,7 @@ data class RoleClassification(
     val classToRole: Map<String, String>,
 )
 
-/**
- * Classifies classes into roles using:
- * - role priority (higher wins)
- * - tie-breaker: role name
- *
- * Matchers are compiled once per role.
- */
+/** Highest role priority wins; ties are resolved by role name. */
 class RoleClassifier(
     private val multiRole: Boolean = false,
 ) {
@@ -44,7 +34,6 @@ class RoleClassifier(
         classes: List<ClassFact>,
         roles: Map<String, Role>,
     ): RoleClassification {
-        // Compile matchers once per role
         val compiledRoles: List<CompiledRole> =
             roles.entries
                 .sortedWith(
@@ -98,9 +87,6 @@ class RoleClassifier(
     )
 }
 
-/**
- * Compiled matcher tree – all regex are compiled once here.
- */
 private object MatcherCompiler {
     fun compile(m: Matcher): CompiledMatcher =
         when (m) {

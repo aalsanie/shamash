@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,12 +28,6 @@ import io.shamash.psi.core.fixes.FixProvider
 import io.shamash.psi.core.fixes.PsiResolver
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Fix provider for deadcode.unusedPrivateMembers.
- *
- * Fix:
- * - Deletes the reported private member, but only after re-checking at apply-time that it still has no references.
- */
 class DeadcodeUnusedPrivateMembersFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = f.ruleId == RULE_ID
 

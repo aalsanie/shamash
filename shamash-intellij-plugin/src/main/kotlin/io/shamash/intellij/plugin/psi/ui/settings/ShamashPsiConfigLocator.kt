@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,13 +25,8 @@ import io.shamash.psi.core.intellij.ShamashProjectUtil
 import java.nio.file.Path
 
 /**
- * Resolves the active PSI config file for a project.
- *
- * Priority:
- * 1) Settings override (relative resolved from a stable project base dir).
- * 2) Default discovery in common locations under plausible base dirs.
- *
- * Uses refreshAndFindFileByNioFile(...) to avoid stale VFS states (especially in tests).
+ * Settings overrides take precedence; relative paths resolve from the project base directory.
+ * Refresh VFS before lookup to see newly created configs.
  */
 object ShamashPsiConfigLocator {
     fun resolveConfigFile(project: Project): VirtualFile? {
@@ -50,13 +41,9 @@ object ShamashPsiConfigLocator {
         return null
     }
 
-    /**
-     * Visible for tests: compute candidate absolute paths (priority order).
-     */
     internal fun buildCandidatePaths(project: Project): List<Path> {
         val candidates = ArrayList<Path>(32)
 
-        // 1) Settings override
         val configured =
             ShamashPsiSettingsState
                 .getInstance(project)
@@ -69,18 +56,15 @@ object ShamashPsiConfigLocator {
             resolveConfigured(project, configured)?.let { candidates.add(it.normalize()) }
         }
 
-        // 2) Default discovery
         val baseDirs = resolveProjectBaseDirs(project)
         if (baseDirs.isEmpty()) return candidates
 
         val relativeDefaults: List<String> =
             listOf(
-                // Preferred documented paths (repo root)
                 "shamash/config/psi.yml",
                 "shamash/config/psi.yaml",
                 "shamash/configs/psi.yml",
                 "shamash/configs/psi.yaml",
-                // Resources (common Gradle/Maven layouts)
                 "src/main/resources/shamash/config/psi.yml",
                 "src/main/resources/shamash/config/psi.yaml",
                 "src/main/resources/shamash/configs/psi.yml",
@@ -89,12 +73,10 @@ object ShamashPsiConfigLocator {
                 "src/resources/shamash/config/psi.yaml",
                 "src/resources/shamash/configs/psi.yml",
                 "src/resources/shamash/configs/psi.yaml",
-                // Plain "resources" folder
                 "resources/shamash/config/psi.yml",
                 "resources/shamash/config/psi.yaml",
                 "resources/shamash/configs/psi.yml",
                 "resources/shamash/configs/psi.yaml",
-                // Other tolerable alternates
                 "shamash/psi.yml",
                 "shamash/psi.yaml",
                 ".shamash/psi.yml",
@@ -109,7 +91,6 @@ object ShamashPsiConfigLocator {
             }
         }
 
-        // De-dup while preserving order.
         val seen = LinkedHashSet<Path>(candidates.size)
         val deduped = ArrayList<Path>(candidates.size)
         for (p in candidates) {
@@ -125,7 +106,7 @@ object ShamashPsiConfigLocator {
         val p = Path.of(configured)
         if (p.isAbsolute) return p
 
-        // Prefer stable base dirs that don't require Gradle model interaction.
+        // Prefer base directories that do not trigger Gradle model initialization.
         project.basePath?.let { return Path.of(it).resolve(p) }
 
         ShamashProjectUtil.guessProjectDir(project)?.path?.let { return Path.of(it).resolve(p) }
@@ -139,12 +120,6 @@ object ShamashPsiConfigLocator {
         return null
     }
 
-    /**
-     * Possible base dirs used for default discovery:
-     * - project.basePath
-     * - guessProjectDir(project) (important for tests)
-     * - content roots (last resort)
-     */
     private fun resolveProjectBaseDirs(project: Project): List<Path> {
         val out = ArrayList<Path>(8)
 
@@ -152,13 +127,11 @@ object ShamashPsiConfigLocator {
 
         ShamashProjectUtil.guessProjectDir(project)?.path?.let { out.add(Path.of(it).normalize()) }
 
-        // Only touch ProjectRootManager as a fallback.
         val roots = runCatching { ProjectRootManager.getInstance(project).contentRoots }.getOrDefault(emptyArray())
         for (r in roots) {
             out.add(Path.of(r.path).normalize())
         }
 
-        // De-dup preserve order.
         val seen = LinkedHashSet<Path>(out.size)
         val deduped = ArrayList<Path>(out.size)
         for (p in out) {

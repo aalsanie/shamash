@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,13 +21,7 @@ import io.shamash.asm.core.facts.model.DependencyKind
 import io.shamash.asm.core.facts.model.OriginKind
 import io.shamash.asm.core.facts.model.Visibility
 
-/**
- * Stable, versioned export models.
- *
- * Notes:
- * - These are *transport* records, not the internal facts graph.
- * - Prefer additive changes to maintain backward compatibility.
- */
+/** Versioned transport records consumed by CLI/UI; prefer additive changes for compatibility. */
 sealed interface FactsExportRecord {
     val recordType: String
 }
@@ -59,7 +49,6 @@ data class FactsClassRecord(
     val hasMainMethod: Boolean,
     val methodCount: Int,
     val fieldCount: Int,
-    // location (stable origin attribution)
     val originKind: OriginKind,
     val originPath: String,
     val containerPath: String?,
@@ -74,7 +63,6 @@ data class FactsEdgeRecord(
     val to: String,
     val kind: DependencyKind,
     val detail: String?,
-    // location (stable origin attribution)
     val originKind: OriginKind,
     val originPath: String,
     val containerPath: String?,

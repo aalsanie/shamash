@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,7 +41,6 @@ class DefaultExportPipelineFactoryTest {
         val baseline =
             FindingPreprocessor { _, fs ->
                 calls += "baseline"
-                // baseline must see already filtered results
                 if (fs.any { it.ruleId == "DROP" }) {
                     error("baseline preprocessor should run after exceptions preprocessor")
                 }
@@ -85,7 +80,6 @@ class DefaultExportPipelineFactoryTest {
         assertEquals(1, report.findings.size)
         assertEquals("KEEP", report.findings.single().ruleId)
 
-        // Exporters are wired by default factory (ALL formats).
         assertTrue(Files.exists(out.resolve(ExportOutputLayout.JSON_FILE_NAME)))
         assertTrue(Files.exists(out.resolve(ExportOutputLayout.SARIF_FILE_NAME)))
         assertTrue(Files.exists(out.resolve(ExportOutputLayout.XML_FILE_NAME)))

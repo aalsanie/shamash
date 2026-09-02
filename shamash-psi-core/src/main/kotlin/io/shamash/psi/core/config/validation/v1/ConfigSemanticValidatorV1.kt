@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,28 +30,10 @@ import java.util.LinkedHashSet
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
-/**
- * Semantic validation for Shamash PSI config V1.
- *
- * Assumes config is already bound into schema v1 models (YAML binding is done by ConfigLoader).
- * Enforces invariants and semantics:
- * - role constraints (priority range)
- * - matcher sanity (recursive, regex compilation for regex matchers)
- * - rules uniqueness (wildcard vs specific role variants)
- * - rule scope sanity (known roles, regex compilation for package filters, non-empty globs)
- * - rule existence (RuleSpec registry) and rule param validation (via RuleSpec)
- * - optional engine executability (RuleKey set)
- * - exceptions sanity (required fields, match not empty, regex compilation, known roles)
- */
 object ConfigSemanticValidatorV1 {
     /**
-     * Validate config semantics.
-     *
-     * @param executableRuleKeys optional set of rule keys that are runnable in the engine.
-     * If provided, enabled rules not in this set will be WARN/ERROR per unknownRule policy,
-     * even if a RuleSpec exists for (type,name).
-     *
-     * NOTE: If you don't have RuleKey-based executability yet, pass null and only spec existence is checked.
+     * When [executableRuleKeys] is provided, check runtime support as well as spec existence.
+     * Unsupported enabled rules follow the configured unknown-rule policy.
      */
     fun validateSemantic(
         config: ShamashPsiConfigV1,
@@ -63,17 +41,14 @@ object ConfigSemanticValidatorV1 {
     ): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
-        // ---- Version ----
         if (config.version != 1) {
             errors += ValidationError("version", "Unsupported schema version: ${config.version}", ValidationSeverity.ERROR)
             return errors
         }
 
-        // ---- Roles ----
         config.roles.forEach { (roleId, role) ->
             val base = "roles.$roleId"
 
-            // Contract: semantic validator enforces 0..100
             if (role.priority < 0 || role.priority > 100) {
                 errors += err("$base.priority", "priority must be between 0 and 100 (inclusive)")
             }
@@ -81,11 +56,6 @@ object ConfigSemanticValidatorV1 {
             validateMatcher(role.match, "$base.match", errors)
         }
 
-        // ---- Rules: uniqueness + basic sanity ----
-        // Contract:
-        // - Only one wildcard allowed per (type,name) where roles == null
-        // - Only one specific allowed per (type,name,role)
-        // - No duplicate roles within the same RuleDef
         val seenWildcards = LinkedHashSet<Pair<String, String>>() // (type,name)
         val seenSpecific = LinkedHashSet<RuleKey>() // (type,name,role)
 
@@ -97,7 +67,6 @@ object ConfigSemanticValidatorV1 {
             if (type.isEmpty()) errors += err("$base.type", "type must be non-empty")
             if (name.isEmpty()) errors += err("$base.name", "name must be non-empty")
 
-            // roles == null => wildcard
             if (rule.roles == null) {
                 val key = type to name
                 if (!seenWildcards.add(key)) {
@@ -107,7 +76,6 @@ object ConfigSemanticValidatorV1 {
                 if (rule.roles.isEmpty()) {
                     errors += err("$base.roles", "roles must be non-empty when provided; use null for wildcard")
                 } else {
-                    // ensure all roles exist + no duplicates in same rule
                     val local = LinkedHashSet<RoleId>()
                     rule.roles.forEachIndexed { rIdx, roleId ->
                         val rid = roleId.trim()
@@ -130,11 +98,9 @@ object ConfigSemanticValidatorV1 {
                 }
             }
 
-            // scope sanity (regex/globs + role existence)
             validateScope(rule.scope, "$base.scope", config, errors)
         }
 
-        // ---- Rules: spec existence + param validation ----
         config.rules.forEachIndexed { i, rule ->
             if (!rule.enabled) return@forEachIndexed
 
@@ -142,12 +108,10 @@ object ConfigSemanticValidatorV1 {
             val type = rule.type.trim()
             val name = rule.name.trim()
 
-            // Skip cascading garbage if these are empty (already reported above)
             if (type.isEmpty() || name.isEmpty()) return@forEachIndexed
 
             val spec = RuleSpecRegistryV1.find(type, name)
             if (spec == null) {
-                // Unknown (type,name)
                 when (config.project.validation.unknownRule) {
                     UnknownRulePolicyV1.IGNORE -> {
                         Unit
@@ -174,16 +138,8 @@ object ConfigSemanticValidatorV1 {
                 return@forEachIndexed
             }
 
-            // Executability check (optional)
             if (executableRuleKeys != null) {
-                // Engine registry exposes only base rule ids (type.name). The engine itself expands
-                // authored role lists into concrete instances (type.name.role) at runtime.
-                //
-                // Therefore, a rule is executable if the base (type,name) is implemented — regardless
-                // of whether roles == null (wildcard) or roles != null (role-specific instances).
-                //
-                // If, in the future, the engine registry starts exposing role-specific ids too,
-                // this logic still holds.
+                // Base ids cover role-specific instances: the engine expands authored roles at runtime.
                 val baseKey = RuleKey(type = type, name = name, role = null)
                 val isExecutable =
                     when (val roles = rule.roles) {
@@ -192,7 +148,6 @@ object ConfigSemanticValidatorV1 {
                         }
 
                         else -> {
-                            // Prefer base key, but also accept explicit role keys if the engine ever exposes them.
                             executableRuleKeys.contains(baseKey) ||
                                 roles
                                     .asSequence()
@@ -226,14 +181,12 @@ object ConfigSemanticValidatorV1 {
                                 )
                         }
                     }
-                    // NOTE: still run spec validation so user sees param issues too
                 }
             }
 
             errors += spec.validate(rulePath = base, rule = rule, config = config)
         }
 
-        // ---- Exceptions ----
         config.shamashExceptions.forEachIndexed { i, ex ->
             val base = "exceptions[$i]"
 
@@ -242,7 +195,6 @@ object ConfigSemanticValidatorV1 {
             if (ex.suppress.isEmpty()) errors += err("$base.suppress", "suppress must contain at least one rule id")
             if (ex.suppress.any { it.isBlank() }) errors += err("$base.suppress", "suppress must not contain blank values")
 
-            // No magic suppress tokens in v1 (break compatibility on purpose).
             ex.suppress.forEachIndexed { j, rid ->
                 val v = rid.trim()
                 if (v == "*" || v.equals("all", ignoreCase = true)) {
@@ -254,18 +206,15 @@ object ConfigSemanticValidatorV1 {
                 errors += err("$base.match", "Exception match must specify at least one matcher field")
             }
 
-            // compile regex fields
             ex.match.packageRegex?.let { compileRegex(it, "$base.match.packageRegex", errors) }
             ex.match.classNameRegex?.let { compileRegex(it, "$base.match.classNameRegex", errors) }
             ex.match.methodNameRegex?.let { compileRegex(it, "$base.match.methodNameRegex", errors) }
             ex.match.fieldNameRegex?.let { compileRegex(it, "$base.match.fieldNameRegex", errors) }
 
-            // fileGlob semantic check
             ex.match.fileGlob?.let { g ->
                 if (g.isBlank()) errors += err("$base.match.fileGlob", "fileGlob must be non-empty")
             }
 
-            // role existence
             ex.match.role?.let { role ->
                 if (!config.roles.containsKey(role)) {
                     errors += err("$base.match.role", "Unknown role '$role' (not defined under roles)")
@@ -284,7 +233,6 @@ object ConfigSemanticValidatorV1 {
     ) {
         if (scope == null) return
 
-        // role lists must reference known roles
         scope.includeRoles?.forEachIndexed { i, role ->
             if (!config.roles.containsKey(role)) {
                 errors += err("$path.includeRoles[$i]", "Unknown role '$role' (not defined under roles)")
@@ -296,12 +244,9 @@ object ConfigSemanticValidatorV1 {
             }
         }
 
-        // NOTE (v1 contract): includePackages/excludePackages are treated as regex filters.
-        // If you later want true "package patterns", change this in v2 and rename fields accordingly.
         scope.includePackages?.forEachIndexed { i, rx -> compileRegex(rx, "$path.includePackages[$i]", errors) }
         scope.excludePackages?.forEachIndexed { i, rx -> compileRegex(rx, "$path.excludePackages[$i]", errors) }
 
-        // globs: minimal semantic check
         scope.includeGlobs?.forEachIndexed { i, g ->
             if (g.isBlank()) errors += err("$path.includeGlobs[$i]", "glob must be non-empty")
         }

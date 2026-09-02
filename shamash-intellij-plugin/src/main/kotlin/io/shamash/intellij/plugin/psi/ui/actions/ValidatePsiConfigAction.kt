@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,15 +31,7 @@ import io.shamash.psi.core.config.SchemaValidatorNetworkNt
 import io.shamash.psi.core.config.ValidationError
 import java.io.StringReader
 
-/**
- * Validates the project's Shamash PSI YAML config and shows results in the Config tab.
- *
- * UX feature:
- * - Does not run scan.
- * - Uses locked-in config validator.
- */
 class ValidatePsiConfigAction(
-    // Allow overriding for tests; default is the shipped validator.
     private val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
 ) : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
@@ -93,7 +81,6 @@ class ValidatePsiConfigAction(
                 ok = res.ok
                 errors = res.errors
 
-                // Keep counting logic stable without guessing additional types.
                 errorCount = errors.count { it.severity.name == "ERROR" }
                 warnCount = errors.size - errorCount
 
@@ -103,13 +90,11 @@ class ValidatePsiConfigAction(
             override fun onSuccess() {
                 if (project.isDisposed) return
 
-                // Update UI state once.
                 ShamashPsiUiStateService.getInstance(project).updateValidation(errors)
 
                 PsiActionUtil.openPsiToolWindow(project)
                 val tw = ShamashPsiToolWindowController.getInstance(project)
 
-                // Redirect to Dashboard ONLY upon successful validation (no ERROR).
                 if (ok && errorCount == 0) {
                     tw.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
                 } else {

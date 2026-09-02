@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,16 +27,7 @@ import io.shamash.psi.core.fixes.FixProvider
 import io.shamash.psi.core.fixes.PsiResolver
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Fix provider for naming.bannedSuffixes.
- *
- * Engine contract:
- * - Finding.data["suffix"] contains the banned suffix that should be removed.
- *
- * Fix:
- * - Renames the target PSI named element by stripping the suffix.
- * - Uses RenameProcessor to perform a refactoring-safe rename across usages.
- */
+/** Uses finding data["suffix"] and RenameProcessor to update the name and its usages. */
 class NamingBannedSuffixesFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = f.ruleId == RULE_ID && !f.data[SUFFIX_KEY].isNullOrBlank()
 
@@ -79,8 +66,6 @@ class NamingBannedSuffixesFixProvider : FixProvider {
         override fun apply() {
             if (!element.isValid) return
 
-            // RenameProcessor performs a refactoring-safe rename across usages.
-            // It will no-op/fail safely if the element cannot be renamed.
             WriteCommandAction.runWriteCommandAction(project) {
                 RenameProcessor(
                     project,

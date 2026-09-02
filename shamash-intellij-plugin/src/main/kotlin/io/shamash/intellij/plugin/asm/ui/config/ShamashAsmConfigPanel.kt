@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -72,7 +68,6 @@ class ShamashAsmConfigPanel(
     init {
         root.border = JBUI.Borders.empty(10)
 
-        // Header stack: title -> buttons -> meta (path/summary)
         val headerStack =
             JBPanel<JBPanel<*>>().apply {
                 isOpaque = false
@@ -109,39 +104,29 @@ class ShamashAsmConfigPanel(
 
         pathLabel.text = "Resolved config: ${resolved?.toString() ?: "Not found"}"
 
-        // rules:
-        // 1) Not validated -> "No Validation results yet. Press validate config"
-        // 2) Validated -> "Run scan" (if scan not ran)
-        // 3) Validate action redirects (handled in ValidateAsmConfigAction)
-        // 4) Validated + scan ran -> "Navigate to findings tab to view findings"
         summaryLabel.text =
             when {
                 resolved == null -> {
                     "No ASM config found. Create one from reference."
                 }
 
-                // No validation has happened yet (no state/scanResult produced by validation or scan action)
                 result == null -> {
                     "No Validation results yet. Press validate config"
                 }
 
-                // Validation (or scan) produced config errors
                 configErrors.isNotEmpty() -> {
                     val (errCount, warnCount) = count(configErrors)
                     "Invalid config. Errors: $errCount | Warnings: $warnCount"
                 }
 
-                // Config validated AND scan ran (engine result exists)
                 result.config != null && result.hasEngineResult -> {
                     "Navigate to findings tab to view findings"
                 }
 
-                // Config validated AND scan NOT ran
                 result.config != null -> {
                     "Run scan"
                 }
 
-                // Fallback (should be rare): we have a ScanResult but no errors and no typed config
                 else -> {
                     "No Validation results yet. Press validate config"
                 }
@@ -152,7 +137,6 @@ class ShamashAsmConfigPanel(
     }
 
     override fun dispose() {
-        // listener auto-unregistered by state service
     }
 
     private fun buildMetaPanel(): JComponent =

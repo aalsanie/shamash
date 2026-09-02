@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,13 +25,6 @@ import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.RuleSpec
 
-/**
- * graph.noCycles
- *
- * Non-opinionated contract:
- * - This rule has no params.
- * - Graph construction knobs live under `analysis.graphs` (enabled/granularity/includeExternalBuckets).
- */
 class GraphNoCyclesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "graph", name = "noCycles", role = null)
 
@@ -46,7 +35,6 @@ class GraphNoCyclesSpec : RuleSpec {
     ): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
-        // Strict param contract: no params allowed.
         val params = Params.of(rule.params, "$rulePath.params")
         val unknown = params.unknownKeys(emptySet())
         if (unknown.isNotEmpty()) {
@@ -60,7 +48,6 @@ class GraphNoCyclesSpec : RuleSpec {
             }
         }
 
-        // Optional sanity: if graphs are disabled, this rule can never do anything (warning, not error).
         if (!config.analysis.graphs.enabled) {
             errors +=
                 ValidationError(

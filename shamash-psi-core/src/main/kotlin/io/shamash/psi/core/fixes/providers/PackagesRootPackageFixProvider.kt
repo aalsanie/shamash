@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,19 +31,6 @@ import io.shamash.psi.core.fixes.PsiResolver
 import io.shamash.psi.core.fixes.RuleDefLookup
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Fixes for packages.rootPackage violations.
- *
- * Provides two pragmatic fixes:
- *  1) Update the offending source file's package statement to be under the configured root package.
- *     Example: expected "com.myco", actual "a"  -> "com.myco.a"
- *
- *  2) Update the config YAML project.rootPackage.value to match the file's actual package (when configFile is available).
- *
- * NOTE:
- * - Prefer config.project.rootPackage when mode == EXPLICIT; otherwise fall back to finding data.
- * - YAML changes are best-effort, text-based, and scoped to the relevant block(s).
- */
 class PackagesRootPackageFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = f.ruleId == RULE_ID
 
@@ -68,7 +51,6 @@ class PackagesRootPackageFixProvider : FixProvider {
 
         val fixes = ArrayList<ShamashFix>(2)
 
-        // Fix #1: change source file package (if not already under root)
         val newPkg =
             when {
                 actualPkg == expectedRoot -> null
@@ -80,7 +62,6 @@ class PackagesRootPackageFixProvider : FixProvider {
             fixes += ChangeFilePackageFix(project, psiFile, newPkg)
         }
 
-        // Fix #2: update config to match actual package (if we have configFile)
         ctx.configFile?.let { cfgVf ->
             fixes += SetRootPackageInConfigFix(project, cfgVf, actualPkg)
         }
@@ -92,21 +73,18 @@ class PackagesRootPackageFixProvider : FixProvider {
         ctx: FixContext,
         f: Finding,
     ): String? {
-        // Prefer config.project.rootPackage when EXPLICIT.
         val cfg = ctx.config
         val rp = cfg?.project?.rootPackage
         if (rp != null && rp.mode == RootPackageModeV1.EXPLICIT && rp.value.isNotBlank()) {
             return rp.value
         }
 
-        // Fallback: finding data (engine can provide expected root).
         val fromFinding =
             f.data["expectedRootPackage"]
                 ?: f.data["rootPackage"]
                 ?: f.data["expectedRoot"]
         if (!fromFinding.isNullOrBlank()) return fromFinding.trim()
 
-        // Last fallback: wildcard rule params (type=name match with roles == null).
         val wildcard = cfg?.let { RuleDefLookup.findWildcardRuleDef(it, "packages", "rootPackage") }
         return wildcard?.params?.get("value") as? String
     }
@@ -117,10 +95,6 @@ class PackagesRootPackageFixProvider : FixProvider {
         return m.groupValues.getOrNull(1)?.trim()
     }
 
-    /**
-     * Public top-level fix class (NOT private nested),
-     * because FixesPanel previously invoked fixes via reflection.
-     */
     class ChangeFilePackageFix(
         private val project: Project,
         private val file: PsiFile,
@@ -152,15 +126,11 @@ class PackagesRootPackageFixProvider : FixProvider {
             }
         }
 
-        /**
-         * Insert package after any leading license/comment block and blank lines.
-         * Never blindly insert at 0 (keeps file headers intact).
-         */
+        /** Insert after leading comments and blank lines to preserve license headers. */
         private fun safeHeaderInsertionOffset(text: String): Int {
             var i = 0
             if (text.startsWith("\uFEFF")) i = 1 // BOM
 
-            // Skip initial block and line comments (license headers)
             while (i < text.length) {
                 val rest = text.substring(i)
 
@@ -179,7 +149,6 @@ class PackagesRootPackageFixProvider : FixProvider {
                 break
             }
 
-            // Skip blank-ish whitespace
             while (i < text.length && (text[i] == '\n' || text[i] == '\r' || text[i] == ' ' || text[i] == '\t')) {
                 i++
             }
@@ -188,16 +157,7 @@ class PackagesRootPackageFixProvider : FixProvider {
         }
     }
 
-    /**
-     * Updates YAML (best-effort text rewrite):
-     * - project.rootPackage.value
-     * - AND (if present) the wildcard RuleDef in rules list:
-     *     - type: packages
-     *       name: rootPackage
-     *       roles: null   (or omitted)
-     *       params:
-     *         value: "..."
-     */
+    /** Updates project.rootPackage.value and the wildcard rootPackage rule, if present. */
     class SetRootPackageInConfigFix(
         private val project: Project,
         private val cfg: VirtualFile,
@@ -259,17 +219,6 @@ class PackagesRootPackageFixProvider : FixProvider {
             return text.substring(0, absStart) + replacement + text.substring(absEnd)
         }
 
-        /**
-         * Rewrite rules list item for wildcard packages.rootPackage (roles == null / omitted).
-         *
-         * Expected YAML shape (list items):
-         * rules:
-         *   - type: packages
-         *     name: rootPackage
-         *     roles: null
-         *     params:
-         *       value: "..."
-         */
         private fun rewriteRulesListWildcardRootPackageValue(
             text: String,
             value: String,
@@ -281,7 +230,6 @@ class PackagesRootPackageFixProvider : FixProvider {
 
             val rulesBlock = text.substring(rulesFrom, rulesEnd)
 
-            // Find the first list item whose (type,name) match.
             val item =
                 findRuleListItemBlock(
                     rulesBlock = rulesBlock,
@@ -291,7 +239,6 @@ class PackagesRootPackageFixProvider : FixProvider {
                     name = "rootPackage",
                 ) ?: return text
 
-            // Within that item, locate params block and rewrite first "value:" inside it.
             val itemText = text.substring(item.start, item.end)
 
             val paramsStart = Regex("(?m)^\\s*params\\s*:\\s*$").find(itemText) ?: return text
@@ -327,7 +274,6 @@ class PackagesRootPackageFixProvider : FixProvider {
             type: String,
             name: String,
         ): Block? {
-            // Find all "- " items at the expected indent.
             val itemRe = Regex("(?m)^${Regex.escape(listIndent)}-\\s+.*$")
             val items = itemRe.findAll(rulesBlock).toList()
             if (items.isEmpty()) return null
@@ -349,11 +295,10 @@ class PackagesRootPackageFixProvider : FixProvider {
                 val nameOk = Regex("(?m)^\\s*name\\s*:\\s*${Regex.escape(name)}\\s*$").containsMatchIn(itemText)
                 if (!typeOk || !nameOk) continue
 
-                // Ensure this is wildcard (roles null or roles omitted). If roles exists and is a list -> skip.
+                // Only update wildcard rules; a roles list targets a specific instance.
                 val rolesLine = Regex("(?m)^\\s*roles\\s*:\\s*(.*)$").find(itemText)
                 if (rolesLine != null) {
                     val rhs = rolesLine.groupValues[1].trim()
-                    // treat "null", "~", "" as wildcard; list form indicates specific -> skip
                     val wildcard = rhs.isEmpty() || rhs == "null" || rhs == "~"
                     if (!wildcard) continue
                 }
@@ -365,19 +310,15 @@ class PackagesRootPackageFixProvider : FixProvider {
         }
 
         private fun ensureNewlineAfterPackage(text: String): String {
-            // Match the first "package ..." line (Kotlin/Java)
             val m = Regex("""(?m)^\s*package\s+[A-Za-z0-9_.]+\s*""").find(text) ?: return text
 
             val end = m.range.last + 1
-            // If immediately followed by "import" (possibly with whitespace), ensure there's a blank line.
             val rest = text.substring(end)
 
-            // If there is no newline at all after package, add one
             if (!rest.startsWith("\n") && !rest.startsWith("\r\n")) {
                 return text.substring(0, end) + "\n\n" + rest
             }
 
-            // If there is exactly one newline and then import, make it two newlines.
             val afterOneNl =
                 rest.removePrefix("\r\n").let { r ->
                     if (r !== rest) Pair("\r\n", r) else Pair("\n", rest.removePrefix("\n"))
@@ -386,20 +327,15 @@ class PackagesRootPackageFixProvider : FixProvider {
             val nl = afterOneNl.first
             val r1 = afterOneNl.second
 
-            // If next token is "import" and we only have one newline, insert an extra newline.
             val nextNonWs = r1.dropWhile { it == ' ' || it == '\t' }
             if (nextNonWs.startsWith("import")) {
-                // Ensure blank line between package and import
                 return text.substring(0, end) + nl + nl + r1
             }
 
             return text
         }
 
-        /**
-         * Computes the end offset (exclusive) of an indented YAML block.
-         * A block ends when we hit a non-empty line with indentation <= baseIndent.
-         */
+        /** Exclusive block end: first non-empty line with indentation <= baseIndent. */
         private fun findBlockEnd(
             text: String,
             from: Int,

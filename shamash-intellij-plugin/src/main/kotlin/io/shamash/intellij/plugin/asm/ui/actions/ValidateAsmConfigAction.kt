@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,11 +41,7 @@ import java.io.StringReader
 import java.nio.file.Path
 import java.nio.file.Paths
 
-/**
- * Validates the project's Shamash ASM YAML config and shows results in the Config tab.
- */
 class ValidateAsmConfigAction(
-    // Allow overriding for tests; default is the shipped validator.
     private val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
 ) : AnAction(),
     DumbAware {
@@ -66,7 +58,6 @@ class ValidateAsmConfigAction(
 
         val vf = ShamashAsmConfigLocator.resolveConfigFile(project)
         if (vf == null || !vf.isValid) {
-            // Clear last result to avoid showing stale validation.
             ShamashAsmUiStateService.getInstance(project).clear()
 
             AsmActionUtil.notify(
@@ -141,7 +132,6 @@ class ValidateAsmConfigAction(
                 indicator.text = "Validating ASM config"
                 indicator.text2 = configPath.toString()
 
-                // Allow networknt validator to honor cancellation inside IntelliJ.
                 SchemaValidatorNetworkNt.cancelCheck = { ProgressManager.checkCanceled() }
 
                 val res =
@@ -154,7 +144,6 @@ class ValidateAsmConfigAction(
                 errors = res.errors
                 typedConfig = res.config
 
-                // Keep counting logic stable without depending on enum imports in UI module.
                 errorCount = errors.count { it.severity.name == "ERROR" }
                 warnCount = errors.size - errorCount
 
@@ -164,7 +153,6 @@ class ValidateAsmConfigAction(
             override fun onSuccess() {
                 if (project.isDisposed) return
 
-                // Put validation results into UI state as a ScanResult that contains config + configErrors only.
                 val scanResult =
                     ScanResult(
                         options =
@@ -191,7 +179,6 @@ class ValidateAsmConfigAction(
                 AsmActionUtil.openAsmToolWindow(project)
                 val tw = ShamashAsmToolWindowController.getInstance(project)
 
-                // Redirect to Dashboard ONLY upon successful validation (no ERROR).
                 if (ok && errorCount == 0) {
                     tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
                 } else {
@@ -235,7 +222,6 @@ class ValidateAsmConfigAction(
         val base = basePath?.trim().orEmpty()
         if (base.isEmpty()) return null
 
-        // Canonicalize to reduce surprises with symlinks and mixed separators.
         return runCatching { Paths.get(FileUtil.toCanonicalPath(base)).normalize() }.getOrNull()
     }
 }

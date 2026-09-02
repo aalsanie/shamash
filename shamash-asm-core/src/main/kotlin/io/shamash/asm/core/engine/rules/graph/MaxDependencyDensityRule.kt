@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,22 +28,6 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 import kotlin.math.roundToInt
 
-/**
- * graph.maxDependencyDensity
- *
- * Params:
- * - max: double (required, >= 0.0, <= 1.0)
- * - granularity: "class" | "package" | "module" (optional, default "package")
- * - includeExternal: boolean (optional, default false)
- *
- * Semantics:
- * - Build dependency graph at requested granularity.
- * - Density = E / (N*(N-1)) for directed graphs without self edges.
- * - If density > max -> emit a single finding.
- *
- * Scope:
- * - include/exclude package/glob filters are applied to "from" classes producing edges.
- */
 class MaxDependencyDensityRule : Rule {
     override val id: String = "graph.maxDependencyDensity"
 
@@ -80,7 +60,7 @@ class MaxDependencyDensityRule : Rule {
                     RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
                 }
 
-        val densityPct = (density * 100.0 * 100.0).roundToInt() / 100.0 // 2 decimals
+        val densityPct = (density * 100.0 * 100.0).roundToInt() / 100.0
 
         return listOf(
             Finding(
@@ -116,7 +96,6 @@ class MaxDependencyDensityRule : Rule {
 
         val max: Double =
             try {
-                // Params handles coercion from Number/String and validates min/max.
                 p.requireDouble("max", min = 0.0, max = 1.0)
             } catch (_: Throwable) {
                 return null

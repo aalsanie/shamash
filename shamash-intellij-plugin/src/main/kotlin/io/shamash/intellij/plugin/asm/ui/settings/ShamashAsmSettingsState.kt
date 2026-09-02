@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,12 +30,7 @@ import io.shamash.asm.core.scan.ScanOverrides
 import java.nio.file.Path
 import java.nio.file.Paths
 
-/**
- * Per-project, persisted ASM UI settings.
- *
- * Stored in the workspace file (workspace.xml) to keep it local to the developer machine
- * and avoid committing it into VCS by default.
- */
+/** Persist in workspace.xml so these settings stay local to each developer. */
 @Service(Service.Level.PROJECT)
 @State(
     name = ShamashAsmUiConstants.SETTINGS_COMPONENT_NAME,
@@ -47,53 +38,20 @@ import java.nio.file.Paths
 )
 class ShamashAsmSettingsState : PersistentStateComponent<ShamashAsmSettingsState.State> {
     data class State(
-        /**
-         * Optional explicit ASM config path override.
-         *
-         * If set, the ASM config locator should prefer it over auto-discovery.
-         * Stored as a string for IntelliJ XML serialization stability.
-         */
         var configPath: String? = null,
-        /**
-         * Optional last-selected tab name (future-proofing; safe to ignore if you don't use it yet).
-         */
         var lastSelectedTab: String? = null,
-        /**
-         * Advanced: include FactIndex in the in-memory scan result.
-         *
-         * Default is false to avoid keeping large graphs in memory.
-         */
+        /** Disabled by default to avoid retaining large fact graphs in memory. */
         var includeFactsInMemory: Boolean = false,
-        /**
-         * Apply scan overrides stored in this state.
-         *
-         * When false, overrides are ignored and YAML stays 100% in control.
-         */
+        /** When false, ignore these overrides and use the YAML config. */
         var applyOverrides: Boolean = false,
-        /**
-         * Optional override for scan.scope.
-         * Stored as a string for stable XML serialization.
-         */
+        /** Stored as a string for stable IntelliJ XML serialization. */
         var overrideScope: String? = null,
-        /** Optional override for scan.followSymlinks. */
         var overrideFollowSymlinks: Boolean? = null,
-        /** Optional override for scan.maxClasses. */
         var overrideMaxClasses: Int? = null,
-        /** Optional override for scan.maxJarBytes. */
         var overrideMaxJarBytes: Int? = null,
-        /** Optional override for scan.maxClassBytes. */
         var overrideMaxClassBytes: Int? = null,
-        /**
-         * Engine registry selection (optional).
-         *
-         * When null/blank, the built-in DefaultRuleRegistry is used.
-         *
-         * When set, Shamash will attempt to resolve a registry provider by this id.
-         */
+        /** Null or blank selects the built-in registry; otherwise resolve this provider id. */
         var registryId: String? = null,
-        /**
-         * UI toggle: show extra debug/telemetry in the ASM toolwindow.
-         */
         var showAdvancedTelemetry: Boolean = false,
     )
 

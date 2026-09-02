@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -69,9 +65,7 @@ class OpenAsmReferenceConfigAction : AnAction() {
                 fileType,
                 content,
             ).apply {
-                // Ensure IDE treats content as UTF-8.
                 charset = StandardCharsets.UTF_8
-                // Reference should be view-only.
                 isWritable = false
             }
 
@@ -91,29 +85,18 @@ class OpenAsmReferenceConfigAction : AnAction() {
         if (app.isDispatchThread) open.run() else app.invokeLater(open)
     }
 
-    /**
-     * Normalizes content to avoid IntelliJ YAML PSI tripping over invisible characters.
-     *
-     * - Removes UTF-8 BOM
-     * - Normalizes line separators to '\n'
-     * - Replaces tab characters with 2 spaces (YAML indentation must not use tabs)
-     * - Replaces non-breaking space with a normal space
-     */
+    /** Remove invisible characters and invalid YAML indentation before creating IntelliJ PSI. */
     private fun normalizeYamlText(text: String): String {
         var s = text
 
-        // Remove UTF-8 BOM if present.
         if (s.isNotEmpty() && s[0] == '\uFEFF') {
             s = s.substring(1)
         }
 
-        // Normalize line separators.
         s = s.replace("\r\n", "\n").replace("\r", "\n")
 
-        // YAML forbids tab indentation; sanitize any tabs.
         s = s.replace('\t', ' ')
 
-        // Replace NBSP with regular space (looks identical but can break parsers/inspections).
         s = s.replace('\u00A0', ' ')
 
         return s
@@ -122,7 +105,6 @@ class OpenAsmReferenceConfigAction : AnAction() {
     private fun yamlFileType(): FileType {
         val ftm = FileTypeManager.getInstance()
 
-        // Prefer yml, fall back to yaml, then to plain text.
         val yml = ftm.getFileTypeByExtension("yml")
         if (!yml.isBinary) return yml
 

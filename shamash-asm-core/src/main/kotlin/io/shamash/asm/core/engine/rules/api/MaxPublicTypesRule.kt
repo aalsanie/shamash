@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,16 +27,6 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.model.Visibility
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * api.maxPublicTypes
- *
- * Params:
- * - max (required int >= 0)
- *
- * Semantics:
- * - counts PUBLIC classes in scope
- * - if count > max -> emit a single finding
- */
 class MaxPublicTypesRule : Rule {
     override val id: String = "api.maxPublicTypes"
 
@@ -53,7 +39,6 @@ class MaxPublicTypesRule : Rule {
 
         val scope = RuleUtil.compileScope(rule.scope)
 
-        // deterministic iteration
         val publicClassesInScope =
             facts.classes
                 .asSequence()
@@ -67,8 +52,7 @@ class MaxPublicTypesRule : Rule {
         val count = publicClassesInScope.size
         if (count <= max) return emptyList()
 
-        // Keep payload small but useful:
-        // include first N examples deterministically (avoid mega findings on large projects)
+        // Bound examples to keep findings small on large projects.
         val examplesLimit = 25
         val examples = publicClassesInScope.take(examplesLimit).map { it.fqName }
 

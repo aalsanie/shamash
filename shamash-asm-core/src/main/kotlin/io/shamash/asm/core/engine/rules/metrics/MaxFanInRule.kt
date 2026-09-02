@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,20 +27,6 @@ import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * metrics.maxFanIn
- *
- * Params:
- * - max: int (required, >= 0)
- * - granularity: "class" | "package" | "module" (optional, default "package")
- * - includeExternal: boolean (optional, default false)
- * - top: int (optional, default 10)  // number of violators to include as examples
- *
- * Semantics:
- * - Build dependency graph at requested granularity.
- * - fan-in(node) = number of distinct incoming edges.
- * - If any node fan-in > max -> emit a single finding listing top violators (deterministic, truncated).
- */
 class MaxFanInRule : Rule {
     override val id: String = "metrics.maxFanIn"
 
@@ -77,7 +59,6 @@ class MaxFanInRule : Rule {
         val top = violators.take(params.top)
         val examples = top.joinToString(",") { (n, v) -> "$n:$v" }
 
-        // Anchor on first class in scope (stable)
         val anchor =
             facts.classes
                 .asSequence()

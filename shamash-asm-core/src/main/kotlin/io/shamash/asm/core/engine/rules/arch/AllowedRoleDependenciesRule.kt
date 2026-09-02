@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,20 +29,8 @@ import io.shamash.asm.core.facts.model.DependencyEdge
 import io.shamash.asm.core.facts.query.FactIndex
 
 /**
- * arch.allowedRoleDependencies
- *
- * Params:
- * - allow: [ "fromRole->toRole", ... ]  (non-empty)
- *
- * Semantics:
- * - Build role graph from facts.edges using engine-assigned classToRole.
- * - For every observed role edge (fromRole -> toRole), if it is not explicitly allowed, emit a finding.
- * - Dependencies within the same role are always allowed (fromRole == toRole).
- * - External/unclassified targets are ignored (they don't have roles; handled by other rules).
- *
- * Scope semantics:
- * - role filters are applied on the *fromRole* (source role).
- * - include/exclude package/glob scope is applied on the *from-class* that produced the edge.
+ * Same-role edges are allowed; external or unclassified endpoints are ignored.
+ * Role and package/path scope filters apply to the source of each edge.
  */
 class AllowedRoleDependenciesRule : Rule {
     override val id: String = "arch.allowedRoleDependencies"
@@ -61,13 +45,10 @@ class AllowedRoleDependenciesRule : Rule {
 
         val scope = RuleUtil.compileScope(rule.scope)
 
-        // Map classFqn -> ClassFact for anchoring file paths / scope evaluation.
         val classByFqn: Map<String, ClassFact> = facts.classes.associateBy { it.fqName }
 
-        // Build role adjacency from edges (project-only; ignore externals).
         val roleAdj = buildObservedRoleAdjacency(facts, classByFqn, scope)
 
-        // Allowed adjacency for fast lookup.
         val allowedAdj: Map<String, Set<String>> =
             allowEdges
                 .groupBy({ it.first }, { it.second })
@@ -87,7 +68,6 @@ class AllowedRoleDependenciesRule : Rule {
 
         if (violations.isEmpty()) return emptyList()
 
-        // Deterministic: sort by (fromRole, toRole)
         violations.sortWith(compareBy({ it.fromRole }, { it.toRole }))
 
         val out = ArrayList<Finding>(violations.size)
@@ -135,7 +115,6 @@ class AllowedRoleDependenciesRule : Rule {
             try {
                 p.requireStringList("allow", nonEmpty = true).map { it.trim() }
             } catch (_: ParamError) {
-                // validator should catch; engine stays resilient
                 return null
             }
 
@@ -150,16 +129,11 @@ class AllowedRoleDependenciesRule : Rule {
             parsed += from to to
         }
 
-        // Deterministic: unique + sort
         return parsed
             .distinct()
             .sortedWith(compareBy({ it.first }, { it.second }))
     }
 
-    /**
-     * Observed role adjacency from facts edges, filtered by scope using the "from" class.
-     * Only includes edges where both endpoints have roles.
-     */
     private fun buildObservedRoleAdjacency(
         facts: FactIndex,
         classByFqn: Map<String, ClassFact>,
@@ -167,7 +141,6 @@ class AllowedRoleDependenciesRule : Rule {
     ): Map<String, Set<String>> {
         val adj = LinkedHashMap<String, LinkedHashSet<String>>()
 
-        // Deterministic iteration over edges:
         val edges =
             facts.edges.sortedWith(
                 compareBy<DependencyEdge>({ it.from.fqName }, { it.to.fqName }, { it.kind.name }, { it.detail ?: "" }),
@@ -180,7 +153,6 @@ class AllowedRoleDependenciesRule : Rule {
             val fromRole = facts.classToRole[fromFqn] ?: continue
             val toRole = facts.classToRole[toFqn] ?: continue
 
-            // Apply package/glob scope using the producing class (from class).
             val fromClass = classByFqn[fromFqn] ?: continue
             if (!RuleUtil.classInScope(fromClass, scope)) continue
 
@@ -190,10 +162,6 @@ class AllowedRoleDependenciesRule : Rule {
         return adj.mapValues { (_, v) -> v.toSet() }
     }
 
-    /**
-     * Collect deterministic examples (fromClassFqn -> toClassFqn) that produced a role edge.
-     * Scope filters are applied using fromClass (same as adjacency).
-     */
     private fun collectExamples(
         facts: FactIndex,
         classByFqn: Map<String, ClassFact>,

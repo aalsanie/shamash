@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,23 +28,6 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
-/**
- * api.forbiddenInternalNamePatterns
- *
- * Validates config params only (engine enforces these patterns against "public API" type internal names).
- *
- * Internal names are JVM-style, e.g:
- * - com/acme/api/Foo
- * - com/acme/api/Foo$Nested
- *
- * Params:
- * - forbid (required list<string>, non-empty)
- *     Each entry is a REGEX tested against internal names (slash-separated).
- *
- * Notes:
- * - This spec does not interpret engine semantics (what is considered "public API"); it only validates param shape.
- * - Unknown params are ERROR.
- */
 class ApiForbiddenInternalNamePatternsSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "api", name = "forbiddenInternalNamePatterns", role = null)
 
@@ -63,7 +42,6 @@ class ApiForbiddenInternalNamePatternsSpec : RuleSpec {
 
         val allowed = setOf("forbid")
 
-        // Unknown keys are ERROR (locked-in contract: specs explicitly list allowed params).
         p.unknownKeys(allowed).forEach { k ->
             errors +=
                 ValidationError(

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,37 +19,12 @@ package io.shamash.psi.core.scan
 
 import io.shamash.artifacts.baseline.BaselineConfig
 
-/**
- * Execution options for a Shamash project scan.
- *
- * Contract:
- * - Scan orchestration uses locked-in modules (config/util/facts/engine/fixes/baseline/export).
- * - This class only describes what the scan should produce (reports/baseline metadata).
- */
 data class ShamashScanOptions(
-    /**
-     * If true, the scan will invoke the export layer to write reports to disk.
-     * If false, the scan only returns in-memory findings/results.
-     */
     val exportReports: Boolean = true,
-    /**
-     * Baseline behavior (OFF / GENERATE / USE, etc.) delegated to baseline+export.
-     */
     val baseline: BaselineConfig = BaselineConfig.OFF,
-    /**
-     * Tool identity written into exported reports (SARIF/JSON/etc).
-     * Keep stable across releases (e.g., "Shamash").
-     */
     val toolName: String = "Shamash",
-    /**
-     * Tool version written into exported reports.
-     * Prefer the plugin/CLI version string, not a git hash (unless that is your release versioning).
-     */
     val toolVersion: String,
-    /**
-     * Timestamp used for report metadata.
-     * Default is set at instantiation time to keep a consistent value across all outputs of a single scan.
-     */
+    /** Captured once per scan so all exported formats share a timestamp. */
     val generatedAtEpochMillis: Long = System.currentTimeMillis(),
 ) {
     init {
@@ -63,9 +34,6 @@ data class ShamashScanOptions(
     }
 
     companion object {
-        /**
-         * Convenience for IDE usage where toolName is stable but version is supplied by the caller.
-         */
         fun ide(
             toolVersion: String,
             baseline: BaselineConfig = BaselineConfig.OFF,

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,12 +30,6 @@ import io.shamash.asm.core.facts.query.FactIndex
 import java.util.LinkedHashMap
 import java.util.LinkedHashSet
 
-/**
- * Analysis pipeline:
- * - compute graph snapshots + SCC/cycle summaries
- * - compute hotspots (topN) by a small set of metrics (v1)
- * - compute scoring outputs (ScoreModel.V1)
- */
 object AsmAnalysisPipeline {
     fun shouldRun(analysis: AnalysisConfig): Boolean {
         if (analysis.graphs.enabled) return true
@@ -80,7 +70,6 @@ object AsmAnalysisPipeline {
                 .map { it.toList().sorted() }
                 .sortedBy { it.firstOrNull().orEmpty() }
 
-        // Representative cycles (bounded) for UI/CI summaries.
         val repCyclesRaw =
             RuleUtil.representativeCyclesBounded(
                 nodes = nodes,
@@ -180,7 +169,6 @@ object AsmAnalysisPipeline {
     ): ScoringResult {
         val cfg = analysis.scoring
         if (cfg.model != ScoreModel.V1) {
-            // Stage 1 only supports V1 (future models can be plugged in without breaking exports).
             return ScoringResult(model = cfg.model)
         }
 
@@ -296,7 +284,6 @@ object AsmAnalysisPipeline {
                 .map { it.packageName }
                 .toSet()
 
-        // Graph for cycles/degree (project-only)
         val pkgGraphProject = RuleUtil.buildDependencyGraph(facts, Granularity.PACKAGE, includeExternalBuckets = false)
         val nodesProject = pkgGraphProject.nodes.filter { it in projectPkgs }.toSet()
         val n = nodesProject.size
@@ -306,7 +293,6 @@ object AsmAnalysisPipeline {
         val inCycle = HashSet<String>()
         for (comp in cyc) inCycle.addAll(comp)
 
-        // Graph for external coupling (with buckets)
         val pkgGraphExternal = RuleUtil.buildDependencyGraph(facts, Granularity.PACKAGE, includeExternalBuckets = true)
 
         // God class prevalence: mean of god-class score by package.
@@ -335,7 +321,7 @@ object AsmAnalysisPipeline {
                     val cycles = if (pkg in inCycle) 1.0 else 0.0
                     val out = (fanOutProject[pkg] ?: 0).toDouble()
                     val depDensity = (out / denom).coerceIn(0.0, 1.0)
-                    val layering = 0.0 // not implemented in Stage 1 (no layering rule yet)
+                    val layering = 0.0 // Layering violations are not measured yet.
                     val godPrev = (godAvgByPackage[pkg] ?: 0.0).coerceIn(0.0, 1.0)
 
                     val succAll = pkgGraphExternal.successors(pkg)
@@ -352,7 +338,6 @@ object AsmAnalysisPipeline {
                             "externalCoupling" to externalCoupling,
                         )
 
-                    // Normalized is currently identical for all components (0..1).
                     val normalized = raw.toMap()
 
                     val score =
@@ -492,7 +477,6 @@ object AsmAnalysisPipeline {
         }
     }
 
-    // Defaults (match shamash-asm.reference.yml)
     private val DEFAULT_THRESHOLDS = ScoreThresholds(warning = 0.70, error = 0.85)
     private val DEFAULT_GOD_WEIGHTS =
         GodClassWeights(

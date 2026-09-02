@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,11 +24,8 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 
 /**
- * Baseline fingerprinting spec (owned by baseline layer).
- * Used by export
- * - using project-relative normalized paths (forward slashes, no drive letters)
- * - sorting data keys/values
- * - excluding human-readable message text
+ * Fingerprint v1 uses normalized project-relative paths and sorted data entries.
+ * Human-readable messages are excluded so wording changes do not invalidate baselines.
  */
 object BaselineFingerprint {
     fun sha256Hex(

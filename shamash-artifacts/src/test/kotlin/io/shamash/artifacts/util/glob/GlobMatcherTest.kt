@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,11 +39,9 @@ class GlobMatcherTest {
 
     @Test
     fun matches_relativeGlobMatchesAnywhereInPath() {
-        // Relative-ish globs should match anywhere in the path via the **/ fallback.
         assertTrue(GlobMatcher.matches("foo/bar.txt", "a/b/foo/bar.txt"))
         assertTrue(GlobMatcher.matches("foo/bar.txt", "/a/b/foo/bar.txt"))
 
-        // Must not overmatch.
         assertFalse(GlobMatcher.matches("foo/bar.txt", "a/b/foo/bar.txt.bak"))
         assertFalse(GlobMatcher.matches("bar", "a/b/foobar"))
     }

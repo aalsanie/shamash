@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -60,18 +56,6 @@ import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.name
 
-/**
- * ASM engine entrypoint
- *
- * Responsibilities:
- * - Classify classes into roles (engine-owned)
- * - Expand rule defs into concrete rule instances (role variants)
- * - Execute rules best-effort (never crash the caller)
- * - Apply exception suppression (engine-owned)
- * - Apply/verify baseline suppression and/or generate baseline (engine-owned)
- * - Export reports (formats selection + overwrite behavior) via shamash-export
- * - Deterministic ordering of findings/errors
- */
 class ShamashAsmEngine(
     private val registry: RuleRegistry = DefaultRuleRegistry.create(),
     private val toolName: String = "Shamash ASM",
@@ -90,7 +74,6 @@ class ShamashAsmEngine(
         val errors = mutableListOf<EngineError>()
         val findingsOut = mutableListOf<Finding>()
 
-        // --- roles (engine-owned) -------------------------------------------------------------
         val roleClassification =
             try {
                 classifyRoles(facts, config.roles)
@@ -105,12 +88,10 @@ class ShamashAsmEngine(
                 classToRole = roleClassification.classToRole,
             )
 
-        // --- rules ----------------------------------------------------------------------------
         var configuredRuleDefs = 0
         var executedRuleDefs = 0
         var skippedRuleDefs = 0
 
-        // These are mapped into summary (locked-in).
         var executedRuleInstances = 0
         var skippedRuleInstances = 0
         var notFoundRuleInstances = 0
@@ -133,20 +114,16 @@ class ShamashAsmEngine(
             if (rule == null) {
                 notFoundRuleInstances++
 
-                // IMPORTANT:
-                // - UnknownRulePolicy.WARN should NOT fail the engine run (no EngineError).
-                // - The warning belongs in ConfigValidation (ValidationError.WARNING).
+                // WARN is reported by config validation; it must not become an engine failure.
                 when (config.project.validation.unknownRule) {
                     UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> {
                         errors += EngineError.ruleNotFound(baseRuleId)
                     }
 
                     UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {
-                        // no-op (validation layer should surface this as WARNING)
                     }
 
                     UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
-                        // no-op
                     }
                 }
 
@@ -158,7 +135,6 @@ class ShamashAsmEngine(
 
             val instanceRoles: List<String?> = expandInstanceRoles(ruleDef.roles)
             if (instanceRoles.isEmpty()) {
-                // Nothing to execute (defensive; should not happen after schema validation)
                 skippedRuleDefs++
                 continue
             }
@@ -167,7 +143,6 @@ class ShamashAsmEngine(
                 val roleTrimmed = role?.trim()?.takeIf { it.isNotEmpty() }
                 val instanceRuleId = RuleKey(type, name, roleTrimmed).canonicalId()
 
-                // If the user explicitly excludes this role via scope, skip fast.
                 val excludedByScope =
                     roleTrimmed != null && ruleDef.scope?.excludeRoles?.any { it.trim() == roleTrimmed } == true
                 if (excludedByScope) {
@@ -182,9 +157,9 @@ class ShamashAsmEngine(
 
                     val produced: List<Finding> =
                         rule.evaluate(
-                            facts = factsWithRoles, // engine-populated roles/classToRole
-                            rule = effectiveDef, // per-instance RuleDef (role-scoped)
-                            config = config, // full config
+                            facts = factsWithRoles,
+                            rule = effectiveDef,
+                            config = config,
                         )
 
                     for (f in produced) {
@@ -212,7 +187,6 @@ class ShamashAsmEngine(
             }
         }
 
-        // --- exceptions (engine-owned) -------------------------------------------------------
         val afterExceptions =
             try {
                 ExceptionSuppressor.compile(config.exceptions).suppress(findingsOut)
@@ -221,7 +195,6 @@ class ShamashAsmEngine(
                 findingsOut.toList()
             }
 
-        // --- baseline (engine-owned) ---------------------------------------------------------
         val baselinePath = resolveBaselinePath(projectBasePath, config.baseline.path)
         val (afterBaseline, baselineWritten) =
             try {
@@ -241,10 +214,8 @@ class ShamashAsmEngine(
                 afterExceptions to false
             }
 
-        // Deterministic findings
         val findings = normalizeAndSortFindings(afterBaseline)
 
-        // --- analysis ----------------------------------------------------------------------
         val analysisResult: AnalysisResult? =
             if (!AsmAnalysisPipeline.shouldRun(config.analysis)) {
                 null
@@ -257,7 +228,6 @@ class ShamashAsmEngine(
                 }
             }
 
-        // --- export via shamash-export -------------------------------------------------------
         val exportResult: EngineExportResult? =
             try {
                 if (!config.export.enabled) {
@@ -281,7 +251,6 @@ class ShamashAsmEngine(
 
                         val sidecars = resolveExportSidecarPaths(outputDir, config)
 
-                        // Facts export (sidecar)
                         var factsPath = sidecars.factsPath
                         if (factsPath != null) {
                             val fmt =
@@ -290,7 +259,6 @@ class ShamashAsmEngine(
                                     ?.format ?: ExportFactsFormat.JSONL_GZ
                             try {
                                 FactsExporter.export(
-                                    // Export the engine-populated roles + classToRole mapping.
                                     facts = factsWithRoles,
                                     outputPath = factsPath,
                                     format = fmt,
@@ -311,12 +279,10 @@ class ShamashAsmEngine(
                             }
                         }
 
-                        // Roles export (sidecar)
                         var rolesPath = sidecars.rolesPath
                         if (rolesPath != null) {
                             try {
                                 RolesExporter.export(
-                                    // Export the engine-populated role classification result.
                                     facts = factsWithRoles,
                                     roleDefs = config.roles,
                                     outputPath = rolesPath,
@@ -336,7 +302,6 @@ class ShamashAsmEngine(
                             }
                         }
 
-                        // Analysis exports (sidecars)
                         var analysisGraphsPath = sidecars.analysisGraphsPath
                         if (analysisGraphsPath != null) {
                             try {
@@ -514,7 +479,6 @@ class ShamashAsmEngine(
                     excludeGlobs = null,
                 )
             } else {
-                // Only set includeRoles if the user did not set it.
                 if (scope0.includeRoles == null) {
                     scope0.copy(includeRoles = listOf(role))
                 } else {
@@ -522,7 +486,6 @@ class ShamashAsmEngine(
                 }
             }
 
-        // Also set roles to the concrete instance role (helps rules that consult rule.roles).
         return ruleDef.copy(roles = listOf(role), scope = scope)
     }
 
@@ -530,10 +493,7 @@ class ShamashAsmEngine(
         f: Finding,
         canonicalRuleId: String,
     ): Finding {
-        // Normalize to forward-slash so:
-        // - exceptions glob matching is stable
-        // - baseline relativization is stable
-        // - exported reports are consistent across OSes
+        // Normalize paths consistently for exceptions, baselines, and cross-platform reports.
         val fixedPath =
             if (f.filePath.isBlank()) {
                 // Stable fallback: prefer classFqn (or empty) rather than "" which makes baseline path relativization ambiguous.
@@ -613,10 +573,6 @@ class ShamashAsmEngine(
         return unique.sortedWith(compareBy({ it.code.name }, { it.message }))
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // Baseline
-    // -------------------------------------------------------------------------------------------------
-
     private fun applyBaseline(
         projectBasePath: Path,
         findings: List<Finding>,
@@ -631,7 +587,6 @@ class ShamashAsmEngine(
             return findings to true
         }
 
-        // VERIFY
         val baselineFingerprints: Set<String> = loadBaselineFile(baselinePath)
         if (baselineFingerprints.isEmpty()) return findings to false
 
@@ -789,7 +744,7 @@ class ShamashAsmEngine(
                 continue
             }
 
-            i++ // opening quote
+            i++
             val sb = StringBuilder()
             while (i < slice.length) {
                 val ch = slice[i]
@@ -862,10 +817,6 @@ class ShamashAsmEngine(
         val s = p.toString()
         return if (s.endsWith(".json")) p else p.resolve("baseline.json").normalize()
     }
-
-    // -------------------------------------------------------------------------------------------------
-    // Export
-    // -------------------------------------------------------------------------------------------------
 
     private fun exportReport(
         projectBasePath: Path,
@@ -989,10 +940,6 @@ class ShamashAsmEngine(
             ExportFormat.HTML -> Exporters.Format.HTML
         }
 
-    // -------------------------------------------------------------------------------------------------
-    // Paths
-    // -------------------------------------------------------------------------------------------------
-
     private fun resolvePath(
         projectBasePath: Path,
         raw: String,
@@ -1000,10 +947,6 @@ class ShamashAsmEngine(
         val p = Paths.get(raw)
         return (if (p.isAbsolute) p else projectBasePath.resolve(p)).normalize()
     }
-
-    // -------------------------------------------------------------------------------------------------
-    // Roles
-    // -------------------------------------------------------------------------------------------------
 
     private data class RoleClassification(
         val roles: Map<String, Set<String>>,
@@ -1030,7 +973,6 @@ class ShamashAsmEngine(
 
         for ((roleId, _) in compiled) roleToClasses.putIfAbsent(roleId, linkedSetOf())
 
-        // Deterministic traversal
         for (c in facts.classes.asSequence().sortedBy { it.fqName }) {
             val winner = compiled.firstOrNull { (_, matcher) -> matcher.matches(c) } ?: continue
             val roleId = winner.first
@@ -1108,10 +1050,6 @@ class ShamashAsmEngine(
             is Matcher.AnnotationPrefix -> CompiledMatcher.AnnotationPrefix(m.annotationPrefix)
         }
 
-    // -------------------------------------------------------------------------------------------------
-    // Exceptions
-    // -------------------------------------------------------------------------------------------------
-
     private class ExceptionSuppressor private constructor(
         private val compiled: List<CompiledException>,
     ) {
@@ -1137,7 +1075,6 @@ class ShamashAsmEngine(
             val glob: String?,
         ) {
             fun matches(f: Finding): Boolean {
-                // Rule
                 if (!ruleId.isNullOrBlank()) {
                     if (f.ruleId != ruleId) return false
                 } else {
@@ -1149,13 +1086,11 @@ class ShamashAsmEngine(
                     }
                 }
 
-                // Role (ruleId convention: type.name.role)
                 if (roles != null) {
                     val role = extractRoleFromRuleId(f.ruleId)
                     if (role == null || role !in roles) return false
                 }
 
-                // Class internal / name / package
                 if (!classInternalName.isNullOrBlank()) {
                     val internal = f.data["classInternalName"] ?: return false
                     if (internal != classInternalName.trim()) return false
@@ -1172,13 +1107,11 @@ class ShamashAsmEngine(
                     if (!packageRegex.containsMatchIn(pkg)) return false
                 }
 
-                // Origin path
                 if (originPathRegex != null) {
                     val origin = f.data["originPath"] ?: f.filePath
                     if (!originPathRegex.containsMatchIn(origin)) return false
                 }
 
-                // Glob
                 if (!glob.isNullOrBlank()) {
                     if (!GlobMatcher.matches(glob.trim(), f.filePath)) return false
                 }

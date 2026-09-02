@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,14 +19,6 @@ package io.shamash.psi.core.facts
 
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 
-/**
- * Production-friendly facts output:
- * - facts: best-effort extracted facts (never null)
- * - errors: structured extraction issues (never throws unless canceled)
- *
- * Deterministic:
- * - callers can compare FactsResult across runs for the same file.
- */
 data class FactsResult(
     val facts: FactsIndex,
     val errors: List<FactsError>,
@@ -38,9 +26,6 @@ data class FactsResult(
     val hasErrors: Boolean get() = errors.isNotEmpty()
 }
 
-/**
- * Structured extraction error without leaking huge stack traces into model.
- */
 data class FactsError(
     val fileId: String,
     val phase: String, // e.g. "uast:visitCallExpression", "psi:visitMethod", "computeFacts"

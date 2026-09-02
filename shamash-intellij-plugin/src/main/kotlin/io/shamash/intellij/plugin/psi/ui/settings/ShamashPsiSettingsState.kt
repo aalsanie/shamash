@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -36,10 +32,7 @@ class ShamashPsiSettingsState : PersistentStateComponent<ShamashPsiSettingsState
     data class State(
         var configPath: String? = null,
         var exportDirOverride: String? = null,
-        /**
-         * OFF | USE | GENERATE.
-         * Stored as a string to keep settings resilient across refactors and avoid enum binary compatibility issues.
-         */
+        /** Store the mode as a string to avoid enum binary compatibility issues in persisted settings. */
         var baselineMode: String = "OFF",
         var openToolWindowOnScan: Boolean = true,
     )
@@ -49,7 +42,6 @@ class ShamashPsiSettingsState : PersistentStateComponent<ShamashPsiSettingsState
     override fun getState(): State = state
 
     override fun loadState(state: State) {
-        // Make a defensive copy (avoid holding onto the framework's mutable instance).
         this.state =
             State(
                 configPath = state.configPath,

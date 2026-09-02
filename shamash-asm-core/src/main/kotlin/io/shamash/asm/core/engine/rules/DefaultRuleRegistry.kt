@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,33 +44,22 @@ class DefaultRuleRegistry private constructor(
     override fun byId(ruleId: String): Rule? = rulesById[ruleId.trim()]
 
     companion object {
-        /**
-         * Shipped rules (built-ins) as of current ASM engine.
-         *
-         * IMPORTANT:
-         * - Keep this list stable and explicit (no reflection).
-         * - New rules must be added here to be discoverable.
-         */
+        /** Register new built-in rules here; discovery does not use reflection. */
         fun builtins(): List<Rule> =
             listOf(
-                // api
                 ForbiddenAnnotationUsageRule(),
                 ForbiddenInternalNamePatternsRule(),
                 MaxPublicTypesRule(),
-                // arch
                 AllowedPackagesRule(),
                 ForbiddenPackagesRule(),
                 AllowedRoleDependenciesRule(),
                 ForbiddenRoleDependenciesRule(),
-                // origin
                 ForbiddenJarDependenciesRule(),
                 AllowOnlyRootRule(),
-                // graph
                 NoCyclesRule(),
                 MaxCyclesRule(),
                 MaxEdgeCountRule(),
                 MaxDependencyDensityRule(),
-                // metrics
                 MaxFanInRule(),
                 MaxFanOutRule(),
                 MaxFieldsPerClassRule(),
@@ -82,13 +67,7 @@ class DefaultRuleRegistry private constructor(
                 MaxPackageSpreadRule(),
             )
 
-        /**
-         * Create a registry from shipped rules and optional [extraRules].
-         *
-         * @param extraRules additional rules to register (e.g., plugins).
-         * @param overrideBuiltins if true, an extra rule may override a builtin with same id.
-         *                         if false, id collisions throw.
-         */
+        /** Duplicate ids throw unless [overrideBuiltins] is true; then the last extra rule wins. */
         fun create(
             extraRules: List<Rule> = emptyList(),
             overrideBuiltins: Boolean = false,
@@ -115,11 +94,7 @@ class DefaultRuleRegistry private constructor(
                 }
 
                 if (overrideBuiltins) {
-                    // Deterministic: extra rule wins if it appears later in the combined list.
-                    // Since we sorted by id, we need a stable override rule: keep the last seen.
-                    // But sorting destroys insertion precedence, so implement override semantics by
-                    // preferring non-builtin only when collision occurs.
-                    // Simpler: rebuild with precedence preserved:
+                    // Resolve override precedence when rebuilding the map below.
                     continue
                 } else {
                     throw IllegalStateException(
@@ -129,7 +104,6 @@ class DefaultRuleRegistry private constructor(
             }
 
             if (overrideBuiltins && extraRules.isNotEmpty()) {
-                // Rebuild with explicit precedence: builtins first, then extras override.
                 val finalMap = LinkedHashMap<String, Rule>()
                 for (r in builtins()) {
                     val id = r.id.trim()
@@ -140,7 +114,6 @@ class DefaultRuleRegistry private constructor(
                     if (id.isNotEmpty()) finalMap[id] = r
                 }
 
-                // Freeze deterministic view by sorting ids.
                 val frozen =
                     finalMap.entries
                         .sortedBy { it.key }

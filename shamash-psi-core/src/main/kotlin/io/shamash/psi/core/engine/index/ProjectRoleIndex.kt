@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -47,14 +43,8 @@ import java.security.MessageDigest
 import kotlin.collections.isNotEmpty
 
 /**
- * Project-wide role index.
- *
- * - File-local role classification breaks architecture rules (deps to other project types look 'external').
- * - This index builds class->role mapping for ALL source classes within configured source globs.
- *
- * Cache:
- * - CachedValue invalidated by PsiModificationTracker.MODIFICATION_COUNT
- * - Also re-built if schema's role matcher definitions change (fingerprint-based).
+ * Project-wide roles keep dependencies on other source files from appearing external.
+ * Invalidate on PSI changes and on role/source-glob changes.
  */
 class ProjectRoleIndex private constructor(
     private val project: Project,
@@ -92,9 +82,8 @@ class ProjectRoleIndex private constructor(
         val cached = cv.value
         if (cached.fingerprint == fp) return cached.snapshot
 
-        // Same CachedValue instance, but schema fingerprint changed (roles/globs changed).
+        // Replace the CachedValue when config changes; its contents cannot be mutated.
         val rebuilt = SnapshotCache(fp, buildSnapshot(config))
-        // We cannot mutate CachedValue contents, so we replace the CachedValue in user data.
         val newCv =
             CachedValuesManager.getManager(project).createCachedValue {
                 CachedValueProvider.Result.create(rebuilt, PsiModificationTracker.MODIFICATION_COUNT)
@@ -107,7 +96,6 @@ class ProjectRoleIndex private constructor(
         val include = config.project.sourceGlobs.include
         val exclude = config.project.sourceGlobs.exclude
 
-        // Primary strategy: index-backed class search (fast when available).
         val bySearch = collectViaAllClassesSearch(include, exclude)
 
         // Fallback strategy: VFS walk + FactExtractor (covers Kotlin reliably, avoids "no classes" cases).
@@ -145,7 +133,6 @@ class ProjectRoleIndex private constructor(
         val annotations = HashMap<String, Set<String>>(4096)
         val filePaths = HashMap<String, String>(4096)
 
-        // Covers Java + Kotlin (as light classes) when available.
         AllClassesSearch.search(scope, project).forEach { psiClass: PsiClass ->
             ProgressManager.checkCanceled()
 
@@ -154,7 +141,6 @@ class ProjectRoleIndex private constructor(
 
             val path = GlobMatcher.normalizePath(vf.path)
 
-            // Apply source globs
             val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
             if (!ok) return@forEach
 
@@ -223,7 +209,6 @@ class ProjectRoleIndex private constructor(
 
                 val path = GlobMatcher.normalizePath(vf.path)
 
-                // Apply include/exclude globs early.
                 val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
                 if (!ok) return@iterateChildrenRecursively true
 
@@ -231,7 +216,6 @@ class ProjectRoleIndex private constructor(
                 val facts = FactExtractor.extractResult(psiFile).facts
 
                 for (c in facts.classes) {
-                    // Prefer first occurrence for deterministic behavior.
                     if (!seen.containsKey(c.fqName)) {
                         seen[c.fqName] = c
                         annotations[c.fqName] = c.annotationsFqns
@@ -253,10 +237,8 @@ class ProjectRoleIndex private constructor(
     private fun collectContentRoots(): List<VirtualFile> {
         val out = ArrayList<VirtualFile>(8)
 
-        // Project content roots.
         out.addAll(ProjectRootManager.getInstance(project).contentRoots)
 
-        // Module roots (helps in multi-module layouts).
         val modules =
             com.intellij.openapi.module.ModuleManager
                 .getInstance(project)
@@ -265,7 +247,6 @@ class ProjectRoleIndex private constructor(
             out.addAll(ModuleRootManager.getInstance(m).contentRoots)
         }
 
-        // De-dup by path, keep order.
         val seen = LinkedHashSet<String>(out.size)
         val deduped = ArrayList<VirtualFile>(out.size)
         for (vf in out) {
@@ -275,15 +256,13 @@ class ProjectRoleIndex private constructor(
     }
 
     private fun fingerprint(config: ShamashPsiConfigV1): String {
-        // Must change when role definitions or source globs change.
-        // Deliberately ignore rule params; those don't affect role index.
+        // Fingerprint roles and source globs; rule params do not affect this index.
 
-        // Ensure stable ordering.
         val rolesPart =
             config.roles.entries
                 .sortedBy { it.key }
                 .joinToString(";") { (k, v) ->
-                    val matchStable = v.match.toString() // best-effort; match is a schema model and should be stable.
+                    val matchStable = v.match.toString()
                     "$k:${v.priority}:$matchStable"
                 }
 

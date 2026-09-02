@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,17 +27,6 @@ import io.shamash.psi.core.engine.EngineRule
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 import io.shamash.psi.core.facts.model.v1.Visibility
 
-/**
- * Enforces maximum number of methods per class by role.
- *
- * Params (v1):
- * - limits: required non-empty map { roleId: <non-negative int> }.
- * - countKinds: optional list of counting strategies:
- *    - DECLARED_METHODS (default)
- *    - PUBLIC_METHODS
- *    - PRIVATE_METHODS
- * - ignoreMethodNameRegex: optional list of regex strings; matching methods are ignored.
- */
 class MetricsMaxMethodsByRoleRule : EngineRule {
     override val id: String = "metrics.maxMethodsByRole"
 
@@ -83,7 +68,6 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
                     }
                 }
 
-        // roleId -> max
         val roleToMax = LinkedHashMap<String, Int>(limits.size)
         for ((rawRole, rawMax) in limits) {
             val roleId = rawRole.trim()
@@ -98,7 +82,6 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
         val sev = RuleUtil.severity(rule)
         val filePath = normalizePath(file.virtualFile?.path ?: file.name)
 
-        // Index methods by class FQN (facts.methods includes only file-local methods already).
         val methodsByClass = facts.methods.groupBy { it.containingClassFqn }
 
         val out = ArrayList<Finding>()

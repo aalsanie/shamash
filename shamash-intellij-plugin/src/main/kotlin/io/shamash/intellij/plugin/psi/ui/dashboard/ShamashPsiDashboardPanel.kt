@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -49,7 +45,6 @@ class ShamashPsiDashboardPanel(
     private val details = FindingDetailsPanel()
     private val fixes = FixesPanel(project)
 
-    // Stable selection identity across refreshes.
     private var selectedKey: String? = null
 
     init {
@@ -99,7 +94,6 @@ class ShamashPsiDashboardPanel(
         val findings = ShamashPsiUiStateService.getInstance(project).lastFindings
         model.setFindings(findings)
 
-        // Try to restore previous selection by key.
         val key = selectedKey
         if (key != null) {
             val modelRow = findModelRowByKey(findings, key)
@@ -115,7 +109,6 @@ class ShamashPsiDashboardPanel(
             clearSelection()
         }
 
-        // Update side panels based on current selection.
         val selected = selectedFromTable()
         details.setFinding(selected)
         fixes.setFinding(selected)
@@ -169,8 +162,7 @@ class ShamashPsiDashboardPanel(
         }
 
     private fun keyOf(f: Finding): String {
-        // A stable-ish identity for UI selection purposes.
-        // Keep it simple: no new IDs invented in engine layer.
+        // Include the message to distinguish findings at the same source location.
         return buildString {
             append(f.ruleId).append('|')
             append(f.filePath).append('|')

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,16 +27,6 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 import java.util.regex.Pattern
 
-/**
- * arch.allowedPackages
- *
- * Params:
- * - allowPackages: [ "<regex>", ... ]  (non-empty)
- *
- * Semantics:
- * - For classes in-scope (roles + scope filters), their package MUST match at least one allowPackages regex.
- * - If not, a finding is emitted for that class.
- */
 class AllowedPackagesRule : Rule {
     override val id: String = "arch.allowedPackages"
 
@@ -56,7 +42,6 @@ class AllowedPackagesRule : Rule {
 
         val out = ArrayList<Finding>()
 
-        // deterministic iteration
         val classes = facts.classes.sortedBy { it.fqName }
 
         for (c in classes) {
@@ -101,7 +86,6 @@ class AllowedPackagesRule : Rule {
             try {
                 p.requireStringList("allowPackages", nonEmpty = true)
             } catch (_: ParamError) {
-                // Config validator should catch; engine stays resilient.
                 return null
             }
 

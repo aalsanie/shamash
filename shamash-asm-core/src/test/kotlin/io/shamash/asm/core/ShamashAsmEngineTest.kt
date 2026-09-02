@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -122,7 +118,6 @@ class ShamashAsmEngineTest {
 
             val f = res.findings.single()
             assertEquals("test.alwaysFinding", f.ruleId)
-            // filePath should be normalized from classFqn fallback
             assertTrue(f.filePath.contains("com.example.Foo"))
 
             val stats = res.summary.ruleStats
@@ -181,10 +176,8 @@ class ShamashAsmEngineTest {
             assertTrue(res.isSuccess, "engine should succeed; errors: ${res.errors}")
             val exp = assertNotNull(res.export, "export must be present when export.enabled=true")
 
-            // Primary report should exist (JSON)
             assertTrue(Files.exists(exp.outputDir.resolve(ExportOutputLayout.JSON_FILE_NAME)))
 
-            // Facts sidecar is exported.
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME), exp.factsPath)
             assertNotNull(exp.factsPath)
             assertTrue(Files.exists(exp.factsPath))
@@ -195,7 +188,6 @@ class ShamashAsmEngineTest {
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME), exp.analysisHotspotsPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME), exp.analysisScoresPath)
 
-            // Analysis sidecars are exported.
             assertNotNull(exp.analysisGraphsPath)
             assertNotNull(exp.analysisHotspotsPath)
             assertNotNull(exp.analysisScoresPath)

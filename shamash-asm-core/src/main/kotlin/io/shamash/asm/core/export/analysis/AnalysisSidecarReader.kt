@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,19 +30,11 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isRegularFile
 
-/**
- * Reader utilities for analysis sidecar artifacts.
- *
- * This is used by:
- * - CLI (to print CI-friendly summaries)
- * - IntelliJ (to load the Analysis tab from exported JSON)
- */
 object AnalysisSidecarReader {
     private val mapper: ObjectMapper =
         jacksonObjectMapper()
             .disable(SerializationFeature.INDENT_OUTPUT)
-            // Forward/backward compatibility: analysis models may add computed helpers (e.g. `isEmpty`).
-            // Sidecars should remain readable even when extra fields appear.
+            // Accept additional fields so sidecars remain readable across model versions.
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
 
     fun readGraphs(path: Path): GraphAnalysisResult =

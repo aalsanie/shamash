@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,9 +30,6 @@ object ConfigValidation {
         val ok: Boolean get() = errors.none { it.severity == ValidationSeverity.ERROR }
     }
 
-    /**
-     * Production entrypoint (backward compatible).
-     */
     fun loadAndValidateV1(
         reader: Reader,
         schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
@@ -47,18 +40,11 @@ object ConfigValidation {
             engineRuleIdsProvider = null,
         )
 
-    /**
-     * Test-friendly entrypoint.
-     *
-     * @param engineRuleIdsProvider Optional provider for engine rule ids.
-     * If null, the default engine registry will be used (DefaultRuleRegistry).
-     */
     fun loadAndValidateV1(
         reader: Reader,
         schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
         engineRuleIdsProvider: (() -> Set<String>)? = null,
     ): Result {
-        // 1) Parse YAML
         val raw =
             try {
                 ConfigLoader.loadRaw(reader)
@@ -76,7 +62,6 @@ object ConfigValidation {
                 )
             }
 
-        // 2) Structural schema validation
         val structural =
             try {
                 schemaValidator.validate(raw)
@@ -98,7 +83,6 @@ object ConfigValidation {
             return Result(config = null, errors = structural)
         }
 
-        // 3) Bind to typed models
         val typed =
             try {
                 ConfigLoader.bindV1(raw)
@@ -123,10 +107,8 @@ object ConfigValidation {
                 )
             }
 
-        // 4) Semantic validation (config-only)
         val errors = ConfigValidator.validateSemantic(typed).toMutableList()
 
-        // 5) Engine executability check (adds WARN/ERROR per unknownRule policy)
         val policy = normalizeUnknownPolicy(typed.project.validation.unknownRule)
         if (policy != UnknownRulePolicy.IGNORE && policy != UnknownRulePolicy.ignore) {
             val engineIdsResult = loadEngineRuleIds(engineRuleIdsProvider)
@@ -153,8 +135,7 @@ object ConfigValidation {
                 is EngineIdsResult.Available -> {
                     val engineIds = engineIdsResult.ids
 
-                    // IMPORTANT: even if engineIds is empty, we still evaluate rules.
-                    // Empty means "engine implements nothing" => all enabled rules are unknown.
+                    // An empty registry means every enabled rule is unknown; still enforce the policy.
                     typed.rules.forEachIndexed { i, rule ->
                         if (!rule.enabled) return@forEachIndexed
 

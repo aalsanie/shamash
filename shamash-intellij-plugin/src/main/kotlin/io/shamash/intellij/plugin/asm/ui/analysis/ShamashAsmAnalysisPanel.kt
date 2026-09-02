@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -151,8 +147,7 @@ class ShamashAsmAnalysisPanel(
             override fun run(indicator: ProgressIndicator) {
                 indicator.isIndeterminate = true
 
-                // Prefer exported sidecars when present, but fall back to the in-memory analysis
-                // (engine already computed these even when export is disabled).
+                // Use in-memory analysis when export is disabled or sidecars are unavailable.
                 val graphs = graphsPath?.let { readGraphs(it) } ?: inMemory?.graphs
                 val hotspots = hotspotsPath?.let { readHotspots(it) } ?: inMemory?.hotspots
                 val scoring = scoresPath?.let { readScoring(it) } ?: inMemory?.scoring
@@ -210,7 +205,6 @@ class ShamashAsmAnalysisPanel(
         hotspots: HotspotsResult?,
         scoring: ScoringResult?,
     ) {
-        // Graphs
         if (graphs == null) {
             graphsSummary.text = "Graphs: (no data)"
             cyclesList.setListData(emptyArray())
@@ -225,10 +219,8 @@ class ShamashAsmAnalysisPanel(
             cyclesList.setListData(cycles)
         }
 
-        // Hotspots
         hotspotsModel.setData(hotspots)
 
-        // Scoring
         classScoresModel.setData(scoring)
         packageScoresModel.setData(scoring)
     }

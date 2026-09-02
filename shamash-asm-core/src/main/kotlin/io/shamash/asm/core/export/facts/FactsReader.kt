@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,9 +29,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.GZIPInputStream
 
-/**
- * Streaming reader for exported facts.
- */
 object FactsReader {
     private val mapper: ObjectMapper = jacksonObjectMapper()
 
@@ -50,11 +43,7 @@ object FactsReader {
         return if (name.endsWith(".jsonl.gz")) ExportFactsFormat.JSONL_GZ else ExportFactsFormat.JSON
     }
 
-    /**
-     * Read exported facts and invoke callbacks per record.
-     *
-     * Use this to stream huge graphs without loading everything into memory.
-     */
+    /** Invokes callbacks per record so callers can process large exports without retaining the graph. */
     fun read(
         path: Path,
         onMeta: (FactsMetaRecord) -> Unit = {},

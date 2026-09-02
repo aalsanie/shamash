@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,18 +27,6 @@ import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.validation.v1.RuleSpec
 import java.util.LinkedHashMap
 
-/**
- * Spec for `deadcode.unusedPrivateMembers`.
- *
- * Params:
- * - `check`: optional object with booleans: `{ fields?: bool, methods?: bool, classes?: bool }`
- * - `ignoreIfAnnotatedWithExact`: optional non-empty list of annotation FQNs
- * - `ignoreIfAnnotatedWithPrefix`: optional non-empty list of annotation prefixes
- * - `ignoreIfContainingClassAnnotatedWithExact`: optional non-empty list
- * - `ignoreIfContainingClassAnnotatedWithPrefix`: optional non-empty list
- * - `ignoreRoles`: optional list of existing roleIds
- * - `ignoreNameRegex`: optional list of regex strings (must compile)
- */
 class DeadcodeUnusedPrivateMembersSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "deadcode", name = "unusedPrivateMembers", role = null)
 
@@ -74,13 +58,11 @@ class DeadcodeUnusedPrivateMembersSpec : RuleSpec {
             errors += ValidationError(at, message, ValidationSeverity.ERROR)
         }
 
-        // Unknown params (typos)
         val unknown = p.unknownKeys(allowedParamKeys)
         if (unknown.isNotEmpty()) {
             err("$rulePath.params", "Unknown params: ${unknown.sorted().joinToString(", ")}")
         }
 
-        // check: optional object
         val checkRaw = rule.params["check"]
         if (checkRaw != null) {
             val checkMap =
@@ -134,13 +116,11 @@ class DeadcodeUnusedPrivateMembersSpec : RuleSpec {
             return list?.map { it.trim() }
         }
 
-        // ignore lists (optional)
         optionalNonBlankStringList("ignoreIfAnnotatedWithExact")
         optionalNonBlankStringList("ignoreIfAnnotatedWithPrefix")
         optionalNonBlankStringList("ignoreIfContainingClassAnnotatedWithExact")
         optionalNonBlankStringList("ignoreIfContainingClassAnnotatedWithPrefix")
 
-        // ignoreRoles: optional list of role ids; must exist
         val ignoreRoles = optionalNonBlankStringList("ignoreRoles")
         ignoreRoles?.forEachIndexed { i, r ->
             val rid = r.trim()
@@ -149,7 +129,6 @@ class DeadcodeUnusedPrivateMembersSpec : RuleSpec {
             }
         }
 
-        // ignoreNameRegex: optional list; must compile
         val ignoreNameRegex = optionalNonBlankStringList("ignoreNameRegex")
         ignoreNameRegex?.forEachIndexed { i, rxRaw ->
             val rx = rxRaw.trim()

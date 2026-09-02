@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -61,7 +57,6 @@ class ReportBuilderTest {
         val p2 =
             FindingPreprocessor { _, fs ->
                 callOrder += "p2"
-                // keep only the finding added by p1
                 fs.filter { it.ruleId == "R2" }
             }
 
@@ -143,14 +138,12 @@ class ReportBuilderTest {
         assertEquals("message-one", e1.message)
         assertEquals("message-two", e2.message)
 
-        // filePath must be project-relative and normalized (forward slashes)
         assertEquals(
             io.shamash.artifacts.util.PathNormalizer
                 .relativizeOrNormalize(tempDir.toAbsolutePath().normalize(), file),
             e1.filePath,
         )
 
-        // Optional normalization
         assertEquals("com.example.A", e1.classFqn)
         assertNull(e1.memberName)
 
@@ -202,10 +195,6 @@ class ReportBuilderTest {
                 generatedAtEpochMillis = 1L,
             )
 
-        // Sort order:
-        // 1) filePath (a/File.kt before b/File.kt)
-        // 2) ruleId (R0 before R1)
-        // 3) severity rank (ERROR, WARNING, INFO)
         val exported = report.findings
         assertEquals("a/File.kt", exported[0].filePath)
         assertEquals("R0", exported[0].ruleId)

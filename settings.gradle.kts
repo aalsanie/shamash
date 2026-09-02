@@ -1,7 +1,4 @@
 /*
- * Shamash prevents architecture drift in JVM projects through standalone
- * bytecode enforcement and optional IntelliJ source-aware analysis.
- *
  * Copyright © 2025-2026 | Author: @aalsanie
  * Licensed under the Apache License, Version 2.0.
  */

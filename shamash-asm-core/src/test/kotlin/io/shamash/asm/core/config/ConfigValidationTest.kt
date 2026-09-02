@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -63,7 +59,6 @@ class ConfigValidationTest {
                 .let { setUnknownRulePolicy(it, "WARN") }
                 .let { injectRuleBlock(it, unknownRuleBlock) }
 
-        // Deterministic forever: pretend engine implements nothing.
         val result =
             ConfigValidation.loadAndValidateV1(
                 reader = StringReader(updated),
@@ -86,13 +81,11 @@ class ConfigValidationTest {
         val rx = Regex("(?m)^(\\s*unknownRule:)\\s*\\S+\\s*$")
         if (rx.containsMatchIn(yaml)) return yaml.replace(rx, "$1 $policy")
 
-        // Insert under existing validation block
         val validationRx = Regex("(?m)^\\s*validation:\\s*$")
         if (validationRx.containsMatchIn(yaml)) {
             return yaml.replaceFirst(validationRx, "  validation:\n    unknownRule: $policy")
         }
 
-        // Fallback append
         return yaml.trimEnd() + "\n\nproject:\n  validation:\n    unknownRule: $policy\n"
     }
 

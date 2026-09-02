@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,9 +24,6 @@ import io.shamash.asm.core.facts.query.FactIndex
 import java.nio.file.Path
 import kotlin.math.max
 
-/**
- * Engine-owned run summary.
- */
 data class EngineRunSummary(
     val projectName: String,
     val projectBasePath: Path,
@@ -51,7 +44,7 @@ data class EngineRunSummary(
     )
 
     data class RuleStats(
-        // rule defs (author-facing)
+        // Authored definitions, before role expansion.
         val configuredRules: Int = 0,
         val executedRules: Int = 0,
         val skippedRules: Int = 0,
@@ -63,16 +56,10 @@ data class EngineRunSummary(
     )
 }
 
-/**
- * Export result wrapper.
- *
- * Uses existing ExportedReport contract from shamash-artifacts and keeps IO-related outputs here.
- */
 data class EngineExportResult(
     val report: ExportedReport,
     val outputDir: Path,
     val baselineWritten: Boolean,
-    /** Optional exported sidecar artifacts (may be null if not requested). */
     val factsPath: Path? = null,
     val rolesPath: Path? = null,
     val rulePlanPath: Path? = null,
@@ -82,17 +69,13 @@ data class EngineExportResult(
 )
 
 /**
- * Result of a single ASM engine run.
- *
- * Findings = policy violations produced by rules.
- * Errors   = execution/runtime failures (rule crash, export IO, etc).
- * Facts    = optionally exposed for debugging / tooling; can be omitted in memory-sensitive contexts.
+ * Findings are policy violations; errors are execution failures.
+ * Facts may be omitted to limit retained memory.
  */
 data class EngineResult(
     val summary: EngineRunSummary,
     val findings: List<Finding>,
     val errors: List<EngineError> = emptyList(),
-    /** Optional analysis outputs (graphs/hotspots/scoring) computed in-memory. */
     val analysis: AnalysisResult? = null,
     val export: EngineExportResult? = null,
     val facts: FactIndex? = null,

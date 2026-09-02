@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -51,24 +47,6 @@ import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 import java.util.LinkedHashMap
 
-/**
- * Reports unused private members (fields/methods/classes) in the current file.
- *
- * Uses UAST when available (covers Kotlin + Java).
- * Falls back to PSI-only traversal when UAST cannot be built.
- *
- * Params (v1):
- * - check: optional object { fields?: bool, methods?: bool, classes?: bool } (defaults: fields=true, methods=true, classes=false)
- * - ignoreIfAnnotatedWithExact / Prefix: optional lists for member annotations
- * - ignoreIfContainingClassAnnotatedWithExact / Prefix: optional lists for containing class annotations
- * - ignoreRoles: optional list of roleIds (skip checking classes in these roles)
- * - ignoreNameRegex: optional list of regex patterns; matching member names are skipped
- *
- * Notes:
- * - Uses ReferencesSearch with project scope. Cancellation-aware for IDE safety.
- * - For Kotlin, UAST exposes synthetic methods (e.g., property accessors) with no sourcePsi.
- * - Those are ignored to avoid false positives.
- */
 class DeadcodeUnusedPrivateMembersRule : EngineRule {
     override val id: String = "deadcode.unusedPrivateMembers"
 
@@ -225,13 +203,11 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                             if (!isPrivate(m)) continue
                             if (m.isConstructor) continue
 
-                            // Kotlin synthetic methods (e.g., property accessors) typically have no sourcePsi.
-                            // Ignore them to avoid false positives.
+                            // Ignore Kotlin synthetic methods without sourcePsi to avoid false positives.
                             if (m.sourcePsi == null) continue
 
                             val anchor = (m.sourcePsi ?: m.javaPsi) as? PsiElement ?: continue
 
-                            // Keep the small "main" skip for Java.
                             if (anchor is PsiMethod) {
                                 if (m.name == "main" && anchor.hasModifierProperty(PsiModifier.STATIC)) continue
                             }
@@ -367,7 +343,6 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
             }
 
             if (check.classes) {
-                // private nested classes only
                 for (inner in cls.innerClasses) {
                     ProgressManager.checkCanceled()
                     if (!inner.hasModifierProperty(PsiModifier.PRIVATE)) continue
@@ -403,7 +378,6 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
         p: Params,
         raw: Any?,
     ): Check {
-        // defaults: fields=true, methods=true, classes=false
         if (raw == null) return Check(fields = true, methods = true, classes = false)
         if (raw !is Map<*, *>) throw ParamError("${p.currentPath}.check", "must be an object/map")
 
@@ -533,9 +507,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
         localScope: SearchScope,
         globalScope: GlobalSearchScope,
     ): Boolean {
-        // Local scan first (cheap).
         if (ReferencesSearch.search(element, localScope).findFirst() != null) return true
-        // Global fallback.
         return ReferencesSearch.search(element, globalScope).findFirst() != null
     }
 

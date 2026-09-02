@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -56,7 +52,6 @@ class ShamashPsiConfigPanel(
         val root = JPanel(VerticalLayout(10))
         root.border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
 
-        // --- Config location ---
         root.add(JBLabel("<html><b>Active PSI Config</b></html>"))
         root.add(configPathLabel)
 
@@ -66,7 +61,6 @@ class ShamashPsiConfigPanel(
         buttonsRow.add(button("Create from Reference", ACTION_CREATE_FROM_REFERENCE))
         root.add(buttonsRow)
 
-        // --- Validation output ---
         root.add(JBLabel("<html><b>Validation</b></html>"))
         validationArea.isEditable = false
         validationArea.lineWrap = true
@@ -74,7 +68,6 @@ class ShamashPsiConfigPanel(
         validationArea.minimumSize = Dimension(200, 120)
         root.add(JBScrollPane(validationArea).apply { preferredSize = Dimension(200, 220) })
 
-        // --- Supported rules ---
         root.add(JBLabel("<html><b>Supported PSI Rules</b></html>"))
         supportedRulesArea.isEditable = false
         supportedRulesArea.lineWrap = true
@@ -131,12 +124,10 @@ class ShamashPsiConfigPanel(
                     return@addActionListener
                 }
 
-                // Never call action.actionPerformed(...) directly.
-                // actionPerformed is @ApiStatus.OverrideOnly; IntelliJ Platform must dispatch it.
+                // Dispatch through IntelliJ: actionPerformed is @ApiStatus.OverrideOnly.
                 ActionManager.getInstance().tryToExecute(action, null, this@ShamashPsiConfigPanel, "ShamashPsiConfigPanel", true)
 
-                // This refresh is immediate (may be stale for background actions),
-                // but the toolwindow controller refresh after background completion will update it.
+                // Background actions refresh again on completion; this immediate view may still be stale.
                 refresh()
             }
         }
@@ -146,7 +137,6 @@ class ShamashPsiConfigPanel(
     }
 
     companion object {
-        // Action IDs should match plugin.xml registration.
         private const val ACTION_VALIDATE = "io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
         private const val ACTION_OPEN_REFERENCE = "io.shamash.intellij.plugin.psi.ui.actions.OpenPsiReferenceConfigAction"
         private const val ACTION_CREATE_FROM_REFERENCE = "io.shamash.intellij.plugin.psi.ui.actions.CreatePsiConfigFromReferenceAction"

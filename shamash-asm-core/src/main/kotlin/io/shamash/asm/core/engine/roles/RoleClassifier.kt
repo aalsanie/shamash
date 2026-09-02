@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,17 +22,7 @@ import io.shamash.asm.core.config.schema.v1.model.RoleId
 import io.shamash.asm.core.facts.model.ClassFact
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * RoleClassifier
- *
- * Used by engine to classify each class into a single role:
- * - Highest priority role among matches
- * - Tie-break by roleId lexicographic order
- *
- * Output:
- * - classToRole: classFqn -> roleId
- * - roles: roleId -> Set<classFqn>
- */
+/** Each class gets one role: highest priority wins, then lexicographically smallest id. */
 internal class RoleClassifier(
     roles: Map<RoleId, RoleDef>,
 ) {
@@ -48,9 +34,7 @@ internal class RoleClassifier(
                     priority = def.priority,
                     matcher = MatcherEvaluator.compile(def.match),
                 )
-            }
-            // Deterministic ordering: highest priority first, then roleId asc
-            .sortedWith(
+            }.sortedWith(
                 compareByDescending<CompiledRole> { it.priority }
                     .thenBy { it.id },
             )
@@ -60,7 +44,6 @@ internal class RoleClassifier(
             return RoleMatchResult(classToRole = emptyMap(), roles = emptyMap())
         }
 
-        // Deterministic iteration: sort by fqName
         val sortedClasses = classes.sortedBy { it.fqName }
 
         val classToRole = LinkedHashMap<String, String>(sortedClasses.size)
@@ -72,7 +55,6 @@ internal class RoleClassifier(
             rolesToClasses.getOrPut(winner.id) { LinkedHashSet() }.add(c.fqName)
         }
 
-        // Freeze sets as immutable, preserving insertion order
         val frozenRoles: Map<String, Set<String>> =
             rolesToClasses.mapValues { (_, v) -> v.toSet() }
 
@@ -82,9 +64,6 @@ internal class RoleClassifier(
         )
     }
 
-    /**
-     * Convenience: apply classification into a new FactIndex (engine writes these fields).
-     */
     fun applyToFacts(facts: FactIndex): FactIndex {
         val r = classify(facts.classes)
         return facts.copy(
@@ -94,7 +73,6 @@ internal class RoleClassifier(
     }
 
     private fun pickRole(c: ClassFact): CompiledRole? {
-        // compiled is already sorted by priority desc then id asc.
         for (role in compiled) {
             if (role.matcher.matches(c)) return role
         }
@@ -108,10 +86,7 @@ internal class RoleClassifier(
     )
 }
 
-/**
- * Engine-visible role classification output.
- */
 internal data class RoleMatchResult(
-    val classToRole: Map<String, String>, // classFqn -> roleId
-    val roles: Map<String, Set<String>>, // roleId -> set of classFqn
+    val classToRole: Map<String, String>,
+    val roles: Map<String, Set<String>>,
 )

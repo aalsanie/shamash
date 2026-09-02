@@ -22,11 +22,9 @@ dependencies {
 
     implementation(project(":shamash-export"))
 
-    // External libs used by psi-core
     implementation("com.networknt:json-schema-validator:1.5.9")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
 
-    // IntelliJ APIs needed to compile PSI/UAST code
     intellijPlatform {
         intellijIdea("2024.2")
 
@@ -42,6 +40,4 @@ dependencies {
 
 tasks.test {
     maxHeapSize = "2g"
-    // If migrated tests to JUnit5.
-    // useJUnitPlatform()
 }

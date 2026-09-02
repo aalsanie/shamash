@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -126,7 +122,6 @@ class ShamashAsmFactsPanel(
         val scan = state?.scanResult
         val engine = scan?.engine
 
-        // Prefer exported facts file (streamable).
         val exportFactsPath = engine?.export?.factsPath
         val filePath = exportFactsPath?.takeIf { Files.exists(it) }
 
@@ -136,7 +131,6 @@ class ShamashAsmFactsPanel(
             return
         }
 
-        // Fallback to in-memory facts only if present.
         val facts = engine?.facts
         if (facts != null) {
             showContent()
@@ -144,7 +138,6 @@ class ShamashAsmFactsPanel(
             return
         }
 
-        // Missing facts.
         loaded = null
         updateStatus(
             "Facts artifact not found. Enable export.artifacts.facts.enabled, or run a scan with CLI --export-facts.",
@@ -156,7 +149,6 @@ class ShamashAsmFactsPanel(
     }
 
     override fun dispose() {
-        // listener auto-unregistered
     }
 
     private fun buildEmptyState(): JComponent {
@@ -191,7 +183,6 @@ class ShamashAsmFactsPanel(
     private fun buildContentUi(): JComponent {
         val root = JPanel(BorderLayout())
 
-        // Toolbar
         val toolbar =
             JPanel(BorderLayout()).apply {
                 border = JBUI.Borders.emptyBottom(10)
@@ -230,14 +221,12 @@ class ShamashAsmFactsPanel(
         toolbar.add(filterField, BorderLayout.CENTER)
         toolbar.add(buttons, BorderLayout.EAST)
 
-        // Summary + status
         val top =
             JPanel(BorderLayout()).apply {
                 add(summaryCards, BorderLayout.NORTH)
                 add(statusLabel, BorderLayout.SOUTH)
             }
 
-        // Tables
         classesTable.selectionModel.selectionMode = ListSelectionModel.SINGLE_SELECTION
         classesTable.autoCreateRowSorter = true
         edgesTable.selectionModel.selectionMode = ListSelectionModel.SINGLE_SELECTION
@@ -555,11 +544,8 @@ class ShamashAsmFactsPanel(
         classesModel.setRows(classRows)
         edgesModel.setRows(edgeRows)
 
-        // keep open file enabled only when file exists
         val path = data.sourcePath
-        // just update status; button enabling is handled by openFactsFile null-check
         if (path == null) {
-            // nothing
         }
     }
 

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -117,7 +113,6 @@ class RunPsiScanAction(
             }
 
             override fun onSuccess() {
-                // publish once on EDT
                 ApplicationManager.getApplication().invokeLater {
                     ShamashPsiUiStateService.getInstance(project).updateValidation(validationErrors)
                     ShamashPsiUiStateService.getInstance(project).updateFindings(findings)
@@ -156,7 +151,6 @@ class RunPsiScanAction(
                         )
                     }
 
-                    // With a dedicated Findings tab, land the user there after scan.
                     tw.select(ShamashPsiToolWindowController.Tab.FINDINGS)
                     tw.refreshAll()
                 }

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,26 +26,13 @@ import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.validation.v1.RuleSpec
 
-/**
- * Spec for `arch.forbiddenRoleDependencies`.
- *
- * Params:
- * - `kinds`: optional list of dependency kinds to consider.
- * - `forbidden`: required non-empty list of objects:
- *   - `from`: roleId
- *   - `to`: non-empty list of roleIds
- *   - `message`: optional custom message (must be non-blank)
- */
 class ArchForbiddenRoleDependenciesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "arch", name = "forbiddenRoleDependencies", role = null)
 
     private val allowedParamKeys: Set<String> = setOf("kinds", "forbidden")
     private val allowedForbiddenEntryKeys: Set<String> = setOf("from", "to", "message")
 
-    /**
-     * Allowed dependency kinds that the engine can emit/understand.
-     * Keep this list in lockstep with the engine's dependency model.
-     */
+    /** Keep accepted dependency kinds in sync with the engine's dependency model. */
     private val allowedKinds: Set<String> =
         setOf(
             "methodCall",
@@ -76,13 +59,11 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
             errors += ValidationError(at, message, ValidationSeverity.ERROR)
         }
 
-        // Unknown params (typos)
         val unknown = p.unknownKeys(allowedParamKeys)
         if (unknown.isNotEmpty()) {
             err("$rulePath.params", "Unknown params: ${unknown.sorted().joinToString(", ")}")
         }
 
-        // kinds: optional list of strings
         val kinds =
             try {
                 p.optionalStringList("kinds")
@@ -103,7 +84,6 @@ class ArchForbiddenRoleDependenciesSpec : RuleSpec {
             }
         }
 
-        // forbidden: required list of objects
         val forbiddenList: List<*> =
             when (val raw = rule.params["forbidden"]) {
                 null -> {

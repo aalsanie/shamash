@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,20 +27,7 @@ import io.shamash.psi.core.fixes.FixProvider
 import io.shamash.psi.core.fixes.PsiResolver
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Fixes for packages.rolePlacement violations.
- *
- * This fix changes a file’s package declaration to
- * the first concrete package that can be safely inferred from
- * the role’s allowed package patterns.
- *
- * The engine emits "allowed" as a '|' separated list of package-regex patterns.
- * This provider uses a best-effort heuristic to extract a concrete base package from those patterns.
- *
- * IMPORTANT:
- * - This fix is intentionally conservative: if we can't produce a sane-looking package, we return no fixes.
- * - We also preserve file headers (license/comments) when inserting a missing package statement.
- */
+/** Infers a concrete package from finding data["allowed"] regexes; returns no fix if inference fails. */
 class PackagesRolePlacementFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = f.ruleId == RULE_ID
 
@@ -75,35 +58,25 @@ class PackagesRolePlacementFixProvider : FixProvider {
         return null
     }
 
-    /**
-     * Heuristic extraction of a base package from a regex.
-     *
-     * Examples:
-     *  - ^com\\.acme\\.app(\\..*)?$ -> com.acme.app
-     *  - com\\.acme\\.infra\\..* -> com.acme.infra
-     */
+    /** Best-effort literal package prefix extraction from a package regex. */
     private fun guessPackageFromRegex(regex: String): String? {
         var s = regex.trim()
         if (s.isBlank()) return null
 
         s = s.removePrefix("^").removeSuffix("$")
 
-        // Common tails in our allowlist patterns.
         s = s.replace("(\\..*)?", "")
         s = s.replace("(\\..+)?", "")
         s = s.replace("\\..*", "")
         s = s.replace("\\..+", "")
         s = s.replace(".*", "")
 
-        // Unescape literal dots
         s = s.replace("\\\\.", ".")
 
-        // Drop remaining regex metacharacters that can appear in patterns.
         s = s.replace(Regex("[\\[\\]\\(\\)\\?\\+\\*\\|]"), "")
 
         s = s.trim().trim('.')
 
-        // Conservative sanity checks (avoid emitting garbage).
         if (s.isBlank()) return null
         if (!PACKAGE_RE.matches(s)) return null
 
@@ -141,10 +114,7 @@ class PackagesRolePlacementFixProvider : FixProvider {
             }
         }
 
-        /**
-         * Insert package after any leading license/comment block and blank lines.
-         * Never blindly insert at 0 (keeps file headers intact).
-         */
+        /** Insert after leading comments and blank lines to preserve license headers. */
         private fun safeHeaderInsertionOffset(text: String): Int {
             var i = 0
             if (text.startsWith("\uFEFF")) i = 1 // BOM
@@ -181,7 +151,6 @@ class PackagesRolePlacementFixProvider : FixProvider {
         // capture: package statement used for replacement (no trailing newline)
         private val PKG_STMT_RE = Regex("(?m)^\\s*package\\s+[a-zA-Z0-9_\\.]+\\s*;?")
 
-        // conservative package sanity: a.b.c where segments are [A-Za-z_][A-Za-z0-9_]*
         private val PACKAGE_RE = Regex("^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$")
 
         private val BLOCK_COMMENT_RE = Regex("^\\s*/\\*.*?\\*/\\s*", setOf(RegexOption.DOT_MATCHES_ALL))

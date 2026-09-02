@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,18 +24,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.name
 
-/**
- * Stores and loads Shamash baseline data used to suppress pre-existing findings.
- *
- * Baseline file location:
- * - `<projectRoot>/.shamash/baseline.json`
- *
- * Format (versioned, minimal, dependency-free JSON):
- * {
- *   "version": 1,
- *   "fingerprints": ["<fp1>", "<fp2>", ...]
- * }
- */
+/** Persists versioned fingerprints in `<outputDir>/baseline.json`. */
 class BaselineStore {
     data class Baseline(
         val version: Int,
@@ -90,7 +75,6 @@ class BaselineStore {
         val tmp = path.resolveSibling("${path.name}.tmp")
         Files.writeString(tmp, json, StandardCharsets.UTF_8)
 
-        // Best-effort atomic move (falls back when not supported)
         try {
             Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         } catch (_: Exception) {
@@ -185,14 +169,14 @@ class BaselineStore {
                 continue
             }
 
-            i++ // skip opening quote
+            i++
             val sb = StringBuilder()
 
             while (i < slice.length) {
                 val ch = slice[i]
                 when (ch) {
                     '"' -> {
-                        i++ // consume closing quote
+                        i++
                         break
                     }
 

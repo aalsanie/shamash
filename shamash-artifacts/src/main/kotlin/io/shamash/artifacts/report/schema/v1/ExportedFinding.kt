@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,12 +20,8 @@ package io.shamash.artifacts.report.schema.v1
 import io.shamash.artifacts.contract.FindingSeverity
 
 /**
- * Exporter-facing finding model (schema v1).
- *
- * Contract:
- * - filePath must be project-root-relative and normalized to forward slashes.
- * - ordering must be deterministic at export time (see report building/exporters).
- * - fingerprint is SHA-256 hex string used for baseline mode.
+ * [filePath] must be project-relative with forward slashes; [fingerprint] is SHA-256 hex.
+ * Exporters must preserve the report builder's deterministic ordering.
  */
 data class ExportedFinding(
     val ruleId: String,

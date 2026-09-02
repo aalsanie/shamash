@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,14 +25,6 @@ import io.shamash.psi.core.config.ValidationError
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * In-memory UI state for Shamash PSI tool window.
- *
- * Contract:
- * - Project-level service (supports multiple open projects).
- * - Stores only the most recent results (scan + validation + export).
- * - Updates are atomic to avoid panels observing mixed state.
- */
 @Service(Service.Level.PROJECT)
 class ShamashPsiUiStateService {
     data class Snapshot(
@@ -81,7 +69,6 @@ class ShamashPsiUiStateService {
         ref.updateAndGet { s ->
             s.copy(
                 findings = findings.toList(),
-                // successful scan/refresh typically means old errors are not relevant anymore
                 validationErrors = emptyList(),
             )
         }

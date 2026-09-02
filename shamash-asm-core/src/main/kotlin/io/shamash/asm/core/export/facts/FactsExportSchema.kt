@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,11 +17,7 @@
  */
 package io.shamash.asm.core.export.facts
 
-/**
- * Facts export schema contract.
- *
- * Consumers (CLI/UI) should treat [SCHEMA_ID] + [SCHEMA_VERSION] as the compatibility key.
- */
+/** [SCHEMA_ID] and [SCHEMA_VERSION] together identify the facts format compatibility contract. */
 object FactsExportSchema {
     const val SCHEMA_ID: String = "io.shamash.asm.facts"
     const val SCHEMA_VERSION: Int = 1

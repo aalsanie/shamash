@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -91,7 +87,6 @@ class ConfigSemanticValidatorV1Test {
 
     @Test
     fun `unknownRule WARN emits WARNING when RuleSpec exists but engine executability set does not include it`() {
-        // 'naming.bannedSuffixes' exists in RuleSpecRegistryV1.
         val config =
             minimalConfig(
                 unknownRule = UnknownRulePolicyV1.WARN,
@@ -109,7 +104,6 @@ class ConfigSemanticValidatorV1Test {
                     ),
             )
 
-        // executableRuleKeys provided but does NOT contain naming.bannedSuffixes
         val errors = ConfigSemanticValidatorV1.validateSemantic(config, executableRuleKeys = emptySet())
 
         assertTrue(

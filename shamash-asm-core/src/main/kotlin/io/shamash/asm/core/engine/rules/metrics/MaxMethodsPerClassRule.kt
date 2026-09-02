@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,17 +27,6 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.model.MethodRef
 import io.shamash.asm.core.facts.query.FactIndex
 
-/**
- * metrics.maxMethodsPerClass
- *
- * Params:
- * - maxMethods: int (required, >= 0)
- * - examples: int (optional, default 10) // include up to N method fqNames as examples per violating class
- *
- * Semantics:
- * - Counts declared methods per class (bytecode facts).
- * - For each in-scope class, if methodCount > maxMethods -> emit a finding for that class.
- */
 class MaxMethodsPerClassRule : Rule {
     override val id: String = "metrics.maxMethodsPerClass"
 
@@ -55,7 +40,6 @@ class MaxMethodsPerClassRule : Rule {
 
         if (facts.classes.isEmpty() || facts.methods.isEmpty()) return emptyList()
 
-        // Group methods by owner class FQN deterministically.
         val methodsByOwner: Map<String, List<MethodRef>> =
             facts.methods
                 .asSequence()
@@ -64,7 +48,6 @@ class MaxMethodsPerClassRule : Rule {
 
         val out = ArrayList<Finding>()
 
-        // Deterministic iteration over classes.
         val classes = facts.classes.sortedBy { it.fqName }
         for (c in classes) {
             val roleId = facts.classToRole[c.fqName]

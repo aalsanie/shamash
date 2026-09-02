@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,12 +44,6 @@ import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
 import io.shamash.intellij.plugin.asm.ui.facts.ShamashAsmFactsPanel
 import java.nio.file.Files
 
-/**
- * End-to-end (plugin) coverage for Milestone 1 Facts tab:
- * - facts exported to JSONL_GZ (streamable)
- * - ASM toolwindow shows "Facts" tab
- * - panel prefers exported facts file (does not require in-memory facts)
- */
 class AsmFactsTabE2ETest : ShamashPluginE2eTestBase() {
     fun testFactsTabLoadsFromExportedFactsFile() {
         val tmp = Files.createTempDirectory("shamash-facts-e2e-").toAbsolutePath().normalize()
@@ -127,7 +117,6 @@ class AsmFactsTabE2ETest : ShamashPluginE2eTestBase() {
 
         ShamashAsmUiStateService.getInstance(project).update(configPath = null, scanResult = scan)
 
-        // Select Facts tab and wait for async background load to populate tables.
         runInEdtAndWait { controller.select(ShamashAsmToolWindowController.Tab.FACTS) }
 
         val panel = findFactsPanel(controller)

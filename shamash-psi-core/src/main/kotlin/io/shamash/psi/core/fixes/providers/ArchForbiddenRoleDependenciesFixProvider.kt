@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,17 +28,7 @@ import io.shamash.psi.core.fixes.FixProvider
 import io.shamash.psi.core.fixes.PsiResolver
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Fix provider for arch.forbiddenRoleDependencies.
- *
- * Provides a pragmatic suppression fix:
- * - Inserts a `// shamash:ignore <ruleId>` directive on the line of the first textual reference
- *   to the forbidden dependency's simple type name in the source file.
- *
- * NOTE:
- * - This does not refactor code or remove the dependency; it only suppresses the finding locally.
- * - We keep insertion indentation consistent with the target line.
- */
+/** Suppresses the first textual reference to the dependency type; it does not refactor the dependency. */
 class ArchForbiddenRoleDependenciesFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = f.ruleId == RULE_ID
 
@@ -72,7 +58,6 @@ class ArchForbiddenRoleDependenciesFixProvider : FixProvider {
             val doc = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
             val text = doc.text
 
-            // Best-effort: first textual occurrence of the type simple name.
             val idx = text.indexOf(typeSimpleName)
             if (idx < 0) return
 
@@ -83,7 +68,6 @@ class ArchForbiddenRoleDependenciesFixProvider : FixProvider {
             val directive = "$indent// shamash:ignore $ruleId\n"
 
             WriteCommandAction.runWriteCommandAction(project) {
-                // Avoid stacking duplicate directives on current/previous line.
                 if (hasTokenOnLineOrPrev(doc, line, "shamash:ignore $ruleId")) return@runWriteCommandAction
 
                 doc.insertString(lineStart, directive)

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -36,22 +32,7 @@ import io.shamash.asm.core.facts.model.SourceLocation
 import io.shamash.asm.core.facts.query.FactIndex
 import java.util.regex.Pattern
 
-/**
- * api.forbiddenAnnotationUsage
- *
- * params:
- *   forbid: [ <regex>, ... ]
- *
- * Each regex is matched against multiple identifiers for an annotation type:
- * - fq name:        "com.example.MyAnno"
- * - internal name:  "com/example/MyAnno"
- * - descriptor:     "Lcom/example/MyAnno;"
- *
- * Violations are reported on:
- * - class annotations
- * - method annotations
- * - field annotations
- */
+/** Matches class, method, and field annotation regexes against FQNs, JVM internal names, and descriptors. */
 class ForbiddenAnnotationUsageRule : Rule {
     override val id: String = "api.forbiddenAnnotationUsage"
 
@@ -74,7 +55,6 @@ class ForbiddenAnnotationUsageRule : Rule {
         val ruleId = ruleKey(rule)
         val severity = rule.severity
 
-        // ---- class-level ----
         for (c in facts.classes) {
             val pkg = c.packageName
             val filePath = filePathOf(c.location)
@@ -101,7 +81,6 @@ class ForbiddenAnnotationUsageRule : Rule {
             }
         }
 
-        // ---- method-level ----
         for (m in facts.methods) {
             val pkg = m.owner.packageName
             val filePath = filePathOf(m.location)
@@ -130,7 +109,6 @@ class ForbiddenAnnotationUsageRule : Rule {
             }
         }
 
-        // ---- field-level ----
         for (f in facts.fields) {
             val pkg = f.owner.packageName
             val filePath = filePathOf(f.location)
@@ -163,13 +141,11 @@ class ForbiddenAnnotationUsageRule : Rule {
     }
 
     private fun compileForbidPatterns(rule: RuleDef): List<Pattern> {
-        // Config semantic validation already enforces the contract, but we stay defensive.
         val p = Params.of(rule.params, path = "rules.${rule.type}.${rule.name}.params")
         val raw =
             try {
                 p.requireStringList("forbid", nonEmpty = true)
             } catch (e: ParamError) {
-                // Runtime: treat bad params as "no findings" (engine may also surface an EngineError elsewhere).
                 return emptyList()
             }
 
@@ -189,7 +165,6 @@ class ForbiddenAnnotationUsageRule : Rule {
         val internal = fqn.replace('.', '/')
         val desc = "L$internal;"
 
-        // Match against multiple identifiers.
         for (p in patterns) {
             if (p.matcher(fqn).find()) return p.pattern()
             if (p.matcher(internal).find()) return p.pattern()
@@ -198,9 +173,7 @@ class ForbiddenAnnotationUsageRule : Rule {
         return null
     }
 
-    private fun ruleKey(rule: RuleDef): String =
-        // role is handled by engine via ruleId decoration (if you expand per-role).
-        "${rule.type.trim()}.${rule.name.trim()}"
+    private fun ruleKey(rule: RuleDef): String = "${rule.type.trim()}.${rule.name.trim()}"
 
     private fun compileRegexList(list: List<String>?): List<Regex> =
         list

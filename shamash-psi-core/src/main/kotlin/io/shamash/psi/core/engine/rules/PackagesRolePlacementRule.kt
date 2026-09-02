@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,12 +27,6 @@ import io.shamash.psi.core.engine.EngineRule
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 import java.util.LinkedHashMap
 
-/**
- * Enforces that each role's classes live under an expected package regex.
- *
- * Params (v1):
- * - expected: required non-empty map { roleId: { packageRegex: "..." } }
- */
 class PackagesRolePlacementRule : EngineRule {
     override val id: String = "packages.rolePlacement"
 
@@ -52,7 +42,6 @@ class PackagesRolePlacementRule : EngineRule {
         val expected = p.requireMap("expected")
         if (expected.isEmpty()) return emptyList()
 
-        // roleId -> compiled regex
         val roleToRegex = LinkedHashMap<String, Regex>(expected.size)
         for ((rawRole, rawEntry) in expected) {
             val roleId = rawRole.trim()

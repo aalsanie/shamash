@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,21 +22,9 @@ import io.shamash.artifacts.util.PathNormalizer
 import java.nio.file.Path
 import java.nio.file.Paths
 
-/**
- * Applies baseline suppression to findings.
- *
- * A finding is suppressed when its computed fingerprint exists in [baselineFingerprints].
- *
- * Notes:
- * - Baseline fingerprints are computed using [BaselineFingerprint] (owned by baseline layer).
- * - Path normalization uses locked util [io.shamash.psi.util.PathNormalizer] to ensure cross-OS stability.
- */
 class BaselineFindingPreprocessor(
     private val baselineFingerprints: Set<String>,
 ) {
-    /**
-     * Returns a filtered list of findings after applying baseline suppression.
-     */
     fun process(
         projectBasePath: Path,
         findings: List<Finding>,

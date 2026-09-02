@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,12 +25,7 @@ import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtPsiUtil
 
-/**
- * Kotlin Analysis API "second pass" resolver.
- *
- * When UAST resolve() fails for Kotlin calls in some IDE states,
- * use Analysis API to resolve the call and return the owning class FQN.
- */
+/** Fallback to Kotlin Analysis API when UAST cannot resolve a call's owning class. */
 object KotlinAnalysisCallOwnerResolver {
     fun resolveOwnerClassFqn(expr: KtExpression): String? {
         ProgressManager.checkCanceled()
@@ -45,10 +36,7 @@ object KotlinAnalysisCallOwnerResolver {
             analyze(callExpr) {
                 val callInfo = resolveCallCompat(callExpr) ?: return@analyze null
 
-                // Don't touch strongly-typed "symbol" APIs directly (they churn across baselines).
-                // Instead:
-                // 1) Try to get the "single*CallOrNull" result objects reflectively.
-                // 2) Extract a symbol reflectively from those result objects (or from callInfo itself).
+                // Resolve symbols reflectively because their typed APIs differ across supported IDE baselines.
                 val symbol =
                     listOfNotNull(
                         invokeNoArg(callInfo, "singleFunctionCallOrNull"),
@@ -57,7 +45,7 @@ object KotlinAnalysisCallOwnerResolver {
                     ).asSequence()
                         .mapNotNull { call -> extractSymbolReflectively(call) }
                         .firstOrNull()
-                        ?: extractSymbolReflectively(callInfo) // last-resort: sometimes symbol sits higher
+                        ?: extractSymbolReflectively(callInfo)
                         ?: return@analyze null
 
                 ownerFqnFromSymbol(symbol)
@@ -74,8 +62,6 @@ object KotlinAnalysisCallOwnerResolver {
         val direct = unwrapped as? KtCallExpression
         if (direct != null) return direct
 
-        // For qualified expressions, selector is often the call.
-        // Keep it conservative to avoid depending on specific PSI classes.
         return unwrapped.lastChild as? KtCallExpression
     }
 
@@ -89,10 +75,8 @@ object KotlinAnalysisCallOwnerResolver {
             val m = ktElement::class.java.methods.firstOrNull { it.name == "resolveCall" && it.parameterCount == 0 }
             if (m != null) return m.invoke(ktElement)
         } catch (_: Throwable) {
-            // ignore
         }
 
-        // Fallback: try generated helper class resolveCall(KtElement)
         return tryInvokeStaticResolveCall(ktElement)
     }
 
@@ -109,7 +93,6 @@ object KotlinAnalysisCallOwnerResolver {
                 val m = cls.methods.firstOrNull { it.name == "resolveCall" && it.parameterCount == 1 }
                 if (m != null) return m.invoke(null, ktElement)
             } catch (_: Throwable) {
-                // ignore and keep trying
             }
         }
         return null
@@ -127,16 +110,13 @@ object KotlinAnalysisCallOwnerResolver {
         }
 
     private fun extractSymbolReflectively(call: Any): Any? {
-        // try call.symbol (getter form)
         try {
             val m = call::class.java.methods.firstOrNull { it.name == "getSymbol" && it.parameterCount == 0 }
             val v = m?.invoke(call)
             if (v != null) return v
         } catch (_: Throwable) {
-            // ignore
         }
 
-        // try call.partiallyAppliedSymbol.symbol
         try {
             val m = call::class.java.methods.firstOrNull { it.name == "getPartiallyAppliedSymbol" && it.parameterCount == 0 }
             val pas = m?.invoke(call) ?: return null
@@ -144,23 +124,19 @@ object KotlinAnalysisCallOwnerResolver {
             val v = m2?.invoke(pas)
             if (v != null) return v
         } catch (_: Throwable) {
-            // ignore
         }
 
         return null
     }
 
     private fun ownerFqnFromSymbol(symbol: Any): String? {
-        // Try direct containingClassId -> asSingleFqName().asString()
         try {
             val m = symbol::class.java.methods.firstOrNull { it.name == "getContainingClassId" && it.parameterCount == 0 }
             val classId = m?.invoke(symbol)
             classIdToFqn(classId)?.let { return it }
         } catch (_: Throwable) {
-            // ignore
         }
 
-        // Try callableIdIfNonLocal.classId -> asSingleFqName().asString()
         try {
             val m = symbol::class.java.methods.firstOrNull { it.name == "getCallableIdIfNonLocal" && it.parameterCount == 0 }
             val callableId = m?.invoke(symbol) ?: return null
@@ -170,10 +146,8 @@ object KotlinAnalysisCallOwnerResolver {
 
             classIdToFqn(classId)?.let { return it }
         } catch (_: Throwable) {
-            // ignore
         }
 
-        // Try containingDeclaration -> classId (best-effort)
         try {
             val m = symbol::class.java.methods.firstOrNull { it.name == "getContainingDeclaration" && it.parameterCount == 0 }
             val decl = m?.invoke(symbol) ?: return null
@@ -181,7 +155,6 @@ object KotlinAnalysisCallOwnerResolver {
             val classId = m2?.invoke(decl)
             classIdToFqn(classId)?.let { return it }
         } catch (_: Throwable) {
-            // ignore
         }
 
         return null
@@ -190,7 +163,6 @@ object KotlinAnalysisCallOwnerResolver {
     private fun classIdToFqn(classId: Any?): String? {
         if (classId == null) return null
 
-        // classId.asSingleFqName().asString()
         return try {
             val m1 = classId::class.java.methods.firstOrNull { it.name == "asSingleFqName" && it.parameterCount == 0 }
             val fqName = m1?.invoke(classId) ?: return null

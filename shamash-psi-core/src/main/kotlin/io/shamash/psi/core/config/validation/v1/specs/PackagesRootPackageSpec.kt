@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,13 +25,6 @@ import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.validation.v1.RuleSpec
 
-/**
- * Spec for `packages.rootPackage`.
- *
- * Params:
- * - `mode`: optional enum `{ AUTO, EXPLICIT }` (case-insensitive). Defaults to `AUTO`.
- * - `value`: required when `mode=EXPLICIT`. Must look like a Java/Kotlin package name.
- */
 class PackagesRootPackageSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "packages", name = "rootPackage", role = null)
 
@@ -61,7 +50,6 @@ class PackagesRootPackageSpec : RuleSpec {
             errors += ValidationError(at, message, ValidationSeverity.ERROR)
         }
 
-        // Unknown params (typos)
         val unknown = p.unknownKeys(allowedParamKeys)
         if (unknown.isNotEmpty()) {
             err("$rulePath.params", "Unknown params: ${unknown.sorted().joinToString(", ")}")
@@ -85,7 +73,6 @@ class PackagesRootPackageSpec : RuleSpec {
 
         when (mode) {
             Mode.AUTO -> {
-                // value may be present but must be non-blank if provided.
                 if (value != null && value.isEmpty()) {
                     err("$rulePath.params.value", "must be non-empty if present")
                 }

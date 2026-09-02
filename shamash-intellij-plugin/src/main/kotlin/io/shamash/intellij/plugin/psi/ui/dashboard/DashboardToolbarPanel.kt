@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -57,11 +53,9 @@ class DashboardToolbarPanel(
                     return@addActionListener
                 }
 
-                // Never call action.actionPerformed(...) directly.
-                // actionPerformed is @ApiStatus.OverrideOnly; IntelliJ Platform must dispatch it.
+                // Dispatch through IntelliJ: actionPerformed is @ApiStatus.OverrideOnly.
                 ActionManager.getInstance().tryToExecute(action, null, this@DashboardToolbarPanel, "ShamashPsiDashboardToolbar", true)
 
-                // Immediate refresh is fine for responsiveness, but background actions will refresh again on success.
                 onRefresh()
             }
         }

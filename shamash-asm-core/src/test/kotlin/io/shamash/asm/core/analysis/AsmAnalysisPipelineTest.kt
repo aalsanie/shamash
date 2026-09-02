@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -64,17 +60,14 @@ class AsmAnalysisPipelineTest {
         val out = AsmAnalysisPipeline.run(facts, cfg)
         val graphs = assertNotNull(out.graphs)
 
-        // Nodes are sorted (external bucket should be present)
         assertEquals(listOf("__external__:ext", "com.example.A", "com.example.B", "com.example.C"), graphs.nodes)
 
-        // Deterministic adjacency ordering
         assertEquals(
             listOf("__external__:ext", "com.example.B", "com.example.C"),
             graphs.adjacency.getValue("com.example.A"),
         )
         assertEquals(listOf("com.example.A"), graphs.adjacency.getValue("com.example.B"))
 
-        // Cyclic SCC includes A<->B (sorted SCC list)
         assertTrue(graphs.cyclicSccs.any { it == listOf("com.example.A", "com.example.B") })
         assertTrue(graphs.sccCount >= 3)
     }
@@ -98,7 +91,6 @@ class AsmAnalysisPipelineTest {
         val out = AsmAnalysisPipeline.run(facts, cfg)
         val hs = assertNotNull(out.hotspots)
 
-        // A has highest fanOut and methodCount in this fixture.
         val a = hs.classHotspots.firstOrNull { it.id == "com.example.A" }
         assertNotNull(a)
         assertTrue(a.reasons.any { it.metric == HotspotMetric.FAN_OUT })
@@ -135,7 +127,6 @@ class AsmAnalysisPipelineTest {
         val scoring = assertNotNull(out.scoring)
         val god = assertNotNull(scoring.godClass)
 
-        // A should rank first by score due to highest methods+fanOut.
         assertEquals("com.example.A", god.rows.first().classFqn)
         assertTrue(god.rows.first().score >= god.rows.last().score)
         assertTrue(god.rows.first().band == SeverityBand.WARN || god.rows.first().band == SeverityBand.ERROR)

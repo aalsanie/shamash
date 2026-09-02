@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,9 +22,6 @@ import io.shamash.asm.core.config.SchemaValidatorNetworkNt
 import io.shamash.asm.core.config.schema.v1.model.ExportFactsFormat
 import java.nio.file.Path
 
-/**
- * Runner options.
- */
 data class ScanOptions(
     /** Project root (used to resolve config and relative bytecode roots). */
     val projectBasePath: Path,
@@ -36,15 +29,9 @@ data class ScanOptions(
     val projectName: String = projectBasePath.fileName?.toString() ?: "project",
     /** If null, runner checks project config candidates and then uses the built-in discovery config. */
     val configPath: Path? = null,
-    /** Structural schema validator. */
     val schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
-    /** Whether to include [io.shamash.asm.core.facts.query.FactIndex] inside the final result. */
     val includeFactsInResult: Boolean = false,
-    /**
-     * Force-enable facts export regardless of config.
-     *
-     * Used by CLI: `scan --export-facts`.
-     */
+    /** Forces facts export regardless of the config setting. */
     val exportFacts: Boolean = false,
     /**
      * Optional override for facts export format when [exportFacts] is true.

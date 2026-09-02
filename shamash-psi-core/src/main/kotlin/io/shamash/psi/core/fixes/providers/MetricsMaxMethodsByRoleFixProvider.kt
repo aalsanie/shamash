@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,20 +26,7 @@ import io.shamash.psi.core.fixes.FixContext
 import io.shamash.psi.core.fixes.FixProvider
 import io.shamash.psi.core.fixes.ShamashFix
 
-/**
- * Fix provider for metrics.maxMethodsByRole.
- *
- * Engine contract:
- * - Finding.data["role"] is the role id
- * - Finding.data["actual"] is the computed methods count for that role (integer as string)
- *
- * Fix:
- * - Best-effort YAML update to set the configured max for the given role to the observed "actual" value.
- *
- * IMPORTANT:
- * - Config schema uses: rules: List<RuleDef>
- * - Rule identity is derived from (type,name,roles?) not user-defined ids.
- */
+/** Uses finding data["role"] and data["actual"] to update the matching YAML limit. */
 class MetricsMaxMethodsByRoleFixProvider : FixProvider {
     override fun supports(f: Finding): Boolean = f.ruleId == RULE_ID
 
@@ -76,18 +59,6 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
             WriteCommandAction.runWriteCommandAction(project) {
                 val text = doc.text
 
-                // 1) Prefer editing RuleDef in rules list:
-                // rules:
-                //   - type: metrics
-                //     name: maxMethodsByRole
-                //     roles: [ ... ] or null
-                //     params:
-                //       <roleKey>: <role>
-                //       <maxKey>: <n>
-                //
-                // Since the exact param keys can vary, we use the engine-known keys:
-                // - role
-                // - max
                 val updated = rewriteRulesListMaxMethodsByRole(text, role, newMax)
                 if (updated == text) return@runWriteCommandAction
 
@@ -108,7 +79,6 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
 
             val rulesBlock = text.substring(rulesFrom, rulesEnd)
 
-            // Locate list item for (type=metrics, name=maxMethodsByRole)
             val item =
                 findRuleListItemBlock(
                     rulesBlock = rulesBlock,
@@ -120,18 +90,15 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
 
             val itemText = text.substring(item.start, item.end)
 
-            // Must have params block
             val paramsStart = Regex("(?m)^\\s*params\\s*:\\s*$").find(itemText) ?: return text
             val paramsAbsFrom = item.start + paramsStart.range.last + 1
 
             val paramsIndent = itemText.substring(paramsStart.range.first).takeWhile { it == ' ' || it == '\t' }
             val paramsEnd = findBlockEnd(text, paramsAbsFrom, paramsIndent)
 
-            // Ensure role matches inside params block
             val paramsBlock = text.substring(paramsAbsFrom, paramsEnd)
             val roleLine = Regex("(?m)^\\s*role\\s*:\\s*\\Q$targetRole\\E\\s*$").find(paramsBlock) ?: return text
 
-            // Rewrite max inside the same params block.
             val maxLine = Regex("(?m)^\\s*max\\s*:\\s*(\\d+)\\s*$").find(paramsBlock) ?: return text
             if (maxLine.range.first < roleLine.range.first) {
                 // "max" appears before the matching role line => ambiguous; bail.
@@ -181,10 +148,7 @@ class MetricsMaxMethodsByRoleFixProvider : FixProvider {
             return null
         }
 
-        /**
-         * Computes the end offset (exclusive) of an indented YAML block.
-         * A block ends when we hit a non-empty line with indentation <= baseIndent.
-         */
+        /** Exclusive block end: first non-empty line with indentation <= baseIndent. */
         private fun findBlockEnd(
             text: String,
             from: Int,

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,9 +19,6 @@ package io.shamash.artifacts.report.layout
 
 import java.nio.file.Path
 
-/**
- * Single source of truth for exported artifact names and layout.
- */
 object ExportOutputLayout {
     const val DEFAULT_DIR_NAME: String = ".shamash"
     const val JSON_FILE_NAME: String = "shamash-report.json"
@@ -33,12 +26,6 @@ object ExportOutputLayout {
     const val XML_FILE_NAME: String = "shamash-report.xml"
     const val HTML_FILE_NAME: String = "shamash-report.html"
 
-    /**
-     * Sidecar artifacts (next to the main report formats).
-     *
-     * These files are intentionally named without a tool prefix to keep them
-     * stable, portable, and easy to reference from IntelliJ/CLI consumers.
-     */
     const val FACTS_JSONL_GZ_FILE_NAME: String = "facts.jsonl.gz"
 
     // facts tend to be huge, always prefer jsonl.gz over json for facts unless the scanned project is small enough
@@ -57,7 +44,6 @@ object ExportOutputLayout {
         return base.normalize()
     }
 
-    /** Resolve the path to a known exported artifact in [outputDir]. */
     fun resolve(
         outputDir: Path,
         fileName: String,

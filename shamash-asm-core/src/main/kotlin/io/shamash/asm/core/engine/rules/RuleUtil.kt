@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -36,23 +32,7 @@ import java.util.ArrayDeque
 import java.util.LinkedHashMap
 import java.util.LinkedHashSet
 
-/**
- * Engine rule utilities.
- *
- * - Centralize shared concerns:
- *   - scope checks (roles/packages/globs)
- *   - filePath normalization for findings
- *   - graph building + SCC/cycle helpers
- *
- * - Relies only on:
- *   - shamash-asm-core (config + facts)
- *   - shamash-artifacts (PathNormalizer + GlobMatcher)
- */
 internal object RuleUtil {
-    /* -------------------------------------------------------------------------
-     * Rule identity
-     * ---------------------------------------------------------------------- */
-
     fun canonicalRuleId(
         rule: RuleDef,
         role: String? = null,
@@ -62,10 +42,6 @@ internal object RuleUtil {
         val r = role?.trim()?.takeIf { it.isNotEmpty() }
         return if (r == null) "$t.$n" else "$t.$n.$r"
     }
-
-    /* -------------------------------------------------------------------------
-     * Scope compilation / evaluation
-     * ---------------------------------------------------------------------- */
 
     data class CompiledScope(
         val includeRoles: Set<String>?,
@@ -106,11 +82,6 @@ internal object RuleUtil {
         )
     }
 
-    /**
-     * Returns true if the given [roleId] is enabled by:
-     * - rule.roles (top-level)
-     * - scope includeRoles/excludeRoles (optional)
-     */
     fun roleAllowed(
         rule: RuleDef,
         scope: CompiledScope,
@@ -118,13 +89,11 @@ internal object RuleUtil {
     ): Boolean {
         val r = roleId?.trim()?.takeIf { it.isNotEmpty() }
 
-        // rule.roles: null = apply to all roles; else must match
         rule.roles?.let { allowed ->
             val set = allowed.mapNotNull { it.trim().takeIf(String::isNotEmpty) }.toSet()
             if (r == null || r !in set) return false
         }
 
-        // scope role filters (optional)
         scope.includeRoles?.let { inc ->
             if (r == null || r !in inc) return false
         }
@@ -135,12 +104,7 @@ internal object RuleUtil {
         return true
     }
 
-    /**
-     * Returns true if [c] is in rule scope:
-     * - package regex include/exclude
-     * - path glob include/exclude (matched against normalized filePath)
-     * - roles handled by [roleAllowed] (call separately if needed)
-     */
+    /** Checks package regexes and path globs. Call [roleAllowed] separately for role filtering. */
     fun classInScope(
         c: ClassFact,
         scope: CompiledScope,
@@ -155,10 +119,6 @@ internal object RuleUtil {
 
         return true
     }
-
-    /* -------------------------------------------------------------------------
-     * File path helpers
-     * ---------------------------------------------------------------------- */
 
     /**
      * Stable file path string for findings.
@@ -184,10 +144,6 @@ internal object RuleUtil {
         }
     }
 
-    /* -------------------------------------------------------------------------
-     * Graph building
-     * ---------------------------------------------------------------------- */
-
     data class DirectedGraph(
         val nodes: Set<String>,
         val outgoing: Map<String, Set<String>>,
@@ -199,17 +155,9 @@ internal object RuleUtil {
     const val EXTERNAL_PREFIX = "__external__"
 
     /**
-     * Build a dependency graph from facts.edges using analysis.graphs granularity.
-     *
-     * External buckets:
-     * - If includeExternalBuckets = false: edges to nodes not present in facts/classes are dropped.
-     * - If true: missing endpoints are bucketed as:
-     *      "__external__:pkg.name"  (or "__external__" if pkg is empty)
-     *
-     * Granularity mapping:
-     * - CLASS   -> fqName
-     * - PACKAGE -> packageName ("" allowed)
-     * - MODULE  -> first package segment (best-effort; stable)
+     * Edges originate at included project nodes; scope filters apply to the source class.
+     * External targets are dropped or grouped under `__external__` buckets.
+     * MODULE granularity uses the first package segment, not a build-system module.
      */
     fun buildDependencyGraph(
         facts: FactIndex,
@@ -219,7 +167,6 @@ internal object RuleUtil {
     ): DirectedGraph {
         val classByFqn = facts.classes.associateBy { it.fqName }
 
-        // Determine included project nodes (after optional scope filter).
         val includedProjectNodes = LinkedHashSet<String>()
         for (c in facts.classes) {
             if (scope != null && !classInScope(c, scope)) continue
@@ -242,7 +189,6 @@ internal object RuleUtil {
             val fromNode = nodeIdForType(e.from, granularity)
             val toNode = nodeIdForType(e.to, granularity)
 
-            // Optional scope filter is applied based on "from" class (best practical semantics).
             if (scope != null) {
                 val fromClass = classByFqn[e.from.fqName]
                 if (fromClass == null || !classInScope(fromClass, scope)) continue
@@ -252,7 +198,6 @@ internal object RuleUtil {
             val toInProject = toNode in includedProjectNodes
 
             if (!fromInProject) {
-                // if "from" isn't a project node, we never start edges from it (keeps graph project-anchored).
                 continue
             }
 
@@ -262,7 +207,6 @@ internal object RuleUtil {
             }
 
             if (!includeExternalBuckets) {
-                // drop edges to external
                 continue
             }
 
@@ -270,13 +214,11 @@ internal object RuleUtil {
             addEdge(fromNode, bucket)
         }
 
-        // Ensure nodes includes all from/outgoing + targets
         val nodes = LinkedHashSet<String>()
         nodes.addAll(includedProjectNodes)
         nodes.addAll(outgoing.keys)
         for (targets in outgoing.values) nodes.addAll(targets)
 
-        // Freeze sets/maps immutably
         val frozenOutgoing: Map<String, Set<String>> = outgoing.mapValues { (_, v) -> v.toSet() }
 
         return DirectedGraph(nodes = nodes.toSet(), outgoing = frozenOutgoing, edgeCount = edges)
@@ -315,25 +257,14 @@ internal object RuleUtil {
         val pkg =
             when (granularity) {
                 Granularity.CLASS -> t.packageName
-
-                // bucket by package, not class
                 Granularity.PACKAGE -> t.packageName
-
                 Granularity.MODULE -> moduleIdForPackage(t.packageName)
             }.trim()
 
         return if (pkg.isEmpty()) EXTERNAL_PREFIX else "$EXTERNAL_PREFIX:$pkg"
     }
 
-    /* -------------------------------------------------------------------------
-     * SCC / cycles (deterministic)
-     * ---------------------------------------------------------------------- */
-
-    /**
-     * Tarjan SCC, deterministic ordering:
-     * - visits nodes in sorted order
-     * - visits successors in sorted order
-     */
+    /** Tarjan SCC traversal with sorted nodes/successors; components are ordered by smallest node. */
     fun stronglyConnectedComponents(g: DirectedGraph): List<Set<String>> {
         val nodes = g.nodes.toList().sorted()
 
@@ -379,15 +310,9 @@ internal object RuleUtil {
             if (v !in index) strongConnect(v)
         }
 
-        // stable ordering of SCCs (by smallest node)
         return sccs.sortedBy { it.minOrNull().orEmpty() }
     }
 
-    /**
-     * Returns only SCCs that represent cycles:
-     * - size > 1, or
-     * - size == 1 with a self-loop
-     */
     fun cyclicComponents(g: DirectedGraph): List<Set<String>> {
         val sccs = stronglyConnectedComponents(g)
         return sccs.filter { comp ->
@@ -409,15 +334,8 @@ internal object RuleUtil {
     }
 
     /**
-     * Best-effort cycle extraction: for each cyclic SCC, produce one representative cycle path.
-     * - pick smallest node in SCC as start
-     * - BFS parent tracking within SCC
-     *
-     * Finds up to [maxCycles] "representative" cycles using a bounded DFS back-edge sampler.
-     *
-     * IMPORTANT:
-     * - This is NOT a full cycle enumeration algorithm (by design).
-     * - It is safe for very large graphs: memory is O(V) and output is bounded.
+     * Samples DFS back-edge cycles, bounded by [maxCycles] and [maxCycleNodes].
+     * Paths may be truncated; this does not enumerate all cycles or prove their absence.
      */
     internal fun <N> representativeCyclesBounded(
         nodes: Iterable<N>,
@@ -441,7 +359,6 @@ internal object RuleUtil {
         ) {
             if (cycles.size >= maxCycles) return
 
-            // Build cycle path from stack[fromIndex..end) + closing node.
             // Bound the output length to avoid memory blowups.
             val raw = ArrayList<N>(minOf(maxCycleNodes + 1, (stack.size - fromIndex) + 1))
             var count = 0
@@ -473,7 +390,6 @@ internal object RuleUtil {
                     }
 
                     1 -> {
-                        // Back-edge to a node currently in stack => cycle found.
                         val start = indexInStack[v]
                         if (start != null) captureCycle(start, v)
                     }
@@ -496,9 +412,6 @@ internal object RuleUtil {
 
         return cycles
     }
-    /* -------------------------------------------------------------------------
-     * Reachability (transitive dependencies)
-     * ---------------------------------------------------------------------- */
 
     /**
      * Returns all reachable nodes from [start], excluding [start] itself.
@@ -524,10 +437,6 @@ internal object RuleUtil {
         return seen.toSet()
     }
 
-    /* -------------------------------------------------------------------------
-     * Metrics helpers
-     * ---------------------------------------------------------------------- */
-
     fun fanOut(g: DirectedGraph): Map<String, Int> = g.nodes.associateWith { n -> g.successors(n).size }
 
     fun fanIn(g: DirectedGraph): Map<String, Int> {
@@ -552,16 +461,9 @@ internal object RuleUtil {
         return g.edgeCount.toDouble() / denom
     }
 
-    /* -------------------------------------------------------------------------
-     * Edge helpers
-     * ---------------------------------------------------------------------- */
-
     /**
-     * Builds a map of role-to-role edges using engine-populated [FactIndex.classToRole].
-     *
-     * External bucket:
-     * - if includeExternal = false: drop edges that touch an unassigned role
-     * - if true: bucket missing role as "__external__"
+     * Edges originate at assigned project roles; scope filters apply to the source class.
+     * Unassigned targets are dropped or grouped as `__external__`.
      */
     fun buildRoleGraph(
         facts: FactIndex,
@@ -583,7 +485,6 @@ internal object RuleUtil {
         }
 
         for (e in facts.edges) {
-            // optional scope filter by "from" class
             if (scope != null) {
                 val fromClass = classByFqn[e.from.fqName]
                 if (fromClass == null || !classInScope(fromClass, scope)) continue
@@ -592,7 +493,7 @@ internal object RuleUtil {
             val fromRole = facts.classToRole[e.from.fqName]
             val toRole = facts.classToRole[e.to.fqName]
 
-            if (fromRole == null) continue // anchor graph on known project roles only
+            if (fromRole == null) continue
 
             if (toRole != null) {
                 addEdge(fromRole, toRole)
@@ -609,17 +510,11 @@ internal object RuleUtil {
         return DirectedGraph(nodes = nodes.toSet(), outgoing = frozenOutgoing, edgeCount = edges)
     }
 
-    /**
-     * Utility to extract the "from class" for an edge if it exists in facts.classes.
-     */
     fun fromClassOfEdge(
         facts: FactIndex,
         e: DependencyEdge,
     ): ClassFact? = facts.classes.firstOrNull { it.fqName == e.from.fqName }
 
-    /**
-     * Utility to extract the "to class" for an edge if it exists in facts.classes.
-     */
     fun toClassOfEdge(
         facts: FactIndex,
         e: DependencyEdge,

@@ -1,12 +1,8 @@
 /*
  * Copyright © 2025-2026 | Shamash
  *
- * Shamash is a JVM architecture enforcement tool that helps teams
- * define, validate, and continuously enforce architectural boundaries.
- *
  * Author: @aalsanie
  *
- * Plugin: https://plugins.jetbrains.com/plugin/29504-shamash
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,15 +26,6 @@ import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.RuleSpec
 
-/**
- * metrics.maxFanIn
- *
- * Validates config params only (engine semantics are elsewhere).
- *
- * Params:
- * - max (required int, >= 0)
- * - includeExternal (optional boolean; default handled by engine)
- */
 class MetricsMaxFanInSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "metrics", name = "maxFanIn", role = null)
 
@@ -63,10 +50,8 @@ class MetricsMaxFanInSpec : RuleSpec {
         }
 
         try {
-            // required
             p.requireInt("max", min = 0)
 
-            // optional
             p.optionalBoolean("includeExternal")
         } catch (e: ParamError) {
             errors +=
