@@ -40,14 +40,14 @@ The launcher name is part of the packaged-product contract and is smoke-tested o
 
 ### 2. Build your project
 
-Shamash analyzes compiled bytecode. Build the project first:
+Build the project first:
 
 ```bash
 ./gradlew classes
 # or: ./mvnw package
 ```
 
-If Shamash cannot find compiled classes, it detects common Gradle/Maven projects and prints the exact build command to run first.
+If compiled classes is not found, it detects common Gradle/Maven projects and prints the exact build command to run first.
 
 ### 3. Run your first scan
 
@@ -174,13 +174,13 @@ The action verifies the release checksum before execution.
 
 ## IntelliJ
 
-Install **Shamash** from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash), then open:
+Install from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash), then open:
 
 ```text
 Tools → Shamash
 ```
 
-There is one Shamash tool window. Its first-level areas are:
+There is one tool window. Its first-level areas are:
 
 - **Build Analysis** — compiled-bytecode architecture checks, findings, roles, graphs and reports.
 - **Source Analysis** — source-aware checks, suppressions and fixes.
