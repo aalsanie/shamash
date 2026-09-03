@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import struct
 import subprocess
 import xml.etree.ElementTree as ET
@@ -21,7 +22,30 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def verify(repository, version, signed=False):
+def verify_signature(artifact, fingerprint):
+    require(re.fullmatch(r"(?:[0-9A-F]{40}|[0-9A-F]{64})", fingerprint), "Expected a full signing-key fingerprint")
+    signature = artifact.with_name(artifact.name + ".asc")
+    require(signature.is_file() and signature.stat().st_size > 0, f"Missing/empty signature: {artifact}")
+    result = subprocess.run(
+        ["gpg", "--batch", "--no-auto-key-retrieve", "--status-fd", "1", "--verify", str(signature), str(artifact)],
+        capture_output=True, text=True, check=False,
+    )
+    statuses = [line.split()[1:] for line in result.stdout.splitlines() if line.startswith("[GNUPG:] ")]
+    rejected = {"BADSIG", "ERRSIG", "EXPSIG", "EXPKEYSIG", "REVKEYSIG", "KEYEXPIRED", "SIGEXPIRED", "NO_PUBKEY", "FAILURE"}
+    require(result.returncode == 0 and not any(row and row[0] in rejected for row in statuses), f"Invalid signature: {artifact}")
+    valid = [row for row in statuses if row and row[0] == "VALIDSIG"]
+    require(len(valid) == 1 and len(valid[0]) >= 10, f"Missing/unexpected valid signature status: {artifact}")
+    row = valid[0]
+    signers = {row[1]}
+    if len(row) >= 11:
+        signers.add(row[10])  # Primary-key fingerprint when a signing subkey was used.
+    require(fingerprint in signers, f"Unexpected signing key: {artifact}")
+
+
+def verify(repository, version, signed=False, signer_fingerprint=None):
+    if signed:
+        require(signer_fingerprint is not None, "--signed requires --signer-fingerprint")
+        signer_fingerprint = signer_fingerprint.replace(" ", "").upper()
     group_dir = repository / GROUP_PATH
     require(group_dir.is_dir(), f"Publication directory not found: {group_dir}")
     require({p.name for p in group_dir.iterdir() if p.is_dir()} == set(MODULES), "Unexpected published modules")
@@ -36,9 +60,7 @@ def verify(repository, version, signed=False):
                 expected = hashlib.new(algorithm, artifact.read_bytes()).hexdigest()
                 require(checksum.is_file() and checksum.read_text().strip() == expected, f"Invalid {algorithm}: {artifact}")
             if signed:
-                signature = artifact.with_name(artifact.name + ".asc")
-                require(signature.is_file(), f"Missing signature: {artifact}")
-                subprocess.run(["gpg", "--batch", "--verify", str(signature), str(artifact)], check=True, capture_output=True)
+                verify_signature(artifact, signer_fingerprint)
 
         pom = ET.parse(primary[0]).getroot()
         require(pom.findtext("m:groupId", namespaces=NS) == GROUP, f"Wrong group: {module}")
@@ -115,5 +137,6 @@ if __name__ == "__main__":
     parser.add_argument("repository", type=Path)
     parser.add_argument("version")
     parser.add_argument("--signed", action="store_true", help="Also verify OpenPGP signatures using the local GnuPG keyring")
+    parser.add_argument("--signer-fingerprint", help="Full primary/signing-key fingerprint required with --signed")
     args = parser.parse_args()
-    verify(args.repository.resolve(), args.version, args.signed)
+    verify(args.repository.resolve(), args.version, args.signed, args.signer_fingerprint)

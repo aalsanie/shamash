@@ -50,6 +50,8 @@ object AsmRuleRegistryProviders {
     fun findById(id: String): AsmRuleRegistryProvider? {
         val needle = id.trim()
         if (needle.isEmpty()) return null
-        return list().firstOrNull { it.id == needle }
+        val matches = EP.extensionList.filter { it.id.trim() == needle }
+        check(matches.size <= 1) { "Multiple registry providers use id '$needle'." }
+        return matches.singleOrNull()
     }
 }

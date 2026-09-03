@@ -32,13 +32,10 @@ import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
-import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
-import io.shamash.intellij.plugin.ShamashPluginInfo
-import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviders
 import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
@@ -48,7 +45,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 
 class RunAsmScanAction(
-    private val runner: ShamashAsmScanRunner = defaultRunner(),
+    private val runner: ShamashAsmScanRunner? = null,
 ) : AnAction(),
     DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
@@ -82,7 +79,7 @@ class RunAsmScanAction(
 
         val settings = ShamashAsmSettingsState.getInstance(project)
 
-        val activeRunner = buildRunner(project, settings) ?: return
+        val activeRunner = runner ?: ShamashAsmScanRunner(AsmExecution.engineOrNotify(project) ?: return)
 
         val options =
             ScanOptions(
@@ -148,62 +145,20 @@ class RunAsmScanAction(
                         return@invokeLater
                     }
 
-                    when {
-                        result.hasConfigErrors -> {
-                            tw.select(ShamashAsmToolWindowController.Tab.CONFIG)
-                            tw.refreshAll()
-                            AsmActionUtil.notify(
-                                project,
-                                "Shamash ASM",
-                                "Config invalid. Fix errors in Config tab.",
-                                NotificationType.WARNING,
-                            )
+                    val tab =
+                        when {
+                            result.hasConfigErrors -> ShamashAsmToolWindowController.Tab.CONFIG
+                            !result.isSuccess -> ShamashAsmToolWindowController.Tab.DASHBOARD
+                            else -> ShamashAsmToolWindowController.Tab.FINDINGS
                         }
-
-                        result.hasEngineResult -> {
-                            tw.select(ShamashAsmToolWindowController.Tab.FINDINGS)
-                            tw.refreshAll()
-
-                            val findingsCount = result.engine?.findings?.size ?: 0
-                            val hasEngineErrors = result.engine?.hasErrors == true
-
-                            val msg =
-                                when {
-                                    hasEngineErrors -> "Scan finished with engine errors. See Dashboard for details."
-                                    findingsCount == 0 -> "Scan complete. No findings."
-                                    else -> "Scan complete. Findings: $findingsCount"
-                                }
-
-                            AsmActionUtil.notify(
-                                project,
-                                "Shamash ASM",
-                                msg,
-                                if (hasEngineErrors) NotificationType.WARNING else NotificationType.INFORMATION,
-                            )
-                        }
-
-                        result.classUnits == 0 && !result.hasScanErrors -> {
-                            tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
-                            tw.refreshAll()
-                            AsmActionUtil.notify(
-                                project,
-                                "Shamash ASM",
-                                "No compiled JVM classes found. Build the project and scan again.",
-                                NotificationType.WARNING,
-                            )
-                        }
-
-                        else -> {
-                            tw.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
-                            tw.refreshAll()
-                            AsmActionUtil.notify(
-                                project,
-                                "Shamash ASM",
-                                "Scan did not reach engine execution. See Dashboard for details.",
-                                NotificationType.WARNING,
-                            )
-                        }
-                    }
+                    tw.select(tab)
+                    tw.refreshAll()
+                    AsmActionUtil.notify(
+                        project,
+                        "Shamash ASM",
+                        AsmScanPresentation.message(result),
+                        AsmScanPresentation.notificationType(result),
+                    )
                 }
             }
 
@@ -233,59 +188,6 @@ class RunAsmScanAction(
                     Paths.get(FileUtil.toCanonicalPath(base))
                 }.getOrNull()
             }
-        }
-    }
-
-    companion object {
-        private fun defaultRunner(): ShamashAsmScanRunner =
-            ShamashAsmScanRunner(
-                engine = ShamashAsmEngine(toolName = "Shamash ASM", toolVersion = ShamashPluginInfo.version),
-            )
-
-        private fun buildRunner(
-            project: Project,
-            settings: ShamashAsmSettingsState,
-        ): ShamashAsmScanRunner? {
-            val toolName = "Shamash ASM"
-            val toolVersion = ShamashPluginInfo.version
-
-            val registryId = settings.getRegistryId()
-            if (registryId == null) {
-                return ShamashAsmScanRunner(
-                    engine = ShamashAsmEngine(toolName = toolName, toolVersion = toolVersion),
-                )
-            }
-
-            val provider = AsmRuleRegistryProviders.findById(registryId)
-            if (provider == null) {
-                val available = AsmRuleRegistryProviders.list().joinToString { it.id }
-                AsmActionUtil.notify(
-                    project,
-                    toolName,
-                    "Registry '$registryId' not found. " +
-                        "Available: ${if (available.isBlank()) "(none)" else available}. " +
-                        "Open Run Settings → Registry to pick an installed provider.",
-                    NotificationType.ERROR,
-                )
-                return null
-            }
-
-            val registry =
-                try {
-                    provider.create()
-                } catch (t: Throwable) {
-                    AsmActionUtil.notify(
-                        project,
-                        toolName,
-                        "Registry '$registryId' failed to initialize: ${t.message ?: t::class.java.simpleName}",
-                        NotificationType.ERROR,
-                    )
-                    return null
-                }
-
-            return ShamashAsmScanRunner(
-                engine = ShamashAsmEngine(registry = registry, toolName = toolName, toolVersion = toolVersion),
-            )
         }
     }
 }

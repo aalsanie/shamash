@@ -305,6 +305,126 @@ class MainTest {
         )
     }
 
+    @Test
+    fun `validate scan and baseline use the selected custom registry`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App {}")
+        writeConfig(tmp, customRegistryConfig())
+        val options = arrayOf("--project", tmp.toString(), "--registry", "test-custom")
+
+        val validation = runCli("validate", *options)
+        assertEquals(0, validation.exitCode, diagnostics(validation))
+        val scan = runCli("scan", *options, "--fail-on", "NONE")
+        assertEquals(0, scan.exitCode, diagnostics(scan))
+        assertTrue(scan.stdout.contains("Custom registry executed"), diagnostics(scan))
+        val baseline = runCli("baseline", "create", *options)
+        assertEquals(0, baseline.exitCode, diagnostics(baseline))
+        assertTrue(tmp.resolve(".shamash/baseline/asm-baseline.json").exists())
+        val verified = runCli("scan", *options)
+        assertEquals(0, verified.exitCode, diagnostics(verified))
+        assertFalse(verified.stdout.contains("Custom registry executed"), diagnostics(verified))
+    }
+
+    @Test
+    fun `custom parameter errors stop all commands before writing a baseline`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App {}")
+        val yaml = customRegistryConfig().replace("token: accepted", "token: rejected")
+        writeConfig(tmp, yaml)
+        for (command in listOf(arrayOf("validate"), arrayOf("scan"), arrayOf("baseline", "create"))) {
+            val result = runCli(*command, "--project", tmp.toString(), "--registry", "test-custom")
+            assertEquals(2, result.exitCode, diagnostics(result))
+            assertTrue(result.stderr.contains("params.token"), diagnostics(result))
+        }
+        assertFalse(tmp.resolve(".shamash/baseline/asm-baseline.json").exists())
+        assertEquals(yaml, tmp.resolve("shamash/configs/asm.yml").readText())
+    }
+
+    @Test
+    fun `unknown and broken registries fail consistently in every command`(
+        @TempDir tmp: Path,
+    ) {
+        writeConfig(tmp, discoveryLikeConfig(1))
+        for (registry in listOf("not-installed", "test-broken")) {
+            for (command in listOf(arrayOf("validate"), arrayOf("scan"), arrayOf("baseline", "create"))) {
+                val result = runCli(*command, "--project", tmp.toString(), "--registry", registry)
+                assertEquals(2, result.exitCode, diagnostics(result))
+                assertTrue(result.stderr.contains(registry), diagnostics(result))
+            }
+        }
+        assertFalse(tmp.resolve(".shamash/baseline/asm-baseline.json").exists())
+    }
+
+    @Test
+    fun `configuration warnings permit complete scans and baseline creation`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App {}")
+        writeConfig(tmp, customRegistryConfig().replace("unknownRule: ERROR", "unknownRule: WARN"))
+        for (command in listOf(arrayOf("validate"), arrayOf("scan"), arrayOf("baseline", "create"))) {
+            val result = runCli(*command, "--project", tmp.toString())
+            assertEquals(0, result.exitCode, diagnostics(result))
+            assertTrue(result.stderr.contains("WARNING"), diagnostics(result))
+        }
+        assertTrue(tmp.resolve(".shamash/baseline/asm-baseline.json").exists())
+    }
+
+    @Test
+    fun `truncated configured and discovery scans fail regardless of finding threshold`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App {}")
+        compileJava(tmp, "Other", "public class Other {}")
+        for (configured in listOf(false, true)) {
+            if (configured) writeConfig(tmp, discoveryLikeConfig(10))
+            val result = runCli("scan", "--project", tmp.toString(), "--max-classes", "1", "--fail-on", "NONE")
+            assertEquals(3, result.exitCode, diagnostics(result))
+            assertTrue(result.stderr.contains("Scan incomplete"), diagnostics(result))
+            assertFalse(result.stdout.contains("No architecture issues found."), diagnostics(result))
+        }
+    }
+
+    @Test
+    fun `fact extraction failures cannot produce a successful CLI exit`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App {}")
+        Files.write(tmp.resolve("build/classes/java/main/Broken.class"), byteArrayOf(1, 2, 3))
+        writeConfig(tmp, discoveryLikeConfig(10))
+
+        val result = runCli("scan", "--project", tmp.toString(), "--fail-on", "NONE")
+
+        assertEquals(3, result.exitCode, diagnostics(result))
+        assertTrue(result.stderr.contains("Facts errors"), diagnostics(result))
+        assertFalse(result.stdout.contains("No architecture issues found."), diagnostics(result))
+    }
+
+    @Test
+    fun `incomplete baseline creation preserves existing baseline and config`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App {}")
+        compileJava(tmp, "Other", "public class Other {}")
+        val yaml = discoveryLikeConfig(10).replace("maxClasses: 50000", "maxClasses: 1")
+        writeConfig(tmp, yaml)
+        val baseline = tmp.resolve(".shamash/baseline/asm-baseline.json")
+        Files.createDirectories(baseline.parent)
+        Files.writeString(baseline, "existing baseline")
+
+        val result = runCli("baseline", "create", "--project", tmp.toString(), "--force")
+
+        assertEquals(3, result.exitCode, diagnostics(result))
+        assertEquals("existing baseline", baseline.readText())
+        assertEquals(yaml, tmp.resolve("shamash/configs/asm.yml").readText())
+    }
+
+    private fun customRegistryConfig(): String =
+        discoveryLikeConfig(1)
+            .replace("type: metrics, name: maxMethodsPerClass", "type: test, name: requiredParam")
+            .replace("maxMethods: 1", "token: accepted")
+
     private fun diagnostics(r: ProcResult) = "stderr:\n${r.stderr}\nstdout:\n${r.stdout}"
 
     private fun runCli(vararg args: String): ProcResult {
@@ -385,7 +505,9 @@ class MainTest {
         rules:
           - { type: metrics, name: maxMethodsPerClass, roles: null, enabled: true, severity: WARNING, params: { maxMethods: $maxMethods } }
         exceptions: []
-        baseline: { mode: NONE, path: ".shamash/baseline/asm-baseline.json" }
+        baseline:
+          mode: NONE
+          path: ".shamash/baseline/asm-baseline.json"
         export: { enabled: false, outputDir: ".shamash/out/asm", formats: [JSON], overwrite: true }
         """.trimIndent()
 }

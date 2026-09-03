@@ -26,8 +26,10 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.util.ui.JBUI
 import io.shamash.asm.core.config.ValidationError
+import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.engine.EngineRunSummary
 import io.shamash.asm.core.scan.ScanResult
+import io.shamash.intellij.plugin.asm.ui.actions.AsmScanPresentation
 import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
@@ -117,13 +119,7 @@ class ShamashAsmDashboardPanel(
 
     private fun statusLine(result: ScanResult?): String {
         if (result == null) return "Status: idle"
-        return when {
-            result.hasConfigErrors -> "Status: config invalid"
-            result.classUnits == 0 && !result.hasScanErrors -> "Status: no compiled bytecode"
-            !result.hasEngineResult -> "Status: scan did not reach engine"
-            result.engine?.hasErrors == true -> "Status: engine completed with errors"
-            else -> "Status: success"
-        }
+        return "Status: ${AsmScanPresentation.message(result)}"
     }
 
     private fun buildOverview(
@@ -165,7 +161,8 @@ class ShamashAsmDashboardPanel(
             }
             append('\n')
 
-            append("Config errors: ").append(result.configErrors.size).append('\n')
+            append("Config errors: ").append(result.configErrors.count { it.severity == ValidationSeverity.ERROR }).append('\n')
+            append("Config warnings: ").append(result.configErrors.count { it.severity == ValidationSeverity.WARNING }).append('\n')
             append("Scan errors: ").append(result.scanErrors.size).append('\n')
             append("Facts errors: ").append(result.factsErrors.size).append('\n')
             append('\n')

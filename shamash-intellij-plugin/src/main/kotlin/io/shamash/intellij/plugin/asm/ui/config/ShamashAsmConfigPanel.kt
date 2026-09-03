@@ -116,7 +116,11 @@ class ShamashAsmConfigPanel(
 
                 configErrors.isNotEmpty() -> {
                     val (errCount, warnCount) = count(configErrors)
-                    "Invalid config. Errors: $errCount | Warnings: $warnCount"
+                    if (errCount > 0) {
+                        "Invalid config. Errors: $errCount | Warnings: $warnCount"
+                    } else {
+                        "Config valid with $warnCount warning(s)."
+                    }
                 }
 
                 result.config != null && result.hasEngineResult -> {

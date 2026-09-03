@@ -82,12 +82,23 @@ subprojects {
             }
         }
         extensions.configure<SigningExtension> {
-            setRequired(Callable { gradle.taskGraph.allTasks.any { it.name.endsWith("ToMavenCentralRepository") } })
+            val requireSigning = providers.gradleProperty("shamashRequireSigning").map { it.toBooleanStrict() }.orElse(false)
+            setRequired(
+                Callable {
+                    requireSigning.get() || gradle.taskGraph.allTasks.any { it.name.endsWith("ToMavenCentralRepository") }
+                },
+            )
         }
         extensions.configure<PublishingExtension> {
             repositories.maven {
                 name = "Test"
-                url = rootProject.layout.buildDirectory.dir("test-maven-repository").get().asFile.toURI()
+                url =
+                    rootProject.providers
+                        .gradleProperty("shamashTestRepository")
+                        .map { rootProject.file(it) }
+                        .orElse(rootProject.layout.buildDirectory.dir("test-maven-repository").map { it.asFile })
+                        .get()
+                        .toURI()
             }
         }
         tasks.withType<Jar>().configureEach {
@@ -108,3 +119,24 @@ tasks.register("publishLibrariesToTestRepository") {
         ":shamash-asm-core:publishAllPublicationsToTestRepository",
     )
 }
+
+// BEGIN LIBRARY ABI: reused when generating the first reviewed API snapshot.
+if (providers.gradleProperty("shamashAbiReferenceRoot").isPresent) {
+    subprojects {
+        if (name in setOf("shamash-artifacts", "shamash-export", "shamash-asm-core")) {
+            val moduleName = name
+            plugins.withId("org.jetbrains.kotlin.jvm") {
+                extensions.configure<KotlinJvmProjectExtension> {
+                    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+                    abiValidation {
+                        binariesSource.set(org.jetbrains.kotlin.gradle.dsl.abi.BinariesSource.MAVEN_PUBLICATIONS)
+                        referenceDumpDir.set(
+                            rootProject.file(providers.gradleProperty("shamashAbiReferenceRoot").get()).resolve(moduleName),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+// END LIBRARY ABI
