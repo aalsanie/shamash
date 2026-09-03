@@ -136,6 +136,7 @@ private enum class FailOn {
     }
 }
 
+@OptIn(ExperimentalCli::class)
 private abstract class CommandBase(
     name: String,
     actionDescription: String,

@@ -20,6 +20,7 @@ package io.shamash.asm.core.config
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
+import io.shamash.asm.core.engine.rules.RuleRegistry
 import java.io.Reader
 
 object ConfigValidation {
@@ -30,6 +31,7 @@ object ConfigValidation {
         val ok: Boolean get() = errors.none { it.severity == ValidationSeverity.ERROR }
     }
 
+    @JvmOverloads
     fun loadAndValidateV1(
         reader: Reader,
         schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
@@ -44,6 +46,20 @@ object ConfigValidation {
         reader: Reader,
         schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
         engineRuleIdsProvider: (() -> Set<String>)? = null,
+    ): Result = loadAndValidateV1(reader, schemaValidator, engineRuleIdsProvider, null)
+
+    @JvmOverloads
+    fun loadAndValidateV1(
+        reader: Reader,
+        registry: RuleRegistry,
+        schemaValidator: SchemaValidator = SchemaValidatorNetworkNt,
+    ): Result = loadAndValidateV1(reader, schemaValidator, { registry.all().map { it.id }.toSet() }, registry)
+
+    private fun loadAndValidateV1(
+        reader: Reader,
+        schemaValidator: SchemaValidator,
+        engineRuleIdsProvider: (() -> Set<String>)?,
+        registry: RuleRegistry?,
     ): Result {
         val raw =
             try {
@@ -107,7 +123,14 @@ object ConfigValidation {
                 )
             }
 
-        val errors = ConfigValidator.validateSemantic(typed).toMutableList()
+        val errors =
+            (
+                if (registry == null) {
+                    ConfigValidator.validateSemantic(typed)
+                } else {
+                    ConfigValidator.validateSemantic(typed, registry)
+                }
+            ).toMutableList()
 
         val policy = normalizeUnknownPolicy(typed.project.validation.unknownRule)
         if (policy != UnknownRulePolicy.IGNORE && policy != UnknownRulePolicy.ignore) {
@@ -119,7 +142,6 @@ object ConfigValidation {
                         when (policy) {
                             UnknownRulePolicy.ERROR, UnknownRulePolicy.error -> ValidationSeverity.ERROR
                             UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> ValidationSeverity.WARNING
-                            else -> ValidationSeverity.WARNING
                         }
 
                     errors +=
@@ -144,11 +166,11 @@ object ConfigValidation {
                         if (type.isEmpty() || name.isEmpty()) return@forEachIndexed
 
                         val baseId = "$type.$name"
-                        if (isImplemented(baseId, engineIds)) return@forEachIndexed
+                        val implemented = if (registry == null) isImplemented(baseId, engineIds) else baseId in engineIds
+                        if (implemented) return@forEachIndexed
 
                         when (policy) {
                             UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
-                                Unit
                             }
 
                             UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {

@@ -17,6 +17,8 @@
  */
 package io.shamash.asm.core.engine.rules
 
+import io.shamash.asm.core.config.validation.v1.RuleSpec
+import io.shamash.asm.core.config.validation.v1.registry.RuleSpecRegistryV1
 import io.shamash.asm.core.engine.rules.api.ForbiddenAnnotationUsageRule
 import io.shamash.asm.core.engine.rules.api.ForbiddenInternalNamePatternsRule
 import io.shamash.asm.core.engine.rules.api.MaxPublicTypesRule
@@ -38,10 +40,16 @@ import io.shamash.asm.core.engine.rules.origin.ForbiddenJarDependenciesRule
 
 class DefaultRuleRegistry private constructor(
     private val rulesById: Map<String, Rule>,
+    private val extraSpecsById: Map<String, RuleSpec>,
 ) : RuleRegistry {
     override fun all(): List<Rule> = rulesById.values.toList()
 
     override fun byId(ruleId: String): Rule? = rulesById[ruleId.trim()]
+
+    override fun findSpec(
+        type: String,
+        name: String,
+    ): RuleSpec? = extraSpecsById["${type.trim()}.${name.trim()}"] ?: super.findSpec(type, name)
 
     companion object {
         /** Register new built-in rules here; discovery does not use reflection. */
@@ -68,8 +76,19 @@ class DefaultRuleRegistry private constructor(
             )
 
         /** Duplicate ids throw unless [overrideBuiltins] is true; then the last extra rule wins. */
+        @JvmStatic
+        @JvmOverloads
         fun create(
             extraRules: List<Rule> = emptyList(),
+            overrideBuiltins: Boolean = false,
+        ): RuleRegistry = create(extraRules, emptyList(), overrideBuiltins)
+
+        /** Specs must have a base key and an executable rule; overrides also apply to duplicate specs. */
+        @JvmStatic
+        @JvmOverloads
+        fun create(
+            extraRules: List<Rule>,
+            extraSpecs: List<RuleSpec>,
             overrideBuiltins: Boolean = false,
         ): RuleRegistry {
             val combined = ArrayList<Rule>(64)
@@ -119,7 +138,7 @@ class DefaultRuleRegistry private constructor(
                         .sortedBy { it.key }
                         .associate { it.key to it.value }
 
-                return DefaultRuleRegistry(frozen)
+                return DefaultRuleRegistry(frozen, registerSpecs(frozen, extraSpecs, overrideBuiltins))
             }
 
             val frozen =
@@ -127,7 +146,30 @@ class DefaultRuleRegistry private constructor(
                     .sortedBy { it.key }
                     .associate { it.key to it.value }
 
-            return DefaultRuleRegistry(frozen)
+            return DefaultRuleRegistry(frozen, registerSpecs(frozen, extraSpecs, overrideBuiltins))
+        }
+
+        private fun registerSpecs(
+            rules: Map<String, Rule>,
+            specs: List<RuleSpec>,
+            overrideBuiltins: Boolean,
+        ): Map<String, RuleSpec> {
+            val registered = LinkedHashMap<String, RuleSpec>()
+            for (spec in specs) {
+                val key = spec.key
+                val type = key.type.trim()
+                val name = key.name.trim()
+                require(key.role == null && type.isNotEmpty() && name.isNotEmpty()) {
+                    "RuleSpec must have a non-empty type and name with no role: $key"
+                }
+                val id = "$type.$name"
+                require(id in rules) { "RuleSpec '$id' has no executable rule" }
+                check(overrideBuiltins || (id !in registered && RuleSpecRegistryV1.find(type, name) == null)) {
+                    "Duplicate RuleSpec '$id'; set overrideBuiltins to replace it"
+                }
+                registered[id] = spec
+            }
+            return registered.toMap()
         }
     }
 }

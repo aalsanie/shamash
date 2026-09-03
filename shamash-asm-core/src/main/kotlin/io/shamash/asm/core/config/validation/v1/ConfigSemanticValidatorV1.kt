@@ -33,12 +33,23 @@ import io.shamash.asm.core.config.schema.v1.model.RuleScope
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.config.validation.v1.registry.RuleSpecRegistryV1
+import io.shamash.asm.core.engine.rules.RuleRegistry
 import java.util.LinkedHashSet
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
 object ConfigSemanticValidatorV1 {
-    fun validateSemantic(config: ShamashAsmConfigV1): List<ValidationError> {
+    fun validateSemantic(config: ShamashAsmConfigV1): List<ValidationError> = validateSemantic(config, RuleSpecRegistryV1::find)
+
+    fun validateSemantic(
+        config: ShamashAsmConfigV1,
+        registry: RuleRegistry,
+    ): List<ValidationError> = validateSemantic(config, registry::findSpec)
+
+    private fun validateSemantic(
+        config: ShamashAsmConfigV1,
+        findSpec: (String, String) -> RuleSpec?,
+    ): List<ValidationError> {
         val errors = mutableListOf<ValidationError>()
 
         if (config.version != 1) {
@@ -64,7 +75,7 @@ object ConfigSemanticValidatorV1 {
 
         validateAnalysis(config.analysis, errors)
 
-        val indexed = validateRules(config, errors)
+        val indexed = validateRules(config, errors, findSpec)
 
         errors += enforceMutuallyExclusiveRuleKinds(config, indexed)
 
@@ -80,6 +91,7 @@ object ConfigSemanticValidatorV1 {
     private fun validateRules(
         config: ShamashAsmConfigV1,
         errors: MutableList<ValidationError>,
+        findSpec: (String, String) -> RuleSpec?,
     ): List<IndexedRule> {
         val seenWildcards = LinkedHashSet<Pair<String, String>>() // (type,name)
         val seenSpecific = LinkedHashSet<RuleKey>() // (type,name,role)
@@ -140,18 +152,23 @@ object ConfigSemanticValidatorV1 {
             val name = rule.name.trim()
             if (type.isEmpty() || name.isEmpty()) return@forEachIndexed
 
-            val spec = RuleSpecRegistryV1.find(type, name)
+            val spec =
+                try {
+                    findSpec(type, name)
+                } catch (e: Exception) {
+                    errors += err(base, "Failed to resolve RuleSpec '$type.$name': ${e.message ?: e::class.java.simpleName}")
+                    return@forEachIndexed
+                }
             if (spec == null) {
                 when (config.project.validation.unknownRule) {
                     UnknownRulePolicy.IGNORE, UnknownRulePolicy.ignore -> {
-                        Unit
                     }
 
                     UnknownRulePolicy.WARN, UnknownRulePolicy.warn -> {
                         errors +=
                             ValidationError(
                                 path = base,
-                                message = "Unknown rule '$type.$name' (no RuleSpec registered; rule will not run)",
+                                message = "Unknown rule '$type.$name' (no RuleSpec registered)",
                                 severity = ValidationSeverity.WARNING,
                             )
                     }
@@ -168,7 +185,11 @@ object ConfigSemanticValidatorV1 {
                 return@forEachIndexed
             }
 
-            errors += spec.validate(rulePath = base, rule = rule, config = config)
+            try {
+                errors += spec.validate(rulePath = base, rule = rule, config = config)
+            } catch (e: Exception) {
+                errors += err(base, "Failed to validate rule '$type.$name': ${e.message ?: e::class.java.simpleName}")
+            }
         }
 
         return indexed
@@ -345,12 +366,7 @@ object ConfigSemanticValidatorV1 {
                     }
                 }
 
-                null -> {
-                    Unit
-                }
-
                 else -> {
-                    Unit
                 }
             }
         }
