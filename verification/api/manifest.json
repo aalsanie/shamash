@@ -1,0 +1,8 @@
+{
+  "baseline": "2ec2202ba35d6762d9fb962fdefa178d168a2111",
+  "reference_sha256": {
+    "shamash-artifacts/shamash-artifacts.api": "9cbf0d3b73c170dc2647960814bad15aff303e3519c4e85a30153bdb614fe222",
+    "shamash-export/shamash-export.api": "fe1194e572dfc1731edd7f80336a304e12767278de957f46abd77e866806d8e4",
+    "shamash-asm-core/shamash-asm-core.api": "39125fdcb47a3a8c7d8d2f8787c0457dac3deeec83cbda0328f964c46b13cc59"
+  }
+}
