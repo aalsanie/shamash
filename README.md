@@ -10,14 +10,12 @@
 
 # Shamash
 
-Shamash scans compiled Java/Kotlin applications for dependency cycles and architecture violations, helping stop JVM architecture drift before it reaches main and prevent new violations in CI without requiring architecture-test code.
+Shamash scans compiled Java and Kotlin applications for dependency cycles and architecture violations without requiring architecture-test code.
 
-- **No tests:** no test dependency and no architecture-test code.
-- **CLI-first:** standalone Java 17+ tool for local use and CI.
-- **Configless first scan:** see useful architecture risks before learning the configuration model.
-- **Brownfield-friendly:** baseline existing debt once, then fail only on new violations.
-- **IntelliJ:** one workspace with Build Analysis and Source Analysis.
-- **Advanced when needed:** custom roles/rules, facts, graphs, hotspots, registries and multiple report formats remain available.
+- Scan without configuration.
+- Baseline existing violations and enforce new ones in CI.
+- Use the CLI, IntelliJ plugin or Java/Kotlin library.
+- Extend checks with custom rules and registries.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
@@ -29,25 +27,23 @@ Requires Java 17 or newer.
 
 ### 1. Install the CLI
 
-Download `shamash-cli-<version>.zip` and `SHA256SUMS.txt` from GitHub Releases, verify the checksum, extract it, then use:
+Download `shamash-cli-<version>.zip` and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/aalsanie/shamash/releases), verify the checksum and extract the archive.
 
 ```text
 bin/shamash      # Linux/macOS
 bin/shamash.bat  # Windows
 ```
 
-The launcher name is part of the packaged-product contract and is smoke-tested on Linux, Windows and macOS before release.
+The following examples assume the launcher is on your `PATH`.
 
 ### 2. Build your project
-
-Build the project first:
 
 ```bash
 ./gradlew classes
 # or: ./mvnw package
 ```
 
-If compiled classes is not found, it detects common Gradle/Maven projects and prints the exact build command to run first.
+If compiled classes are missing, Shamash detects common Gradle/Maven projects and suggests a build command.
 
 ### 3. Run your first scan
 
@@ -55,9 +51,9 @@ If compiled classes is not found, it detects common Gradle/Maven projects and pr
 shamash scan
 ```
 
-No configuration is required for this first scan. Discovery mode is report-only: it does not create config, reports or baselines in your project, and it never fails because of findings.
+Without a configuration, Shamash runs in discovery mode. It reports findings without creating configuration, reports or baselines.
 
-Example shape of the output:
+Example output:
 
 ```text
 Shamash - discovery scan
@@ -79,43 +75,34 @@ Ready to enforce architecture? Run: shamash init
 
 ## Turn discovery into enforcement
 
-Create the small default config:
+Create the default configuration:
 
 ```bash
 shamash init
 ```
 
-It writes:
+This writes `shamash/configs/asm.yml` with a dependency-cycle rule.
 
-```text
-shamash/configs/asm.yml
-```
-
-The default starter is intentionally small and starts with a dependency-cycle rule. Framework-specific policy is opt-in:
+For Spring-specific rules:
 
 ```bash
 shamash init --preset spring
 ```
 
-The full advanced reference remains available:
+For the full reference configuration:
 
 ```bash
 shamash init --preset reference
 ```
 
-Validate configuration:
+Validate and scan:
 
 ```bash
 shamash validate
-```
-
-Then scan normally:
-
-```bash
 shamash scan
 ```
 
-Findings are printed by default. Use `--all-findings` for the complete list and `--verbose` for engine diagnostics.
+Use `--all-findings` for the complete findings list and `--verbose` for diagnostics.
 
 ## Existing projects: accept current debt once
 
@@ -125,20 +112,20 @@ After `shamash init`, run:
 shamash baseline create
 ```
 
-This analyzes the current project, writes the configured baseline, and ensures `baseline.mode` is `VERIFY`. Existing baselines are protected; replacement requires `--force`.
+After a complete, successful scan, this writes the configured baseline and sets `baseline.mode` to `VERIFY`. Replacing an existing baseline requires `--force`.
 
-Commit both:
+Commit the configuration and baseline:
 
 ```text
 shamash/configs/asm.yml
 .shamash/baseline/asm-baseline.json
 ```
 
-With baseline mode `VERIFY`, later scans suppress accepted fingerprints and expose new violations.
+Later scans suppress accepted violations and report new ones.
 
 ## GitHub Actions
 
-Build the application, then use the first-party action:
+Build the application before running Shamash:
 
 ```yaml
 name: Architecture
@@ -158,19 +145,65 @@ jobs:
           distribution: temurin
           java-version: "17"
       - run: ./gradlew classes
-      - uses: aalsanie/shamash@v0.91.0
+      - uses: aalsanie/shamash@v0.92.0
 ```
 
 For configured enforcement:
 
 ```yaml
-      - uses: aalsanie/shamash@v0.91.0
+      - uses: aalsanie/shamash@v0.92.0
         with:
           config: shamash/configs/asm.yml
           fail-on: ERROR
 ```
 
 The action verifies the release checksum before execution.
+
+## Library
+
+Embed the bytecode engine in Java or Kotlin applications. Requires Java 17 or newer.
+
+### Gradle
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.github.aalsanie:shamash-asm-core:0.92.0")
+}
+```
+
+### Maven
+
+```xml
+<dependency>
+    <groupId>io.github.aalsanie</groupId>
+    <artifactId>shamash-asm-core</artifactId>
+    <version>0.92.0</version>
+</dependency>
+```
+
+Shared contracts and report exporters are included as transitive dependencies.
+
+### Usage
+
+Scan a compiled project:
+
+```kotlin
+import io.shamash.asm.core.scan.ScanOptions
+import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import java.nio.file.Path
+
+val result = ShamashAsmScanRunner().run(
+    ScanOptions(projectBasePath = Path.of("."))
+)
+check(result.isSuccess) { result.toString() }
+val findings = requireNotNull(result.engine).findings
+```
+
+A successful scan can still contain architecture violations. `isSuccess` indicates that validation and analysis completed without execution errors or truncation.
 
 ## IntelliJ
 
@@ -180,44 +213,40 @@ Install from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-
 Tools → Shamash
 ```
 
-There is one tool window. Its first-level areas are:
+The tool window contains:
 
-- **Build Analysis** — compiled-bytecode architecture checks, findings, roles, graphs and reports.
+- **Build Analysis** — compiled-bytecode checks, findings, roles, graphs and reports.
 - **Source Analysis** — source-aware checks, suppressions and fixes.
-
-ASM and PSI still exist internally because they solve different technical problems, but users do not need to understand those engine names to get started.
 
 ## CI behavior and exit codes
 
-Configured scans use these stable exit codes:
+Configured scans use these exit codes:
 
 - `0` successful scan and findings below threshold
-- `2` configuration/input problem (including missing compiled bytecode)
-- `3` runtime/engine failure
+- `2` configuration/input problem, including missing compiled bytecode
+- `3` runtime failure or incomplete scan
 - `4` findings reached the selected `--fail-on` threshold
 
-Discovery mode is report-only and returns `0` after a successful scan even if it finds architecture risks.
+Discovery scans return `0` after successful analysis, regardless of findings.
 
 ## Advanced capabilities
 
-Advanced teams can still use:
-
-- architecture role dependencies and package rules
-- dependency graph rules and cycle limits
-- coupling/class-size metrics
-- API/annotation restrictions
+- Architecture role dependencies and package rules
+- Dependency graph rules and cycle limits
+- Coupling and class-size metrics
+- API and annotation restrictions
 - JAR-origin restrictions
-- facts export and `shamash facts`
-- graph/hotspot/scoring analysis and `shamash analysis`
-- JSON, SARIF, HTML and XML report formats
-- custom rule registries
-- exceptions and baselines
+- Facts export and `shamash facts`
+- Graphs, hotspots, scoring and `shamash analysis`
+- JSON, SARIF, HTML and XML reports
+- Custom rule registries
+- Exceptions and baselines
 
-See `docs/asm/` and `REGISTRY_GUIDE.md` for the advanced engine/configuration reference.
+See [`docs/asm/`](./docs/asm/) and [`REGISTRY_GUIDE.md`](./REGISTRY_GUIDE.md).
 
 ## Security
 
-Please do not disclose vulnerabilities in a public issue. Follow [`SECURITY.md`](./SECURITY.md).
+Report vulnerabilities through [`SECURITY.md`](./SECURITY.md).
 
 ## License
 
