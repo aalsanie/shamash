@@ -19,7 +19,6 @@ package io.shamash.cli
 
 import io.shamash.artifacts.contract.FindingSeverity
 import io.shamash.artifacts.report.layout.ExportOutputLayout
-import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
 import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
@@ -136,6 +135,7 @@ private enum class FailOn {
     }
 }
 
+@OptIn(ExperimentalCli::class)
 private abstract class CommandBase(
     name: String,
     actionDescription: String,
@@ -250,6 +250,7 @@ private class InitCommand : CommandBase("init", "Create a small production-ready
 private class ValidateCommand : CommandBase("validate", "Validate the project Shamash configuration") {
     private val project by option(ArgType.String, fullName = "project", description = "Project root").default(".")
     private val config: String? by option(ArgType.String, fullName = "config", description = "Explicit asm.yml path")
+    private val registryId: String? by option(ArgType.String, fullName = "registry", description = "Advanced rule registry id")
 
     override fun run(): ExitCode {
         val projectRoot = Paths.get(project).normalize().absolute()
@@ -258,9 +259,11 @@ private class ValidateCommand : CommandBase("validate", "Validate the project Sh
             Console.errln("ASM config not found under ${ProjectLayout.ASM_CONFIG_DIR}")
             return ExitCode.CONFIG_ERROR
         }
+        val registry = RegistryProviders.resolve(registryId) ?: return ExitCode.CONFIG_ERROR
+        val selectedEngine = ShamashAsmEngine(registry = registry, toolName = "Shamash", toolVersion = CliMeta.version)
         val validation =
             try {
-                Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { ConfigValidation.loadAndValidateV1(it) }
+                Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { selectedEngine.validateConfig(it) }
             } catch (t: Throwable) {
                 Console.errln("Failed to read/validate config: ${t.message ?: t::class.java.simpleName}")
                 return ExitCode.CONFIG_ERROR
@@ -309,6 +312,29 @@ private object RegistryProviders {
             errors += "ServiceLoader error: ${t.message ?: t::class.java.simpleName}"
         }
         return LoadResult(providers, errors)
+    }
+
+    fun resolve(raw: String?): io.shamash.asm.core.engine.rules.RuleRegistry? {
+        val id = raw?.trim()?.takeIf { it.isNotEmpty() }
+        if (id == null || id == "default") return DefaultRuleRegistry.create()
+        val loaded = RegistryProviders.load()
+        if (loaded.errors.isNotEmpty()) {
+            loaded.errors.forEach { Console.errln("Registry provider load error: $it") }
+            return null
+        }
+        val provider = loaded.providers[id]
+        if (provider == null) {
+            Console.errln("Unknown registry id: '$id'")
+            Console.errln("Available registry ids: ${loaded.providers.keys.sorted().joinToString().ifBlank { "default" }}")
+            Console.errln("Run: shamash registry list")
+            return null
+        }
+        return try {
+            provider.create()
+        } catch (t: Throwable) {
+            Console.errln("Registry '$id' failed to initialize: ${t.message ?: t::class.java.simpleName}")
+            null
+        }
     }
 }
 
@@ -428,7 +454,7 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
             RunOverrides(scan = scanOverrides).takeIf {
                 listOf(scope, follow, maxClasses, maxJarBytes, maxClassBytes).any { value -> value != null }
             }
-        val registry = resolveRegistry(registryId) ?: return ExitCode.CONFIG_ERROR
+        val registry = RegistryProviders.resolve(registryId) ?: return ExitCode.CONFIG_ERROR
         val runner = ShamashAsmScanRunner(ShamashAsmEngine(registry = registry, toolName = "Shamash", toolVersion = CliMeta.version))
         val res =
             runner.run(
@@ -446,36 +472,35 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
         if (res.configErrors.isNotEmpty()) {
             Console.errln("Config issues: ${res.configErrors.size}")
             res.configErrors.forEach { Console.errln("- ${it.severity.name} ${it.path}: ${it.message}") }
-            return ExitCode.CONFIG_ERROR
+            if (res.hasConfigErrors) return ExitCode.CONFIG_ERROR
         }
         if (res.scanErrors.isNotEmpty()) {
             Console.errln("Scan errors: ${res.scanErrors.size}")
             res.scanErrors.forEach { Console.errln("- ${it.phase.name}: ${it.message}${it.path?.let { p -> " [$p]" } ?: ""}") }
-            val projectConfigReadFailed =
-                projectConfig != null && res.scanErrors.all { it.phase == ScanError.Phase.CONFIG_READ }
-            return if (projectConfigReadFailed) ExitCode.CONFIG_ERROR else ExitCode.RUNTIME_ERROR
-        }
-        if (res.classUnits == 0) {
-            printNoBytecode(projectRoot)
-            return ExitCode.CONFIG_ERROR
         }
         if (res.factsErrors.isNotEmpty()) {
-            Console.errln("Facts warnings: ${res.factsErrors.size}")
+            Console.errln("Facts errors: ${res.factsErrors.size}")
             if (verbose) {
                 res.factsErrors.forEach { Console.errln("- ${it.originId} :: ${it.phase}: ${it.message}") }
             } else {
                 Console.errln("Use --verbose for details.")
             }
         }
-        val engine =
-            res.engine ?: run {
-                Console.errln("Engine did not run.")
-                return ExitCode.RUNTIME_ERROR
+        if (res.truncated) {
+            Console.errln("Scan incomplete: the class limit was reached. Increase --max-classes or reduce the scan scope.")
+        }
+        val engine = res.engine
+        if (engine == null) {
+            val configReadFailed = projectConfig != null && res.scanErrors.all { it.phase == ScanError.Phase.CONFIG_READ }
+            if (res.hasScanErrors) return if (configReadFailed) ExitCode.CONFIG_ERROR else ExitCode.RUNTIME_ERROR
+            if (res.classUnits == 0) {
+                printNoBytecode(projectRoot)
+                return ExitCode.CONFIG_ERROR
             }
-        if (engine.errors.isNotEmpty()) {
-            engine.errors.forEach { Console.errln("Engine error: ${it.message}") }
+            Console.errln("Engine did not run.")
             return ExitCode.RUNTIME_ERROR
         }
+        engine.errors.forEach { Console.errln("Engine error: ${it.message}") }
 
         val findings = engine.findings
         val counts = findings.groupingBy { it.severity }.eachCount()
@@ -485,7 +510,7 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
             Console.println()
         }
         if (findings.isEmpty()) {
-            Console.println("No architecture issues found.")
+            Console.println(if (res.isSuccess) "No architecture issues found." else "No findings in the incomplete analysis.")
         } else {
             Console.println("Shamash found ${findings.size} architecture issue${if (findings.size == 1) "" else "s"}")
             Console.println()
@@ -517,35 +542,13 @@ private class ScanCommand : CommandBase("scan", "Scan compiled JVM code for arch
         if (verbose) printVerbose(res, engine.summary)
         if (printAnalysisSummary) printAnalysis(engine)
 
+        if (!res.isSuccess) return ExitCode.RUNTIME_ERROR
         return if (discoveryMode) {
             ExitCode.OK
         } else if (failOn.shouldFail(counts)) {
             ExitCode.FINDINGS_THRESHOLD
         } else {
             ExitCode.OK
-        }
-    }
-
-    private fun resolveRegistry(raw: String?): io.shamash.asm.core.engine.rules.RuleRegistry? {
-        val id = raw?.trim()?.takeIf { it.isNotEmpty() }
-        if (id == null || id == "default") return DefaultRuleRegistry.create()
-        val loaded = RegistryProviders.load()
-        if (loaded.errors.isNotEmpty()) {
-            loaded.errors.forEach { Console.errln("Registry provider load error: $it") }
-            return null
-        }
-        val provider = loaded.providers[id]
-        if (provider == null) {
-            Console.errln("Unknown registry id: '$id'")
-            Console.errln("Available registry ids: ${loaded.providers.keys.sorted().joinToString().ifBlank { "default" }}")
-            Console.errln("Run: shamash registry list")
-            return null
-        }
-        return try {
-            provider.create()
-        } catch (t: Throwable) {
-            Console.errln("Registry '$id' failed to initialize: ${t.message ?: t::class.java.simpleName}")
-            null
         }
     }
 
@@ -593,6 +596,7 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
     private val action by argument(ArgType.String, description = "Action (supported: create)")
     private val project by option(ArgType.String, fullName = "project", description = "Project root").default(".")
     private val config: String? by option(ArgType.String, fullName = "config", description = "Explicit asm.yml path")
+    private val registryId: String? by option(ArgType.String, fullName = "registry", description = "Advanced rule registry id")
     private val force by option(ArgType.Boolean, fullName = "force", description = "Replace an existing baseline").default(false)
 
     override fun run(): ExitCode {
@@ -606,9 +610,11 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
             Console.errln("No Shamash config found. Run `shamash init` first.")
             return ExitCode.CONFIG_ERROR
         }
+        val registry = RegistryProviders.resolve(registryId) ?: return ExitCode.CONFIG_ERROR
+        val selectedEngine = ShamashAsmEngine(registry = registry, toolName = "Shamash", toolVersion = CliMeta.version)
         val validation =
             try {
-                Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { ConfigValidation.loadAndValidateV1(it) }
+                Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { selectedEngine.validateConfig(it) }
             } catch (t: Throwable) {
                 Console.errln("Failed to read config: ${t.message ?: t::class.java.simpleName}")
                 return ExitCode.CONFIG_ERROR
@@ -632,10 +638,7 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
             return ExitCode.CONFIG_ERROR
         }
 
-        val runner =
-            ShamashAsmScanRunner(
-                ShamashAsmEngine(registry = DefaultRuleRegistry.create(), toolName = "Shamash", toolVersion = CliMeta.version),
-            )
+        val runner = ShamashAsmScanRunner(selectedEngine)
         val res =
             runner.run(
                 ScanOptions(projectBasePath = projectRoot, configPath = configPath),
@@ -643,7 +646,7 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
             )
         if (res.configErrors.isNotEmpty()) {
             res.configErrors.forEach { Console.errln("- ${it.severity.name} ${it.path}: ${it.message}") }
-            return ExitCode.CONFIG_ERROR
+            if (res.hasConfigErrors) return ExitCode.CONFIG_ERROR
         }
         if (res.scanErrors.isNotEmpty()) {
             res.scanErrors.forEach { Console.errln("- ${it.phase}: ${it.message}") }
@@ -656,6 +659,10 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
         val engine = res.engine ?: return ExitCode.RUNTIME_ERROR.also { Console.errln("Engine did not run.") }
         if (engine.errors.isNotEmpty()) {
             engine.errors.forEach { Console.errln("- ${it.message}") }
+            return ExitCode.RUNTIME_ERROR
+        }
+        if (!res.isSuccess) {
+            Console.errln("Baseline creation failed: analysis was incomplete.")
             return ExitCode.RUNTIME_ERROR
         }
         if (!baselinePath.isRegularFile()) {

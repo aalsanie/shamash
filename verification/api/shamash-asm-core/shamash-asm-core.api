@@ -1,0 +1,2338 @@
+public final class io/shamash/asm/core/analysis/AnalysisResult {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/analysis/GraphAnalysisResult;Lio/shamash/asm/core/analysis/HotspotsResult;Lio/shamash/asm/core/analysis/ScoringResult;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/analysis/GraphAnalysisResult;Lio/shamash/asm/core/analysis/HotspotsResult;Lio/shamash/asm/core/analysis/ScoringResult;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/analysis/GraphAnalysisResult;
+	public final fun component2 ()Lio/shamash/asm/core/analysis/HotspotsResult;
+	public final fun component3 ()Lio/shamash/asm/core/analysis/ScoringResult;
+	public final fun copy (Lio/shamash/asm/core/analysis/GraphAnalysisResult;Lio/shamash/asm/core/analysis/HotspotsResult;Lio/shamash/asm/core/analysis/ScoringResult;)Lio/shamash/asm/core/analysis/AnalysisResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/analysis/GraphAnalysisResult;Lio/shamash/asm/core/analysis/HotspotsResult;Lio/shamash/asm/core/analysis/ScoringResult;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/AnalysisResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGraphs ()Lio/shamash/asm/core/analysis/GraphAnalysisResult;
+	public final fun getHotspots ()Lio/shamash/asm/core/analysis/HotspotsResult;
+	public final fun getScoring ()Lio/shamash/asm/core/analysis/ScoringResult;
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/AsmAnalysisPipeline {
+	public static final field INSTANCE Lio/shamash/asm/core/analysis/AsmAnalysisPipeline;
+	public final fun run (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;)Lio/shamash/asm/core/analysis/AnalysisResult;
+	public final fun shouldRun (Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;)Z
+}
+
+public final class io/shamash/asm/core/analysis/ClassScoreRow {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;DLio/shamash/asm/core/analysis/SeverityBand;Ljava/util/Map;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()D
+	public final fun component4 ()Lio/shamash/asm/core/analysis/SeverityBand;
+	public final fun component5 ()Ljava/util/Map;
+	public final fun component6 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;DLio/shamash/asm/core/analysis/SeverityBand;Ljava/util/Map;Ljava/util/Map;)Lio/shamash/asm/core/analysis/ClassScoreRow;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/ClassScoreRow;Ljava/lang/String;Ljava/lang/String;DLio/shamash/asm/core/analysis/SeverityBand;Ljava/util/Map;Ljava/util/Map;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/ClassScoreRow;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBand ()Lio/shamash/asm/core/analysis/SeverityBand;
+	public final fun getClassFqn ()Ljava/lang/String;
+	public final fun getNormalized ()Ljava/util/Map;
+	public final fun getPackageName ()Ljava/lang/String;
+	public final fun getRaw ()Ljava/util/Map;
+	public final fun getScore ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/GodClassScoringResult {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;Ljava/util/List;)Lio/shamash/asm/core/analysis/GodClassScoringResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/GodClassScoringResult;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/GodClassScoringResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRows ()Ljava/util/List;
+	public final fun getThresholds ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/GraphAnalysisResult {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/Granularity;ZLjava/util/List;Ljava/util/Map;IIILjava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public final fun component2 ()Z
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Ljava/util/Map;
+	public final fun component5 ()I
+	public final fun component6 ()I
+	public final fun component7 ()I
+	public final fun component8 ()Ljava/util/List;
+	public final fun component9 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/Granularity;ZLjava/util/List;Ljava/util/Map;IIILjava/util/List;Ljava/util/List;)Lio/shamash/asm/core/analysis/GraphAnalysisResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/GraphAnalysisResult;Lio/shamash/asm/core/config/schema/v1/model/Granularity;ZLjava/util/List;Ljava/util/Map;IIILjava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/GraphAnalysisResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAdjacency ()Ljava/util/Map;
+	public final fun getCyclicSccs ()Ljava/util/List;
+	public final fun getEdgeCount ()I
+	public final fun getGranularity ()Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public final fun getIncludeExternalBuckets ()Z
+	public final fun getNodeCount ()I
+	public final fun getNodes ()Ljava/util/List;
+	public final fun getRepresentativeCycles ()Ljava/util/List;
+	public final fun getSccCount ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/HotspotEntry {
+	public fun <init> (Lio/shamash/asm/core/analysis/HotspotKind;Ljava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/asm/core/analysis/HotspotKind;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/analysis/HotspotKind;Ljava/lang/String;Ljava/util/List;)Lio/shamash/asm/core/analysis/HotspotEntry;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/HotspotEntry;Lio/shamash/asm/core/analysis/HotspotKind;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/HotspotEntry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getKind ()Lio/shamash/asm/core/analysis/HotspotKind;
+	public final fun getMaxMetricValue ()I
+	public final fun getReasons ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/HotspotKind : java/lang/Enum {
+	public static final field CLASS Lio/shamash/asm/core/analysis/HotspotKind;
+	public static final field PACKAGE Lio/shamash/asm/core/analysis/HotspotKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/analysis/HotspotKind;
+	public static fun values ()[Lio/shamash/asm/core/analysis/HotspotKind;
+}
+
+public final class io/shamash/asm/core/analysis/HotspotMetric : java/lang/Enum {
+	public static final field FAN_IN Lio/shamash/asm/core/analysis/HotspotMetric;
+	public static final field FAN_OUT Lio/shamash/asm/core/analysis/HotspotMetric;
+	public static final field METHOD_COUNT Lio/shamash/asm/core/analysis/HotspotMetric;
+	public static final field PACKAGE_SPREAD Lio/shamash/asm/core/analysis/HotspotMetric;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/analysis/HotspotMetric;
+	public static fun values ()[Lio/shamash/asm/core/analysis/HotspotMetric;
+}
+
+public final class io/shamash/asm/core/analysis/HotspotReason {
+	public fun <init> (Lio/shamash/asm/core/analysis/HotspotMetric;II)V
+	public final fun component1 ()Lio/shamash/asm/core/analysis/HotspotMetric;
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun copy (Lio/shamash/asm/core/analysis/HotspotMetric;II)Lio/shamash/asm/core/analysis/HotspotReason;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/HotspotReason;Lio/shamash/asm/core/analysis/HotspotMetric;IIILjava/lang/Object;)Lio/shamash/asm/core/analysis/HotspotReason;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMetric ()Lio/shamash/asm/core/analysis/HotspotMetric;
+	public final fun getRank ()I
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/HotspotsResult {
+	public fun <init> (IZLjava/util/List;Ljava/util/List;)V
+	public final fun component1 ()I
+	public final fun component2 ()Z
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy (IZLjava/util/List;Ljava/util/List;)Lio/shamash/asm/core/analysis/HotspotsResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/HotspotsResult;IZLjava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/HotspotsResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassHotspots ()Ljava/util/List;
+	public final fun getIncludeExternal ()Z
+	public final fun getPackageHotspots ()Ljava/util/List;
+	public final fun getTopN ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/OverallScoringResult {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;Ljava/util/List;)Lio/shamash/asm/core/analysis/OverallScoringResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/OverallScoringResult;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/OverallScoringResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRows ()Ljava/util/List;
+	public final fun getThresholds ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/PackageScoreRow {
+	public fun <init> (Ljava/lang/String;DLio/shamash/asm/core/analysis/SeverityBand;Ljava/util/Map;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()D
+	public final fun component3 ()Lio/shamash/asm/core/analysis/SeverityBand;
+	public final fun component4 ()Ljava/util/Map;
+	public final fun component5 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;DLio/shamash/asm/core/analysis/SeverityBand;Ljava/util/Map;Ljava/util/Map;)Lio/shamash/asm/core/analysis/PackageScoreRow;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/PackageScoreRow;Ljava/lang/String;DLio/shamash/asm/core/analysis/SeverityBand;Ljava/util/Map;Ljava/util/Map;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/PackageScoreRow;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBand ()Lio/shamash/asm/core/analysis/SeverityBand;
+	public final fun getNormalized ()Ljava/util/Map;
+	public final fun getPackageName ()Ljava/lang/String;
+	public final fun getRaw ()Ljava/util/Map;
+	public final fun getScore ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/ScoringResult {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/analysis/GodClassScoringResult;Lio/shamash/asm/core/analysis/OverallScoringResult;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/analysis/GodClassScoringResult;Lio/shamash/asm/core/analysis/OverallScoringResult;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+	public final fun component2 ()Lio/shamash/asm/core/analysis/GodClassScoringResult;
+	public final fun component3 ()Lio/shamash/asm/core/analysis/OverallScoringResult;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/analysis/GodClassScoringResult;Lio/shamash/asm/core/analysis/OverallScoringResult;)Lio/shamash/asm/core/analysis/ScoringResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/analysis/ScoringResult;Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/analysis/GodClassScoringResult;Lio/shamash/asm/core/analysis/OverallScoringResult;ILjava/lang/Object;)Lio/shamash/asm/core/analysis/ScoringResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGodClass ()Lio/shamash/asm/core/analysis/GodClassScoringResult;
+	public final fun getModel ()Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+	public final fun getOverall ()Lio/shamash/asm/core/analysis/OverallScoringResult;
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/analysis/SeverityBand : java/lang/Enum {
+	public static final field ERROR Lio/shamash/asm/core/analysis/SeverityBand;
+	public static final field OK Lio/shamash/asm/core/analysis/SeverityBand;
+	public static final field WARN Lio/shamash/asm/core/analysis/SeverityBand;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/analysis/SeverityBand;
+	public static fun values ()[Lio/shamash/asm/core/analysis/SeverityBand;
+}
+
+public final class io/shamash/asm/core/config/ConfigLoader {
+	public static final field INSTANCE Lio/shamash/asm/core/config/ConfigLoader;
+	public final fun bindV1 (Ljava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public final fun loadRaw (Ljava/io/Reader;)Ljava/lang/Object;
+}
+
+public final class io/shamash/asm/core/config/ConfigLoader$ConfigBindException : java/lang/RuntimeException {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public fun getMessage ()Ljava/lang/String;
+	public final fun getPath ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/ConfigValidation {
+	public static final field INSTANCE Lio/shamash/asm/core/config/ConfigValidation;
+	public final fun loadAndValidateV1 (Ljava/io/Reader;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public final fun loadAndValidateV1 (Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public final fun loadAndValidateV1 (Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;Lkotlin/jvm/functions/Function0;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public final fun loadAndValidateV1 (Ljava/io/Reader;Lio/shamash/asm/core/engine/rules/RuleRegistry;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public final fun loadAndValidateV1 (Ljava/io/Reader;Lio/shamash/asm/core/engine/rules/RuleRegistry;Lio/shamash/asm/core/config/SchemaValidator;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public static synthetic fun loadAndValidateV1$default (Lio/shamash/asm/core/config/ConfigValidation;Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;ILjava/lang/Object;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public static synthetic fun loadAndValidateV1$default (Lio/shamash/asm/core/config/ConfigValidation;Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public static synthetic fun loadAndValidateV1$default (Lio/shamash/asm/core/config/ConfigValidation;Ljava/io/Reader;Lio/shamash/asm/core/engine/rules/RuleRegistry;Lio/shamash/asm/core/config/SchemaValidator;ILjava/lang/Object;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+}
+
+public final class io/shamash/asm/core/config/ConfigValidation$Result {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/ConfigValidation$Result;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfig ()Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public final fun getErrors ()Ljava/util/List;
+	public final fun getOk ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/ConfigValidator {
+	public static final field INSTANCE Lio/shamash/asm/core/config/ConfigValidator;
+	public final fun validateSemantic (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public final fun validateSemantic (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/engine/rules/RuleRegistry;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/ProjectLayout {
+	public static final field ASM_CONFIG_DIR Ljava/lang/String;
+	public static final field ASM_CONFIG_FILE_YAML Ljava/lang/String;
+	public static final field ASM_CONFIG_FILE_YML Ljava/lang/String;
+	public static final field ASM_CONFIG_RELATIVE_YAML Ljava/lang/String;
+	public static final field ASM_CONFIG_RELATIVE_YML Ljava/lang/String;
+	public static final field BASE Ljava/lang/String;
+	public static final field DISCOVERY_YML Ljava/lang/String;
+	public static final field EMPTY_YML Ljava/lang/String;
+	public static final field INSTANCE Lio/shamash/asm/core/config/ProjectLayout;
+	public static final field REFERENCE_YML Ljava/lang/String;
+	public static final field RESOURCES Ljava/lang/String;
+	public static final field SCHEMA_JSON Ljava/lang/String;
+	public static final field SPRING_YML Ljava/lang/String;
+	public static final field SRC_MAIN_RESOURCES Ljava/lang/String;
+	public static final field SRC_TEST_RESOURCES Ljava/lang/String;
+	public static final field STARTER_YML Ljava/lang/String;
+	public final fun getASM_CONFIG_CANDIDATES ()Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/SchemaResources {
+	public static final field INSTANCE Lio/shamash/asm/core/config/SchemaResources;
+	public final fun openEmptyYaml ()Ljava/io/InputStream;
+	public final fun openReferenceYaml ()Ljava/io/InputStream;
+	public final fun openSchemaJson ()Ljava/io/InputStream;
+}
+
+public abstract interface class io/shamash/asm/core/config/SchemaValidator {
+	public abstract fun validate (Ljava/lang/Object;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/SchemaValidatorNetworkNt : io/shamash/asm/core/config/SchemaValidator {
+	public static final field INSTANCE Lio/shamash/asm/core/config/SchemaValidatorNetworkNt;
+	public final fun getCancelCheck ()Lkotlin/jvm/functions/Function0;
+	public final fun setCancelCheck (Lkotlin/jvm/functions/Function0;)V
+	public fun validate (Ljava/lang/Object;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/ValidationError {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/config/ValidationSeverity;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/config/ValidationSeverity;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lio/shamash/asm/core/config/ValidationSeverity;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/config/ValidationSeverity;)Lio/shamash/asm/core/config/ValidationError;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/ValidationError;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/config/ValidationSeverity;ILjava/lang/Object;)Lio/shamash/asm/core/config/ValidationError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getSeverity ()Lio/shamash/asm/core/config/ValidationSeverity;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/ValidationSeverity : java/lang/Enum {
+	public static final field ERROR Lio/shamash/asm/core/config/ValidationSeverity;
+	public static final field INFO Lio/shamash/asm/core/config/ValidationSeverity;
+	public static final field WARNING Lio/shamash/asm/core/config/ValidationSeverity;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/ValidationSeverity;
+	public static fun values ()[Lio/shamash/asm/core/config/ValidationSeverity;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/AnalysisConfig {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;)Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGraphs ()Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;
+	public final fun getHotspots ()Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;
+	public final fun getScoring ()Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/BaselineConfig {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/String;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMode ()Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public final fun getPath ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/BaselineMode : java/lang/Enum {
+	public static final field GENERATE Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public static final field NONE Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public static final field VERIFY Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/BytecodeConfig {
+	public fun <init> (Ljava/util/List;Lio/shamash/asm/core/config/schema/v1/model/GlobSet;Lio/shamash/asm/core/config/schema/v1/model/GlobSet;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/GlobSet;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/GlobSet;
+	public final fun copy (Ljava/util/List;Lio/shamash/asm/core/config/schema/v1/model/GlobSet;Lio/shamash/asm/core/config/schema/v1/model/GlobSet;)Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;Ljava/util/List;Lio/shamash/asm/core/config/schema/v1/model/GlobSet;Lio/shamash/asm/core/config/schema/v1/model/GlobSet;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getJarGlobs ()Lio/shamash/asm/core/config/schema/v1/model/GlobSet;
+	public final fun getOutputsGlobs ()Lio/shamash/asm/core/config/schema/v1/model/GlobSet;
+	public final fun getRoots ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExceptionDef {
+	public fun <init> (Ljava/lang/String;ZLio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Z
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;ZLio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/ExceptionDef;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExceptionDef;Ljava/lang/String;ZLio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExceptionDef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getMatch ()Lio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExceptionMatch {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun component9 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExceptionMatch;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassInternalName ()Ljava/lang/String;
+	public final fun getClassNameRegex ()Ljava/lang/String;
+	public final fun getGlob ()Ljava/lang/String;
+	public final fun getOriginPathRegex ()Ljava/lang/String;
+	public final fun getPackageRegex ()Ljava/lang/String;
+	public final fun getRoles ()Ljava/util/List;
+	public final fun getRuleId ()Ljava/lang/String;
+	public final fun getRuleName ()Ljava/lang/String;
+	public final fun getRuleType ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig {
+	public fun <init> (ZZZZ)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun copy (ZZZZ)Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;ZZZZILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getGraphs ()Z
+	public final fun getHotspots ()Z
+	public final fun getScoring ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;
+	public final fun component4 ()Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;)Lio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnalysis ()Lio/shamash/asm/core/config/schema/v1/model/ExportAnalysisArtifactsConfig;
+	public final fun getFacts ()Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;
+	public final fun getRoles ()Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;
+	public final fun getRulePlan ()Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportConfig {
+	public fun <init> (ZLjava/lang/String;Ljava/util/List;ZLio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;)V
+	public synthetic fun <init> (ZLjava/lang/String;Ljava/util/List;ZLio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Z
+	public final fun component5 ()Lio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;
+	public final fun copy (ZLjava/lang/String;Ljava/util/List;ZLio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;)Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;ZLjava/lang/String;Ljava/util/List;ZLio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getArtifacts ()Lio/shamash/asm/core/config/schema/v1/model/ExportArtifactsConfig;
+	public final fun getEnabled ()Z
+	public final fun getFormats ()Ljava/util/List;
+	public final fun getOutputDir ()Ljava/lang/String;
+	public final fun getOverwrite ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig {
+	public fun <init> (ZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;)V
+	public synthetic fun <init> (ZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public final fun copy (ZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;)Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;ZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExportFactsArtifactConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getFormat ()Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportFactsFormat : java/lang/Enum {
+	public static final field JSON Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public static final field JSONL_GZ Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportFormat : java/lang/Enum {
+	public static final field HTML Lio/shamash/asm/core/config/schema/v1/model/ExportFormat;
+	public static final field JSON Lio/shamash/asm/core/config/schema/v1/model/ExportFormat;
+	public static final field SARIF Lio/shamash/asm/core/config/schema/v1/model/ExportFormat;
+	public static final field XML Lio/shamash/asm/core/config/schema/v1/model/ExportFormat;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/ExportFormat;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/ExportFormat;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;ZILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ExportToggleArtifactConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/GlobSet {
+	public fun <init> (Ljava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;)Lio/shamash/asm/core/config/schema/v1/model/GlobSet;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/GlobSet;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/GlobSet;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExclude ()Ljava/util/List;
+	public final fun getInclude ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig {
+	public fun <init> (ZLio/shamash/asm/core/config/schema/v1/model/GodClassWeights;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/GodClassWeights;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public final fun copy (ZLio/shamash/asm/core/config/schema/v1/model/GodClassWeights;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;)Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;ZLio/shamash/asm/core/config/schema/v1/model/GodClassWeights;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getThresholds ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public final fun getWeights ()Lio/shamash/asm/core/config/schema/v1/model/GodClassWeights;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/GodClassWeights {
+	public fun <init> (DDDDD)V
+	public final fun component1 ()D
+	public final fun component2 ()D
+	public final fun component3 ()D
+	public final fun component4 ()D
+	public final fun component5 ()D
+	public final fun copy (DDDDD)Lio/shamash/asm/core/config/schema/v1/model/GodClassWeights;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/GodClassWeights;DDDDDILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/GodClassWeights;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFanIn ()D
+	public final fun getFanOut ()D
+	public final fun getFields ()D
+	public final fun getMethods ()D
+	public final fun getPackageSpread ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Granularity : java/lang/Enum {
+	public static final field CLASS Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public static final field MODULE Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public static final field PACKAGE Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/GraphsConfig {
+	public fun <init> (ZLio/shamash/asm/core/config/schema/v1/model/Granularity;Z)V
+	public final fun component1 ()Z
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public final fun component3 ()Z
+	public final fun copy (ZLio/shamash/asm/core/config/schema/v1/model/Granularity;Z)Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;ZLio/shamash/asm/core/config/schema/v1/model/Granularity;ZILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/GraphsConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getGranularity ()Lio/shamash/asm/core/config/schema/v1/model/Granularity;
+	public final fun getIncludeExternalBuckets ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/HotspotsConfig {
+	public fun <init> (ZIZ)V
+	public final fun component1 ()Z
+	public final fun component2 ()I
+	public final fun component3 ()Z
+	public final fun copy (ZIZ)Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;ZIZILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/HotspotsConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getIncludeExternal ()Z
+	public final fun getTopN ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/shamash/asm/core/config/schema/v1/model/Matcher {
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$AllOf : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$AllOf;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$AllOf;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$AllOf;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAllOf ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$Annotation : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$Annotation;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$Annotation;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$Annotation;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnnotation ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$AnnotationPrefix : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$AnnotationPrefix;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$AnnotationPrefix;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$AnnotationPrefix;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnnotationPrefix ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$AnyOf : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$AnyOf;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$AnyOf;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$AnyOf;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnyOf ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$ClassNameEndsWith : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$ClassNameEndsWith;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$ClassNameEndsWith;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$ClassNameEndsWith;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassNameEndsWith ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$Not : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/Matcher;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/Matcher;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/Matcher;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$Not;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$Not;Lio/shamash/asm/core/config/schema/v1/model/Matcher;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$Not;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getNot ()Lio/shamash/asm/core/config/schema/v1/model/Matcher;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$PackageContainsSegment : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$PackageContainsSegment;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$PackageContainsSegment;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$PackageContainsSegment;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPackageContainsSegment ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/Matcher$PackageRegex : io/shamash/asm/core/config/schema/v1/model/Matcher {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$PackageRegex;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/Matcher$PackageRegex;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/Matcher$PackageRegex;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPackageRegex ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/OverallScoringConfig {
+	public fun <init> (ZLio/shamash/asm/core/config/schema/v1/model/OverallWeights;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public final fun copy (ZLio/shamash/asm/core/config/schema/v1/model/OverallWeights;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;)Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;ZLio/shamash/asm/core/config/schema/v1/model/OverallWeights;Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getThresholds ()Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public final fun getWeights ()Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/OverallWeights {
+	public fun <init> (DDDDD)V
+	public final fun component1 ()D
+	public final fun component2 ()D
+	public final fun component3 ()D
+	public final fun component4 ()D
+	public final fun component5 ()D
+	public final fun copy (DDDDD)Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;DDDDDILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCycles ()D
+	public final fun getDependencyDensity ()D
+	public final fun getExternalCoupling ()D
+	public final fun getGodClassPrevalence ()D
+	public final fun getLayeringViolations ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ProjectConfig {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;)Lio/shamash/asm/core/config/schema/v1/model/ProjectConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ProjectConfig;Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ProjectConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBytecode ()Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;
+	public final fun getScan ()Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;
+	public final fun getValidation ()Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/RoleDef {
+	public fun <init> (ILjava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/Matcher;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/Matcher;
+	public final fun copy (ILjava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/Matcher;)Lio/shamash/asm/core/config/schema/v1/model/RoleDef;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/RoleDef;ILjava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/Matcher;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/RoleDef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getMatch ()Lio/shamash/asm/core/config/schema/v1/model/Matcher;
+	public final fun getPriority ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/RuleDef {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ZLio/shamash/artifacts/contract/FindingSeverity;Lio/shamash/asm/core/config/schema/v1/model/RuleScope;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Z
+	public final fun component5 ()Lio/shamash/artifacts/contract/FindingSeverity;
+	public final fun component6 ()Lio/shamash/asm/core/config/schema/v1/model/RuleScope;
+	public final fun component7 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ZLio/shamash/artifacts/contract/FindingSeverity;Lio/shamash/asm/core/config/schema/v1/model/RuleScope;Ljava/util/Map;)Lio/shamash/asm/core/config/schema/v1/model/RuleDef;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ZLio/shamash/artifacts/contract/FindingSeverity;Lio/shamash/asm/core/config/schema/v1/model/RuleScope;Ljava/util/Map;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/RuleDef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getParams ()Ljava/util/Map;
+	public final fun getRoles ()Ljava/util/List;
+	public final fun getScope ()Lio/shamash/asm/core/config/schema/v1/model/RuleScope;
+	public final fun getSeverity ()Lio/shamash/artifacts/contract/FindingSeverity;
+	public final fun getType ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/RuleKey {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun canonicalId ()Ljava/lang/String;
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/RuleKey;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getRole ()Ljava/lang/String;
+	public final fun getType ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/RuleScope {
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;)Lio/shamash/asm/core/config/schema/v1/model/RuleScope;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/RuleScope;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/RuleScope;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExcludeGlobs ()Ljava/util/List;
+	public final fun getExcludePackages ()Ljava/util/List;
+	public final fun getExcludeRoles ()Ljava/util/List;
+	public final fun getIncludeGlobs ()Ljava/util/List;
+	public final fun getIncludePackages ()Ljava/util/List;
+	public final fun getIncludeRoles ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ScanConfig {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScanScope;ZLjava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public final fun component2 ()Z
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ScanScope;ZLjava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;Lio/shamash/asm/core/config/schema/v1/model/ScanScope;ZLjava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFollowSymlinks ()Z
+	public final fun getMaxClassBytes ()Ljava/lang/Integer;
+	public final fun getMaxClasses ()Ljava/lang/Integer;
+	public final fun getMaxJarBytes ()Ljava/lang/Integer;
+	public final fun getScope ()Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ScanScope : java/lang/Enum {
+	public static final field ALL_SOURCES Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public static final field PROJECT_ONLY Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public static final field PROJECT_WITH_EXTERNAL_BUCKETS Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ScoreModel : java/lang/Enum {
+	public static final field V1 Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ScoreThresholds {
+	public fun <init> (DD)V
+	public final fun component1 ()D
+	public final fun component2 ()D
+	public final fun copy (DD)Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;DDILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ScoreThresholds;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()D
+	public final fun getWarning ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ScoringConfig {
+	public fun <init> (ZLio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+	public final fun component3 ()Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;
+	public final fun component4 ()Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;
+	public final fun copy (ZLio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;)Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;ZLio/shamash/asm/core/config/schema/v1/model/ScoreModel;Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ScoringConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getGodClass ()Lio/shamash/asm/core/config/schema/v1/model/GodClassScoringConfig;
+	public final fun getModel ()Lio/shamash/asm/core/config/schema/v1/model/ScoreModel;
+	public final fun getOverall ()Lio/shamash/asm/core/config/schema/v1/model/OverallScoringConfig;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1 {
+	public fun <init> (ILio/shamash/asm/core/config/schema/v1/model/ProjectConfig;Ljava/util/Map;Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;)V
+	public final fun component1 ()I
+	public final fun component2 ()Lio/shamash/asm/core/config/schema/v1/model/ProjectConfig;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun component4 ()Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;
+	public final fun component8 ()Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;
+	public final fun copy (ILio/shamash/asm/core/config/schema/v1/model/ProjectConfig;Ljava/util/Map;Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;)Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;ILio/shamash/asm/core/config/schema/v1/model/ProjectConfig;Ljava/util/Map;Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnalysis ()Lio/shamash/asm/core/config/schema/v1/model/AnalysisConfig;
+	public final fun getBaseline ()Lio/shamash/asm/core/config/schema/v1/model/BaselineConfig;
+	public final fun getExceptions ()Ljava/util/List;
+	public final fun getExport ()Lio/shamash/asm/core/config/schema/v1/model/ExportConfig;
+	public final fun getProject ()Lio/shamash/asm/core/config/schema/v1/model/ProjectConfig;
+	public final fun getRoles ()Ljava/util/Map;
+	public final fun getRules ()Ljava/util/List;
+	public final fun getVersion ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy : java/lang/Enum {
+	public static final field ERROR Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static final field IGNORE Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static final field WARN Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static final field error Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static final field ignore Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static final field warn Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public static fun values ()[Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+}
+
+public final class io/shamash/asm/core/config/schema/v1/model/ValidationConfig {
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;)Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;ILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/ValidationConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getUnknownRule ()Lio/shamash/asm/core/config/schema/v1/model/UnknownRulePolicy;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/ConfigSemanticValidatorV1 {
+	public static final field INSTANCE Lio/shamash/asm/core/config/validation/v1/ConfigSemanticValidatorV1;
+	public final fun validateSemantic (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public final fun validateSemantic (Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/engine/rules/RuleRegistry;)Ljava/util/List;
+}
+
+public abstract interface class io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public abstract fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public abstract fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/registry/RuleSpecRegistryV1 {
+	public static final field INSTANCE Lio/shamash/asm/core/config/validation/v1/registry/RuleSpecRegistryV1;
+	public final fun allIds ()Ljava/util/Set;
+	public final fun find (Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/config/validation/v1/RuleSpec;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ApiForbiddenAnnotationUsageSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ApiForbiddenInternalNamePatternsSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ApiMaxPublicTypesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ArchAllowedPackagesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ArchAllowedRoleDependenciesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ArchForbiddenPackagesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/ArchForbiddenRoleDependenciesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/GraphMaxCyclesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/GraphMaxDependencyDensitySpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/GraphMaxEdgeCountSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/GraphNoCyclesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/MetricsMaxFanInSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/MetricsMaxFanOutSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/MetricsMaxFieldsPerClassSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/MetricsMaxMethodsPerClassSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/MetricsMaxPackageSpreadSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/OriginAllowOnlyRootSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/config/validation/v1/specs/OriginForbiddenJarDependenciesSpec : io/shamash/asm/core/config/validation/v1/RuleSpec {
+	public fun <init> ()V
+	public fun getKey ()Lio/shamash/asm/core/config/schema/v1/model/RuleKey;
+	public fun validate (Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+}
+
+public final class io/shamash/asm/core/engine/EngineError {
+	public static final field Companion Lio/shamash/asm/core/engine/EngineError$Companion;
+	public fun <init> (Lio/shamash/asm/core/engine/EngineError$Code;Ljava/lang/String;Ljava/util/Map;Lio/shamash/asm/core/engine/EngineError$Cause;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/engine/EngineError$Code;Ljava/lang/String;Ljava/util/Map;Lio/shamash/asm/core/engine/EngineError$Cause;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/engine/EngineError$Code;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun component4 ()Lio/shamash/asm/core/engine/EngineError$Cause;
+	public final fun copy (Lio/shamash/asm/core/engine/EngineError$Code;Ljava/lang/String;Ljava/util/Map;Lio/shamash/asm/core/engine/EngineError$Cause;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineError;Lio/shamash/asm/core/engine/EngineError$Code;Ljava/lang/String;Ljava/util/Map;Lio/shamash/asm/core/engine/EngineError$Cause;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCause ()Lio/shamash/asm/core/engine/EngineError$Cause;
+	public final fun getCode ()Lio/shamash/asm/core/engine/EngineError$Code;
+	public final fun getDetails ()Ljava/util/Map;
+	public final fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineError$Cause {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/engine/EngineError$Cause;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineError$Cause;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError$Cause;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getStack ()Ljava/lang/String;
+	public final fun getType ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineError$Code : java/lang/Enum {
+	public static final field BASELINE_FAILED Lio/shamash/asm/core/engine/EngineError$Code;
+	public static final field CONFIG_INVALID Lio/shamash/asm/core/engine/EngineError$Code;
+	public static final field EXPORT_FAILED Lio/shamash/asm/core/engine/EngineError$Code;
+	public static final field FACTS_EXTRACTION_FAILED Lio/shamash/asm/core/engine/EngineError$Code;
+	public static final field INTERNAL_ERROR Lio/shamash/asm/core/engine/EngineError$Code;
+	public static final field RULE_EXECUTION_FAILED Lio/shamash/asm/core/engine/EngineError$Code;
+	public static final field RULE_NOT_FOUND Lio/shamash/asm/core/engine/EngineError$Code;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/engine/EngineError$Code;
+	public static fun values ()[Lio/shamash/asm/core/engine/EngineError$Code;
+}
+
+public final class io/shamash/asm/core/engine/EngineError$Companion {
+	public final fun baselineFailed (Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun baselineFailed$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public final fun configInvalid (Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun configInvalid$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public final fun exportFailed (Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun exportFailed$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public final fun factsExtractionFailed (Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun factsExtractionFailed$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public final fun internal (Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun internal$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public final fun ruleExecutionFailed (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun ruleExecutionFailed$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+	public final fun ruleNotFound (Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/engine/EngineError;
+	public static synthetic fun ruleNotFound$default (Lio/shamash/asm/core/engine/EngineError$Companion;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineError;
+}
+
+public final class io/shamash/asm/core/engine/EngineExportResult {
+	public fun <init> (Lio/shamash/artifacts/report/schema/v1/ExportedReport;Ljava/nio/file/Path;ZLjava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)V
+	public synthetic fun <init> (Lio/shamash/artifacts/report/schema/v1/ExportedReport;Ljava/nio/file/Path;ZLjava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/artifacts/report/schema/v1/ExportedReport;
+	public final fun component2 ()Ljava/nio/file/Path;
+	public final fun component3 ()Z
+	public final fun component4 ()Ljava/nio/file/Path;
+	public final fun component5 ()Ljava/nio/file/Path;
+	public final fun component6 ()Ljava/nio/file/Path;
+	public final fun component7 ()Ljava/nio/file/Path;
+	public final fun component8 ()Ljava/nio/file/Path;
+	public final fun component9 ()Ljava/nio/file/Path;
+	public final fun copy (Lio/shamash/artifacts/report/schema/v1/ExportedReport;Ljava/nio/file/Path;ZLjava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)Lio/shamash/asm/core/engine/EngineExportResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/artifacts/report/schema/v1/ExportedReport;Ljava/nio/file/Path;ZLjava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineExportResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnalysisGraphsPath ()Ljava/nio/file/Path;
+	public final fun getAnalysisHotspotsPath ()Ljava/nio/file/Path;
+	public final fun getAnalysisScoresPath ()Ljava/nio/file/Path;
+	public final fun getBaselineWritten ()Z
+	public final fun getFactsPath ()Ljava/nio/file/Path;
+	public final fun getOutputDir ()Ljava/nio/file/Path;
+	public final fun getReport ()Lio/shamash/artifacts/report/schema/v1/ExportedReport;
+	public final fun getRolesPath ()Ljava/nio/file/Path;
+	public final fun getRulePlanPath ()Ljava/nio/file/Path;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineResult {
+	public static final field Companion Lio/shamash/asm/core/engine/EngineResult$Companion;
+	public fun <init> (Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/engine/EngineRunSummary;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Lio/shamash/asm/core/analysis/AnalysisResult;
+	public final fun component5 ()Lio/shamash/asm/core/engine/EngineExportResult;
+	public final fun component6 ()Lio/shamash/asm/core/facts/query/FactIndex;
+	public final fun copy (Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;)Lio/shamash/asm/core/engine/EngineResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineResult;Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnalysis ()Lio/shamash/asm/core/analysis/AnalysisResult;
+	public final fun getErrors ()Ljava/util/List;
+	public final fun getExport ()Lio/shamash/asm/core/engine/EngineExportResult;
+	public final fun getFacts ()Lio/shamash/asm/core/facts/query/FactIndex;
+	public final fun getFindings ()Ljava/util/List;
+	public final fun getHasErrors ()Z
+	public final fun getHasFindings ()Z
+	public final fun getSummary ()Lio/shamash/asm/core/engine/EngineRunSummary;
+	public fun hashCode ()I
+	public final fun isSuccess ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineResult$Companion {
+	public final fun failed (Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;)Lio/shamash/asm/core/engine/EngineResult;
+	public static synthetic fun failed$default (Lio/shamash/asm/core/engine/EngineResult$Companion;Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineResult;
+	public final fun success (Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;)Lio/shamash/asm/core/engine/EngineResult;
+	public static synthetic fun success$default (Lio/shamash/asm/core/engine/EngineResult$Companion;Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/util/List;Lio/shamash/asm/core/analysis/AnalysisResult;Lio/shamash/asm/core/engine/EngineExportResult;Lio/shamash/asm/core/facts/query/FactIndex;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineResult;
+}
+
+public final class io/shamash/asm/core/engine/EngineRunSummary {
+	public fun <init> (Ljava/lang/String;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;JJLio/shamash/asm/core/engine/EngineRunSummary$FactsStats;Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;JJLio/shamash/asm/core/engine/EngineRunSummary$FactsStats;Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/nio/file/Path;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()J
+	public final fun component6 ()J
+	public final fun component7 ()Lio/shamash/asm/core/engine/EngineRunSummary$FactsStats;
+	public final fun component8 ()Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;
+	public final fun copy (Ljava/lang/String;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;JJLio/shamash/asm/core/engine/EngineRunSummary$FactsStats;Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;)Lio/shamash/asm/core/engine/EngineRunSummary;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineRunSummary;Ljava/lang/String;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;JJLio/shamash/asm/core/engine/EngineRunSummary$FactsStats;Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineRunSummary;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDurationMillis ()J
+	public final fun getFactsStats ()Lio/shamash/asm/core/engine/EngineRunSummary$FactsStats;
+	public final fun getFinishedAtEpochMillis ()J
+	public final fun getProjectBasePath ()Ljava/nio/file/Path;
+	public final fun getProjectName ()Ljava/lang/String;
+	public final fun getRuleStats ()Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;
+	public final fun getStartedAtEpochMillis ()J
+	public final fun getToolName ()Ljava/lang/String;
+	public final fun getToolVersion ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineRunSummary$FactsStats {
+	public fun <init> ()V
+	public fun <init> (IIII)V
+	public synthetic fun <init> (IIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun copy (IIII)Lio/shamash/asm/core/engine/EngineRunSummary$FactsStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineRunSummary$FactsStats;IIIIILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineRunSummary$FactsStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClasses ()I
+	public final fun getEdges ()I
+	public final fun getFields ()I
+	public final fun getMethods ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineRunSummary$RuleStats {
+	public fun <init> ()V
+	public fun <init> (IIIIIII)V
+	public synthetic fun <init> (IIIIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()I
+	public final fun component7 ()I
+	public final fun copy (IIIIIII)Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;IIIIIIIILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineRunSummary$RuleStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfiguredRules ()I
+	public final fun getExecutedRuleInstances ()I
+	public final fun getExecutedRules ()I
+	public final fun getFailedRuleInstances ()I
+	public final fun getNotFoundRuleInstances ()I
+	public final fun getSkippedRuleInstances ()I
+	public final fun getSkippedRules ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats {
+	public static final field Companion Lio/shamash/asm/core/engine/EngineStats$Companion;
+	public fun <init> (JJLio/shamash/asm/core/engine/EngineStats$FactsStats;Lio/shamash/asm/core/engine/EngineStats$RulesStats;Lio/shamash/asm/core/engine/EngineStats$FindingsStats;Lio/shamash/asm/core/engine/EngineStats$BaselineStats;Lio/shamash/asm/core/engine/EngineStats$ExportStats;)V
+	public synthetic fun <init> (JJLio/shamash/asm/core/engine/EngineStats$FactsStats;Lio/shamash/asm/core/engine/EngineStats$RulesStats;Lio/shamash/asm/core/engine/EngineStats$FindingsStats;Lio/shamash/asm/core/engine/EngineStats$BaselineStats;Lio/shamash/asm/core/engine/EngineStats$ExportStats;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun component2 ()J
+	public final fun component3 ()Lio/shamash/asm/core/engine/EngineStats$FactsStats;
+	public final fun component4 ()Lio/shamash/asm/core/engine/EngineStats$RulesStats;
+	public final fun component5 ()Lio/shamash/asm/core/engine/EngineStats$FindingsStats;
+	public final fun component6 ()Lio/shamash/asm/core/engine/EngineStats$BaselineStats;
+	public final fun component7 ()Lio/shamash/asm/core/engine/EngineStats$ExportStats;
+	public final fun copy (JJLio/shamash/asm/core/engine/EngineStats$FactsStats;Lio/shamash/asm/core/engine/EngineStats$RulesStats;Lio/shamash/asm/core/engine/EngineStats$FindingsStats;Lio/shamash/asm/core/engine/EngineStats$BaselineStats;Lio/shamash/asm/core/engine/EngineStats$ExportStats;)Lio/shamash/asm/core/engine/EngineStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineStats;JJLio/shamash/asm/core/engine/EngineStats$FactsStats;Lio/shamash/asm/core/engine/EngineStats$RulesStats;Lio/shamash/asm/core/engine/EngineStats$FindingsStats;Lio/shamash/asm/core/engine/EngineStats$BaselineStats;Lio/shamash/asm/core/engine/EngineStats$ExportStats;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBaseline ()Lio/shamash/asm/core/engine/EngineStats$BaselineStats;
+	public final fun getDurationMillis ()J
+	public final fun getExport ()Lio/shamash/asm/core/engine/EngineStats$ExportStats;
+	public final fun getFacts ()Lio/shamash/asm/core/engine/EngineStats$FactsStats;
+	public final fun getFindings ()Lio/shamash/asm/core/engine/EngineStats$FindingsStats;
+	public final fun getFinishedAtEpochMillis ()J
+	public final fun getRules ()Lio/shamash/asm/core/engine/EngineStats$RulesStats;
+	public final fun getStartedAtEpochMillis ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats$BaselineStats {
+	public fun <init> ()V
+	public fun <init> (ZZZIILjava/lang/String;)V
+	public synthetic fun <init> (ZZZIILjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()Ljava/lang/String;
+	public final fun copy (ZZZIILjava/lang/String;)Lio/shamash/asm/core/engine/EngineStats$BaselineStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineStats$BaselineStats;ZZZIILjava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineStats$BaselineStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getLoaded ()Z
+	public final fun getMatchedCount ()I
+	public final fun getNewCount ()I
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getWritten ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats$Companion {
+	public final fun nowStarted (J)Lio/shamash/asm/core/engine/EngineStats;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats$ExportStats {
+	public fun <init> ()V
+	public fun <init> (ZZLjava/lang/String;Ljava/util/List;)V
+	public synthetic fun <init> (ZZLjava/lang/String;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy (ZZLjava/lang/String;Ljava/util/List;)Lio/shamash/asm/core/engine/EngineStats$ExportStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineStats$ExportStats;ZZLjava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineStats$ExportStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public final fun getFormats ()Ljava/util/List;
+	public final fun getOutputDir ()Ljava/lang/String;
+	public final fun getWritten ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats$FactsStats {
+	public fun <init> ()V
+	public fun <init> (IIIII)V
+	public synthetic fun <init> (IIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun copy (IIIII)Lio/shamash/asm/core/engine/EngineStats$FactsStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineStats$FactsStats;IIIIIILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineStats$FactsStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClasses ()I
+	public final fun getEdges ()I
+	public final fun getFields ()I
+	public final fun getJars ()I
+	public final fun getMethods ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats$FindingsStats {
+	public fun <init> ()V
+	public fun <init> (ILjava/util/Map;III)V
+	public synthetic fun <init> (ILjava/util/Map;IIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/util/Map;
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun copy (ILjava/util/Map;III)Lio/shamash/asm/core/engine/EngineStats$FindingsStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineStats$FindingsStats;ILjava/util/Map;IIIILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineStats$FindingsStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBaselineMatched ()I
+	public final fun getBaselineNew ()I
+	public final fun getBySeverity ()Ljava/util/Map;
+	public final fun getSuppressed ()I
+	public final fun getTotal ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/EngineStats$RulesStats {
+	public fun <init> ()V
+	public fun <init> (IIIII)V
+	public synthetic fun <init> (IIIIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun copy (IIIII)Lio/shamash/asm/core/engine/EngineStats$RulesStats;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/engine/EngineStats$RulesStats;IIIIIILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineStats$RulesStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfigured ()I
+	public final fun getExecuted ()I
+	public final fun getFailed ()I
+	public final fun getNotFound ()I
+	public final fun getSkipped ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/ShamashAsmEngine {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/engine/rules/RuleRegistry;)V
+	public fun <init> (Lio/shamash/asm/core/engine/rules/RuleRegistry;Ljava/lang/String;)V
+	public fun <init> (Lio/shamash/asm/core/engine/rules/RuleRegistry;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/engine/rules/RuleRegistry;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun analyze (Ljava/nio/file/Path;Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/facts/query/FactIndex;)Lio/shamash/asm/core/engine/EngineResult;
+	public final fun analyze (Ljava/nio/file/Path;Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/facts/query/FactIndex;J)Lio/shamash/asm/core/engine/EngineResult;
+	public final fun analyze (Ljava/nio/file/Path;Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/facts/query/FactIndex;JZ)Lio/shamash/asm/core/engine/EngineResult;
+	public static synthetic fun analyze$default (Lio/shamash/asm/core/engine/ShamashAsmEngine;Ljava/nio/file/Path;Ljava/lang/String;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/facts/query/FactIndex;JZILjava/lang/Object;)Lio/shamash/asm/core/engine/EngineResult;
+	public final fun validateConfig (Ljava/io/Reader;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public final fun validateConfig (Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+	public static synthetic fun validateConfig$default (Lio/shamash/asm/core/engine/ShamashAsmEngine;Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;ILjava/lang/Object;)Lio/shamash/asm/core/config/ConfigValidation$Result;
+}
+
+public final class io/shamash/asm/core/engine/rules/DefaultRuleRegistry : io/shamash/asm/core/engine/rules/RuleRegistry {
+	public static final field Companion Lio/shamash/asm/core/engine/rules/DefaultRuleRegistry$Companion;
+	public fun all ()Ljava/util/List;
+	public fun byId (Ljava/lang/String;)Lio/shamash/asm/core/engine/rules/Rule;
+	public static final fun create ()Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public static final fun create (Ljava/util/List;)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public static final fun create (Ljava/util/List;Ljava/util/List;)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public static final fun create (Ljava/util/List;Ljava/util/List;Z)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public static final fun create (Ljava/util/List;Z)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public fun findSpec (Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/config/validation/v1/RuleSpec;
+	public fun resolve (Lio/shamash/asm/core/config/schema/v1/model/RuleDef;)Lio/shamash/asm/core/engine/rules/Rule;
+}
+
+public final class io/shamash/asm/core/engine/rules/DefaultRuleRegistry$Companion {
+	public final fun builtins ()Ljava/util/List;
+	public final fun create ()Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public final fun create (Ljava/util/List;)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public final fun create (Ljava/util/List;Ljava/util/List;)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public final fun create (Ljava/util/List;Ljava/util/List;Z)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public final fun create (Ljava/util/List;Z)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public static synthetic fun create$default (Lio/shamash/asm/core/engine/rules/DefaultRuleRegistry$Companion;Ljava/util/List;Ljava/util/List;ZILjava/lang/Object;)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public static synthetic fun create$default (Lio/shamash/asm/core/engine/rules/DefaultRuleRegistry$Companion;Ljava/util/List;ZILjava/lang/Object;)Lio/shamash/asm/core/engine/rules/RuleRegistry;
+}
+
+public abstract interface class io/shamash/asm/core/engine/rules/Rule {
+	public abstract fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public abstract fun getId ()Ljava/lang/String;
+}
+
+public abstract interface class io/shamash/asm/core/engine/rules/RuleRegistry {
+	public abstract fun all ()Ljava/util/List;
+	public abstract fun byId (Ljava/lang/String;)Lio/shamash/asm/core/engine/rules/Rule;
+	public fun findSpec (Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/config/validation/v1/RuleSpec;
+	public fun resolve (Lio/shamash/asm/core/config/schema/v1/model/RuleDef;)Lio/shamash/asm/core/engine/rules/Rule;
+}
+
+public final class io/shamash/asm/core/engine/rules/RuleRegistry$DefaultImpls {
+	public static fun findSpec (Lio/shamash/asm/core/engine/rules/RuleRegistry;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/config/validation/v1/RuleSpec;
+	public static fun resolve (Lio/shamash/asm/core/engine/rules/RuleRegistry;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;)Lio/shamash/asm/core/engine/rules/Rule;
+}
+
+public final class io/shamash/asm/core/engine/rules/api/ForbiddenAnnotationUsageRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/api/ForbiddenInternalNamePatternsRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/api/MaxPublicTypesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/arch/AllowedPackagesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/arch/AllowedRoleDependenciesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/arch/ForbiddenPackagesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/arch/ForbiddenRoleDependenciesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/graph/MaxCyclesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/graph/MaxDependencyDensityRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/graph/MaxEdgeCountRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/graph/NoCyclesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/metrics/MaxFanInRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/metrics/MaxFanOutRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/metrics/MaxFieldsPerClassRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/metrics/MaxMethodsPerClassRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/metrics/MaxPackageSpreadRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/origin/AllowOnlyRootRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/origin/ForbiddenJarDependenciesRule : io/shamash/asm/core/engine/rules/Rule {
+	public fun <init> ()V
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun getId ()Ljava/lang/String;
+}
+
+public abstract interface class io/shamash/asm/core/engine/rules/spi/AsmRuleRegistryProvider {
+	public abstract fun create ()Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public abstract fun getDisplayName ()Ljava/lang/String;
+	public abstract fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/spi/DefaultAsmRuleRegistryProvider : io/shamash/asm/core/engine/rules/spi/AsmRuleRegistryProvider {
+	public fun <init> ()V
+	public fun create ()Lio/shamash/asm/core/engine/rules/RuleRegistry;
+	public fun getDisplayName ()Ljava/lang/String;
+	public fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/analysis/AnalysisExportPaths {
+	public fun <init> (Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)V
+	public final fun component1 ()Ljava/nio/file/Path;
+	public final fun component2 ()Ljava/nio/file/Path;
+	public final fun component3 ()Ljava/nio/file/Path;
+	public final fun copy (Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)Lio/shamash/asm/core/export/analysis/AnalysisExportPaths;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/analysis/AnalysisExportPaths;Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;ILjava/lang/Object;)Lio/shamash/asm/core/export/analysis/AnalysisExportPaths;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGraphsPath ()Ljava/nio/file/Path;
+	public final fun getHotspotsPath ()Ljava/nio/file/Path;
+	public final fun getScoresPath ()Ljava/nio/file/Path;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/analysis/AnalysisExporter {
+	public static final field INSTANCE Lio/shamash/asm/core/export/analysis/AnalysisExporter;
+	public final fun export (Lio/shamash/asm/core/analysis/AnalysisResult;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)Lio/shamash/asm/core/export/analysis/AnalysisExportPaths;
+	public final fun exportGraphs (Lio/shamash/asm/core/analysis/GraphAnalysisResult;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+	public final fun exportHotspots (Lio/shamash/asm/core/analysis/HotspotsResult;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+	public final fun exportScores (Lio/shamash/asm/core/analysis/ScoringResult;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+}
+
+public final class io/shamash/asm/core/export/analysis/AnalysisSidecarReader {
+	public static final field INSTANCE Lio/shamash/asm/core/export/analysis/AnalysisSidecarReader;
+	public final fun readAll (Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/AnalysisResult;
+	public final fun readGraphs (Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/GraphAnalysisResult;
+	public final fun readHotspots (Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/HotspotsResult;
+	public final fun readScores (Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/ScoringResult;
+	public final fun tryReadGraphs (Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/GraphAnalysisResult;
+	public final fun tryReadHotspots (Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/HotspotsResult;
+	public final fun tryReadScores (Ljava/nio/file/Path;)Lio/shamash/asm/core/analysis/ScoringResult;
+}
+
+public final class io/shamash/asm/core/export/facts/FactsClassRecord : io/shamash/asm/core/export/facts/FactsExportRecord {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/Visibility;ZZZZIILio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/Visibility;ZZZZIILio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Z
+	public final fun component11 ()I
+	public final fun component12 ()I
+	public final fun component13 ()Lio/shamash/asm/core/facts/model/OriginKind;
+	public final fun component14 ()Ljava/lang/String;
+	public final fun component15 ()Ljava/lang/String;
+	public final fun component16 ()Ljava/lang/String;
+	public final fun component17 ()Ljava/lang/String;
+	public final fun component18 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Lio/shamash/asm/core/facts/model/Visibility;
+	public final fun component7 ()Z
+	public final fun component8 ()Z
+	public final fun component9 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/Visibility;ZZZZIILio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)Lio/shamash/asm/core/export/facts/FactsClassRecord;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/facts/FactsClassRecord;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/Visibility;ZZZZIILio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lio/shamash/asm/core/export/facts/FactsClassRecord;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getContainerPath ()Ljava/lang/String;
+	public final fun getEntryPath ()Ljava/lang/String;
+	public final fun getFieldCount ()I
+	public final fun getFqName ()Ljava/lang/String;
+	public final fun getHasMainMethod ()Z
+	public final fun getLine ()Ljava/lang/Integer;
+	public final fun getMethodCount ()I
+	public final fun getOriginKind ()Lio/shamash/asm/core/facts/model/OriginKind;
+	public final fun getOriginPath ()Ljava/lang/String;
+	public final fun getPackageName ()Ljava/lang/String;
+	public fun getRecordType ()Ljava/lang/String;
+	public final fun getRole ()Ljava/lang/String;
+	public final fun getSimpleName ()Ljava/lang/String;
+	public final fun getSourceFile ()Ljava/lang/String;
+	public final fun getVisibility ()Lio/shamash/asm/core/facts/model/Visibility;
+	public fun hashCode ()I
+	public final fun isAbstract ()Z
+	public final fun isEnum ()Z
+	public final fun isInterface ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/facts/FactsEdgeRecord : io/shamash/asm/core/export/facts/FactsExportRecord {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/DependencyKind;Ljava/lang/String;Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/DependencyKind;Ljava/lang/String;Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Ljava/lang/String;
+	public final fun component11 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lio/shamash/asm/core/facts/model/DependencyKind;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Lio/shamash/asm/core/facts/model/OriginKind;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun component9 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/DependencyKind;Ljava/lang/String;Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)Lio/shamash/asm/core/export/facts/FactsEdgeRecord;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/facts/FactsEdgeRecord;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/asm/core/facts/model/DependencyKind;Ljava/lang/String;Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lio/shamash/asm/core/export/facts/FactsEdgeRecord;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getContainerPath ()Ljava/lang/String;
+	public final fun getDetail ()Ljava/lang/String;
+	public final fun getEntryPath ()Ljava/lang/String;
+	public final fun getFrom ()Ljava/lang/String;
+	public final fun getKind ()Lio/shamash/asm/core/facts/model/DependencyKind;
+	public final fun getLine ()Ljava/lang/Integer;
+	public final fun getOriginKind ()Lio/shamash/asm/core/facts/model/OriginKind;
+	public final fun getOriginPath ()Ljava/lang/String;
+	public fun getRecordType ()Ljava/lang/String;
+	public final fun getSourceFile ()Ljava/lang/String;
+	public final fun getTo ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/shamash/asm/core/export/facts/FactsExportRecord {
+	public abstract fun getRecordType ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/facts/FactsExportSchema {
+	public static final field INSTANCE Lio/shamash/asm/core/export/facts/FactsExportSchema;
+	public static final field RECORD_CLASS Ljava/lang/String;
+	public static final field RECORD_EDGE Ljava/lang/String;
+	public static final field RECORD_META Ljava/lang/String;
+	public static final field SCHEMA_ID Ljava/lang/String;
+	public static final field SCHEMA_VERSION I
+}
+
+public final class io/shamash/asm/core/export/facts/FactsExporter {
+	public static final field INSTANCE Lio/shamash/asm/core/export/facts/FactsExporter;
+	public final fun export (Lio/shamash/asm/core/facts/query/FactIndex;Ljava/nio/file/Path;Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+}
+
+public final class io/shamash/asm/core/export/facts/FactsMetaRecord : io/shamash/asm/core/export/facts/FactsExportRecord {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JLjava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()I
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()J
+	public final fun component7 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JLjava/lang/String;)Lio/shamash/asm/core/export/facts/FactsMetaRecord;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/facts/FactsMetaRecord;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;JLjava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/export/facts/FactsMetaRecord;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGeneratedAtEpochMillis ()J
+	public final fun getProjectName ()Ljava/lang/String;
+	public fun getRecordType ()Ljava/lang/String;
+	public final fun getSchemaId ()Ljava/lang/String;
+	public final fun getSchemaVersion ()I
+	public final fun getToolName ()Ljava/lang/String;
+	public final fun getToolVersion ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/facts/FactsReader {
+	public static final field INSTANCE Lio/shamash/asm/core/export/facts/FactsReader;
+	public final fun detectFormat (Ljava/nio/file/Path;)Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public final fun read (Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)Lio/shamash/asm/core/export/facts/FactsReader$ReadResult;
+	public static synthetic fun read$default (Lio/shamash/asm/core/export/facts/FactsReader;Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/shamash/asm/core/export/facts/FactsReader$ReadResult;
+}
+
+public final class io/shamash/asm/core/export/facts/FactsReader$ReadResult {
+	public fun <init> (Lio/shamash/asm/core/export/facts/FactsMetaRecord;II)V
+	public final fun component1 ()Lio/shamash/asm/core/export/facts/FactsMetaRecord;
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun copy (Lio/shamash/asm/core/export/facts/FactsMetaRecord;II)Lio/shamash/asm/core/export/facts/FactsReader$ReadResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/facts/FactsReader$ReadResult;Lio/shamash/asm/core/export/facts/FactsMetaRecord;IIILjava/lang/Object;)Lio/shamash/asm/core/export/facts/FactsReader$ReadResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassCount ()I
+	public final fun getEdgeCount ()I
+	public final fun getMeta ()Lio/shamash/asm/core/export/facts/FactsMetaRecord;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/roles/RolesExporter {
+	public static final field INSTANCE Lio/shamash/asm/core/export/roles/RolesExporter;
+	public final fun export (Lio/shamash/asm/core/facts/query/FactIndex;Ljava/util/Map;Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+}
+
+public final class io/shamash/asm/core/export/roles/RolesJsonDocument {
+	public fun <init> (Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;JLio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;JLio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()J
+	public final fun component7 ()Lio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;
+	public final fun component8 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;JLio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;Ljava/util/List;)Lio/shamash/asm/core/export/roles/RolesJsonDocument;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/roles/RolesJsonDocument;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;JLio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/export/roles/RolesJsonDocument;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGeneratedAtEpochMillis ()J
+	public final fun getProjectName ()Ljava/lang/String;
+	public final fun getRoles ()Ljava/util/List;
+	public final fun getSchemaId ()Ljava/lang/String;
+	public final fun getSchemaVersion ()I
+	public final fun getToolName ()Ljava/lang/String;
+	public final fun getToolVersion ()Ljava/lang/String;
+	public final fun getTotals ()Lio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/roles/RolesJsonDocument$RoleEntry {
+	public fun <init> (Ljava/lang/String;ILjava/lang/String;Lcom/fasterxml/jackson/databind/JsonNode;ILjava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lcom/fasterxml/jackson/databind/JsonNode;
+	public final fun component5 ()I
+	public final fun component6 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;ILjava/lang/String;Lcom/fasterxml/jackson/databind/JsonNode;ILjava/util/List;)Lio/shamash/asm/core/export/roles/RolesJsonDocument$RoleEntry;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/roles/RolesJsonDocument$RoleEntry;Ljava/lang/String;ILjava/lang/String;Lcom/fasterxml/jackson/databind/JsonNode;ILjava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/export/roles/RolesJsonDocument$RoleEntry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClasses ()Ljava/util/List;
+	public final fun getCount ()I
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getMatcher ()Lcom/fasterxml/jackson/databind/JsonNode;
+	public final fun getPriority ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/roles/RolesJsonDocument$Totals {
+	public fun <init> (IIII)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun copy (IIII)Lio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;IIIIILjava/lang/Object;)Lio/shamash/asm/core/export/roles/RolesJsonDocument$Totals;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassesMatched ()I
+	public final fun getClassesTotal ()I
+	public final fun getClassesUnmatched ()I
+	public final fun getRoles ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/export/roles/RolesReader {
+	public static final field INSTANCE Lio/shamash/asm/core/export/roles/RolesReader;
+	public final fun read (Ljava/nio/file/Path;)Lio/shamash/asm/core/export/roles/RolesJsonDocument;
+}
+
+public final class io/shamash/asm/core/facts/FactExtractor {
+	public static final field INSTANCE Lio/shamash/asm/core/facts/FactExtractor;
+	public final fun extract (Lio/shamash/asm/core/facts/bytecode/BytecodeUnit;)Lio/shamash/asm/core/facts/query/FactIndex;
+	public final fun extractAll (Lkotlin/sequences/Sequence;)Lio/shamash/asm/core/facts/FactsResult;
+	public final fun extractResult (Lio/shamash/asm/core/facts/bytecode/BytecodeUnit;)Lio/shamash/asm/core/facts/FactsResult;
+}
+
+public final class io/shamash/asm/core/facts/FactsError {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/facts/FactsError;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/FactsError;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/facts/FactsError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getOriginId ()Ljava/lang/String;
+	public final fun getPhase ()Ljava/lang/String;
+	public final fun getThrowableClass ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/FactsResult {
+	public fun <init> (Lio/shamash/asm/core/facts/query/FactIndex;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/asm/core/facts/query/FactIndex;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/facts/query/FactIndex;Ljava/util/List;)Lio/shamash/asm/core/facts/FactsResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/FactsResult;Lio/shamash/asm/core/facts/query/FactIndex;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/asm/core/facts/FactsResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrors ()Ljava/util/List;
+	public final fun getFacts ()Lio/shamash/asm/core/facts/query/FactIndex;
+	public final fun getHasErrors ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/bytecode/BytecodeUnit {
+	public fun <init> ([BLio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;)V
+	public final fun component1 ()[B
+	public final fun component2 ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy ([BLio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;)Lio/shamash/asm/core/facts/bytecode/BytecodeUnit;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/bytecode/BytecodeUnit;[BLio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/facts/bytecode/BytecodeUnit;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBytes ()[B
+	public final fun getLocation ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun getOriginId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/model/ClassFact {
+	public fun <init> (Lio/shamash/asm/core/facts/model/TypeRef;ILio/shamash/asm/core/facts/model/TypeRef;Ljava/util/Set;Ljava/util/Set;ZLio/shamash/asm/core/facts/model/SourceLocation;)V
+	public final fun component1 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component2 ()I
+	public final fun component3 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component4 ()Ljava/util/Set;
+	public final fun component5 ()Ljava/util/Set;
+	public final fun component6 ()Z
+	public final fun component7 ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun copy (Lio/shamash/asm/core/facts/model/TypeRef;ILio/shamash/asm/core/facts/model/TypeRef;Ljava/util/Set;Ljava/util/Set;ZLio/shamash/asm/core/facts/model/SourceLocation;)Lio/shamash/asm/core/facts/model/ClassFact;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/model/ClassFact;Lio/shamash/asm/core/facts/model/TypeRef;ILio/shamash/asm/core/facts/model/TypeRef;Ljava/util/Set;Ljava/util/Set;ZLio/shamash/asm/core/facts/model/SourceLocation;ILjava/lang/Object;)Lio/shamash/asm/core/facts/model/ClassFact;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccess ()I
+	public final fun getAnnotationsFqns ()Ljava/util/Set;
+	public final fun getFqName ()Ljava/lang/String;
+	public final fun getHasMainMethod ()Z
+	public final fun getInterfaces ()Ljava/util/Set;
+	public final fun getLocation ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun getPackageName ()Ljava/lang/String;
+	public final fun getSimpleName ()Ljava/lang/String;
+	public final fun getSuperType ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getType ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getVisibility ()Lio/shamash/asm/core/facts/model/Visibility;
+	public fun hashCode ()I
+	public final fun isAbstract ()Z
+	public final fun isEnum ()Z
+	public final fun isInterface ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/model/DependencyEdge {
+	public fun <init> (Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/DependencyKind;Lio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/DependencyKind;Lio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component2 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component3 ()Lio/shamash/asm/core/facts/model/DependencyKind;
+	public final fun component4 ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/DependencyKind;Lio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;)Lio/shamash/asm/core/facts/model/DependencyEdge;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/model/DependencyEdge;Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/TypeRef;Lio/shamash/asm/core/facts/model/DependencyKind;Lio/shamash/asm/core/facts/model/SourceLocation;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/facts/model/DependencyEdge;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDetail ()Ljava/lang/String;
+	public final fun getFrom ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getKind ()Lio/shamash/asm/core/facts/model/DependencyKind;
+	public final fun getLocation ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun getTo ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/model/DependencyKind : java/lang/Enum {
+	public static final field ANNOTATION_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field CONST_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field EXTENDS Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field FIELD_ACCESS Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field FIELD_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field IMPLEMENTS Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field METHOD_CALL Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field METHOD_PARAM_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field METHOD_RETURN_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field THROWS_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field TYPE_INSTRUCTION Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static fun values ()[Lio/shamash/asm/core/facts/model/DependencyKind;
+}
+
+public final class io/shamash/asm/core/facts/model/FieldRef {
+	public fun <init> (Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILio/shamash/asm/core/facts/model/TypeRef;Ljava/util/Set;Lio/shamash/asm/core/facts/model/SourceLocation;)V
+	public final fun component1 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()I
+	public final fun component6 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component7 ()Ljava/util/Set;
+	public final fun component8 ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun copy (Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILio/shamash/asm/core/facts/model/TypeRef;Ljava/util/Set;Lio/shamash/asm/core/facts/model/SourceLocation;)Lio/shamash/asm/core/facts/model/FieldRef;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/model/FieldRef;Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILio/shamash/asm/core/facts/model/TypeRef;Ljava/util/Set;Lio/shamash/asm/core/facts/model/SourceLocation;ILjava/lang/Object;)Lio/shamash/asm/core/facts/model/FieldRef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccess ()I
+	public final fun getAnnotationsFqns ()Ljava/util/Set;
+	public final fun getDesc ()Ljava/lang/String;
+	public final fun getFieldType ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getFqName ()Ljava/lang/String;
+	public final fun getLocation ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getOwner ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getSignature ()Ljava/lang/String;
+	public final fun getVisibility ()Lio/shamash/asm/core/facts/model/Visibility;
+	public fun hashCode ()I
+	public final fun isFinal ()Z
+	public final fun isStatic ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/model/MethodRef {
+	public static final field Companion Lio/shamash/asm/core/facts/model/MethodRef$Companion;
+	public fun <init> (Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZLio/shamash/asm/core/facts/model/TypeRef;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Lio/shamash/asm/core/facts/model/SourceLocation;)V
+	public final fun component1 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component10 ()Ljava/util/Set;
+	public final fun component11 ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()I
+	public final fun component6 ()Z
+	public final fun component7 ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun component8 ()Ljava/util/List;
+	public final fun component9 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZLio/shamash/asm/core/facts/model/TypeRef;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Lio/shamash/asm/core/facts/model/SourceLocation;)Lio/shamash/asm/core/facts/model/MethodRef;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/model/MethodRef;Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZLio/shamash/asm/core/facts/model/TypeRef;Ljava/util/List;Ljava/util/List;Ljava/util/Set;Lio/shamash/asm/core/facts/model/SourceLocation;ILjava/lang/Object;)Lio/shamash/asm/core/facts/model/MethodRef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccess ()I
+	public final fun getAnnotationsFqns ()Ljava/util/Set;
+	public final fun getDesc ()Ljava/lang/String;
+	public final fun getFqName ()Ljava/lang/String;
+	public final fun getLocation ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getOwner ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getParameterTypes ()Ljava/util/List;
+	public final fun getReturnType ()Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun getSignature ()Ljava/lang/String;
+	public final fun getThrowsTypes ()Ljava/util/List;
+	public final fun getVisibility ()Lio/shamash/asm/core/facts/model/Visibility;
+	public fun hashCode ()I
+	public final fun isAbstract ()Z
+	public final fun isConstructor ()Z
+	public final fun isStatic ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/model/MethodRef$Companion {
+	public final fun isMain (ILjava/lang/String;Ljava/lang/String;)Z
+}
+
+public final class io/shamash/asm/core/facts/model/OriginKind : java/lang/Enum {
+	public static final field DIR_CLASS Lio/shamash/asm/core/facts/model/OriginKind;
+	public static final field JAR_ENTRY Lio/shamash/asm/core/facts/model/OriginKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/facts/model/OriginKind;
+	public static fun values ()[Lio/shamash/asm/core/facts/model/OriginKind;
+}
+
+public final class io/shamash/asm/core/facts/model/SourceLocation {
+	public fun <init> (Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/facts/model/OriginKind;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/Integer;
+	public final fun copy (Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;)Lio/shamash/asm/core/facts/model/SourceLocation;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/model/SourceLocation;Lio/shamash/asm/core/facts/model/OriginKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lio/shamash/asm/core/facts/model/SourceLocation;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getContainerPath ()Ljava/lang/String;
+	public final fun getEntryPath ()Ljava/lang/String;
+	public final fun getLine ()Ljava/lang/Integer;
+	public final fun getOriginKind ()Lio/shamash/asm/core/facts/model/OriginKind;
+	public final fun getOriginPath ()Ljava/lang/String;
+	public final fun getSourceFile ()Ljava/lang/String;
+	public fun hashCode ()I
+	public final fun normalized ()Lio/shamash/asm/core/facts/model/SourceLocation;
+	public fun toString ()Ljava/lang/String;
+	public final fun withLine (Ljava/lang/Integer;)Lio/shamash/asm/core/facts/model/SourceLocation;
+	public final fun withSourceFile (Ljava/lang/String;)Lio/shamash/asm/core/facts/model/SourceLocation;
+}
+
+public final class io/shamash/asm/core/facts/model/TypeRef {
+	public static final field Companion Lio/shamash/asm/core/facts/model/TypeRef$Companion;
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZ)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Z
+	public final fun component6 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZ)Lio/shamash/asm/core/facts/model/TypeRef;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/model/TypeRef;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZILjava/lang/Object;)Lio/shamash/asm/core/facts/model/TypeRef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFqName ()Ljava/lang/String;
+	public final fun getInternalName ()Ljava/lang/String;
+	public final fun getPackageName ()Ljava/lang/String;
+	public final fun getSimpleName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public final fun isArray ()Z
+	public final fun isPrimitive ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/model/TypeRef$Companion {
+	public final fun dependencyTargetFromType (Lorg/objectweb/asm/Type;)Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun fromAsmType (Lorg/objectweb/asm/Type;)Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun fromDescriptor (Ljava/lang/String;)Lio/shamash/asm/core/facts/model/TypeRef;
+	public final fun fromInternalName (Ljava/lang/String;)Lio/shamash/asm/core/facts/model/TypeRef;
+}
+
+public final class io/shamash/asm/core/facts/model/Visibility : java/lang/Enum {
+	public static final field PACKAGE_PRIVATE Lio/shamash/asm/core/facts/model/Visibility;
+	public static final field PRIVATE Lio/shamash/asm/core/facts/model/Visibility;
+	public static final field PROTECTED Lio/shamash/asm/core/facts/model/Visibility;
+	public static final field PUBLIC Lio/shamash/asm/core/facts/model/Visibility;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/facts/model/Visibility;
+	public static fun values ()[Lio/shamash/asm/core/facts/model/Visibility;
+}
+
+public final class io/shamash/asm/core/facts/query/FactIndex {
+	public static final field Companion Lio/shamash/asm/core/facts/query/FactIndex$Companion;
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/util/Map;
+	public final fun component6 ()Ljava/util/Map;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/Map;)Lio/shamash/asm/core/facts/query/FactIndex;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/facts/query/FactIndex;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/Map;ILjava/lang/Object;)Lio/shamash/asm/core/facts/query/FactIndex;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassToRole ()Ljava/util/Map;
+	public final fun getClasses ()Ljava/util/List;
+	public final fun getEdges ()Ljava/util/List;
+	public final fun getFields ()Ljava/util/List;
+	public final fun getMethods ()Ljava/util/List;
+	public final fun getRoles ()Ljava/util/Map;
+	public fun hashCode ()I
+	public final fun merge (Lio/shamash/asm/core/facts/query/FactIndex;)Lio/shamash/asm/core/facts/query/FactIndex;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/facts/query/FactIndex$Companion {
+	public final fun empty ()Lio/shamash/asm/core/facts/query/FactIndex;
+}
+
+public final class io/shamash/asm/core/scan/RunOverrides {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/scan/ScanOverrides;Lio/shamash/asm/core/scan/RunnerOverrides;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/scan/ScanOverrides;Lio/shamash/asm/core/scan/RunnerOverrides;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/scan/ScanOverrides;
+	public final fun component2 ()Lio/shamash/asm/core/scan/RunnerOverrides;
+	public final fun copy (Lio/shamash/asm/core/scan/ScanOverrides;Lio/shamash/asm/core/scan/RunnerOverrides;)Lio/shamash/asm/core/scan/RunOverrides;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/RunOverrides;Lio/shamash/asm/core/scan/ScanOverrides;Lio/shamash/asm/core/scan/RunnerOverrides;ILjava/lang/Object;)Lio/shamash/asm/core/scan/RunOverrides;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRunner ()Lio/shamash/asm/core/scan/RunnerOverrides;
+	public final fun getScan ()Lio/shamash/asm/core/scan/ScanOverrides;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/RunnerOverrides {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/Boolean;I)V
+	public synthetic fun <init> (Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/Boolean;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public final fun component2 ()Ljava/lang/Boolean;
+	public final fun component3 ()I
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/Boolean;I)Lio/shamash/asm/core/scan/RunnerOverrides;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/RunnerOverrides;Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;Ljava/lang/Boolean;IILjava/lang/Object;)Lio/shamash/asm/core/scan/RunnerOverrides;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBaselineMode ()Lio/shamash/asm/core/config/schema/v1/model/BaselineMode;
+	public final fun getExportEnabled ()Ljava/lang/Boolean;
+	public final fun get_reserved ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/ScanError {
+	public static final field Companion Lio/shamash/asm/core/scan/ScanError$Companion;
+	public fun <init> (Lio/shamash/asm/core/scan/ScanError$Phase;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/scan/ScanError$Phase;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/scan/ScanError$Phase;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Lio/shamash/asm/core/scan/ScanError$Phase;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/scan/ScanError;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/ScanError;Lio/shamash/asm/core/scan/ScanError$Phase;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/scan/ScanError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getPhase ()Lio/shamash/asm/core/scan/ScanError$Phase;
+	public final fun getThrowableClass ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/ScanError$Companion {
+	public final fun of (Lio/shamash/asm/core/scan/ScanError$Phase;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)Lio/shamash/asm/core/scan/ScanError;
+	public static synthetic fun of$default (Lio/shamash/asm/core/scan/ScanError$Companion;Lio/shamash/asm/core/scan/ScanError$Phase;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/shamash/asm/core/scan/ScanError;
+}
+
+public final class io/shamash/asm/core/scan/ScanError$Phase : java/lang/Enum {
+	public static final field BYTECODE_SCAN Lio/shamash/asm/core/scan/ScanError$Phase;
+	public static final field CONFIG_DISCOVERY Lio/shamash/asm/core/scan/ScanError$Phase;
+	public static final field CONFIG_READ Lio/shamash/asm/core/scan/ScanError$Phase;
+	public static final field ENGINE Lio/shamash/asm/core/scan/ScanError$Phase;
+	public static final field FACTS_EXTRACTION Lio/shamash/asm/core/scan/ScanError$Phase;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/scan/ScanError$Phase;
+	public static fun values ()[Lio/shamash/asm/core/scan/ScanError$Phase;
+}
+
+public final class io/shamash/asm/core/scan/ScanOptions {
+	public fun <init> (Ljava/nio/file/Path;)V
+	public fun <init> (Ljava/nio/file/Path;Ljava/lang/String;)V
+	public fun <init> (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;)V
+	public fun <init> (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;)V
+	public fun <init> (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;Z)V
+	public fun <init> (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;ZZ)V
+	public fun <init> (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;ZZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;)V
+	public synthetic fun <init> (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;ZZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/nio/file/Path;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/nio/file/Path;
+	public final fun component4 ()Lio/shamash/asm/core/config/SchemaValidator;
+	public final fun component5 ()Z
+	public final fun component6 ()Z
+	public final fun component7 ()Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public final fun copy (Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;ZZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;)Lio/shamash/asm/core/scan/ScanOptions;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/ScanOptions;Ljava/nio/file/Path;Ljava/lang/String;Ljava/nio/file/Path;Lio/shamash/asm/core/config/SchemaValidator;ZZLio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;ILjava/lang/Object;)Lio/shamash/asm/core/scan/ScanOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfigPath ()Ljava/nio/file/Path;
+	public final fun getExportFacts ()Z
+	public final fun getFactsFormatOverride ()Lio/shamash/asm/core/config/schema/v1/model/ExportFactsFormat;
+	public final fun getIncludeFactsInResult ()Z
+	public final fun getProjectBasePath ()Ljava/nio/file/Path;
+	public final fun getProjectName ()Ljava/lang/String;
+	public final fun getSchemaValidator ()Lio/shamash/asm/core/config/SchemaValidator;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/ScanOverrides {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScanScope;Ljava/lang/Boolean;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/config/schema/v1/model/ScanScope;Ljava/lang/Boolean;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public final fun component2 ()Ljava/lang/Boolean;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (Lio/shamash/asm/core/config/schema/v1/model/ScanScope;Ljava/lang/Boolean;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/shamash/asm/core/scan/ScanOverrides;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/ScanOverrides;Lio/shamash/asm/core/config/schema/v1/model/ScanScope;Ljava/lang/Boolean;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/shamash/asm/core/scan/ScanOverrides;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFollowSymlinks ()Ljava/lang/Boolean;
+	public final fun getMaxClassBytes ()Ljava/lang/Integer;
+	public final fun getMaxClasses ()Ljava/lang/Integer;
+	public final fun getMaxJarBytes ()Ljava/lang/Integer;
+	public final fun getScope ()Lio/shamash/asm/core/config/schema/v1/model/ScanScope;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/ScanResult {
+	public fun <init> (Lio/shamash/asm/core/scan/ScanOptions;Lio/shamash/asm/core/scan/RunOverrides;Ljava/nio/file/Path;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;Ljava/util/List;Ljava/util/List;IZLjava/util/List;Lio/shamash/asm/core/engine/EngineResult;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/scan/ScanOptions;Lio/shamash/asm/core/scan/RunOverrides;Ljava/nio/file/Path;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;Ljava/util/List;Ljava/util/List;IZLjava/util/List;Lio/shamash/asm/core/engine/EngineResult;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/asm/core/scan/ScanOptions;
+	public final fun component10 ()Ljava/util/List;
+	public final fun component11 ()Lio/shamash/asm/core/engine/EngineResult;
+	public final fun component2 ()Lio/shamash/asm/core/scan/RunOverrides;
+	public final fun component3 ()Ljava/nio/file/Path;
+	public final fun component4 ()Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Ljava/util/List;
+	public final fun component8 ()I
+	public final fun component9 ()Z
+	public final fun copy (Lio/shamash/asm/core/scan/ScanOptions;Lio/shamash/asm/core/scan/RunOverrides;Ljava/nio/file/Path;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;Ljava/util/List;Ljava/util/List;IZLjava/util/List;Lio/shamash/asm/core/engine/EngineResult;)Lio/shamash/asm/core/scan/ScanResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/ScanResult;Lio/shamash/asm/core/scan/ScanOptions;Lio/shamash/asm/core/scan/RunOverrides;Ljava/nio/file/Path;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Ljava/util/List;Ljava/util/List;Ljava/util/List;IZLjava/util/List;Lio/shamash/asm/core/engine/EngineResult;ILjava/lang/Object;)Lio/shamash/asm/core/scan/ScanResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAppliedOverrides ()Lio/shamash/asm/core/scan/RunOverrides;
+	public final fun getClassUnits ()I
+	public final fun getConfig ()Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;
+	public final fun getConfigErrors ()Ljava/util/List;
+	public final fun getConfigPath ()Ljava/nio/file/Path;
+	public final fun getEngine ()Lio/shamash/asm/core/engine/EngineResult;
+	public final fun getFactsErrors ()Ljava/util/List;
+	public final fun getHasConfigErrors ()Z
+	public final fun getHasConfigWarnings ()Z
+	public final fun getHasEngineResult ()Z
+	public final fun getHasFactsErrors ()Z
+	public final fun getHasScanErrors ()Z
+	public final fun getOptions ()Lio/shamash/asm/core/scan/ScanOptions;
+	public final fun getOrigins ()Ljava/util/List;
+	public final fun getScanErrors ()Ljava/util/List;
+	public final fun getTruncated ()Z
+	public fun hashCode ()I
+	public final fun isSuccess ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/ShamashAsmScanRunner {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/asm/core/engine/ShamashAsmEngine;)V
+	public synthetic fun <init> (Lio/shamash/asm/core/engine/ShamashAsmEngine;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun run (Lio/shamash/asm/core/scan/ScanOptions;)Lio/shamash/asm/core/scan/ScanResult;
+	public final fun run (Lio/shamash/asm/core/scan/ScanOptions;Lio/shamash/asm/core/scan/RunOverrides;)Lio/shamash/asm/core/scan/ScanResult;
+	public static synthetic fun run$default (Lio/shamash/asm/core/scan/ShamashAsmScanRunner;Lio/shamash/asm/core/scan/ScanOptions;Lio/shamash/asm/core/scan/RunOverrides;ILjava/lang/Object;)Lio/shamash/asm/core/scan/ScanResult;
+}
+
+public final class io/shamash/asm/core/scan/bytecode/BytecodeOrigin {
+	public fun <init> (Ljava/lang/String;Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;Ljava/nio/file/Path;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;
+	public final fun component3 ()Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;
+	public final fun component4 ()Ljava/nio/file/Path;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;Ljava/nio/file/Path;Ljava/lang/String;)Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin;Ljava/lang/String;Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;Ljava/nio/file/Path;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBucket ()Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getKind ()Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;
+	public final fun getPath ()Ljava/nio/file/Path;
+	public final fun getStablePath ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket : java/lang/Enum {
+	public static final field EXTERNAL Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;
+	public static final field PROJECT Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;
+	public static fun values ()[Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Bucket;
+}
+
+public final class io/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind : java/lang/Enum {
+	public static final field CLASSES_DIR Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;
+	public static final field JAR_FILE Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;
+	public static fun values ()[Lio/shamash/asm/core/scan/bytecode/BytecodeOrigin$Kind;
+}
+
+public final class io/shamash/asm/core/scan/bytecode/BytecodeScanner {
+	public fun <init> ()V
+	public final fun scan (Ljava/nio/file/Path;Lio/shamash/asm/core/config/schema/v1/model/BytecodeConfig;Lio/shamash/asm/core/config/schema/v1/model/ScanConfig;)Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanResult;
+}
+
+public final class io/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanError {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanError;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanError;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanError;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getThrowableClass ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanResult {
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Z
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanResult;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanResult;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZILjava/lang/Object;)Lio/shamash/asm/core/scan/bytecode/BytecodeScanner$BytecodeScanResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getErrors ()Ljava/util/List;
+	public final fun getOrigins ()Ljava/util/List;
+	public final fun getTruncated ()Z
+	public final fun getUnits ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+

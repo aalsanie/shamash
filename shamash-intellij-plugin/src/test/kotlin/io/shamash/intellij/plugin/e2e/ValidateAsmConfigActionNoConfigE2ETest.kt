@@ -41,6 +41,6 @@ class ValidateAsmConfigActionNoConfigE2ETest : ShamashPluginE2eTestBase() {
         fire(ValidateAsmConfigAction())
 
         assertNull(uiState.getState())
-        assertEquals(2, tabs.selectedIndex)
+        assertSame(controller.configTab.component(), tabs.selectedComponent)
     }
 }

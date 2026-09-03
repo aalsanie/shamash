@@ -1,16 +1,20 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+import java.util.concurrent.Callable
 
 plugins {
     kotlin("jvm") version "2.4.10" apply false
     id("org.jetbrains.intellij.platform") version "2.10.5" apply false
     id("com.diffplug.spotless") version "8.9.0" apply false
     id("org.jetbrains.kotlinx.kover") version "0.9.9" apply false
+    id("com.vanniktech.maven.publish") version "0.35.0" apply false
+    id("org.jetbrains.dokka") version "2.2.0" apply false
 }
 
 allprojects {
-    group = "io.shamash"
-    version = "0.91.1"
+    group = "io.github.aalsanie"
+    version = "0.92.0"
 
     repositories {
         mavenCentral()
@@ -46,4 +50,93 @@ subprojects {
     }
 
     apply(plugin = "org.jetbrains.kotlinx.kover")
+
+    plugins.withId("com.vanniktech.maven.publish") {
+        extensions.configure<MavenPublishBaseExtension> {
+            publishToMavenCentral()
+            signAllPublications()
+            pom {
+                name.set(project.name)
+                description.set(provider { project.description })
+                url.set("https://github.com/aalsanie/shamash")
+                licenses {
+                    license {
+                        name.set("Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                        distribution.set("repo")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("aalsanie")
+                        name.set("Ahmad Al-sanie")
+                        url.set("https://github.com/aalsanie")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/aalsanie/shamash")
+                    connection.set("scm:git:https://github.com/aalsanie/shamash.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/aalsanie/shamash.git")
+                    tag.set(provider { "v${project.version}" })
+                }
+            }
+        }
+        extensions.configure<SigningExtension> {
+            val requireSigning = providers.gradleProperty("shamashRequireSigning").map { it.toBooleanStrict() }.orElse(false)
+            setRequired(
+                Callable {
+                    requireSigning.get() || gradle.taskGraph.allTasks.any { it.name.endsWith("ToMavenCentralRepository") }
+                },
+            )
+        }
+        extensions.configure<PublishingExtension> {
+            repositories.maven {
+                name = "Test"
+                url =
+                    rootProject.providers
+                        .gradleProperty("shamashTestRepository")
+                        .map { rootProject.file(it) }
+                        .orElse(rootProject.layout.buildDirectory.dir("test-maven-repository").map { it.asFile })
+                        .get()
+                        .toURI()
+            }
+        }
+        tasks.withType<Jar>().configureEach {
+            isPreserveFileTimestamps = false
+            isReproducibleFileOrder = true
+            manifest.attributes("Implementation-Version" to project.version, "Implementation-Title" to project.name)
+            from(rootProject.file("LICENSE")) { into("META-INF") }
+        }
+    }
 }
+
+tasks.register("publishLibrariesToTestRepository") {
+    group = "publishing"
+    description = "Publishes the three libraries to build/test-maven-repository for consumer verification."
+    dependsOn(
+        ":shamash-artifacts:publishAllPublicationsToTestRepository",
+        ":shamash-export:publishAllPublicationsToTestRepository",
+        ":shamash-asm-core:publishAllPublicationsToTestRepository",
+    )
+}
+
+// BEGIN LIBRARY ABI: reused when generating the first reviewed API snapshot.
+if (providers.gradleProperty("shamashAbiReferenceRoot").isPresent) {
+    subprojects {
+        if (name in setOf("shamash-artifacts", "shamash-export", "shamash-asm-core")) {
+            val moduleName = name
+            plugins.withId("org.jetbrains.kotlin.jvm") {
+                extensions.configure<KotlinJvmProjectExtension> {
+                    @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+                    abiValidation {
+                        binariesSource.set(org.jetbrains.kotlin.gradle.dsl.abi.BinariesSource.MAVEN_PUBLICATIONS)
+                        referenceDumpDir.set(
+                            rootProject.file(providers.gradleProperty("shamashAbiReferenceRoot").get()).resolve(moduleName),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+// END LIBRARY ABI

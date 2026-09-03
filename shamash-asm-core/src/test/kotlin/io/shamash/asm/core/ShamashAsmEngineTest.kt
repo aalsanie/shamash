@@ -46,6 +46,7 @@ import io.shamash.asm.core.config.schema.v1.model.ScoringConfig
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.config.schema.v1.model.ValidationConfig
+import io.shamash.asm.core.engine.EngineError
 import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleRegistry
@@ -53,7 +54,9 @@ import io.shamash.asm.core.facts.query.FactIndex
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -197,6 +200,162 @@ class ShamashAsmEngineTest {
             assertTrue(Files.size(exp.analysisGraphsPath) > 0L)
             assertTrue(Files.size(exp.analysisHotspotsPath) > 0L)
             assertTrue(Files.size(exp.analysisScoresPath) > 0L)
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `rule failure cannot create or replace a baseline`() {
+        for (existing in listOf(false, true)) {
+            withBaselineProject { project ->
+                val baseline = project.resolve(".shamash/baseline.json")
+                val previous = "{\"version\":1,\"fingerprints\":[\"existing\"]}\n".toByteArray()
+                if (existing) {
+                    Files.createDirectories(baseline.parent)
+                    Files.write(baseline, previous)
+                }
+                val broken =
+                    object : Rule {
+                        override val id = "test.alwaysFinding"
+
+                        override fun evaluate(
+                            facts: FactIndex,
+                            rule: RuleDef,
+                            config: ShamashAsmConfigV1,
+                        ): List<Finding> = error("rule failed")
+                    }
+                val result =
+                    ShamashAsmEngine(SingleRuleRegistry(broken)).analyze(
+                        project,
+                        "demo",
+                        baselineConfig(exportEnabled = false),
+                        FactIndex.empty(),
+                    )
+
+                assertFalse(result.isSuccess)
+                assertTrue(result.errors.any { it.code == EngineError.Code.RULE_EXECUTION_FAILED })
+                assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED })
+                if (existing) {
+                    assertContentEquals(previous, Files.readAllBytes(baseline))
+                } else {
+                    assertFalse(Files.exists(baseline))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `export failure preserves the previous baseline`() {
+        withBaselineProject { project ->
+            val baseline = project.resolve(".shamash/baseline.json")
+            Files.createDirectories(baseline.parent)
+            val previous = "previous baseline".toByteArray()
+            Files.write(baseline, previous)
+            Files.writeString(project.resolve(".shamash/reports"), "blocks the output directory")
+
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project,
+                    "demo",
+                    baselineConfig(exportEnabled = true),
+                    FactIndex.empty(),
+                )
+
+            assertFalse(result.isSuccess)
+            assertTrue(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED })
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED })
+            assertContentEquals(previous, Files.readAllBytes(baseline))
+        }
+    }
+
+    @Test
+    fun `successful generation records findings and verify leaves the baseline unchanged`() {
+        withBaselineProject { project ->
+            val baseline = project.resolve(".shamash/baseline.json")
+            Files.createDirectories(baseline.parent)
+            Files.writeString(baseline, "old baseline")
+            val existingTemp = baseline.resolveSibling("baseline.json.tmp")
+            Files.writeString(existingTemp, "unrelated file")
+            val engine = ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule()))
+            val config = baselineConfig(exportEnabled = true)
+
+            val generated = engine.analyze(project, "demo", config, FactIndex.empty())
+
+            assertTrue(generated.isSuccess, generated.errors.toString())
+            assertEquals(1, generated.findings.size)
+            assertTrue(assertNotNull(generated.export).baselineWritten)
+            val written = Files.readAllBytes(baseline)
+            assertEquals("unrelated file", Files.readString(existingTemp))
+            Files.delete(existingTemp)
+            assertNoBaselineTemps(project)
+
+            val verified =
+                engine.analyze(
+                    project,
+                    "demo",
+                    config.copy(baseline = config.baseline.copy(mode = BaselineMode.VERIFY)),
+                    FactIndex.empty(),
+                )
+
+            assertTrue(verified.isSuccess, verified.errors.toString())
+            assertTrue(verified.findings.isEmpty())
+            assertFalse(assertNotNull(verified.export).baselineWritten)
+            assertContentEquals(written, Files.readAllBytes(baseline))
+        }
+    }
+
+    @Test
+    fun `failed baseline replacement cleans up its temporary file`() {
+        withBaselineProject { project ->
+            val baseline = Files.createDirectories(project.resolve(".shamash/baseline.json"))
+            val sentinel = baseline.resolve("keep")
+            Files.writeString(sentinel, "must remain")
+
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project,
+                    "demo",
+                    baselineConfig(exportEnabled = false),
+                    FactIndex.empty(),
+                )
+
+            assertFalse(result.isSuccess)
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED })
+            assertEquals("must remain", Files.readString(sentinel))
+            assertNoBaselineTemps(project)
+        }
+    }
+
+    private fun baselineConfig(exportEnabled: Boolean): ShamashAsmConfigV1 =
+        minimalConfig(
+            projectName = "demo",
+            rules =
+                listOf(
+                    RuleDef(
+                        type = "test",
+                        name = "alwaysFinding",
+                        roles = null,
+                        enabled = true,
+                        severity = FindingSeverity.ERROR,
+                        scope = null,
+                        params = emptyMap(),
+                    ),
+                ),
+            baselineMode = BaselineMode.GENERATE,
+            exportEnabled = exportEnabled,
+        )
+
+    private fun assertNoBaselineTemps(project: Path) {
+        Files.list(project.resolve(".shamash")).use { paths ->
+            assertFalse(paths.anyMatch { it.fileName.toString().endsWith(".tmp") })
+        }
+    }
+
+    private fun withBaselineProject(action: (Path) -> Unit) {
+        val project = Files.createTempDirectory("shamash-baseline-engine")
+        try {
+            action(project)
         } finally {
             project.toFile().deleteRecursively()
         }

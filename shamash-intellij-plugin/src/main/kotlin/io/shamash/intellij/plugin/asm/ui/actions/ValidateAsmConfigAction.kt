@@ -29,7 +29,6 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil
-import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.SchemaValidator
 import io.shamash.asm.core.config.SchemaValidatorNetworkNt
 import io.shamash.asm.core.config.ValidationError
@@ -101,6 +100,8 @@ class ValidateAsmConfigAction(
             return
         }
 
+        val engine = AsmExecution.engineOrNotify(project) ?: return
+
         if (DumbService.getInstance(project).isDumb) {
             AsmActionUtil.notify(
                 project,
@@ -135,7 +136,7 @@ class ValidateAsmConfigAction(
                 SchemaValidatorNetworkNt.cancelCheck = { ProgressManager.checkCanceled() }
 
                 val res =
-                    ConfigValidation.loadAndValidateV1(
+                    engine.validateConfig(
                         reader = StringReader(yaml),
                         schemaValidator = schemaValidator,
                     )
@@ -198,7 +199,7 @@ class ValidateAsmConfigAction(
                         project,
                         "Shamash ASM",
                         "Config is valid. Errors: $errorCount | Warnings: $warnCount",
-                        NotificationType.INFORMATION,
+                        if (warnCount > 0) NotificationType.WARNING else NotificationType.INFORMATION,
                     )
                 }
             }

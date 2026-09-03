@@ -21,13 +21,18 @@ import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.scan.RunOverrides
 import io.shamash.asm.core.scan.RunnerOverrides
+import io.shamash.asm.core.scan.ScanError
 import io.shamash.asm.core.scan.ScanOptions
+import io.shamash.asm.core.scan.ScanOverrides
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
 import org.junit.Assume
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.tools.ToolProvider
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -150,6 +155,172 @@ class ShamashAsmScanRunnerIntegrationTest {
         } finally {
             project.toFile().deleteRecursively()
         }
+    }
+
+    @Test
+    fun `runner refuses to create or replace a baseline after truncation`() {
+        for (existing in listOf(false, true)) {
+            withBytecodeProject { project ->
+                writeClass(project, "Other")
+                val baseline = project.resolve(".shamash/baseline.json")
+                if (existing) seedBaseline(project)
+
+                val result =
+                    ShamashAsmScanRunner().run(
+                        ScanOptions(project),
+                        RunOverrides(
+                            scan = ScanOverrides(maxClasses = 1),
+                            runner = RunnerOverrides(baselineMode = BaselineMode.GENERATE),
+                        ),
+                    )
+
+                assertTrue(result.configErrors.isEmpty(), result.configErrors.toString())
+                assertEquals(1, result.classUnits)
+                assertTrue(result.truncated)
+                assertFalse(result.isSuccess)
+                assertNull(result.engine)
+                assertTrue(result.scanErrors.any { it.message.contains("Baseline generation skipped") })
+                if (existing) {
+                    assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
+                } else {
+                    assertFalse(Files.exists(baseline))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `runner preserves baseline after rejecting an oversized class`() {
+        withBytecodeProject(minimalConfigYaml().replace("mode: NONE", "mode: GENERATE")) { project ->
+            val baseline = seedBaseline(project)
+            val output = project.resolve("build/classes/java/main")
+            val classSize = Files.size(output.resolve("App.class")).toInt()
+            Files.write(output.resolve("Large.class"), ByteArray(classSize + 1))
+
+            val result =
+                ShamashAsmScanRunner().run(
+                    ScanOptions(project),
+                    RunOverrides(scan = ScanOverrides(maxClassBytes = classSize)),
+                )
+
+            assertTrue(result.configErrors.isEmpty(), result.configErrors.toString())
+            assertEquals(1, result.classUnits)
+            assertTrue(result.scanErrors.any { it.phase == ScanError.Phase.BYTECODE_SCAN })
+            assertFalse(result.isSuccess)
+            assertNull(result.engine)
+            assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
+        }
+    }
+
+    @Test
+    fun `runner preserves baseline after fact extraction errors`() {
+        withBytecodeProject { project ->
+            val baseline = seedBaseline(project)
+            Files.write(project.resolve("build/classes/java/main/Broken.class"), byteArrayOf(1, 2, 3))
+
+            val runner = ShamashAsmScanRunner()
+            val result =
+                runner.run(
+                    ScanOptions(project),
+                    RunOverrides(runner = RunnerOverrides(baselineMode = BaselineMode.GENERATE)),
+                )
+
+            assertTrue(result.configErrors.isEmpty(), result.configErrors.toString())
+            assertEquals(2, result.classUnits)
+            assertTrue(result.factsErrors.isNotEmpty())
+            assertFalse(result.isSuccess)
+            assertNull(result.engine)
+            assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
+
+            val partial = runner.run(ScanOptions(project))
+            assertNotNull(partial.engine)
+            assertTrue(partial.factsErrors.isNotEmpty())
+            assertFalse(partial.isSuccess)
+            assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
+        }
+    }
+
+    @Test
+    fun `runner generates baseline after a complete scan at the exact class limit`() {
+        withBytecodeProject { project ->
+            val baseline = seedBaseline(project)
+            val result =
+                ShamashAsmScanRunner().run(
+                    ScanOptions(project),
+                    RunOverrides(
+                        scan = ScanOverrides(maxClasses = 1),
+                        runner = RunnerOverrides(baselineMode = BaselineMode.GENERATE),
+                    ),
+                )
+
+            assertTrue(result.isSuccess, result.toString())
+            assertEquals(1, result.classUnits)
+            assertFalse(result.truncated)
+            assertTrue(Files.readString(baseline).contains("\"fingerprints\": []"))
+        }
+    }
+
+    @Test
+    fun `invalid scan overrides fail before replacing a baseline`() {
+        withBytecodeProject { project ->
+            val baseline = seedBaseline(project)
+            val result =
+                ShamashAsmScanRunner().run(
+                    ScanOptions(project),
+                    RunOverrides(
+                        scan = ScanOverrides(maxClasses = 0),
+                        runner = RunnerOverrides(baselineMode = BaselineMode.GENERATE),
+                    ),
+                )
+
+            assertFalse(result.isSuccess)
+            assertNull(result.engine)
+            assertTrue(
+                result.scanErrors
+                    .single()
+                    .message
+                    .contains("maxClasses must be > 0"),
+            )
+            assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
+        }
+    }
+
+    private val baselineBytes = "{\"version\":1,\"fingerprints\":[\"existing\"]}\n".toByteArray()
+
+    private fun seedBaseline(project: Path): Path {
+        val path = project.resolve(".shamash/baseline.json")
+        Files.createDirectories(path.parent)
+        return Files.write(path, baselineBytes)
+    }
+
+    private fun withBytecodeProject(
+        yaml: String = minimalConfigYaml(),
+        action: (Path) -> Unit,
+    ) {
+        val validation = ConfigValidation.loadAndValidateV1(yaml.reader())
+        assertTrue(validation.ok, validation.errors.toString())
+        val project = Files.createTempDirectory("shamash-baseline-runner")
+        try {
+            writeClass(project, "App")
+            val configPath = project.resolve("shamash/configs/asm.yml")
+            Files.createDirectories(configPath.parent)
+            Files.writeString(configPath, yaml)
+            action(project)
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    private fun writeClass(
+        project: Path,
+        name: String,
+    ) {
+        val path = project.resolve("build/classes/java/main/$name.class")
+        Files.createDirectories(path.parent)
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, name, null, "java/lang/Object", null)
+        writer.visitEnd()
+        Files.write(path, writer.toByteArray())
     }
 
     private fun minimalConfigYaml(): String =

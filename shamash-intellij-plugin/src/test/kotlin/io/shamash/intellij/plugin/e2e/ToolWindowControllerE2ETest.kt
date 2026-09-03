@@ -28,15 +28,15 @@ class ToolWindowControllerE2ETest : ShamashPluginE2eTestBase() {
         controller.init(tabs)
 
         assertEquals(3, tabs.tabCount)
-        assertEquals("Dashboard", tabs.getTitleAt(0))
-        assertEquals("Findings", tabs.getTitleAt(1))
-        assertEquals("Config", tabs.getTitleAt(2))
+        assertEquals("Config", tabs.getTitleAt(0))
+        assertEquals("Dashboard", tabs.getTitleAt(1))
+        assertEquals("Findings", tabs.getTitleAt(2))
 
         controller.select(ShamashPsiToolWindowController.Tab.CONFIG)
-        assertEquals(2, tabs.selectedIndex)
+        assertSame(controller.configTab.component(), tabs.selectedComponent)
 
         controller.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
-        assertEquals(0, tabs.selectedIndex)
+        assertSame(controller.dashboardTab.component(), tabs.selectedComponent)
     }
 
     fun testAsmControllerInitCreatesExpectedTabsAndSelectionWorks() {

@@ -17,8 +17,8 @@
  */
 package io.shamash.asm.core.scan
 
-import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.ProjectLayout
+import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportFactsArtifactConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
@@ -35,6 +35,7 @@ import kotlin.io.path.isRegularFile
 class ShamashAsmScanRunner(
     private val engine: ShamashAsmEngine = ShamashAsmEngine(),
 ) {
+    @JvmOverloads
     fun run(
         options: ScanOptions,
         overrides: RunOverrides? = null,
@@ -46,14 +47,14 @@ class ShamashAsmScanRunner(
             try {
                 if (configPath != null) {
                     Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use { reader ->
-                        ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                        engine.validateConfig(reader, schemaValidator = options.schemaValidator)
                     }
                 } else {
                     val stream =
                         ProjectLayout::class.java.getResourceAsStream(ProjectLayout.DISCOVERY_YML)
                             ?: error("Embedded discovery configuration not found: ${ProjectLayout.DISCOVERY_YML}")
                     stream.bufferedReader(StandardCharsets.UTF_8).use { reader ->
-                        ConfigValidation.loadAndValidateV1(reader, schemaValidator = options.schemaValidator)
+                        engine.validateConfig(reader, schemaValidator = options.schemaValidator)
                     }
                 }
             } catch (t: Throwable) {
@@ -154,6 +155,28 @@ class ShamashAsmScanRunner(
                             ),
                 )
             }
+
+        if (effectiveConfig.baseline.mode == BaselineMode.GENERATE &&
+            (scan.truncated || runnerErrors.isNotEmpty() || factsResult.errors.isNotEmpty())
+        ) {
+            return ScanResult(
+                options = options,
+                appliedOverrides = appliedOverrides,
+                configPath = configPath,
+                config = effectiveConfig,
+                configErrors = validation.errors,
+                origins = scan.origins,
+                classUnits = scan.units.size,
+                truncated = scan.truncated,
+                factsErrors = factsResult.errors,
+                scanErrors =
+                    runnerErrors +
+                        ScanError.of(
+                            phase = ScanError.Phase.ENGINE,
+                            message = "Baseline generation skipped: scan or fact extraction is incomplete.",
+                        ),
+            )
+        }
 
         val engineResult =
             try {

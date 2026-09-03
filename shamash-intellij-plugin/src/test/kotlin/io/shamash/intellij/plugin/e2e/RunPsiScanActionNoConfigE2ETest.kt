@@ -31,7 +31,7 @@ class RunPsiScanActionNoConfigE2ETest : ShamashPluginE2eTestBase() {
         val controller = ShamashPsiToolWindowController.getInstance(project)
         controller.init(tabs)
         controller.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
-        assertEquals(0, tabs.selectedIndex)
+        assertSame(controller.dashboardTab.component(), tabs.selectedComponent)
 
         fire(RunPsiScanAction())
 
@@ -40,6 +40,6 @@ class RunPsiScanActionNoConfigE2ETest : ShamashPluginE2eTestBase() {
         val err = state.lastValidationErrors.first()
         assertTrue(err.message.contains("Config file not found", ignoreCase = true))
 
-        assertEquals(2, tabs.selectedIndex)
+        assertSame(controller.configTab.component(), tabs.selectedComponent)
     }
 }

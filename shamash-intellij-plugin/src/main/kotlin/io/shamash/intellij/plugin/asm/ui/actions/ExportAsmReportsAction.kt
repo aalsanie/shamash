@@ -31,12 +31,9 @@ import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
-import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ScanResult
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
-import io.shamash.intellij.plugin.ShamashPluginInfo
-import io.shamash.intellij.plugin.asm.registry.AsmRuleRegistryProviders
 import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmConfigLocator
 import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
@@ -48,7 +45,7 @@ import kotlin.io.path.isDirectory
 
 /** Export settings, including overwrite behavior, are controlled by config.export in the scan runner. */
 class ExportAsmReportsAction(
-    private val runner: ShamashAsmScanRunner = defaultRunner(),
+    private val runner: ShamashAsmScanRunner? = null,
 ) : AnAction() {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
@@ -78,7 +75,7 @@ class ExportAsmReportsAction(
                 .getOrElse { Paths.get(vf.path) }
 
         val settings = ShamashAsmSettingsState.getInstance(project)
-        val activeRunner = buildRunner(project, settings) ?: return
+        val activeRunner = runner ?: ShamashAsmScanRunner(AsmExecution.engineOrNotify(project) ?: return)
 
         val options =
             ScanOptions(
@@ -87,6 +84,8 @@ class ExportAsmReportsAction(
                 configPath = configPath,
                 includeFactsInResult = false,
             )
+
+        val overrides = settings.buildRunOverridesOrNull()
 
         @NlsSafe val configHint = configPath.toString()
 
@@ -103,7 +102,7 @@ class ExportAsmReportsAction(
                     indicator.text = "Exporting ASM reports"
                     indicator.text2 = "Config: $configHint"
 
-                    result = activeRunner.run(options)
+                    result = activeRunner.run(options, overrides)
                 }
 
                 override fun onSuccess() {
@@ -123,8 +122,20 @@ class ExportAsmReportsAction(
                         return
                     }
 
-                    if (r.configErrors.isNotEmpty()) {
+                    if (r.hasConfigErrors) {
                         AsmActionUtil.notify(project, "Shamash ASM", "Export failed: config invalid.", NotificationType.ERROR)
+                        return
+                    }
+
+                    if (!r.isSuccess) {
+                        val partial = r.engine?.export?.outputDir
+                        val message =
+                            if (partial != null) {
+                                "Export incomplete. Partial reports were written to: $partial"
+                            } else {
+                                "Export incomplete. ${AsmScanPresentation.message(r)}"
+                            }
+                        AsmActionUtil.notify(project, "Shamash ASM", message, AsmScanPresentation.notificationType(r))
                         return
                     }
 
@@ -172,8 +183,12 @@ class ExportAsmReportsAction(
                     AsmActionUtil.notify(
                         project,
                         "Shamash ASM",
-                        "Exported reports to: ${export.outputDir}",
-                        NotificationType.INFORMATION,
+                        if (r.hasConfigWarnings) {
+                            "Exported reports with configuration warnings to: ${export.outputDir}"
+                        } else {
+                            "Exported reports to: ${export.outputDir}"
+                        },
+                        AsmScanPresentation.notificationType(r),
                     )
                 }
 
@@ -267,58 +282,5 @@ class ExportAsmReportsAction(
         if (base.isEmpty()) return null
         val p = runCatching { Paths.get(FileUtil.toCanonicalPath(base)).normalize() }.getOrNull() ?: return null
         return if (p.exists() && p.isDirectory()) p else p
-    }
-
-    companion object {
-        private fun defaultRunner(): ShamashAsmScanRunner =
-            ShamashAsmScanRunner(
-                engine = ShamashAsmEngine(toolName = "Shamash ASM", toolVersion = ShamashPluginInfo.version),
-            )
-
-        private fun buildRunner(
-            project: Project,
-            settings: ShamashAsmSettingsState,
-        ): ShamashAsmScanRunner? {
-            val toolName = "Shamash ASM"
-            val toolVersion = ShamashPluginInfo.version
-
-            val registryId = settings.getRegistryId()
-            if (registryId == null) {
-                return ShamashAsmScanRunner(
-                    engine = ShamashAsmEngine(toolName = toolName, toolVersion = toolVersion),
-                )
-            }
-
-            val provider = AsmRuleRegistryProviders.findById(registryId)
-            if (provider == null) {
-                val available = AsmRuleRegistryProviders.list().joinToString { it.id }
-                AsmActionUtil.notify(
-                    project,
-                    toolName,
-                    "Registry '$registryId' not found. " +
-                        "Available: ${if (available.isBlank()) "(none)" else available}. " +
-                        "Open Run Settings → Registry to pick an installed provider.",
-                    NotificationType.ERROR,
-                )
-                return null
-            }
-
-            val registry =
-                try {
-                    provider.create()
-                } catch (t: Throwable) {
-                    AsmActionUtil.notify(
-                        project,
-                        toolName,
-                        "Registry '$registryId' failed to initialize: ${t.message ?: t::class.java.simpleName}",
-                        NotificationType.ERROR,
-                    )
-                    return null
-                }
-
-            return ShamashAsmScanRunner(
-                engine = ShamashAsmEngine(registry = registry, toolName = toolName, toolVersion = toolVersion),
-            )
-        }
     }
 }

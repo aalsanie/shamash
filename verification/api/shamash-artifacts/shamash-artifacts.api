@@ -1,0 +1,256 @@
+public final class io/shamash/artifacts/baseline/BaselineConfig {
+	public static final field Companion Lio/shamash/artifacts/baseline/BaselineConfig$Companion;
+	public fun <init> (Lio/shamash/artifacts/baseline/BaselineMode;Z)V
+	public synthetic fun <init> (Lio/shamash/artifacts/baseline/BaselineMode;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/shamash/artifacts/baseline/BaselineMode;
+	public final fun component2 ()Z
+	public final fun copy (Lio/shamash/artifacts/baseline/BaselineMode;Z)Lio/shamash/artifacts/baseline/BaselineConfig;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/baseline/BaselineConfig;Lio/shamash/artifacts/baseline/BaselineMode;ZILjava/lang/Object;)Lio/shamash/artifacts/baseline/BaselineConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMode ()Lio/shamash/artifacts/baseline/BaselineMode;
+	public final fun getWriteMerged ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/baseline/BaselineConfig$Companion {
+	public final fun getOFF ()Lio/shamash/artifacts/baseline/BaselineConfig;
+}
+
+public final class io/shamash/artifacts/baseline/BaselineCoordinator {
+	public fun <init> ()V
+	public fun <init> (Lio/shamash/artifacts/baseline/BaselineStore;)V
+	public synthetic fun <init> (Lio/shamash/artifacts/baseline/BaselineStore;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun computeFingerprints (Ljava/nio/file/Path;Ljava/util/List;)Ljava/util/Set;
+	public final fun createSuppressionPreprocessor (Ljava/util/Set;)Lio/shamash/artifacts/baseline/BaselineFindingPreprocessor;
+	public final fun loadBaselineFingerprints (Ljava/nio/file/Path;)Ljava/util/Set;
+	public final fun writeBaseline (Ljava/nio/file/Path;Ljava/util/Set;Z)V
+}
+
+public final class io/shamash/artifacts/baseline/BaselineFindingPreprocessor {
+	public fun <init> (Ljava/util/Set;)V
+	public final fun process (Ljava/nio/file/Path;Ljava/util/List;)Ljava/util/List;
+}
+
+public final class io/shamash/artifacts/baseline/BaselineFingerprint {
+	public static final field INSTANCE Lio/shamash/artifacts/baseline/BaselineFingerprint;
+	public final fun sha256Hex (Lio/shamash/artifacts/contract/Finding;Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/baseline/BaselineMode : java/lang/Enum {
+	public static final field GENERATE Lio/shamash/artifacts/baseline/BaselineMode;
+	public static final field OFF Lio/shamash/artifacts/baseline/BaselineMode;
+	public static final field USE Lio/shamash/artifacts/baseline/BaselineMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/artifacts/baseline/BaselineMode;
+	public static fun values ()[Lio/shamash/artifacts/baseline/BaselineMode;
+}
+
+public final class io/shamash/artifacts/baseline/BaselineStore {
+	public fun <init> ()V
+	public final fun baselinePath (Ljava/nio/file/Path;)Ljava/nio/file/Path;
+	public final fun load (Ljava/nio/file/Path;)Lio/shamash/artifacts/baseline/BaselineStore$Baseline;
+	public final fun write (Ljava/nio/file/Path;Ljava/util/Set;)V
+}
+
+public final class io/shamash/artifacts/baseline/BaselineStore$Baseline {
+	public fun <init> (ILjava/util/Set;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/util/Set;
+	public final fun copy (ILjava/util/Set;)Lio/shamash/artifacts/baseline/BaselineStore$Baseline;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/baseline/BaselineStore$Baseline;ILjava/util/Set;ILjava/lang/Object;)Lio/shamash/artifacts/baseline/BaselineStore$Baseline;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFingerprints ()Ljava/util/Set;
+	public final fun getVersion ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/contract/Finding {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lio/shamash/artifacts/contract/FindingSeverity;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/util/Map;
+	public final fun component8 ()Ljava/lang/Integer;
+	public final fun component9 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/shamash/artifacts/contract/Finding;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/contract/Finding;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/shamash/artifacts/contract/Finding;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassFqn ()Ljava/lang/String;
+	public final fun getData ()Ljava/util/Map;
+	public final fun getEndOffset ()Ljava/lang/Integer;
+	public final fun getFilePath ()Ljava/lang/String;
+	public final fun getMemberName ()Ljava/lang/String;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getRuleId ()Ljava/lang/String;
+	public final fun getSeverity ()Lio/shamash/artifacts/contract/FindingSeverity;
+	public final fun getStartOffset ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/contract/FindingSeverity : java/lang/Enum {
+	public static final field ERROR Lio/shamash/artifacts/contract/FindingSeverity;
+	public static final field INFO Lio/shamash/artifacts/contract/FindingSeverity;
+	public static final field WARNING Lio/shamash/artifacts/contract/FindingSeverity;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/shamash/artifacts/contract/FindingSeverity;
+	public static fun values ()[Lio/shamash/artifacts/contract/FindingSeverity;
+}
+
+public final class io/shamash/artifacts/params/ParamError : java/lang/RuntimeException {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun getAt ()Ljava/lang/String;
+	public fun getMessage ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/params/Params {
+	public static final field Companion Lio/shamash/artifacts/params/Params$Companion;
+	public final fun at (Ljava/lang/String;)Lio/shamash/artifacts/params/Params;
+	public final fun child (Ljava/lang/String;)Lio/shamash/artifacts/params/Params;
+	public final fun getCurrentPath ()Ljava/lang/String;
+	public final fun has (Ljava/lang/String;)Z
+	public final fun keys ()Ljava/util/Set;
+	public final fun optionalBoolean (Ljava/lang/String;)Ljava/lang/Boolean;
+	public final fun optionalDouble (Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;)Ljava/lang/Double;
+	public static synthetic fun optionalDouble$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;ILjava/lang/Object;)Ljava/lang/Double;
+	public final fun optionalInt (Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;)Ljava/lang/Integer;
+	public static synthetic fun optionalInt$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Ljava/lang/Integer;
+	public final fun optionalLong (Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;)Ljava/lang/Long;
+	public static synthetic fun optionalLong$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;ILjava/lang/Object;)Ljava/lang/Long;
+	public final fun optionalMap (Ljava/lang/String;)Ljava/util/Map;
+	public final fun optionalString (Ljava/lang/String;)Ljava/lang/String;
+	public final fun optionalStringList (Ljava/lang/String;Z)Ljava/util/List;
+	public static synthetic fun optionalStringList$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;ZILjava/lang/Object;)Ljava/util/List;
+	public final fun optionalStringSet (Ljava/lang/String;Z)Ljava/util/Set;
+	public static synthetic fun optionalStringSet$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;ZILjava/lang/Object;)Ljava/util/Set;
+	public final fun requireBoolean (Ljava/lang/String;)Z
+	public final fun requireDouble (Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;)D
+	public static synthetic fun requireDouble$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;Ljava/lang/Double;Ljava/lang/Double;ILjava/lang/Object;)D
+	public final fun requireInt (Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;)I
+	public static synthetic fun requireInt$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)I
+	public final fun requireLong (Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;)J
+	public static synthetic fun requireLong$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Long;ILjava/lang/Object;)J
+	public final fun requireMap (Ljava/lang/String;)Ljava/util/Map;
+	public final fun requireString (Ljava/lang/String;)Ljava/lang/String;
+	public final fun requireStringList (Ljava/lang/String;Z)Ljava/util/List;
+	public static synthetic fun requireStringList$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;ZILjava/lang/Object;)Ljava/util/List;
+	public final fun requireStringSet (Ljava/lang/String;Z)Ljava/util/Set;
+	public static synthetic fun requireStringSet$default (Lio/shamash/artifacts/params/Params;Ljava/lang/String;ZILjava/lang/Object;)Ljava/util/Set;
+	public final fun unknownKeys (Ljava/util/Set;)Ljava/util/Set;
+}
+
+public final class io/shamash/artifacts/params/Params$Companion {
+	public final fun of (Ljava/util/Map;Ljava/lang/String;)Lio/shamash/artifacts/params/Params;
+	public static synthetic fun of$default (Lio/shamash/artifacts/params/Params$Companion;Ljava/util/Map;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/artifacts/params/Params;
+}
+
+public final class io/shamash/artifacts/report/layout/ExportOutputLayout {
+	public static final field ANALYSIS_GRAPHS_JSON_FILE_NAME Ljava/lang/String;
+	public static final field ANALYSIS_HOTSPOTS_JSON_FILE_NAME Ljava/lang/String;
+	public static final field ANALYSIS_SCORES_JSON_FILE_NAME Ljava/lang/String;
+	public static final field DEFAULT_DIR_NAME Ljava/lang/String;
+	public static final field FACTS_JSONL_GZ_FILE_NAME Ljava/lang/String;
+	public static final field FACTS_JSON_FILE_NAME Ljava/lang/String;
+	public static final field HTML_FILE_NAME Ljava/lang/String;
+	public static final field INSTANCE Lio/shamash/artifacts/report/layout/ExportOutputLayout;
+	public static final field JSON_FILE_NAME Ljava/lang/String;
+	public static final field ROLES_JSON_FILE_NAME Ljava/lang/String;
+	public static final field RULE_PLAN_JSON_FILE_NAME Ljava/lang/String;
+	public static final field SARIF_FILE_NAME Ljava/lang/String;
+	public static final field XML_FILE_NAME Ljava/lang/String;
+	public final fun normalizeOutputDir (Ljava/nio/file/Path;Ljava/nio/file/Path;)Ljava/nio/file/Path;
+	public final fun resolve (Ljava/nio/file/Path;Ljava/lang/String;)Ljava/nio/file/Path;
+}
+
+public final class io/shamash/artifacts/report/schema/v1/ExportedFinding {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Lio/shamash/artifacts/contract/FindingSeverity;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/shamash/artifacts/report/schema/v1/ExportedFinding;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/report/schema/v1/ExportedFinding;Ljava/lang/String;Ljava/lang/String;Lio/shamash/artifacts/contract/FindingSeverity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/artifacts/report/schema/v1/ExportedFinding;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassFqn ()Ljava/lang/String;
+	public final fun getFilePath ()Ljava/lang/String;
+	public final fun getFingerprint ()Ljava/lang/String;
+	public final fun getMemberName ()Ljava/lang/String;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getRuleId ()Ljava/lang/String;
+	public final fun getSeverity ()Lio/shamash/artifacts/contract/FindingSeverity;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/report/schema/v1/ExportedReport {
+	public fun <init> (Lio/shamash/artifacts/report/schema/v1/ToolMetadata;Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;Ljava/util/List;)V
+	public final fun component1 ()Lio/shamash/artifacts/report/schema/v1/ToolMetadata;
+	public final fun component2 ()Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Lio/shamash/artifacts/report/schema/v1/ToolMetadata;Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;Ljava/util/List;)Lio/shamash/artifacts/report/schema/v1/ExportedReport;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/report/schema/v1/ExportedReport;Lio/shamash/artifacts/report/schema/v1/ToolMetadata;Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;Ljava/util/List;ILjava/lang/Object;)Lio/shamash/artifacts/report/schema/v1/ExportedReport;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFindings ()Ljava/util/List;
+	public final fun getProject ()Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;
+	public final fun getTool ()Lio/shamash/artifacts/report/schema/v1/ToolMetadata;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/report/schema/v1/ProjectMetadata {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/shamash/artifacts/report/schema/v1/ProjectMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBasePath ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/report/schema/v1/ToolMetadata {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()J
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)Lio/shamash/artifacts/report/schema/v1/ToolMetadata;
+	public static synthetic fun copy$default (Lio/shamash/artifacts/report/schema/v1/ToolMetadata;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JILjava/lang/Object;)Lio/shamash/artifacts/report/schema/v1/ToolMetadata;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGeneratedAtEpochMillis ()J
+	public final fun getName ()Ljava/lang/String;
+	public final fun getSchemaVersion ()Ljava/lang/String;
+	public final fun getVersion ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/util/PathNormalizer {
+	public static final field INSTANCE Lio/shamash/artifacts/util/PathNormalizer;
+	public final fun normalize (Ljava/lang/String;)Ljava/lang/String;
+	public final fun normalize (Ljava/nio/file/Path;)Ljava/lang/String;
+	public final fun relativizeOrNormalize (Ljava/nio/file/Path;Ljava/nio/file/Path;)Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/util/glob/GlobMatcher {
+	public static final field INSTANCE Lio/shamash/artifacts/util/glob/GlobMatcher;
+	public final fun matches (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun normalizePath (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/shamash/artifacts/util/json/JsonEscaper {
+	public static final field INSTANCE Lio/shamash/artifacts/util/json/JsonEscaper;
+	public final fun escape (Ljava/lang/String;)Ljava/lang/String;
+}
+

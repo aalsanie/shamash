@@ -59,6 +59,9 @@ class BytecodeScanner {
         bytecode: BytecodeConfig,
         scan: ScanConfig,
     ): BytecodeScanResult {
+        require(scan.maxClasses == null || scan.maxClasses > 0) { "maxClasses must be > 0" }
+        require(scan.maxJarBytes == null || scan.maxJarBytes > 0) { "maxJarBytes must be > 0" }
+        require(scan.maxClassBytes == null || scan.maxClassBytes > 0) { "maxClassBytes must be > 0" }
         val errors = mutableListOf<BytecodeScanError>()
 
         val baseAbs = projectBasePath.toAbsolutePath().normalize()
@@ -93,8 +96,19 @@ class BytecodeScanner {
 
         fun stableFor(p: Path): String = PathNormalizer.relativizeOrNormalize(baseAbs, p)
 
-        for (root in roots) {
-            if (!Files.exists(root)) continue
+        fun matchesOutputDirectory(
+            globs: List<String>,
+            dir: Path,
+        ): Boolean {
+            val stable = stableFor(dir)
+            return globs.any { GlobMatcher.matches(it, stable) || GlobMatcher.matches(it, "$stable/") }
+        }
+
+        fun excludedOutputDirectory(dir: Path): Boolean =
+            generateSequence(dir) { it.parent }.any { matchesOutputDirectory(bytecode.outputsGlobs.exclude, it) }
+
+        for (root in minimalRoots(roots)) {
+            if (Files.notExists(root)) continue
 
             try {
                 Files.walkFileTree(
@@ -106,8 +120,7 @@ class BytecodeScanner {
                             dir: Path,
                             attrs: BasicFileAttributes,
                         ): FileVisitResult {
-                            val stable = stableFor(dir)
-                            if (matchesGlobSet(bytecode.outputsGlobs.include, bytecode.outputsGlobs.exclude, stable)) {
+                            if (matchesOutputDirectory(bytecode.outputsGlobs.include, dir) && !excludedOutputDirectory(dir)) {
                                 outDirs.add(dir)
                             }
                             return FileVisitResult.CONTINUE
@@ -165,14 +178,13 @@ class BytecodeScanner {
 
         val includedDirs =
             outDirs
-                .asSequence()
-                .map { it.toAbsolutePath().normalize() }
-                .distinct()
-                .toList()
+                .filter { includeByScope(bucketFor(it)) }
+                .groupBy { bucketFor(it) }
+                .values
+                .flatMap { minimalRoots(it) }
         for (dir in includedDirs) {
             val stable = stableFor(dir)
             val bucket = bucketFor(dir)
-            if (!includeByScope(bucket)) continue
             origins +=
                 BytecodeOrigin(
                     id = "dir:$stable",
@@ -260,7 +272,6 @@ class BytecodeScanner {
         }
 
         fun readClassBytes(
-            originId: String,
             displayPath: String,
             open: () -> InputStream,
         ): ByteArray? {
@@ -271,7 +282,7 @@ class BytecodeScanner {
                     }
 
                     val buf = ByteArray(8192)
-                    var total = 0
+                    var total = 0L
                     val out = java.io.ByteArrayOutputStream(minOf(maxClassBytes, 64 * 1024))
                     while (true) {
                         val n = input.read(buf)
@@ -307,12 +318,15 @@ class BytecodeScanner {
             )
 
         for (origin in projectFirst) {
-            if (checkLimit()) break
+            if (truncated) break
 
             when (origin.kind) {
                 BytecodeOrigin.Kind.CLASSES_DIR -> {
                     val dir = origin.path
-                    if (!dir.isDirectory()) continue
+                    if (!dir.isDirectory()) {
+                        recordReadError("Classes directory is no longer accessible", origin.stablePath)
+                        continue
+                    }
 
                     try {
                         Files.walkFileTree(
@@ -320,15 +334,23 @@ class BytecodeScanner {
                             visitOpts,
                             Int.MAX_VALUE,
                             object : SimpleFileVisitor<Path>() {
+                                override fun preVisitDirectory(
+                                    dir: Path,
+                                    attrs: BasicFileAttributes,
+                                ): FileVisitResult =
+                                    if (excludedOutputDirectory(dir)) FileVisitResult.SKIP_SUBTREE else FileVisitResult.CONTINUE
+
                                 override fun visitFile(
                                     file: Path,
                                     attrs: BasicFileAttributes,
                                 ): FileVisitResult {
-                                    if (checkLimit()) return FileVisitResult.TERMINATE
                                     if (!attrs.isRegularFile) return FileVisitResult.CONTINUE
                                     if (file.extension.lowercase() != "class") return FileVisitResult.CONTINUE
 
                                     val stableFile = stableFor(file)
+                                    if (bytecode.outputsGlobs.exclude.any { GlobMatcher.matches(it, stableFile) }) {
+                                        return FileVisitResult.CONTINUE
+                                    }
                                     val originId = stableFile
                                     if (!seenOriginIds.add(originId)) return FileVisitResult.CONTINUE
 
@@ -352,8 +374,9 @@ class BytecodeScanner {
                                         }
                                     }
 
+                                    if (checkLimit()) return FileVisitResult.TERMINATE
                                     val bytes =
-                                        readClassBytes(originId, stableFile) { Files.newInputStream(file) }
+                                        readClassBytes(stableFile) { Files.newInputStream(file) }
                                             ?: return FileVisitResult.CONTINUE
                                     units +=
                                         BytecodeUnit(
@@ -389,13 +412,15 @@ class BytecodeScanner {
 
                 BytecodeOrigin.Kind.JAR_FILE -> {
                     val jarPath = origin.path
-                    if (!jarPath.isRegularFile()) continue
+                    if (!jarPath.isRegularFile()) {
+                        recordReadError("Jar is no longer accessible", origin.stablePath)
+                        continue
+                    }
 
                     try {
                         JarFile(jarPath.toFile()).use { jar ->
                             val entries = jar.entries()
                             while (entries.hasMoreElements()) {
-                                if (checkLimit()) break
                                 val e = entries.nextElement()
                                 if (e.isDirectory) continue
                                 if (!e.name.endsWith(".class")) continue
@@ -404,8 +429,15 @@ class BytecodeScanner {
                                 val originId = "${origin.stablePath}!/$entryName"
                                 if (!seenOriginIds.add(originId)) continue
 
-                                val displayPath = originId
-                                val bytes = readClassBytes(originId, displayPath) { jar.getInputStream(e) } ?: continue
+                                if (maxClassBytes != null && e.size > maxClassBytes.toLong()) {
+                                    recordReadError(
+                                        message = "Class skipped (size ${e.size} > maxClassBytes=$maxClassBytes)",
+                                        path = originId,
+                                    )
+                                    continue
+                                }
+                                if (checkLimit()) break
+                                val bytes = readClassBytes(originId) { jar.getInputStream(e) } ?: continue
 
                                 units +=
                                     BytecodeUnit(
@@ -441,5 +473,15 @@ class BytecodeScanner {
             errors = stableErrors,
             truncated = truncated,
         )
+    }
+
+    private fun minimalRoots(paths: Collection<Path>): List<Path> {
+        val selected = LinkedHashSet<Path>()
+        for (path in paths.sortedWith(compareBy<Path> { it.nameCount }.thenBy { it.toString() })) {
+            if (generateSequence(path.parent) { it.parent }.none { it in selected }) {
+                selected.add(path)
+            }
+        }
+        return selected.toList()
     }
 }
