@@ -104,6 +104,16 @@ shamash scan
 
 Use `--all-findings` for the complete findings list and `--verbose` for diagnostics.
 
+## Benchmark
+
+| Target               | Shamash | Classes | Median time |       Min–max | Findings per run |
+|----------------------|---------|--------:|------------:|--------------:|-----------------:|
+| Jenkins 2.479.3 core | 0.92.0  |   2,496 |     3.289 s | 3.232–3.395 s |               41 |
+
+Five runs on Windows after one priming scan, each in a fresh JVM.
+Timing includes JVM startup, analysis and writing findings to a log.
+Plugins and bundled dependencies were excluded.
+
 ## Existing projects: accept current debt once
 
 After `shamash init`, run:
