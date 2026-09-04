@@ -2,6 +2,17 @@
 
 ## [unreleased]
 
+## [0.92.0]
+
+### Added
+- Java/Kotlin APIs for discovery and configured bytecode scans, custom rule registries, and in-memory results
+- Maven Central publications for `shamash-artifacts`, `shamash-export`, and `shamash-asm-core`
+- Publication, signing, consumer compatibility, and API/ABI verification
+
+### Changed
+- Aligned the CLI, GitHub Action, IntelliJ plugin, and published libraries on version 0.92.0
+- Coordinated Maven Central, GitHub Release, and JetBrains Marketplace publishing from one release tag
+
 ## [0.91.1]
 
 ### Fixed

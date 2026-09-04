@@ -242,7 +242,7 @@ Discovery scans return `0` after successful analysis, regardless of findings.
 - Custom rule registries
 - Exceptions and baselines
 
-See [`docs/asm/`](./docs/asm/) and [`REGISTRY_GUIDE.md`](./REGISTRY_GUIDE.md).
+See [`docs/asm/`](./docs/asm/), [`REGISTRY_GUIDE.md`](./REGISTRY_GUIDE.md) and [`benchmarks/`](./benchmarks/).
 
 ## Security
 
