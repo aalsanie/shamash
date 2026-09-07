@@ -4,7 +4,7 @@
     <vendor email="a.aalsanie@outlook.com">A.Alsanie</vendor>
 
     <description><![CDATA[
-        <b>Stop JVM architecture drift before it reaches main.</b>
+        <b>Stop JVM architecture drift before it reaches main. No need to fix past debt, baseline is highly configurable in YAML, no tests or code is required!</b>
         <br/><br/>
         Shamash finds dependency cycles, boundary violations and structural risks in Java/Kotlin projects,
         and can enforce accepted architecture in CI without requiring architecture test code.

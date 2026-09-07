@@ -1,0 +1,7 @@
+run,measured,seconds,classes,findings
+priming,false,3.354,2496,41
+run-01,true,3.297,2496,41
+run-02,true,3.232,2496,41
+run-03,true,3.232,2496,41
+run-04,true,3.395,2496,41
+run-05,true,3.289,2496,41
