@@ -426,6 +426,10 @@ class BytecodeScanner {
                                 if (!e.name.endsWith(".class")) continue
 
                                 val entryName = e.name.replace('\\', '/')
+                                // Shamash's current scan contract has no target-runtime dimension.
+                                // Use the deterministic base JAR view rather than counting MR-JAR variants as separate classes.
+                                if (entryName.startsWith("META-INF/versions/")) continue
+
                                 val originId = "${origin.stablePath}!/$entryName"
                                 if (!seenOriginIds.add(originId)) continue
 

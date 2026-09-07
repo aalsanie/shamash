@@ -83,6 +83,16 @@ class ExportPsiReportsAction(
                     return
                 }
 
+                if (result.engineErrors.isNotEmpty()) {
+                    PsiActionUtil.notify(
+                        project,
+                        "Shamash PSI",
+                        "Export skipped: scan incomplete (${result.engineErrors.size} engine errors).",
+                        NotificationType.WARNING,
+                    )
+                    return
+                }
+
                 val outDir = result.outputDir
                 val report = result.exportedReport
                 if (outDir == null || report == null) {
