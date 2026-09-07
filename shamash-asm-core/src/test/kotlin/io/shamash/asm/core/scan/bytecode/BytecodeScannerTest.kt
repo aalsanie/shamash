@@ -24,9 +24,12 @@ import io.shamash.asm.core.config.schema.v1.model.ScanScope
 import org.junit.Assume
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
 import javax.tools.ToolProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BytecodeScannerTest {
@@ -75,6 +78,90 @@ class BytecodeScannerTest {
         }
     }
 
+    @Test
+    fun `multi release jar scans only base class entries`() {
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        Assume.assumeNotNull(compiler)
+
+        val project = Files.createTempDirectory("shamash-asm-mrjar")
+        try {
+            val baseOut = project.resolve("mr-base")
+            val versionedOut = project.resolve("mr-versioned")
+            Files.createDirectories(baseOut)
+            Files.createDirectories(versionedOut)
+
+            compileJava(
+                project.resolve("base-src"),
+                "com.example.MultiRelease",
+                "package com.example; public class MultiRelease { public String value() { return \"base\"; } }",
+                baseOut,
+            )
+            compileJava(
+                project.resolve("versioned-src"),
+                "com.example.MultiRelease",
+                "package com.example; public class MultiRelease { public String value() { return \"v17\"; } }",
+                versionedOut,
+            )
+
+            val jar = project.resolve("libs/example.jar")
+            Files.createDirectories(jar.parent)
+            JarOutputStream(Files.newOutputStream(jar)).use { out ->
+                addJarEntry(out, baseOut.resolve("com/example/MultiRelease.class"), "com/example/MultiRelease.class")
+                addJarEntry(
+                    out,
+                    versionedOut.resolve("com/example/MultiRelease.class"),
+                    "META-INF/versions/17/com/example/MultiRelease.class",
+                )
+            }
+
+            val result =
+                BytecodeScanner().scan(
+                    projectBasePath = project,
+                    bytecode =
+                        BytecodeConfig(
+                            roots = listOf("."),
+                            outputsGlobs = GlobSet(include = emptyList(), exclude = emptyList()),
+                            jarGlobs = GlobSet(include = listOf("**/*.jar"), exclude = emptyList()),
+                        ),
+                    scan =
+                        ScanConfig(
+                            scope = ScanScope.PROJECT_ONLY,
+                            followSymlinks = false,
+                            maxClasses = null,
+                            maxJarBytes = null,
+                            maxClassBytes = null,
+                        ),
+                )
+
+            assertTrue(result.errors.isEmpty(), "scan should not report errors: ${result.errors}")
+            assertEquals(1, result.units.size, "versioned MR-JAR entries must not be scanned as separate logical classes")
+            assertTrue(
+                result.units
+                    .single()
+                    .originId
+                    .endsWith("!/com/example/MultiRelease.class"),
+            )
+            assertFalse(
+                result.units
+                    .single()
+                    .originId
+                    .contains("META-INF/versions/"),
+            )
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    private fun addJarEntry(
+        out: JarOutputStream,
+        source: Path,
+        entryName: String,
+    ) {
+        out.putNextEntry(JarEntry(entryName))
+        Files.copy(source, out)
+        out.closeEntry()
+    }
+
     private fun compileJava(
         tmp: Path,
         fqcn: String,
@@ -89,6 +176,7 @@ class BytecodeScannerTest {
 
         val srcDir = tmp.resolve("srcgen").resolve(pkgPath)
         Files.createDirectories(srcDir)
+        Files.createDirectories(outputDir)
 
         val javaFile = srcDir.resolve("$cls.java")
         Files.writeString(javaFile, source)

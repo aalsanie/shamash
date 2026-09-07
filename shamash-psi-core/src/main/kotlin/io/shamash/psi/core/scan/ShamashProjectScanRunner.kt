@@ -17,9 +17,7 @@
  */
 package io.shamash.psi.core.scan
 
-import com.intellij.notification.Notification
-import com.intellij.notification.NotificationType
-import com.intellij.notification.Notifications
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
@@ -35,6 +33,7 @@ import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.export.service.ShamashReportExportService
 import io.shamash.psi.core.config.ConfigValidation
 import io.shamash.psi.core.config.ValidationError
+import io.shamash.psi.core.config.ValidationSeverity
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.engine.ShamashPsiEngine
@@ -46,12 +45,23 @@ class ShamashProjectScanRunner(
     private val engine: ShamashPsiEngine = ShamashPsiEngine(),
     private val exportService: ShamashReportExportService = ShamashReportExportService(),
 ) {
+    private val log: Logger = Logger.getInstance(ShamashProjectScanRunner::class.java)
+
     data class ScanResult(
         val findings: List<Finding>,
         val exportedReport: ExportedReport?,
         val outputDir: Path?,
         val baselineWritten: Boolean,
         val configErrors: List<ValidationError> = emptyList(),
+        val engineErrors: List<EngineError> = emptyList(),
+    ) {
+        val isComplete: Boolean
+            get() = configErrors.none { it.severity == ValidationSeverity.ERROR } && engineErrors.isEmpty()
+    }
+
+    private data class FindingsScanResult(
+        val findings: List<Finding>,
+        val engineErrors: List<EngineError>,
     )
 
     fun scanProject(
@@ -74,14 +84,15 @@ class ShamashProjectScanRunner(
             )
         }
 
-        val findings = scanFindings(project, config, indicator)
+        val scan = scanFindings(project, config, indicator)
 
-        if (!options.exportReports) {
+        if (!options.exportReports || scan.engineErrors.isNotEmpty()) {
             return ScanResult(
-                findings = findings,
+                findings = scan.findings,
                 exportedReport = null,
                 outputDir = null,
                 baselineWritten = false,
+                engineErrors = scan.engineErrors,
             )
         }
 
@@ -91,14 +102,14 @@ class ShamashProjectScanRunner(
                 projectName = project.name,
                 toolName = options.toolName,
                 toolVersion = options.toolVersion,
-                findings = findings,
+                findings = scan.findings,
                 baseline = options.baseline,
                 exceptionsPreprocessor = null,
                 generatedAtEpochMillis = options.generatedAtEpochMillis,
             )
 
         return ScanResult(
-            findings = findings,
+            findings = scan.findings,
             exportedReport = exportResult.report,
             outputDir = exportResult.outputDir,
             baselineWritten = exportResult.baselineWritten,
@@ -109,7 +120,7 @@ class ShamashProjectScanRunner(
         project: Project,
         config: ShamashPsiConfigV1,
         indicator: ProgressIndicator,
-    ): List<Finding> {
+    ): FindingsScanResult {
         ProgressManager.checkCanceled()
 
         val psiManager = PsiManager.getInstance(project)
@@ -119,7 +130,7 @@ class ShamashProjectScanRunner(
         val excludeGlobs = config.project.sourceGlobs.exclude
 
         val roots = collectContentRoots(project)
-        if (roots.isEmpty()) return emptyList()
+        if (roots.isEmpty()) return FindingsScanResult(emptyList(), emptyList())
 
         val out = ArrayList<Finding>(1024)
         val engineErrors = ArrayList<EngineError>(256)
@@ -159,20 +170,44 @@ class ShamashProjectScanRunner(
             }
         }
 
-        if (engineErrors.isNotEmpty()) {
-            Notifications.Bus.notify(
-                Notification(
-                    "Shamash PSI",
-                    "Engine encountered ${engineErrors.size} errors",
-                    "${engineErrors.first().fileId}: ${engineErrors.first().phase} - ${engineErrors.first().message}\n" +
-                        "(see idea.log for full list)",
-                    NotificationType.WARNING,
-                ),
-                project,
-            )
+        val stableErrors =
+            engineErrors
+                .distinctBy { "${it.fileId}|${it.phase}|${it.ruleId ?: ""}|${it.message}|${it.throwableClass ?: ""}" }
+                .sortedWith(
+                    compareBy<EngineError>(
+                        { it.fileId },
+                        { it.phase },
+                        { it.ruleId ?: "" },
+                        { it.message },
+                        { it.throwableClass ?: "" },
+                    ),
+                )
+
+        if (stableErrors.isNotEmpty()) {
+            stableErrors.forEach { error ->
+                log.warn(
+                    buildString {
+                        append("PSI engine error")
+                        append(": file=")
+                        append(error.fileId)
+                        append(", phase=")
+                        append(error.phase)
+                        error.ruleId?.let {
+                            append(", rule=")
+                            append(it)
+                        }
+                        append(", message=")
+                        append(error.message)
+                        error.throwableClass?.let {
+                            append(", throwable=")
+                            append(it)
+                        }
+                    },
+                )
+            }
         }
 
-        return out
+        return FindingsScanResult(out, stableErrors)
     }
 
     private fun collectContentRoots(project: Project): List<VirtualFile> {

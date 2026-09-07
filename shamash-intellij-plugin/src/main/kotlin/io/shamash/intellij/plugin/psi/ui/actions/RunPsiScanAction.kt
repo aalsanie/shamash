@@ -34,6 +34,7 @@ import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiConfigLocator
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.config.ValidationSeverity
+import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.scan.ShamashProjectScanRunner
 import io.shamash.psi.core.scan.ShamashScanOptions
 import java.io.StringReader
@@ -87,6 +88,7 @@ class RunPsiScanAction(
     ) {
         object : Task.Backgroundable(project, "Shamash PSI Scan", true) {
             private var validationErrors: List<ValidationError> = emptyList()
+            private var engineErrors: List<EngineError> = emptyList()
             private var findings = emptyList<Finding>()
 
             override fun run(indicator: ProgressIndicator) {
@@ -107,6 +109,7 @@ class RunPsiScanAction(
                     )
 
                 validationErrors = result.configErrors
+                engineErrors = result.engineErrors
                 findings = result.findings
 
                 ProgressManager.checkCanceled()
@@ -129,6 +132,19 @@ class RunPsiScanAction(
                             project,
                             "Shamash PSI",
                             "Config invalid. Fix errors in Config tab.",
+                            NotificationType.WARNING,
+                        )
+                        return@invokeLater
+                    }
+
+                    if (engineErrors.isNotEmpty()) {
+                        tw.select(ShamashPsiToolWindowController.Tab.FINDINGS)
+                        tw.refreshAll()
+
+                        PsiActionUtil.notify(
+                            project,
+                            "Shamash PSI",
+                            "Scan incomplete: ${engineErrors.size} engine errors occurred during analysis. Partial findings are shown.",
                             NotificationType.WARNING,
                         )
                         return@invokeLater
