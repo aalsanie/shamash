@@ -27,7 +27,7 @@ import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 
 class AllowOnlyRootRule : Rule {
-    override val id: String = "arch.allowOnlyRoot"
+    override val id: String = "origin.allowOnlyRoot"
 
     override fun evaluate(
         facts: FactIndex,

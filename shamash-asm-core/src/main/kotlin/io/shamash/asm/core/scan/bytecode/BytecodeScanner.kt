@@ -25,6 +25,7 @@ import io.shamash.asm.core.config.schema.v1.model.ScanScope
 import io.shamash.asm.core.facts.bytecode.BytecodeUnit
 import io.shamash.asm.core.facts.model.OriginKind
 import io.shamash.asm.core.facts.model.SourceLocation
+import org.objectweb.asm.ClassReader
 import java.io.InputStream
 import java.nio.file.FileVisitOption
 import java.nio.file.FileVisitResult
@@ -53,6 +54,12 @@ class BytecodeScanner {
         val errors: List<BytecodeScanError>,
         val truncated: Boolean,
     )
+
+    private enum class UnitAcceptance {
+        ADDED,
+        SKIPPED_DUPLICATE,
+        LIMIT_REACHED,
+    }
 
     fun scan(
         projectBasePath: Path,
@@ -248,14 +255,48 @@ class BytecodeScanner {
         val maxClassBytes = scan.maxClassBytes
         val units = ArrayList<BytecodeUnit>(maxClasses?.coerceAtMost(4096) ?: 4096)
         val seenOriginIds = HashSet<String>(8192)
+        val logicalUnits = LinkedHashMap<String, BytecodeUnit>(8192)
         var truncated = false
 
-        fun checkLimit(): Boolean {
+        fun logicalClassName(bytes: ByteArray): String? =
+            try {
+                ClassReader(bytes).className.takeUnless { it == "module-info" }
+            } catch (_: Throwable) {
+                // Facts extraction owns malformed-bytecode diagnostics. Keep the unit so it can report the failure there.
+                null
+            }
+
+        fun acceptUnit(unit: BytecodeUnit): UnitAcceptance {
+            val logicalName = logicalClassName(unit.bytes)
+            if (logicalName != null) {
+                val existing = logicalUnits[logicalName]
+                if (existing != null) {
+                    val classFqn = logicalName.replace('/', '.')
+                    val identical = existing.bytes.contentEquals(unit.bytes)
+                    errors +=
+                        BytecodeScanError(
+                            message =
+                                if (identical) {
+                                    "Duplicate bytecode definition for class '$classFqn'; keeping '${existing.originId}' and ignoring '${unit.originId}'. " +
+                                        "Configure exactly one representation of each logical class."
+                                } else {
+                                    "Conflicting bytecode definitions for class '$classFqn'; keeping '${existing.originId}' and ignoring '${unit.originId}'. " +
+                                        "Configure exactly one representation of each logical class."
+                                },
+                            path = unit.originId,
+                        )
+                    return UnitAcceptance.SKIPPED_DUPLICATE
+                }
+            }
+
             if (maxClasses != null && units.size >= maxClasses) {
                 truncated = true
-                return true
+                return UnitAcceptance.LIMIT_REACHED
             }
-            return false
+
+            units += unit
+            if (logicalName != null) logicalUnits[logicalName] = unit
+            return UnitAcceptance.ADDED
         }
 
         fun recordReadError(
@@ -309,7 +350,7 @@ class BytecodeScanner {
             }
         }
 
-        // Prefer scanning project outputs first for maxClasses truncation behavior.
+        // Prefer scanning project outputs first so duplicate resolution and maxClasses behavior are deterministic.
         val projectFirst =
             sortedOrigins.sortedWith(
                 compareBy<BytecodeOrigin> {
@@ -374,18 +415,20 @@ class BytecodeScanner {
                                         }
                                     }
 
-                                    if (checkLimit()) return FileVisitResult.TERMINATE
                                     val bytes =
                                         readClassBytes(stableFile) { Files.newInputStream(file) }
                                             ?: return FileVisitResult.CONTINUE
-                                    units +=
+                                    val unit =
                                         BytecodeUnit(
                                             bytes = bytes,
                                             location = SourceLocation(originKind = OriginKind.DIR_CLASS, originPath = stableFile),
                                             originId = originId,
                                         )
 
-                                    return FileVisitResult.CONTINUE
+                                    return when (acceptUnit(unit)) {
+                                        UnitAcceptance.LIMIT_REACHED -> FileVisitResult.TERMINATE
+                                        UnitAcceptance.ADDED, UnitAcceptance.SKIPPED_DUPLICATE -> FileVisitResult.CONTINUE
+                                    }
                                 }
 
                                 override fun visitFileFailed(
@@ -440,10 +483,8 @@ class BytecodeScanner {
                                     )
                                     continue
                                 }
-                                if (checkLimit()) break
                                 val bytes = readClassBytes(originId) { jar.getInputStream(e) } ?: continue
-
-                                units +=
+                                val unit =
                                     BytecodeUnit(
                                         bytes = bytes,
                                         location =
@@ -455,6 +496,8 @@ class BytecodeScanner {
                                             ),
                                         originId = originId,
                                     )
+
+                                if (acceptUnit(unit) == UnitAcceptance.LIMIT_REACHED) break
                             }
                         }
                     } catch (t: Throwable) {

@@ -6,7 +6,7 @@ project:
       include: ["**/build/classes/**", "**/build/tmp/kotlin-classes/**", "**/target/classes/**", "**/out/production/**", "**/bin/**", "**/build/intermediates/javac/**"]
       exclude: ["**/build/classes/**/test/**", "**/build/tmp/kotlin-classes/**/test/**", "**/target/test-classes/**", "**/out/test/**", "**/build/**/generated/**", "**/target/generated-sources/**"]
     jarGlobs:
-      include: ["**/build/libs/*.jar", "**/target/*.jar", "**/libs/*.jar"]
+      include: []
       exclude: ["**/*-sources.jar", "**/*-javadoc.jar", "**/.gradle/**", "**/.m2/**", "**/node_modules/**"]
   scan: { scope: PROJECT_ONLY, followSymlinks: false, maxClasses: 50000, maxJarBytes: null, maxClassBytes: null }
   validation: { unknownRule: ERROR }

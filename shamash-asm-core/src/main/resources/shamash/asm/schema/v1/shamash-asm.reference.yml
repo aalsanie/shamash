@@ -40,13 +40,11 @@ project:
         - "**/build/**/generated/**"
         - "**/target/generated-sources/**"
 
-    # Optional jars to include (useful if your repo produces shaded/fat jars, or publishes a library).
-    # Shamash will only analyze jars present under the configured roots.
+    # JAR scanning is opt-in. Do not scan a packaged project JAR together with the class
+    # directories that produced it; Shamash treats duplicate logical classes as incomplete input.
+    # To analyze JARs, replace [] with explicit patterns and narrow outputsGlobs accordingly.
     jarGlobs:
-      include:
-        - "**/build/libs/*.jar"
-        - "**/target/*.jar"
-        - "**/libs/*.jar"
+      include: []
       exclude:
         - "**/*-sources.jar"
         - "**/*-javadoc.jar"

@@ -4,13 +4,8 @@
 # 1) PASS schema + semantic validation
 # 2) Trigger at least one finding for EACH builtin rule in DefaultRuleRegistry.builtins()
 #
-# NOTE: Some rules currently cannot fire until engine param/id contracts are aligned with specs:
-# - metrics.maxFieldsPerClass (engine reads max, spec enforces maxFields)
-# - metrics.maxMethodsPerClass (engine reads max, spec enforces maxMethods)
-# - arch.forbiddenRoleDependencies (engine reads forbid list, spec enforces forbidden map)
-# - origin.allowOnlyRoot (engine id mismatch: arch.allowOnlyRoot vs origin.allowOnlyRoot)
-#
-# After fixing those mismatches, this file will trigger all 18 rules.
+# It intentionally scans only the built project JAR. Mixing the same compiled classes from
+# build/classes and build/libs would create duplicate logical class definitions.
 
 version: 1
 
@@ -20,26 +15,16 @@ project:
       - "."
 
     outputsGlobs:
-      include:
-        - "**/build/classes/**"
-        - "**/target/classes/**"
-        - "**/target/test-classes/**"
-      exclude:
-        - "**/.idea/**"
-        - "**/out/**"
-        - "**/generated/**"
-        - "**/node_modules/**"
-        - "**/.gradle/**"
-        - "**/build/tmp/**"
+      include: []
+      exclude: []
 
-    # We explicitly include the project jar so jar-origin rules can trigger.
+    # Scan the packaged artifact so origin.* rules exercise JAR_ENTRY semantics.
     jarGlobs:
       include:
         - "**/build/libs/*.jar"
       exclude: []
 
   scan:
-    # Must scan jars to trigger origin.forbiddenJarDependencies
     scope: ALL_SOURCES
     followSymlinks: false
     maxClasses: null
@@ -229,18 +214,32 @@ rules:
       forbidPackages:
         - "^com\\.acme\\.forbidden(\\..*)?$"
 
+  # 6) arch.allowedRoleDependencies
+  # CoreService depends on infra, but the allow-list only permits core -> api.
+  - type: arch
+    name: allowedRoleDependencies
+    roles:
+      - core
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+    params:
+      allow:
+        - "core->api"
 
   # 7) arch.forbiddenRoleDependencies
-  # Scope to InfraRepo (infra) + PublicApi1 (api) to get infra->api edge.
+  # InfraRepo depends on API types; target only the infra role so it does not overlap rule #6.
   - type: arch
     name: forbiddenRoleDependencies
-    roles: null
+    roles:
+      - infra
     enabled: true
     severity: ERROR
     scope:
       includeGlobs:
         - "**/com/acme/infra/InfraRepo.class"
-        - "**/com/acme/api/PublicApi1.class"
     params:
       direction: DIRECT
       forbidden:
@@ -252,7 +251,6 @@ rules:
   # ---------------------------------------------------------------------------
 
   # 8) origin.forbiddenJarDependencies
-  # Uses the built jar entry paths to ensure originKind=JAR_ENTRY is involved.
   - type: origin
     name: forbiddenJarDependencies
     roles: null
@@ -266,6 +264,19 @@ rules:
       forbid:
         - from: ".*build/libs/.*\\.jar$"
           to: ".*build/libs/.*\\.jar$"
+
+  # 9) origin.allowOnlyRoot
+  - type: origin
+    name: allowOnlyRoot
+    roles: null
+    enabled: true
+    severity: ERROR
+    scope:
+      includeGlobs:
+        - "**/com/acme/core/CoreService.class"
+    params:
+      root: "com.allowed"
+      allowDefaultPackage: false
 
   # ---------------------------------------------------------------------------
   # graph.*
