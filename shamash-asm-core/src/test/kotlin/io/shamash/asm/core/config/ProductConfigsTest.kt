@@ -57,6 +57,26 @@ class ProductConfigsTest {
         assertEquals(BaselineMode.VERIFY, config.baseline.mode)
     }
 
+    @Test
+    fun `product configs do not scan packaged jars alongside compiled outputs by default`() {
+        val resources =
+            listOf(
+                ProjectLayout.DISCOVERY_YML,
+                ProjectLayout.STARTER_YML,
+                ProjectLayout.SPRING_YML,
+                ProjectLayout.REFERENCE_YML,
+            )
+
+        for (resource in resources) {
+            val config = validate(resource)
+            assertTrue(
+                config.project.bytecode.jarGlobs.include
+                    .isEmpty(),
+                "$resource must keep JAR scanning opt-in so packaged classes cannot duplicate compiled outputs",
+            )
+        }
+    }
+
     private fun validate(resource: String): io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1 {
         val result = ConfigValidation.loadAndValidateV1(StringReader(resourceText(resource)))
         assertTrue(result.ok, "$resource should pass validation: ${result.errors}")

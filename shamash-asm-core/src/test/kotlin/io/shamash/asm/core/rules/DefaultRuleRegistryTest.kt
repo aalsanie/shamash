@@ -23,6 +23,7 @@ import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.RuleSpec
+import io.shamash.asm.core.config.validation.v1.registry.RuleSpecRegistryV1
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.facts.query.FactIndex
@@ -30,6 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -62,6 +64,17 @@ class DefaultRuleRegistryTest {
         val ids = all.map { it.id }
         assertEquals(ids.sorted(), ids, "registry must iterate in sorted order")
         assertNotNull(r.byId("graph.noCycles"))
+    }
+
+    @Test
+    fun `builtin executable ids exactly match builtin spec ids`() {
+        val executableIds = DefaultRuleRegistry.builtins().map { it.id }.toSet()
+        val specIds = RuleSpecRegistryV1.allIds()
+
+        assertEquals(specIds, executableIds, "every builtin spec must resolve to exactly one executable rule")
+        val registry = DefaultRuleRegistry.create()
+        assertNotNull(registry.byId("origin.allowOnlyRoot"))
+        assertNull(registry.byId("arch.allowOnlyRoot"))
     }
 
     @Test

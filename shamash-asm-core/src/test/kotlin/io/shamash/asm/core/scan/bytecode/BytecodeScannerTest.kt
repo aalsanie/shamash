@@ -123,14 +123,7 @@ class BytecodeScannerTest {
                             outputsGlobs = GlobSet(include = emptyList(), exclude = emptyList()),
                             jarGlobs = GlobSet(include = listOf("**/*.jar"), exclude = emptyList()),
                         ),
-                    scan =
-                        ScanConfig(
-                            scope = ScanScope.PROJECT_ONLY,
-                            followSymlinks = false,
-                            maxClasses = null,
-                            maxJarBytes = null,
-                            maxClassBytes = null,
-                        ),
+                    scan = defaultScan(),
                 )
 
             assertTrue(result.errors.isEmpty(), "scan should not report errors: ${result.errors}")
@@ -152,6 +145,127 @@ class BytecodeScannerTest {
         }
     }
 
+    @Test
+    fun `duplicate logical class from directory and jar is reported once without consuming maxClasses`() {
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        Assume.assumeNotNull(compiler)
+
+        val project = Files.createTempDirectory("shamash-asm-duplicate")
+        try {
+            val outDir = project.resolve("build/classes/java/main")
+            val classFile =
+                compileJava(
+                    project,
+                    "com.example.A",
+                    "package com.example; public class A { public int value() { return 1; } }",
+                    outDir,
+                )
+            val jar = project.resolve("build/libs/app.jar")
+            Files.createDirectories(jar.parent)
+            JarOutputStream(Files.newOutputStream(jar)).use { out ->
+                addJarEntry(out, classFile, "com/example/A.class")
+            }
+
+            val result =
+                BytecodeScanner().scan(
+                    projectBasePath = project,
+                    bytecode = projectClassesAndJarConfig(),
+                    scan = defaultScan(maxClasses = 1),
+                )
+
+            assertEquals(1, result.units.size, "one logical class must produce one bytecode unit")
+            assertFalse(result.truncated, "a duplicate physical representation must not consume maxClasses")
+            assertEquals(1, result.errors.size, "duplicate logical input must make the ambiguity explicit")
+            assertTrue(
+                result.errors
+                    .single()
+                    .message
+                    .contains("Duplicate bytecode definition for class 'com.example.A'"),
+            )
+            assertFalse(
+                result.units
+                    .single()
+                    .originId
+                    .contains("!/"),
+                "classes-directory representation must win deterministically",
+            )
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `conflicting logical class definitions keep directory winner and report incomplete input`() {
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        Assume.assumeNotNull(compiler)
+
+        val project = Files.createTempDirectory("shamash-asm-conflict")
+        try {
+            val outDir = project.resolve("build/classes/java/main")
+            compileJava(
+                project.resolve("dir-src"),
+                "com.example.A",
+                "package com.example; public class A { public int value() { return 1; } }",
+                outDir,
+            )
+
+            val jarOut = project.resolve("jar-classes")
+            val jarClass =
+                compileJava(
+                    project.resolve("jar-src"),
+                    "com.example.A",
+                    "package com.example; public class A { public int value() { return 2; } public int extra() { return 3; } }",
+                    jarOut,
+                )
+            val jar = project.resolve("build/libs/app.jar")
+            Files.createDirectories(jar.parent)
+            JarOutputStream(Files.newOutputStream(jar)).use { out ->
+                addJarEntry(out, jarClass, "com/example/A.class")
+            }
+
+            val result =
+                BytecodeScanner().scan(
+                    projectBasePath = project,
+                    bytecode = projectClassesAndJarConfig(),
+                    scan = defaultScan(),
+                )
+
+            assertEquals(1, result.units.size)
+            assertEquals(1, result.errors.size)
+            assertTrue(
+                result.errors
+                    .single()
+                    .message
+                    .contains("Conflicting bytecode definitions for class 'com.example.A'"),
+            )
+            assertFalse(
+                result.units
+                    .single()
+                    .originId
+                    .contains("!/"),
+                "classes-directory representation must win deterministically",
+            )
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    private fun projectClassesAndJarConfig(): BytecodeConfig =
+        BytecodeConfig(
+            roots = listOf("."),
+            outputsGlobs = GlobSet(include = listOf("**/build/classes/**"), exclude = emptyList()),
+            jarGlobs = GlobSet(include = listOf("**/build/libs/*.jar"), exclude = emptyList()),
+        )
+
+    private fun defaultScan(maxClasses: Int? = null): ScanConfig =
+        ScanConfig(
+            scope = ScanScope.PROJECT_ONLY,
+            followSymlinks = false,
+            maxClasses = maxClasses,
+            maxJarBytes = null,
+            maxClassBytes = null,
+        )
+
     private fun addJarEntry(
         out: JarOutputStream,
         source: Path,
@@ -167,7 +281,7 @@ class BytecodeScannerTest {
         fqcn: String,
         source: String,
         outputDir: Path,
-    ) {
+    ): Path {
         val compiler = ToolProvider.getSystemJavaCompiler() ?: error("JDK compiler not available")
 
         val parts = fqcn.split('.')
@@ -183,5 +297,7 @@ class BytecodeScannerTest {
 
         val rc = compiler.run(null, null, null, "-d", outputDir.toString(), javaFile.toString())
         if (rc != 0) error("javac failed with exit code $rc")
+
+        return outputDir.resolve(parts.joinToString("/") + ".class")
     }
 }
