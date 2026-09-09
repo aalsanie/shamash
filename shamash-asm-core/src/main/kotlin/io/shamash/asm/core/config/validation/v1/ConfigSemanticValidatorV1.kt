@@ -285,8 +285,18 @@ object ConfigSemanticValidatorV1 {
             }
         }
 
-        validateGlobSet(project.bytecode.outputsGlobs, "project.bytecode.outputsGlobs", errors)
-        validateGlobSet(project.bytecode.jarGlobs, "project.bytecode.jarGlobs", errors)
+        validateGlobSet(
+            project.bytecode.outputsGlobs,
+            "project.bytecode.outputsGlobs",
+            errors,
+            allowEmptyInclude = false,
+        )
+        validateGlobSet(
+            project.bytecode.jarGlobs,
+            "project.bytecode.jarGlobs",
+            errors,
+            allowEmptyInclude = true,
+        )
 
         project.scan.maxClasses?.let { if (it <= 0) errors += err("project.scan.maxClasses", "must be > 0") }
         project.scan.maxJarBytes?.let { if (it <= 0) errors += err("project.scan.maxJarBytes", "must be > 0") }
@@ -297,8 +307,9 @@ object ConfigSemanticValidatorV1 {
         globs: GlobSet,
         path: String,
         errors: MutableList<ValidationError>,
+        allowEmptyInclude: Boolean,
     ) {
-        if (globs.include.isEmpty()) {
+        if (!allowEmptyInclude && globs.include.isEmpty()) {
             errors += err("$path.include", "must contain at least one glob")
         } else {
             globs.include.forEachIndexed { i, g ->

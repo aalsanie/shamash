@@ -176,8 +176,19 @@ class BytecodeScannerTest {
             assertEquals(1, result.units.size, "one logical class must produce one bytecode unit")
             assertFalse(result.truncated, "a duplicate physical representation must not consume maxClasses")
             assertEquals(1, result.errors.size, "duplicate logical input must make the ambiguity explicit")
-            assertTrue(result.errors.single().message.contains("Duplicate bytecode definition for class 'com.example.A'"))
-            assertFalse(result.units.single().originId.contains("!/"), "classes-directory representation must win deterministically")
+            assertTrue(
+                result.errors
+                    .single()
+                    .message
+                    .contains("Duplicate bytecode definition for class 'com.example.A'"),
+            )
+            assertFalse(
+                result.units
+                    .single()
+                    .originId
+                    .contains("!/"),
+                "classes-directory representation must win deterministically",
+            )
         } finally {
             project.toFile().deleteRecursively()
         }
@@ -221,8 +232,19 @@ class BytecodeScannerTest {
 
             assertEquals(1, result.units.size)
             assertEquals(1, result.errors.size)
-            assertTrue(result.errors.single().message.contains("Conflicting bytecode definitions for class 'com.example.A'"))
-            assertFalse(result.units.single().originId.contains("!/"), "classes-directory representation must win deterministically")
+            assertTrue(
+                result.errors
+                    .single()
+                    .message
+                    .contains("Conflicting bytecode definitions for class 'com.example.A'"),
+            )
+            assertFalse(
+                result.units
+                    .single()
+                    .originId
+                    .contains("!/"),
+                "classes-directory representation must win deterministically",
+            )
         } finally {
             project.toFile().deleteRecursively()
         }

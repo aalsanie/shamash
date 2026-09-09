@@ -70,7 +70,8 @@ class ProductConfigsTest {
         for (resource in resources) {
             val config = validate(resource)
             assertTrue(
-                config.project.bytecode.jarGlobs.include.isEmpty(),
+                config.project.bytecode.jarGlobs.include
+                    .isEmpty(),
                 "$resource must keep JAR scanning opt-in so packaged classes cannot duplicate compiled outputs",
             )
         }

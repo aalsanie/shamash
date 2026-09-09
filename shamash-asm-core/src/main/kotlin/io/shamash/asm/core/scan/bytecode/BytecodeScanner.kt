@@ -277,10 +277,13 @@ class BytecodeScanner {
                         BytecodeScanError(
                             message =
                                 if (identical) {
-                                    "Duplicate bytecode definition for class '$classFqn'; keeping '${existing.originId}' and ignoring '${unit.originId}'. " +
+                                    "Duplicate bytecode definition for class " +
+                                        "'$classFqn'; keeping '${existing.originId}' and ignoring " +
+                                        "'${unit.originId}'. " +
                                         "Configure exactly one representation of each logical class."
                                 } else {
-                                    "Conflicting bytecode definitions for class '$classFqn'; keeping '${existing.originId}' and ignoring '${unit.originId}'. " +
+                                    "Conflicting bytecode definitions for class '$classFqn'; keeping " +
+                                        "'${existing.originId}' and ignoring '${unit.originId}'. " +
                                         "Configure exactly one representation of each logical class."
                                 },
                             path = unit.originId,
