@@ -4,6 +4,31 @@ Shamash ships with the built-in `default` ASM rule registry. Registry selection 
 
 A registry defines which ASM rules are available and how they execute. It is separate from `shamash/configs/asm.yml`, which selects and configures rules for a project.
 
+## Dependency
+
+Registry providers compile against `shamash-asm-core`, published on Maven Central.
+
+Gradle:
+
+```kotlin
+dependencies {
+    compileOnly("io.github.aalsanie:shamash-asm-core:0.92.0")
+}
+```
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>io.github.aalsanie</groupId>
+    <artifactId>shamash-asm-core</artifactId>
+    <version>0.92.0</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+Use the Shamash version your provider targets. The Shamash CLI or IntelliJ plugin supplies `shamash-asm-core` at runtime; provider JARs should not bundle their own copy.
+
 ## CLI registry providers
 
 The CLI discovers external registries with Java `ServiceLoader`.
@@ -61,7 +86,7 @@ The IntelliJ plugin exposes this extension point:
 io.shamash.asmRuleRegistryProvider
 ```
 
-It uses the same interface as the CLI:
+It uses the same provider interface as the CLI:
 
 ```text
 io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
@@ -83,6 +108,8 @@ Contributed registries appear in Shamash's registry selection UI. Duplicate or b
 
 ## Compatibility
 
-Registry providers are binary-coupled to the Shamash rule-registry API they compile against. Providers should target an explicit Shamash version range and be rebuilt when that API changes.
+Registry providers are binary-coupled to the Shamash rule-registry API they compile against.
 
-`shamash-asm-core` is not currently published as a public Maven artifact. External provider authors therefore need a build-time copy of the compatible Shamash API, such as the project sources or artifacts produced from the matching Shamash release. ServiceLoader and the IntelliJ extension point solve runtime discovery; they do not provide the compile-time dependency.
+Compile against an explicit `shamash-asm-core` version and run the provider with a compatible Shamash version. Rebuild and retest the provider when upgrading across versions that change the rule-registry API.
+
+`ServiceLoader` and the IntelliJ extension point provide runtime discovery. Maven Central provides the compile-time API dependency.
