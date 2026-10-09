@@ -6,7 +6,7 @@ import java.util.concurrent.Callable
 plugins {
     kotlin("jvm") version "2.4.10" apply false
     id("org.jetbrains.intellij.platform") version "2.10.5" apply false
-    id("com.diffplug.spotless") version "8.9.0" apply false
+    id("com.diffplug.spotless") version "8.10.1" apply false
     id("org.jetbrains.kotlinx.kover") version "0.9.9" apply false
     id("com.vanniktech.maven.publish") version "0.35.0" apply false
     id("org.jetbrains.dokka") version "2.2.0" apply false
