@@ -97,7 +97,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Test + package (Unix)
         if: runner.os != 'Windows'
         run: ./gradlew --stacktrace spotlessCheck test :shamash-cli:distZip
@@ -122,7 +122,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - run: ./gradlew --stacktrace :shamash-intellij-plugin:verifyPlugin
 
   build-assets:
@@ -139,7 +139,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Build unsigned release assets
         run: ./gradlew --stacktrace :shamash-cli:distZip :shamash-intellij-plugin:buildPlugin
       - name: Sign and verify IntelliJ plugin
@@ -185,7 +185,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Verify release signatures
         shell: bash
         env:
@@ -248,7 +248,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Publish plugin
         env:
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
