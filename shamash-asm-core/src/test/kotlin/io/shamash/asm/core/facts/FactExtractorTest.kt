@@ -173,8 +173,10 @@ class FactExtractorTest {
                 )
 
             assertTrue(targets.containsAll(expected), "missing: ${expected - targets}; got: $generics")
-            fun hasGeneric(detail: String, fqn: String): Boolean =
-                generics.any { it.detail == detail && it.to.fqName == fqn }
+            fun hasGeneric(
+                detail: String,
+                fqn: String,
+            ): Boolean = generics.any { it.detail == detail && it.to.fqName == fqn }
 
             assertTrue(hasGeneric("field:field", "com.example.FieldArgument"))
             assertTrue(hasGeneric("field:nested", "com.example.WildcardArgument"))
