@@ -177,7 +177,7 @@ class ReportBuilderTest {
             )
 
         assertEquals(listOf(relativePath, relativePath), report.findings.map { it.filePath })
-        assertEquals(1, report.findings.map { it.fingerprint }.toSet().size)
+        assertEquals(report.findings.first().fingerprint, report.findings.last().fingerprint)
         assertEquals(BaselineFingerprint.sha256Hex(finding, relativePath), report.findings.first().fingerprint)
     }
 
