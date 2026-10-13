@@ -61,7 +61,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ShamashAsmEngineTest {
-    private class AlwaysFindingRule(private val findingPath: String = "") : Rule {
+    private class AlwaysFindingRule(
+        private val findingPath: String = "",
+    ) : Rule {
         override val id: String = "test.alwaysFinding"
 
         override fun evaluate(

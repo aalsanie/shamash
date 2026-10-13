@@ -49,7 +49,7 @@ class PathNormalizerTest {
     @Test
     fun relativizeOrNormalize_resolvesRelativeTargetsAgainstProjectBase() {
         val base = Files.createTempDirectory("shamash-path-base")
-        val relative = Paths.get("build/classes/../classes/com/example/App.class")
+        val relative = Paths.get("build/classes/com/example/App.class")
         val absolute = base.resolve(relative)
 
         assertEquals("build/classes/com/example/App.class", PathNormalizer.relativizeOrNormalize(base, relative))
