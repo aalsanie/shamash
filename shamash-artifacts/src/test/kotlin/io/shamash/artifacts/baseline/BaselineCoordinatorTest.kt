@@ -57,6 +57,30 @@ class BaselineCoordinatorTest {
     }
 
     @Test
+    fun computeFingerprints_matchesProjectRelativeAndAbsoluteFindingPaths() {
+        val coordinator = BaselineCoordinator()
+        val projectBase = Files.createTempDirectory("shamash-coord")
+        val relativePath = "build/classes/java/main/com/example/App.class"
+        val finding =
+            Finding(
+                ruleId = "R1",
+                message = "m",
+                filePath = relativePath,
+                severity = FindingSeverity.ERROR,
+            )
+        val absoluteFinding = finding.copy(filePath = projectBase.resolve(relativePath).toString())
+
+        val fingerprints = coordinator.computeFingerprints(projectBase, listOf(finding))
+
+        assertEquals(setOf(BaselineFingerprint.sha256Hex(finding, relativePath)), fingerprints)
+        assertEquals(fingerprints, coordinator.computeFingerprints(projectBase, listOf(absoluteFinding)))
+        assertEquals(
+            emptyList(),
+            coordinator.createSuppressionPreprocessor(fingerprints)!!.process(projectBase, listOf(absoluteFinding)),
+        )
+    }
+
+    @Test
     fun writeBaseline_overwritesOrMergesDependingOnFlag() {
         val store = BaselineStore()
         val coordinator = BaselineCoordinator(store)

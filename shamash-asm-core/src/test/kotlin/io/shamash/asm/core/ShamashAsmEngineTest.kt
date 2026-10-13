@@ -61,7 +61,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ShamashAsmEngineTest {
-    private class AlwaysFindingRule : Rule {
+    private class AlwaysFindingRule(private val findingPath: String = "") : Rule {
         override val id: String = "test.alwaysFinding"
 
         override fun evaluate(
@@ -73,7 +73,7 @@ class ShamashAsmEngineTest {
                 Finding(
                     ruleId = id,
                     message = "boom",
-                    filePath = "",
+                    filePath = findingPath,
                     severity = FindingSeverity.ERROR,
                     classFqn = "com.example.Foo",
                 ),
@@ -302,6 +302,38 @@ class ShamashAsmEngineTest {
             assertTrue(verified.findings.isEmpty())
             assertFalse(assertNotNull(verified.export).baselineWritten)
             assertContentEquals(written, Files.readAllBytes(baseline))
+        }
+    }
+
+    @Test
+    fun `baseline generated with relative or absolute finding path verifies against the other form`() {
+        for (generateWithRelativePath in listOf(true, false)) {
+            withBaselineProject { project ->
+                val relativePath = "build/classes/java/main/com/example/Foo.class"
+                val absolutePath = project.resolve(relativePath).toString()
+                val generatePath = if (generateWithRelativePath) relativePath else absolutePath
+                val verifyPath = if (generateWithRelativePath) absolutePath else relativePath
+                val config = baselineConfig(exportEnabled = false)
+
+                val generated =
+                    ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule(generatePath)))
+                        .analyze(project, "demo", config, FactIndex.empty())
+
+                assertTrue(generated.isSuccess, generated.errors.toString())
+                assertEquals(1, generated.findings.size)
+
+                val verified =
+                    ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule(verifyPath)))
+                        .analyze(
+                            project,
+                            "demo",
+                            config.copy(baseline = config.baseline.copy(mode = BaselineMode.VERIFY)),
+                            FactIndex.empty(),
+                        )
+
+                assertTrue(verified.isSuccess, verified.errors.toString())
+                assertTrue(verified.findings.isEmpty())
+            }
         }
     }
 
