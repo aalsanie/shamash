@@ -173,35 +173,17 @@ class FactExtractorTest {
                 )
 
             assertTrue(targets.containsAll(expected), "missing: ${expected - targets}; got: $generics")
-            assertTrue(generics.any { it.detail == "field:field" && it.to.fqName == "com.example.FieldArgument" })
-            assertTrue(generics.any { it.detail == "field:nested" && it.to.fqName == "com.example.WildcardArgument" })
-            assertTrue(generics.any { it.detail == "method:transform(Ljava/util/List;)Ljava/util/List;" && it.to.fqName == "com.example.ParameterArgument" })
-            assertTrue(generics.any { it.detail == "method:transform(Ljava/util/List;)Ljava/util/List;" && it.to.fqName == "com.example.ReturnArgument" })
-            assertTrue(generics.none { it.detail == "field:field" && it.to.fqName == "java.util.List" })
+            fun hasGeneric(detail: String, fqn: String): Boolean =
+                generics.any { it.detail == detail && it.to.fqName == fqn }
+
+            assertTrue(hasGeneric("field:field", "com.example.FieldArgument"))
+            assertTrue(hasGeneric("field:nested", "com.example.WildcardArgument"))
+            val methodDetail = "method:transform(Ljava/util/List;)Ljava/util/List;"
+            assertTrue(hasGeneric(methodDetail, "com.example.ParameterArgument"))
+            assertTrue(hasGeneric(methodDetail, "com.example.ReturnArgument"))
+            assertTrue(!hasGeneric("field:field", "java.util.List"))
             assertTrue(result.facts.edges.any { it.kind == DependencyKind.FIELD_TYPE && it.to.fqName == "java.util.List" })
-            assertTrue(generics.any { it.to.internalName == "com/example/Foo" + '
-        fqcn: String,
-        source: String,
-        outputDir: Path,
-    ): Path {
-        val compiler = ToolProvider.getSystemJavaCompiler() ?: error("JDK compiler not available")
-        val parts = fqcn.split('.')
-        val cls = parts.last()
-
-        val srcDir = tmp.resolve("srcgen").resolve(parts.dropLast(1).joinToString("/"))
-        Files.createDirectories(srcDir)
-
-        val javaFile = srcDir.resolve("$cls.java")
-        Files.writeString(javaFile, source)
-
-        val rc = compiler.run(null, null, null, "-d", outputDir.toString(), javaFile.toString())
-        if (rc != 0) error("javac failed with exit code $rc")
-
-        val rel = parts.joinToString("/") + ".class"
-        return outputDir.resolve(rel)
-    }
-}
- + "Outer" })
+            assertTrue(generics.any { it.to.internalName == "com/example/Foo" + "$" + "Outer" })
         } finally {
             project.toFile().deleteRecursively()
         }
