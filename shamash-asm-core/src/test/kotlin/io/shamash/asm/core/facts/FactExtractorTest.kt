@@ -173,6 +173,7 @@ class FactExtractorTest {
                 )
 
             assertTrue(targets.containsAll(expected), "missing: ${expected - targets}; got: $generics")
+
             fun hasGeneric(
                 detail: String,
                 fqn: String,
