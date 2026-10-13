@@ -1918,6 +1918,7 @@ public final class io/shamash/asm/core/facts/model/DependencyKind : java/lang/En
 	public static final field EXTENDS Lio/shamash/asm/core/facts/model/DependencyKind;
 	public static final field FIELD_ACCESS Lio/shamash/asm/core/facts/model/DependencyKind;
 	public static final field FIELD_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
+	public static final field GENERIC_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;
 	public static final field IMPLEMENTS Lio/shamash/asm/core/facts/model/DependencyKind;
 	public static final field METHOD_CALL Lio/shamash/asm/core/facts/model/DependencyKind;
 	public static final field METHOD_PARAM_TYPE Lio/shamash/asm/core/facts/model/DependencyKind;

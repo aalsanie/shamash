@@ -41,4 +41,5 @@ enum class DependencyKind {
 
     TYPE_INSTRUCTION,
     CONST_TYPE,
+    GENERIC_TYPE,
 }

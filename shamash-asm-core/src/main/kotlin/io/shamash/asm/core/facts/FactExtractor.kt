@@ -35,6 +35,8 @@ import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
+import org.objectweb.asm.signature.SignatureReader
+import org.objectweb.asm.signature.SignatureVisitor
 import org.objectweb.asm.util.Printer
 
 /** Extracts best-effort facts and records failures per bytecode unit. */
@@ -140,6 +142,7 @@ object FactExtractor {
     ) : ClassVisitor(Opcodes.ASM9) {
         private var classInternalName: String? = null
         private var classAccess: Int = 0
+        private var classSignature: String? = null
         private var superInternalName: String? = null
         private var interfaceInternalNames: List<String> = emptyList()
         private var sourceFile: String? = null
@@ -158,6 +161,7 @@ object FactExtractor {
         ) {
             classInternalName = name
             classAccess = access
+            classSignature = signature
             superInternalName = superName
             interfaceInternalNames = interfaces?.toList().orEmpty()
 
@@ -294,6 +298,14 @@ object FactExtractor {
                                 ),
                             )
                         }
+                        addSignatureEdges(
+                            owner = owner,
+                            signature = signature,
+                            typeOnly = true,
+                            erasedTypes = listOfNotNull(fieldType).mapTo(mutableSetOf()) { it.internalName },
+                            location = loc,
+                            detail = "field:$name",
+                        )
                     }
                 }
 
@@ -373,6 +385,15 @@ object FactExtractor {
                     )
                 }
             }
+
+            addSignatureEdges(
+                owner = owner,
+                signature = signature,
+                typeOnly = false,
+                erasedTypes = (params + listOfNotNull(ret) + throwsTypes).mapTo(mutableSetOf()) { it.internalName },
+                location = methodBaseLoc,
+                detail = "method:$name$descriptor",
+            )
 
             val mv =
                 object : MethodVisitor(Opcodes.ASM9) {
@@ -626,6 +647,15 @@ object FactExtractor {
                 ),
             )
 
+            addSignatureEdges(
+                owner = type,
+                signature = classSignature,
+                typeOnly = false,
+                erasedTypes = (listOfNotNull(superType) + ifaces).mapTo(mutableSetOf()) { it.internalName },
+                location = loc,
+                detail = "class",
+            )
+
             for (a in classAnnotations) {
                 val to = TypeRef.fromInternalName(a.replace('.', '/'))
                 if (type.internalName != to.internalName) {
@@ -773,6 +803,42 @@ object FactExtractor {
                     }
             }
 
+        private fun addSignatureEdges(
+            owner: TypeRef,
+            signature: String?,
+            typeOnly: Boolean,
+            erasedTypes: Set<String>,
+            location: SourceLocation,
+            detail: String,
+        ) {
+            if (signature == null) return
+
+            val referencedTypes =
+                try {
+                    val types = linkedSetOf<String>()
+                    val reader = SignatureReader(signature)
+                    val visitor = SignatureTypeCollector(types)
+                    if (typeOnly) reader.acceptType(visitor) else reader.accept(visitor)
+                    types
+                } catch (t: Throwable) {
+                    onError("signature:$detail", t)
+                    return
+                }
+
+            for (internalName in referencedTypes) {
+                if (internalName == owner.internalName || internalName in erasedTypes) continue
+                onEdge(
+                    DependencyEdge(
+                        from = owner,
+                        to = TypeRef.fromInternalName(internalName),
+                        kind = DependencyKind.GENERIC_TYPE,
+                        location = location,
+                        detail = detail,
+                    ),
+                )
+            }
+        }
+
         private fun annotationFqn(descriptor: String): String? {
             return try {
                 val t = Type.getType(descriptor)
@@ -783,6 +849,42 @@ object FactExtractor {
                 null
             }
         }
+    }
+
+    private class SignatureTypeCollector(
+        private val types: MutableSet<String>,
+    ) : SignatureVisitor(Opcodes.ASM9) {
+        private var className: String? = null
+
+        override fun visitClassType(name: String) {
+            className = name
+            types += name
+        }
+
+        override fun visitInnerClassType(name: String) {
+            val outer = className ?: return
+            val inner = outer + "$" + name
+            className = inner
+            types += inner
+        }
+
+        override fun visitClassBound(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitInterfaceBound(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitSuperclass(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitInterface(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitParameterType(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitReturnType(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitExceptionType(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitArrayType(): SignatureVisitor = SignatureTypeCollector(types)
+
+        override fun visitTypeArgument(wildcard: Char): SignatureVisitor = SignatureTypeCollector(types)
     }
 
     private object NoopMethodVisitor : MethodVisitor(Opcodes.ASM9)
