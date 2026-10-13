@@ -47,6 +47,25 @@ class PathNormalizerTest {
     }
 
     @Test
+    fun relativizeOrNormalize_resolvesRelativeTargetsAgainstProjectBase() {
+        val base = Files.createTempDirectory("shamash-path-base")
+        val relative = Paths.get("build/classes/com/example/App.class")
+        val absolute = base.resolve(relative)
+
+        assertEquals("build/classes/com/example/App.class", PathNormalizer.relativizeOrNormalize(base, relative))
+        assertEquals("build/classes/com/example/App.class", PathNormalizer.relativizeOrNormalize(base, absolute))
+    }
+
+    @Test
+    fun relativizeOrNormalize_keepsRelativePathsOutsideProjectBase() {
+        val base = Files.createTempDirectory("shamash-path-base")
+        val relative = Paths.get("../external/Other.class")
+
+        assertEquals("../external/Other.class", PathNormalizer.relativizeOrNormalize(base, relative))
+        assertEquals("../external/Other.class", PathNormalizer.relativizeOrNormalize(base, base.resolve(relative)))
+    }
+
+    @Test
     fun relativizeOrNormalize_fallsBackToNormalizedTarget_whenRelativizeFails() {
         // Force an exception by mixing different FileSystem providers.
         val base: Path = Files.createTempDirectory("shamash-base")

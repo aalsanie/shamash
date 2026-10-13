@@ -57,6 +57,65 @@ class BaselineCoordinatorTest {
     }
 
     @Test
+    fun computeFingerprints_matchesProjectRelativeAndAbsoluteFindingPaths() {
+        val coordinator = BaselineCoordinator()
+        val projectBase = Files.createTempDirectory("shamash-coord")
+        val relativePath = "build/classes/java/main/com/example/App.class"
+        val finding =
+            Finding(
+                ruleId = "R1",
+                message = "m",
+                filePath = relativePath,
+                severity = FindingSeverity.ERROR,
+            )
+        val absoluteFinding = finding.copy(filePath = projectBase.resolve(relativePath).toString())
+
+        val fingerprints = coordinator.computeFingerprints(projectBase, listOf(finding))
+
+        assertEquals(setOf(BaselineFingerprint.sha256Hex(finding, relativePath)), fingerprints)
+        assertEquals(fingerprints, coordinator.computeFingerprints(projectBase, listOf(absoluteFinding)))
+    }
+
+    @Test
+    fun computeFingerprints_isStableAcrossProjectRoots() {
+        val coordinator = BaselineCoordinator()
+        val firstProject = Files.createTempDirectory("shamash-coord-first")
+        val secondProject = Files.createTempDirectory("shamash-coord-second")
+        val relativePath = "build/classes/java/main/com/example/App.class"
+        val finding =
+            Finding(
+                ruleId = "R1",
+                message = "m",
+                filePath = relativePath,
+                severity = FindingSeverity.ERROR,
+            )
+
+        val first = coordinator.computeFingerprints(firstProject, listOf(finding))
+        val second = coordinator.computeFingerprints(secondProject, listOf(finding))
+
+        assertEquals(first, second)
+    }
+
+    @Test
+    fun createSuppressionPreprocessor_suppressesMatchingAbsoluteFinding() {
+        val coordinator = BaselineCoordinator()
+        val projectBase = Files.createTempDirectory("shamash-coord")
+        val finding =
+            Finding(
+                ruleId = "R1",
+                message = "m",
+                filePath = "build/classes/java/main/com/example/App.class",
+                severity = FindingSeverity.ERROR,
+            )
+        val fingerprints = coordinator.computeFingerprints(projectBase, listOf(finding))
+        val absoluteFinding = finding.copy(filePath = projectBase.resolve(finding.filePath).toString())
+
+        val preprocessor = assertNotNull(coordinator.createSuppressionPreprocessor(fingerprints))
+
+        assertEquals(emptyList(), preprocessor.process(projectBase, listOf(absoluteFinding)))
+    }
+
+    @Test
     fun writeBaseline_overwritesOrMergesDependingOnFlag() {
         val store = BaselineStore()
         val coordinator = BaselineCoordinator(store)

@@ -155,6 +155,33 @@ class ReportBuilderTest {
     }
 
     @Test
+    fun build_exportsEquivalentProjectRelativeAndAbsolutePathsWithIdenticalFingerprints() {
+        val relativePath = "src/main/java/com/example/App.java"
+        val finding =
+            Finding(
+                ruleId = "R1",
+                message = "relative",
+                filePath = relativePath,
+                severity = FindingSeverity.ERROR,
+            )
+        val absoluteFinding = finding.copy(message = "absolute", filePath = tempDir.resolve(relativePath).toString())
+
+        val report =
+            ReportBuilder().build(
+                projectBasePath = tempDir,
+                projectName = "proj",
+                toolName = "tool",
+                toolVersion = "1.0",
+                findings = listOf(finding, absoluteFinding),
+                generatedAtEpochMillis = 123L,
+            )
+
+        assertEquals(listOf(relativePath, relativePath), report.findings.map { it.filePath })
+        assertEquals(report.findings.first().fingerprint, report.findings.last().fingerprint)
+        assertEquals(BaselineFingerprint.sha256Hex(finding, relativePath), report.findings.first().fingerprint)
+    }
+
+    @Test
     fun build_sortsFindingsDeterministically_byPathRuleSeverityOwnerFingerprint() {
         val fA = tempDir.resolve("a").resolve("File.kt")
         val fB = tempDir.resolve("b").resolve("File.kt")

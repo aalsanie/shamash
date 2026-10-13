@@ -41,8 +41,9 @@ object PathNormalizer {
         target: Path,
     ): String =
         try {
-            val rel = base.toAbsolutePath().normalize().relativize(target.toAbsolutePath().normalize())
-            normalize(rel)
+            val basePath = base.toAbsolutePath().normalize()
+            val targetPath = basePath.resolve(target).normalize()
+            normalize(basePath.relativize(targetPath))
         } catch (_: Exception) {
             normalize(target)
         }
