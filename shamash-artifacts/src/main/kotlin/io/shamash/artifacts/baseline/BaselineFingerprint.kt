@@ -39,7 +39,7 @@ object BaselineFingerprint {
             md.update(0x1F) // unit separator
         }
 
-        val isGraphCycle = finding.ruleId == "graph.noCycles"
+        val isGraphCycle = finding.ruleId == "graph.noCycles" || finding.ruleId.startsWith("graph.noCycles.")
 
         put(if (isGraphCycle) "v2" else "v1") // baseline fingerprint version
         put(if (isGraphCycle) "" else normalizedProjectRelativePath)
