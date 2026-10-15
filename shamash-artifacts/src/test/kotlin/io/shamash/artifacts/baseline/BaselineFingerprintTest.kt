@@ -89,6 +89,13 @@ class BaselineFingerprintTest {
         val original = BaselineFingerprint.sha256Hex(cycle, cycle.filePath)
 
         assertEquals(original, BaselineFingerprint.sha256Hex(sameCycle, sameCycle.filePath))
+
+        val scopedCycle = cycle.copy(ruleId = "graph.noCycles.controller")
+        val scopedSameCycle = sameCycle.copy(ruleId = "graph.noCycles.controller")
+        assertEquals(
+            BaselineFingerprint.sha256Hex(scopedCycle, scopedCycle.filePath),
+            BaselineFingerprint.sha256Hex(scopedSameCycle, scopedSameCycle.filePath),
+        )
         assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("cycle" to "another cycle")), cycle.filePath))
         assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("granularity" to "package")), cycle.filePath))
         assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("includeExternal" to "true")), cycle.filePath))
