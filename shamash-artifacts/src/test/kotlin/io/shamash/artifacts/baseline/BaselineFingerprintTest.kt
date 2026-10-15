@@ -96,9 +96,18 @@ class BaselineFingerprintTest {
             BaselineFingerprint.sha256Hex(scopedCycle, scopedCycle.filePath),
             BaselineFingerprint.sha256Hex(scopedSameCycle, scopedSameCycle.filePath),
         )
-        assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("cycle" to "another cycle")), cycle.filePath))
-        assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("granularity" to "package")), cycle.filePath))
-        assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("includeExternal" to "true")), cycle.filePath))
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("cycle" to "another cycle")), cycle.filePath),
+        )
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("granularity" to "package")), cycle.filePath),
+        )
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("includeExternal" to "true")), cycle.filePath),
+        )
         assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(severity = FindingSeverity.WARNING), cycle.filePath))
     }
 
