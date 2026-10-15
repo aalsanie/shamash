@@ -24,7 +24,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 
 /**
- * Fingerprint v1 uses normalized project-relative paths and sorted data entries.
+ * Fingerprints use stable finding identity fields.
  * Human-readable messages are excluded so wording changes do not invalidate baselines.
  */
 object BaselineFingerprint {
@@ -39,8 +39,10 @@ object BaselineFingerprint {
             md.update(0x1F) // unit separator
         }
 
-        put("v1") // baseline fingerprint version
-        put(normalizedProjectRelativePath)
+        val isGraphCycle = finding.ruleId == "graph.noCycles" || finding.ruleId.startsWith("graph.noCycles.")
+
+        put(if (isGraphCycle) "v2" else "v1") // baseline fingerprint version
+        put(if (isGraphCycle) "" else normalizedProjectRelativePath)
 
         put(finding.ruleId)
         put(finding.severity.name)
@@ -48,7 +50,13 @@ object BaselineFingerprint {
         put(finding.startOffset?.toString() ?: "")
         put(finding.endOffset?.toString() ?: "")
 
-        val entries = finding.data.entries.sortedWith(compareBy<Map.Entry<String, String>> { it.key }.thenBy { it.value })
+        val identityData =
+            if (isGraphCycle) {
+                finding.data.filterKeys { it in GRAPH_CYCLE_IDENTITY_KEYS }
+            } else {
+                finding.data
+            }
+        val entries = identityData.entries.sortedWith(compareBy<Map.Entry<String, String>> { it.key }.thenBy { it.value })
         for ((k, v) in entries) {
             put(k)
             put(v)
@@ -69,6 +77,8 @@ object BaselineFingerprint {
         }
         return String(out)
     }
+
+    private val GRAPH_CYCLE_IDENTITY_KEYS = setOf("granularity", "includeExternal", "cycle")
 
     private val HEX: CharArray = "0123456789abcdef".toCharArray()
 }

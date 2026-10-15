@@ -57,6 +57,80 @@ class BaselineFingerprintTest {
     }
 
     @Test
+    fun sha256Hex_graphCycleIgnoresPresentationMetadataAndAnchorPath() {
+        val cycle =
+            Finding(
+                ruleId = "graph.noCycles",
+                message = "One cycle",
+                filePath = "classes/com/example/A.class",
+                severity = FindingSeverity.ERROR,
+                data =
+                    mapOf(
+                        "granularity" to "class",
+                        "includeExternal" to "false",
+                        "cycle" to "com.example.A -> com.example.B -> com.example.A",
+                        "cycleIndex" to "1",
+                        "cycleCount" to "1",
+                    ),
+            )
+        val sameCycle =
+            cycle.copy(
+                message = "Two cycles",
+                filePath = "classes/com/example/Unrelated.class",
+                data =
+                    cycle.data +
+                        mapOf(
+                            "cycleIndex" to "2",
+                            "cycleCount" to "2",
+                            "cyclesTruncated" to "true",
+                        ),
+            )
+
+        val original = BaselineFingerprint.sha256Hex(cycle, cycle.filePath)
+
+        assertEquals(original, BaselineFingerprint.sha256Hex(sameCycle, sameCycle.filePath))
+
+        val scopedCycle = cycle.copy(ruleId = "graph.noCycles.controller")
+        val scopedSameCycle = sameCycle.copy(ruleId = "graph.noCycles.controller")
+        assertEquals(
+            BaselineFingerprint.sha256Hex(scopedCycle, scopedCycle.filePath),
+            BaselineFingerprint.sha256Hex(scopedSameCycle, scopedSameCycle.filePath),
+        )
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("cycle" to "another cycle")), cycle.filePath),
+        )
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("granularity" to "package")), cycle.filePath),
+        )
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(cycle.copy(data = cycle.data + ("includeExternal" to "true")), cycle.filePath),
+        )
+        assertNotEquals(original, BaselineFingerprint.sha256Hex(cycle.copy(severity = FindingSeverity.WARNING), cycle.filePath))
+    }
+
+    @Test
+    fun sha256Hex_otherRulesStillHashPathAndEveryDataEntry() {
+        val finding =
+            Finding(
+                ruleId = "arch.forbiddenRoleDependencies",
+                message = "m",
+                filePath = "classes/com/example/A.class",
+                severity = FindingSeverity.ERROR,
+                data = mapOf("cycleCount" to "1"),
+            )
+        val original = BaselineFingerprint.sha256Hex(finding, finding.filePath)
+
+        assertNotEquals(original, BaselineFingerprint.sha256Hex(finding, "classes/com/example/B.class"))
+        assertNotEquals(
+            original,
+            BaselineFingerprint.sha256Hex(finding.copy(data = mapOf("cycleCount" to "2")), finding.filePath),
+        )
+    }
+
+    @Test
     fun sha256Hex_changesWhenIdentityFieldsChange() {
         val path = "src/Main.kt"
 
