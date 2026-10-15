@@ -24,7 +24,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 
 /**
- * Fingerprint v1 uses stable finding identity fields.
+ * Fingerprints use stable finding identity fields.
  * Human-readable messages are excluded so wording changes do not invalidate baselines.
  */
 object BaselineFingerprint {
@@ -41,7 +41,7 @@ object BaselineFingerprint {
 
         val isGraphCycle = finding.ruleId == "graph.noCycles"
 
-        put("v1") // baseline fingerprint version
+        put(if (isGraphCycle) "v2" else "v1") // baseline fingerprint version
         put(if (isGraphCycle) "" else normalizedProjectRelativePath)
 
         put(finding.ruleId)
