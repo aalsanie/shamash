@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.shamash.psi.core.scan
+package io.shamash.psi.core.config
 
 import kotlin.test.Test
 import kotlin.test.assertFalse

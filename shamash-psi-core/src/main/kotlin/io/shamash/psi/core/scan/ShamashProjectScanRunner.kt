@@ -32,6 +32,7 @@ import io.shamash.artifacts.report.schema.v1.ExportedReport
 import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.export.service.ShamashReportExportService
 import io.shamash.psi.core.config.ConfigValidation
+import io.shamash.psi.core.config.SourceGlobFilter
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.config.ValidationSeverity
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
