@@ -46,6 +46,7 @@ class MaxDependencyDensityRule : Rule {
                 granularity = params.granularity,
                 includeExternalBuckets = params.includeExternal,
                 scope = scope,
+                rule = rule,
             )
 
         val density = RuleUtil.dependencyDensity(g)

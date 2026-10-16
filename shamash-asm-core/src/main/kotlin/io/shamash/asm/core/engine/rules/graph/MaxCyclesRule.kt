@@ -46,6 +46,7 @@ class MaxCyclesRule : Rule {
                 granularity = params.granularity,
                 includeExternalBuckets = params.includeExternal,
                 scope = scope,
+                rule = rule,
             )
 
         val cyclic = RuleUtil.cyclicComponents(g)

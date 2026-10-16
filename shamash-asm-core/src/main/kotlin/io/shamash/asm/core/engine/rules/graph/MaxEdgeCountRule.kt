@@ -45,6 +45,7 @@ class MaxEdgeCountRule : Rule {
                 granularity = params.granularity,
                 includeExternalBuckets = params.includeExternal,
                 scope = scope,
+                rule = rule,
             )
 
         val count = g.edgeCount
