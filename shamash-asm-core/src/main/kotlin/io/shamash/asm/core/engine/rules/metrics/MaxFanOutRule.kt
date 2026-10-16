@@ -45,6 +45,7 @@ class MaxFanOutRule : Rule {
                 granularity = params.granularity,
                 includeExternalBuckets = params.includeExternal,
                 scope = scope,
+                rule = rule,
             )
 
         val fanOut = RuleUtil.fanOut(g)

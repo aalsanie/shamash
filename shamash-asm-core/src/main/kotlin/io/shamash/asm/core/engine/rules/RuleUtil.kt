@@ -164,12 +164,24 @@ internal object RuleUtil {
         granularity: Granularity,
         includeExternalBuckets: Boolean,
         scope: CompiledScope? = null,
+        rule: RuleDef? = null,
     ): DirectedGraph {
-        val classByFqn = facts.classes.associateBy { it.fqName }
+        val filterSources = scope != null || rule != null
+        val effectiveScope = scope ?: compileScope(rule?.scope)
+        val selectedClasses =
+            if (filterSources) {
+                facts.classes.filter { c ->
+                    classInScope(c, effectiveScope) &&
+                        (rule == null || roleAllowed(rule, effectiveScope, facts.classToRole[c.fqName]))
+                }
+            } else {
+                facts.classes
+            }
+        val selectedClassNames =
+            if (filterSources) selectedClasses.mapTo(HashSet(selectedClasses.size)) { it.fqName } else null
 
         val includedProjectNodes = LinkedHashSet<String>()
-        for (c in facts.classes) {
-            if (scope != null && !classInScope(c, scope)) continue
+        for (c in selectedClasses) {
             includedProjectNodes += nodeIdForClass(c, granularity)
         }
 
@@ -189,10 +201,7 @@ internal object RuleUtil {
             val fromNode = nodeIdForType(e.from, granularity)
             val toNode = nodeIdForType(e.to, granularity)
 
-            if (scope != null) {
-                val fromClass = classByFqn[e.from.fqName]
-                if (fromClass == null || !classInScope(fromClass, scope)) continue
-            }
+            if (selectedClassNames != null && e.from.fqName !in selectedClassNames) continue
 
             val fromInProject = fromNode in includedProjectNodes
             val toInProject = toNode in includedProjectNodes
