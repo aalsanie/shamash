@@ -38,6 +38,7 @@ import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.engine.RoleClassifier
 import io.shamash.psi.core.facts.FactExtractor
+import io.shamash.psi.core.scan.SourceGlobFilter
 import io.shamash.psi.core.facts.model.v1.ClassFact
 import java.security.MessageDigest
 import kotlin.collections.isNotEmpty
@@ -141,8 +142,7 @@ class ProjectRoleIndex private constructor(
 
             val path = GlobMatcher.normalizePath(vf.path)
 
-            val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
-            if (!ok) return@forEach
+            if (!SourceGlobFilter.matches(path, include, exclude)) return@forEach
 
             val pkg = fqn.substringBeforeLast('.', "")
             val simple = psiClass.name ?: fqn.substringAfterLast('.')
@@ -209,8 +209,7 @@ class ProjectRoleIndex private constructor(
 
                 val path = GlobMatcher.normalizePath(vf.path)
 
-                val ok = include.any { GlobMatcher.matches(it, path) } && exclude.none { GlobMatcher.matches(it, path) }
-                if (!ok) return@iterateChildrenRecursively true
+                if (!SourceGlobFilter.matches(path, include, exclude)) return@iterateChildrenRecursively true
 
                 val psiFile: PsiFile = psiManager.findFile(vf) ?: return@iterateChildrenRecursively true
                 val facts = FactExtractor.extractResult(psiFile).facts

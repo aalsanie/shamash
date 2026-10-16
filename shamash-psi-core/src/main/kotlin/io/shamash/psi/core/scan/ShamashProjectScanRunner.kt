@@ -149,10 +149,7 @@ class ShamashProjectScanRunner(
 
                     val path = GlobMatcher.normalizePath(vf.path)
 
-                    if (includeGlobs.isNotEmpty() && includeGlobs.none { GlobMatcher.matches(it, path) }) {
-                        return@iterateChildrenRecursively true
-                    }
-                    if (excludeGlobs.isNotEmpty() && excludeGlobs.any { GlobMatcher.matches(it, path) }) {
+                    if (!SourceGlobFilter.matches(path, includeGlobs, excludeGlobs)) {
                         return@iterateChildrenRecursively true
                     }
 
