@@ -166,13 +166,19 @@ internal object RuleUtil {
         scope: CompiledScope? = null,
         rule: RuleDef? = null,
     ): DirectedGraph {
+        val filterSources = scope != null || rule != null
         val effectiveScope = scope ?: compileScope(rule?.scope)
         val selectedClasses =
-            facts.classes.filter { c ->
-                classInScope(c, effectiveScope) &&
-                    (rule == null || roleAllowed(rule, effectiveScope, facts.classToRole[c.fqName]))
+            if (filterSources) {
+                facts.classes.filter { c ->
+                    classInScope(c, effectiveScope) &&
+                        (rule == null || roleAllowed(rule, effectiveScope, facts.classToRole[c.fqName]))
+                }
+            } else {
+                facts.classes
             }
-        val selectedClassNames = selectedClasses.mapTo(HashSet(selectedClasses.size)) { it.fqName }
+        val selectedClassNames =
+            if (filterSources) selectedClasses.mapTo(HashSet(selectedClasses.size)) { it.fqName } else null
 
         val includedProjectNodes = LinkedHashSet<String>()
         for (c in selectedClasses) {
@@ -195,7 +201,7 @@ internal object RuleUtil {
             val fromNode = nodeIdForType(e.from, granularity)
             val toNode = nodeIdForType(e.to, granularity)
 
-            if ((scope != null || rule != null) && e.from.fqName !in selectedClassNames) continue
+            if (selectedClassNames != null && e.from.fqName !in selectedClassNames) continue
 
             val fromInProject = fromNode in includedProjectNodes
             val toInProject = toNode in includedProjectNodes
