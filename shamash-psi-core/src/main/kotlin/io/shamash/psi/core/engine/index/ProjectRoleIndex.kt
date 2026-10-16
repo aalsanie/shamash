@@ -38,8 +38,8 @@ import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.engine.RoleClassifier
 import io.shamash.psi.core.facts.FactExtractor
-import io.shamash.psi.core.scan.SourceGlobFilter
 import io.shamash.psi.core.facts.model.v1.ClassFact
+import io.shamash.psi.core.scan.SourceGlobFilter
 import java.security.MessageDigest
 import kotlin.collections.isNotEmpty
 
