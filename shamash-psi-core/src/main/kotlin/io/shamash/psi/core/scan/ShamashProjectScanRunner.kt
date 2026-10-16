@@ -32,6 +32,7 @@ import io.shamash.artifacts.report.schema.v1.ExportedReport
 import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.export.service.ShamashReportExportService
 import io.shamash.psi.core.config.ConfigValidation
+import io.shamash.psi.core.config.SourceGlobFilter
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.config.ValidationSeverity
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
@@ -149,10 +150,7 @@ class ShamashProjectScanRunner(
 
                     val path = GlobMatcher.normalizePath(vf.path)
 
-                    if (includeGlobs.isNotEmpty() && includeGlobs.none { GlobMatcher.matches(it, path) }) {
-                        return@iterateChildrenRecursively true
-                    }
-                    if (excludeGlobs.isNotEmpty() && excludeGlobs.any { GlobMatcher.matches(it, path) }) {
+                    if (!SourceGlobFilter.matches(path, includeGlobs, excludeGlobs)) {
                         return@iterateChildrenRecursively true
                     }
 
