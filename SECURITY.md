@@ -4,10 +4,10 @@
 
 | Version | Supported |
 | --- | --- |
-| 0.91.x | ✅ |
-| < 0.91 | ❌ |
+| 0.92.x | ✅ |
+| < 0.92 | ❌ |
 
-Only the latest 0.91 patch release receives security fixes while the project remains on the 0.91 release line.
+Only the latest 0.92 patch release receives security fixes while the project remains on the 0.92 release line.
 
 ## Reporting a vulnerability
 

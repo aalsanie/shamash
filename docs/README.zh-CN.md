@@ -151,13 +151,13 @@ jobs:
           distribution: temurin
           java-version: "17"
       - run: ./gradlew classes
-      - uses: aalsanie/shamash@v0.91.0
+      - uses: aalsanie/shamash@v0.92.0
 ```
 
 如需按配置执行架构约束：
 
 ```yaml
-      - uses: aalsanie/shamash@v0.91.0
+      - uses: aalsanie/shamash@v0.92.0
         with:
           config: shamash/configs/asm.yml
           fail-on: ERROR
