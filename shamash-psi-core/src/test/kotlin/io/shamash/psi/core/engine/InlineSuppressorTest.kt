@@ -53,9 +53,9 @@ class InlineSuppressorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
         assertKept(
             "Sample.kt",
             """
-            val text = \"\"\"
+            val text = """ + "\"\"\"" + """
             // shamash:ignore all
-            \"\"\"
+            """ + "\"\"\"" + """
             class Sample
             """.trimIndent(),
         )
@@ -64,7 +64,7 @@ class InlineSuppressorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
     fun testKotlinSuppressAnnotationSupportsMultipleArguments() {
         assertSuppressed(
             "Sample.kt",
-            "@Suppress(\"unused\", \"shamash:arch.rule\")\\nclass Sample",
+            "@Suppress(\"unused\", \"shamash:arch.rule\")\nclass Sample",
         )
     }
 
