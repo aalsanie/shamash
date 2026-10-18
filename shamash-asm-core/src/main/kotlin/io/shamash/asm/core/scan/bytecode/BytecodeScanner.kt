@@ -363,6 +363,9 @@ class BytecodeScanner {
 
         for (origin in projectFirst) {
             if (truncated) break
+            if (scan.scope == ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS && origin.bucket == BytecodeOrigin.Bucket.EXTERNAL) {
+                continue
+            }
 
             when (origin.kind) {
                 BytecodeOrigin.Kind.CLASSES_DIR -> {

@@ -255,7 +255,7 @@ class BytecodeScannerLimitsTest {
                 )
 
             assertEquals(listOf("build/classes/Project.class"), result.units.map { it.originId })
-            assertTrue(result.truncated)
+            assertFalse(result.truncated)
             assertTrue(result.errors.isEmpty(), result.errors.toString())
         }
     }
@@ -284,8 +284,77 @@ class BytecodeScannerLimitsTest {
                     limits(maxClasses = 1).copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS),
                 )
             assertEquals(listOf("App.class"), withExternal.units.map { it.originId })
-            assertTrue(withExternal.truncated)
+            assertFalse(withExternal.truncated)
             assertTrue(withExternal.errors.isEmpty(), withExternal.errors.toString())
+        }
+    }
+
+    @Test
+    fun `external sources are analyzed only in all sources mode`() {
+        withProject { parent ->
+            val project = Files.createDirectories(parent.resolve("project"))
+            val external = Files.createDirectories(parent.resolve("external/build/classes"))
+            write(project, "build/classes/Project.class", byteArrayOf(1))
+            write(external, "External.class", byteArrayOf(2))
+            val config = bytecode().copy(roots = listOf(".", external.toString()))
+
+            val projectOnly = BytecodeScanner().scan(project, config, limits())
+            val bucketed =
+                BytecodeScanner().scan(
+                    project,
+                    config,
+                    limits().copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS),
+                )
+            val allSources =
+                BytecodeScanner().scan(
+                    project,
+                    config,
+                    limits().copy(scope = ScanScope.ALL_SOURCES),
+                )
+
+            assertEquals(1, projectOnly.origins.size)
+            assertEquals(1, projectOnly.units.size)
+            assertEquals(2, bucketed.origins.size)
+            assertTrue(bucketed.origins.any { it.bucket == BytecodeOrigin.Bucket.EXTERNAL })
+            assertEquals(projectOnly.units.map { it.originId }, bucketed.units.map { it.originId })
+            assertFalse(bucketed.truncated)
+            assertEquals(2, allSources.origins.size)
+            assertEquals(2, allSources.units.size)
+            assertTrue(allSources.units.any { it.originId.endsWith("External.class") })
+            assertTrue(projectOnly.errors.isEmpty(), projectOnly.errors.toString())
+            assertTrue(bucketed.errors.isEmpty(), bucketed.errors.toString())
+            assertTrue(allSources.errors.isEmpty(), allSources.errors.toString())
+        }
+    }
+
+    @Test
+    fun `external jars are recorded as buckets but not analyzed`() {
+        withProject { parent ->
+            val project = Files.createDirectories(parent.resolve("project"))
+            val externalJar = jar(parent, "outside/library.jar", "External.class" to byteArrayOf(1))
+            write(project, "build/classes/Project.class", byteArrayOf(2))
+            val config = bytecode().copy(roots = listOf(".", externalJar.toString()))
+
+            val buckets =
+                BytecodeScanner().scan(
+                    project,
+                    config,
+                    limits(maxClasses = 1).copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS),
+                )
+            val allSources =
+                BytecodeScanner().scan(
+                    project,
+                    config,
+                    limits().copy(scope = ScanScope.ALL_SOURCES),
+                )
+
+            assertTrue(buckets.origins.any { it.bucket == BytecodeOrigin.Bucket.EXTERNAL })
+            assertEquals(1, buckets.units.size)
+            assertFalse(buckets.truncated)
+            assertEquals(2, allSources.units.size)
+            assertTrue(allSources.units.any { it.originId.contains("library.jar!/External.class") })
+            assertTrue(buckets.errors.isEmpty(), buckets.errors.toString())
+            assertTrue(allSources.errors.isEmpty(), allSources.errors.toString())
         }
     }
 
