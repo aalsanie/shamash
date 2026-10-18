@@ -731,12 +731,11 @@ object FactExtractor {
         psiClass?.qualifiedName?.let { return it }
 
         val ktClass = PsiTreeUtil.getParentOfType(psi, KtClassOrObject::class.java, false) ?: return null
-        val nestedNames =
-            generateSequence(ktClass) { PsiTreeUtil.getParentOfType(it, KtClassOrObject::class.java, true) }
-                .map { it.name ?: return null }
-                .toList()
-                .asReversed()
-        if (nestedNames.isEmpty()) return null
+        val enclosingClasses =
+            generateSequence(ktClass) { PsiTreeUtil.getParentOfType(it, KtClassOrObject::class.java, true) }.toList()
+        if (enclosingClasses.any { it.name == null }) return null
+
+        val nestedNames = enclosingClasses.mapNotNull { it.name }.asReversed()
 
         val packageName = (ktClass.containingFile as? KtFile)?.packageFqName?.asString().orEmpty()
         return (listOf(packageName).filter { it.isNotBlank() } + nestedNames).joinToString(".")
