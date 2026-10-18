@@ -53,13 +53,13 @@ will expose new violations according to the configured threshold/baseline policy
 
 ```yaml
 - run: ./gradlew classes
-- uses: aalsanie/shamash@v0.91.0
+- uses: aalsanie/shamash@v0.92.0
   with:
     config: shamash/configs/asm.yml
     fail-on: ERROR
 ```
 
-The action downloads `shamash-cli-0.91.0.zip`, verifies it against `SHA256SUMS.txt`, and propagates Shamash's exit code.
+The action downloads `shamash-cli-0.92.0.zip`, verifies it against `SHA256SUMS.txt`, and propagates Shamash's exit code.
 
 ## Useful CLI options
 
@@ -94,14 +94,14 @@ SHA256SUMS.txt
 Linux:
 
 ```bash
-grep 'shamash-cli-0.91.0.zip' SHA256SUMS.txt | sha256sum -c -
+grep 'shamash-cli-0.92.0.zip' SHA256SUMS.txt | sha256sum -c -
 ```
 
 macOS:
 
 ```bash
-EXPECTED=$(awk '/shamash-cli-0.91.0.zip/ {print $1}' SHA256SUMS.txt)
-ACTUAL=$(shasum -a 256 shamash-cli-0.91.0.zip | awk '{print $1}')
+EXPECTED=$(awk '/shamash-cli-0.92.0.zip/ {print $1}' SHA256SUMS.txt)
+ACTUAL=$(shasum -a 256 shamash-cli-0.92.0.zip | awk '{print $1}')
 test "$EXPECTED" = "$ACTUAL"
 ```
 
@@ -109,11 +109,11 @@ Windows PowerShell:
 
 ```powershell
 $line = Get-Content .\SHA256SUMS.txt |
-  Where-Object { $_ -match '\s+shamash-cli-0\.91\.0\.zip$' } |
+  Where-Object { $_ -match '\s+shamash-cli-0\.92\.0\.zip$' } |
   Select-Object -First 1
 if (-not $line) { throw "Checksum entry not found" }
 $expected = ($line -split '\s+')[0].ToLowerInvariant()
-$actual = (Get-FileHash .\shamash-cli-0.91.0.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+$actual = (Get-FileHash .\shamash-cli-0.92.0.zip -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($expected -ne $actual) { throw "Checksum mismatch" }
 "Checksum OK"
 ```
