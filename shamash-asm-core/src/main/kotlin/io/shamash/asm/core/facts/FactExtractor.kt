@@ -48,13 +48,23 @@ object FactExtractor {
 
     fun extractAll(units: Sequence<BytecodeUnit>): FactsResult {
         val errors = mutableListOf<FactsError>()
-        var acc = FactIndex.empty()
+        val classes = ArrayList<ClassFact>()
+        val methods = ArrayList<MethodRef>()
+        val fields = ArrayList<FieldRef>()
+        val edges = ArrayList<DependencyEdge>()
+        var roles: Map<String, Set<String>> = emptyMap()
+        var classToRole: Map<String, String> = emptyMap()
 
         for (u in units) {
             val originId = u.originId
             try {
                 val one = computeFactsForUnit(u, errors)
-                acc = acc.merge(one)
+                classes.addAll(one.classes)
+                methods.addAll(one.methods)
+                fields.addAll(one.fields)
+                edges.addAll(one.edges)
+                if (one.roles.isNotEmpty()) roles = one.roles
+                if (one.classToRole.isNotEmpty()) classToRole = one.classToRole
             } catch (t: Throwable) {
                 errors +=
                     FactsError(
@@ -66,7 +76,18 @@ object FactExtractor {
             }
         }
 
-        return FactsResult(facts = acc, errors = errors).stabilize()
+        return FactsResult(
+            facts =
+                FactIndex(
+                    classes = classes,
+                    methods = methods,
+                    fields = fields,
+                    edges = edges,
+                    roles = roles,
+                    classToRole = classToRole,
+                ),
+            errors = errors,
+        ).stabilize()
     }
 
     private fun computeFactsForUnit(
