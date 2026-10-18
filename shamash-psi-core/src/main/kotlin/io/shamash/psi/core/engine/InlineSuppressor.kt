@@ -25,6 +25,7 @@ import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.artifacts.contract.Finding
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtDeclaration
 
 /**
  * `// shamash:ignore <ruleId>|all` suppresses the file on its first non-empty line,
@@ -63,7 +64,7 @@ internal object InlineSuppressor {
                 continue
             }
 
-            if (isSuppressedByAnnotation(file, text, f, anchorOffset, commentDirectives)) {
+            if (isSuppressedByAnnotation(file, f, anchorOffset, commentDirectives)) {
                 continue
             }
 
@@ -75,7 +76,6 @@ internal object InlineSuppressor {
 
     private fun isSuppressedByAnnotation(
         file: PsiFile,
-        fileText: String,
         f: Finding,
         anchorOffset: Int?,
         commentDirectives: CommentDirectives,
@@ -96,17 +96,14 @@ internal object InlineSuppressor {
             }
         }
 
-        val isKotlin = file.virtualFile?.extension?.lowercase() == "kt"
-        if (!isKotlin) return false
+        if (file.virtualFile?.extension?.lowercase() != "kt") return false
 
-        val declOffset =
-            guessAnchorOffsetFromText(fileText, f)
-                ?: anchorOffset
-                ?: element?.textRange?.startOffset
-                ?: return false
-
-        val declLine = commentDirectives.lineOfOffset(declOffset)
-        return commentDirectives.isSuppressedByKotlinAnnotation(declLine, f.ruleId)
+        val declaration =
+            (element as? KtDeclaration)
+                ?: anchorOffset?.let { offset ->
+                    file.findElementAt(offset)?.let { PsiTreeUtil.getParentOfType(it, KtDeclaration::class.java, false) }
+                }
+        return commentDirectives.isSuppressedByKotlinAnnotation(declaration, f.ruleId)
     }
 
     private fun locateAnchorOffset(
@@ -183,7 +180,7 @@ internal object InlineSuppressor {
     private data class CommentDirectives(
         val lineToRules: Map<Int, Set<String>>,
         val fileWide: Set<String>,
-        val annotationLineToRules: Map<Int, Set<String>>,
+        val annotationRules: Map<KtDeclaration, Set<String>>,
         val lineStartOffsets: IntArray,
     ) {
         fun lineOfOffset(offset: Int): Int {
@@ -216,14 +213,11 @@ internal object InlineSuppressor {
         }
 
         fun isSuppressedByKotlinAnnotation(
-            declarationLine: Int,
+            declaration: KtDeclaration?,
             ruleId: String,
         ): Boolean {
-            for (line in maxOf(0, declarationLine - 3) until declarationLine) {
-                val rules = annotationLineToRules[line] ?: continue
-                if ("all" in rules || ruleId in rules) return true
-            }
-            return false
+            val rules = annotationRules[declaration] ?: return false
+            return "all" in rules || ruleId in rules
         }
     }
 
@@ -304,7 +298,7 @@ internal object InlineSuppressor {
             }
         }
 
-        val annotationLineToRules = mutableMapOf<Int, Set<String>>()
+        val annotationRules = mutableMapOf<KtDeclaration, Set<String>>()
         if (file.virtualFile?.extension?.lowercase() == "kt") {
             for (annotation in PsiTreeUtil.findChildrenOfType(file, KtAnnotationEntry::class.java)) {
                 if (annotation.shortName?.asString() != "Suppress") continue
@@ -317,15 +311,15 @@ internal object InlineSuppressor {
                         .toSet()
                 if (rules.isEmpty()) continue
 
-                val line = lineOfOffset(starts, annotation.textRange.startOffset)
-                annotationLineToRules[line] = annotationLineToRules[line].orEmpty() + rules
+                val declaration = PsiTreeUtil.getParentOfType(annotation, KtDeclaration::class.java, false) ?: continue
+                annotationRules[declaration] = annotationRules[declaration].orEmpty() + rules
             }
         }
 
         return CommentDirectives(
             lineToRules = lineToRules,
             fileWide = fileWide,
-            annotationLineToRules = annotationLineToRules,
+            annotationRules = annotationRules,
             lineStartOffsets = starts,
         )
     }
