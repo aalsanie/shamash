@@ -721,6 +721,7 @@ object FactExtractor {
         while (parent != null) {
             if (parent is UClass) {
                 parent.qualifiedName?.let { return it }
+                break
             }
             parent = parent.uastParent
         }
@@ -732,7 +733,7 @@ object FactExtractor {
         val ktClass = PsiTreeUtil.getParentOfType(psi, KtClassOrObject::class.java, false) ?: return null
         val nestedNames =
             generateSequence(ktClass) { PsiTreeUtil.getParentOfType(it, KtClassOrObject::class.java, true) }
-                .mapNotNull { it.name }
+                .map { it.name ?: return null }
                 .toList()
                 .asReversed()
         if (nestedNames.isEmpty()) return null
