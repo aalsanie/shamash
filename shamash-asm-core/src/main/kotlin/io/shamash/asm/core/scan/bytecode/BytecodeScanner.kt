@@ -353,15 +353,16 @@ class BytecodeScanner {
             }
         }
 
-        // Prefer scanning project outputs first so duplicate resolution and maxClasses behavior are deterministic.
-        val projectFirst =
-            sortedOrigins.sortedWith(
-                compareBy<BytecodeOrigin> {
-                    it.bucket != BytecodeOrigin.Bucket.PROJECT
-                }.thenBy { it.kind.name }.thenBy { it.stablePath },
-            )
+        val scannedOrigins =
+            sortedOrigins
+                .filter { scan.scope == ScanScope.ALL_SOURCES || it.bucket == BytecodeOrigin.Bucket.PROJECT }
+                .sortedWith(
+                    compareBy<BytecodeOrigin> {
+                        it.bucket != BytecodeOrigin.Bucket.PROJECT
+                    }.thenBy { it.kind.name }.thenBy { it.stablePath },
+                )
 
-        for (origin in projectFirst) {
+        for (origin in scannedOrigins) {
             if (truncated) break
 
             when (origin.kind) {

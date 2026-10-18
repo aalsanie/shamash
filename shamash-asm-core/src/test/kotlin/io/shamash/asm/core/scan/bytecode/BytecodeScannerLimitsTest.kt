@@ -255,7 +255,7 @@ class BytecodeScannerLimitsTest {
                 )
 
             assertEquals(listOf("build/classes/Project.class"), result.units.map { it.originId })
-            assertTrue(result.truncated)
+            assertFalse(result.truncated)
             assertTrue(result.errors.isEmpty(), result.errors.toString())
         }
     }
@@ -284,8 +284,66 @@ class BytecodeScannerLimitsTest {
                     limits(maxClasses = 1).copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS),
                 )
             assertEquals(listOf("App.class"), withExternal.units.map { it.originId })
-            assertTrue(withExternal.truncated)
+            assertFalse(withExternal.truncated)
             assertTrue(withExternal.errors.isEmpty(), withExternal.errors.toString())
+        }
+    }
+
+    @Test
+    fun `scan scopes distinguish project facts from external origins and external facts`() {
+        withProject { parent ->
+            val project = Files.createDirectories(parent.resolve("project"))
+            val external = Files.createDirectories(parent.resolve("external/build/classes"))
+            write(project, "build/classes/Project.class", byteArrayOf(1))
+            write(external, "External.class", byteArrayOf(2))
+            val config = bytecode().copy(roots = listOf(".", external.toString()))
+
+            val projectOnly =
+                BytecodeScanner().scan(project, config, limits().copy(scope = ScanScope.PROJECT_ONLY))
+            val bucketed =
+                BytecodeScanner().scan(project, config, limits().copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS))
+            val all =
+                BytecodeScanner().scan(project, config, limits().copy(scope = ScanScope.ALL_SOURCES))
+
+            assertEquals(1, projectOnly.origins.size)
+            assertEquals(listOf("build/classes/Project.class"), projectOnly.units.map { it.originId })
+            assertEquals(2, bucketed.origins.size)
+            assertEquals(
+                setOf(BytecodeOrigin.Bucket.PROJECT, BytecodeOrigin.Bucket.EXTERNAL),
+                bucketed.origins.map { it.bucket }.toSet(),
+            )
+            assertEquals(listOf("build/classes/Project.class"), bucketed.units.map { it.originId })
+            assertEquals(2, all.origins.size)
+            assertEquals(2, all.units.size)
+            assertTrue(all.units.any { it.originId.endsWith("/External.class") })
+            assertTrue(projectOnly.errors.isEmpty(), projectOnly.errors.toString())
+            assertTrue(bucketed.errors.isEmpty(), bucketed.errors.toString())
+            assertTrue(all.errors.isEmpty(), all.errors.toString())
+        }
+    }
+
+    @Test
+    fun `external definitions do not exhaust bucketed class limits`() {
+        withProject { parent ->
+            val project = Files.createDirectories(parent.resolve("project"))
+            val external = Files.createDirectories(parent.resolve("external/build/classes"))
+            write(project, "build/classes/Project.class", byteArrayOf(1))
+            write(external, "External.class", byteArrayOf(2))
+            val config = bytecode().copy(roots = listOf(".", external.toString()))
+
+            val bucketed =
+                BytecodeScanner().scan(
+                    project,
+                    config,
+                    limits(maxClasses = 1).copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS),
+                )
+            val all =
+                BytecodeScanner().scan(project, config, limits(maxClasses = 1).copy(scope = ScanScope.ALL_SOURCES))
+
+            assertEquals(1, bucketed.units.size)
+            assertFalse(bucketed.truncated)
+            assertEquals(1, all.units.size)
+            assertTrue(all.truncated)
         }
     }
 
