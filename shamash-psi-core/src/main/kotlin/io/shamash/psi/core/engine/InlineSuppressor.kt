@@ -106,18 +106,7 @@ internal object InlineSuppressor {
                 ?: return false
 
         val declLine = commentDirectives.lineOfOffset(declOffset)
-        return PsiTreeUtil.findChildrenOfType(file, KtAnnotationEntry::class.java).any { annotation ->
-            val name = annotation.shortName?.asString()
-            if (name != "Suppress") return@any false
-
-            val annotationLine = commentDirectives.lineOfOffset(annotation.textRange.startOffset)
-            if (annotationLine !in maxOf(0, declLine - 3) until declLine) return@any false
-
-            annotation.valueArguments.any { argument ->
-                val text = argument.getArgumentExpression()?.text
-                text == "\"${TOKEN_PREFIX}all\"" || text == "\"${TOKEN_PREFIX}${f.ruleId}\""
-            }
-        }
+        return commentDirectives.isSuppressedByKotlinAnnotation(declLine, f.ruleId)
     }
 
     private fun locateAnchorOffset(
@@ -194,8 +183,8 @@ internal object InlineSuppressor {
     private data class CommentDirectives(
         val lineToRules: Map<Int, Set<String>>,
         val fileWide: Set<String>,
+        val annotationLineToRules: Map<Int, Set<String>>,
         val lineStartOffsets: IntArray,
-        val text: String,
     ) {
         fun lineOfOffset(offset: Int): Int {
             var lo = 0
@@ -222,6 +211,17 @@ internal object InlineSuppressor {
             for (l in line downTo maxOf(0, line - 2)) {
                 val rules = lineToRules[l] ?: continue
                 if (rules.contains("all") || rules.contains(ruleId)) return true
+            }
+            return false
+        }
+
+        fun isSuppressedByKotlinAnnotation(
+            declarationLine: Int,
+            ruleId: String,
+        ): Boolean {
+            for (line in maxOf(0, declarationLine - 3) until declarationLine) {
+                val rules = annotationLineToRules[line] ?: continue
+                if ("all" in rules || ruleId in rules) return true
             }
             return false
         }
@@ -304,11 +304,29 @@ internal object InlineSuppressor {
             }
         }
 
+        val annotationLineToRules = mutableMapOf<Int, Set<String>>()
+        if (file.virtualFile?.extension?.lowercase() == "kt") {
+            for (annotation in PsiTreeUtil.findChildrenOfType(file, KtAnnotationEntry::class.java)) {
+                if (annotation.shortName?.asString() != "Suppress") continue
+
+                val rules =
+                    annotation.valueArguments
+                        .mapNotNull { it.getArgumentExpression()?.text }
+                        .filter { it.startsWith("\"${TOKEN_PREFIX}") && it.endsWith('"') }
+                        .map { it.removeSurrounding("\"").removePrefix(TOKEN_PREFIX) }
+                        .toSet()
+                if (rules.isEmpty()) continue
+
+                val line = lineOfOffset(starts, annotation.textRange.startOffset)
+                annotationLineToRules[line] = annotationLineToRules[line].orEmpty() + rules
+            }
+        }
+
         return CommentDirectives(
             lineToRules = lineToRules,
             fileWide = fileWide,
+            annotationLineToRules = annotationLineToRules,
             lineStartOffsets = starts,
-            text = text,
         )
     }
 }
