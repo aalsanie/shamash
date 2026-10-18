@@ -358,6 +358,28 @@ class BytecodeScannerLimitsTest {
         }
     }
 
+    @Test
+    fun `external bucket jars do not trigger content size limits`() {
+        withProject { parent ->
+            val project = Files.createDirectories(parent.resolve("project"))
+            val externalJar = jar(parent, "external/library.jar", "External.class" to ByteArray(32))
+            write(project, "build/classes/Project.class", byteArrayOf(1))
+            val config = bytecode().copy(roots = listOf(".", externalJar.toString()))
+
+            val bucketed =
+                BytecodeScanner().scan(
+                    project,
+                    config,
+                    limits(maxJarBytes = 1).copy(scope = ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS),
+                )
+
+            assertEquals(listOf("build/classes/Project.class"), bucketed.units.map { it.originId })
+            assertTrue(bucketed.origins.any { it.bucket == BytecodeOrigin.Bucket.EXTERNAL })
+            assertTrue(bucketed.errors.isEmpty(), bucketed.errors.toString())
+            assertFalse(bucketed.truncated)
+        }
+    }
+
     private fun bytecode(): BytecodeConfig =
         BytecodeConfig(
             roots = listOf("."),
