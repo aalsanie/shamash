@@ -58,6 +58,29 @@ class KotlinFactOwnerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder
         )
     }
 
+    fun testAnonymousObjectMembersAreNotAttributedToOuterClass() {
+        val file =
+            myFixture.configureByText(
+                "Anonymous.kt",
+                """
+                package example
+
+                class Parent {
+                    val task = object : Runnable {
+                        override fun run() {}
+                    }
+                }
+                """.trimIndent(),
+            )
+
+        val result = FactExtractor.extractResult(file)
+
+        assertTrue(result.errors.isEmpty(), result.errors.toString())
+        assertTrue(
+            result.facts.methods.none { it.name == "run" && it.containingClassFqn == "example.Parent" },
+        )
+    }
+
     fun testJavaMembersKeepTheirOriginalContainingClass() {
         val file =
             myFixture.configureByText(
