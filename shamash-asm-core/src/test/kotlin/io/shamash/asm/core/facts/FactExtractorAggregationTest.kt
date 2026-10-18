@@ -30,7 +30,7 @@ import kotlin.test.assertTrue
 class FactExtractorAggregationTest {
     @Test
     fun `many units retain all facts and deterministic ordering`() {
-        val units = (512 downTo 1).map { classUnit("org/example/C${it}") }
+        val units = (512 downTo 1).map { classUnit("org/example/C$it") }
         val result = FactExtractor.extractAll(units.asSequence())
         val reversed = FactExtractor.extractAll(units.asReversed().asSequence())
 
@@ -41,7 +41,7 @@ class FactExtractorAggregationTest {
         assertEquals(512, result.facts.methods.size)
         assertEquals(2048, result.facts.edges.size)
         assertEquals(
-            (1..512).map { "org.example.C${it}" }.sorted(),
+            (1..512).map { "org.example.C$it" }.sorted(),
             result.facts.classes.map { it.fqName },
         )
         assertTrue(result.facts.roles.isEmpty())
@@ -123,7 +123,7 @@ class FactExtractorAggregationTest {
         writer.visitMethod(methodAccess, "process", "(Ljava/lang/String;)Ljava/lang/Object;", null, null).visitEnd()
         writer.visitEnd()
 
-        val originPath = "classes/${internalName}.class"
+        val originPath = "classes/$internalName.class"
         return BytecodeUnit(
             bytes = writer.toByteArray(),
             location =
