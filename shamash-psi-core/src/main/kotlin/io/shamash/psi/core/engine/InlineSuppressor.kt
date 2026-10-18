@@ -216,6 +216,7 @@ internal object InlineSuppressor {
             declaration: KtDeclaration?,
             ruleId: String,
         ): Boolean {
+            if (declaration == null) return false
             val rules = annotationRules[declaration] ?: return false
             return "all" in rules || ruleId in rules
         }
