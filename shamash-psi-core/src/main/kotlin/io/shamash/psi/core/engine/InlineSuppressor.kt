@@ -17,12 +17,14 @@
  */
 package io.shamash.psi.core.engine
 
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.artifacts.contract.Finding
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
 
 /**
  * `// shamash:ignore <ruleId>|all` suppresses the file on its first non-empty line,
@@ -41,7 +43,7 @@ internal object InlineSuppressor {
 
         val text = file.text ?: return findings
 
-        val commentDirectives = parseCommentDirectives(text)
+        val commentDirectives = parseCommentDirectives(file, text)
         val fileWideSuppressed: Set<String> = commentDirectives.fileWide
         val hasFileWideAll = fileWideSuppressed.contains("all")
 
@@ -94,14 +96,9 @@ internal object InlineSuppressor {
             }
         }
 
-        // Use file text because non-physical Kotlin PSI may have no Document.
         val isKotlin = file.virtualFile?.extension?.lowercase() == "kt"
         if (!isKotlin) return false
 
-        /*
-         * Kotlin PSI may start at an annotation. Anchor at the declaration keyword so
-         * the preceding-line window includes @Suppress itself.
-         */
         val declOffset =
             guessAnchorOffsetFromText(fileText, f)
                 ?: anchorOffset
@@ -109,13 +106,18 @@ internal object InlineSuppressor {
                 ?: return false
 
         val declLine = commentDirectives.lineOfOffset(declOffset)
-        val fromLine = maxOf(0, declLine - 3)
-        val window = commentDirectives.linesWindow(fromLine, declLine)
+        return PsiTreeUtil.findChildrenOfType(file, KtAnnotationEntry::class.java).any { annotation ->
+            val name = annotation.shortName?.asString()
+            if (name != "Suppress") return@any false
 
-        return window.contains("@Suppress(\"${TOKEN_PREFIX}all\"") ||
-            window.contains("@Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"") ||
-            window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}all\"") ||
-            window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"")
+            val annotationLine = commentDirectives.lineOfOffset(annotation.textRange.startOffset)
+            if (annotationLine !in maxOf(0, declLine - 3) until declLine) return@any false
+
+            annotation.valueArguments.any { argument ->
+                val text = argument.getArgumentExpression()?.text
+                text == "\"${TOKEN_PREFIX}all\"" || text == "\"${TOKEN_PREFIX}${f.ruleId}\""
+            }
+        }
     }
 
     private fun locateAnchorOffset(
@@ -224,24 +226,15 @@ internal object InlineSuppressor {
             return false
         }
 
-        /** Inclusive [fromLine], exclusive [toLine]. */
-        fun linesWindow(
-            fromLine: Int,
-            toLine: Int,
-        ): String {
-            if (fromLine >= toLine) return ""
-            if (lineStartOffsets.isEmpty()) return ""
 
-            val safeFrom = fromLine.coerceIn(0, lineStartOffsets.size - 1)
-            val safeTo = toLine.coerceIn(0, lineStartOffsets.size)
+    }
 
-            if (safeFrom >= safeTo) return ""
-
-            val start = lineStartOffsets.getOrElse(safeFrom) { 0 }
-            val end = if (safeTo < lineStartOffsets.size) lineStartOffsets[safeTo] else text.length
-            if (start >= end) return ""
-            return text.substring(start, minOf(end, text.length))
-        }
+    private fun lineOfOffset(
+        starts: IntArray,
+        offset: Int,
+    ): Int {
+        val match = starts.binarySearch(offset)
+        return if (match >= 0) match else (-match - 2).coerceAtLeast(0)
     }
 
     private fun buildLineStartOffsets(text: String): IntArray {
@@ -269,47 +262,46 @@ internal object InlineSuppressor {
         return starts
     }
 
-    private fun parseCommentDirectives(text: String): CommentDirectives {
-        val lines = text.split('\n')
+    private fun parseCommentDirectives(
+        file: PsiFile,
+        text: String,
+    ): CommentDirectives {
         val starts = buildLineStartOffsets(text)
-
         val lineToRules = mutableMapOf<Int, Set<String>>()
         val fileWide = mutableSetOf<String>()
+        val firstNonEmptyLine = text.lineSequence().indexOfFirst { it.trim().isNotEmpty() }.coerceAtLeast(0)
 
-        var firstNonEmptyLine = 0
-        run {
-            for (i in lines.indices) {
-                if (lines[i].trim().isNotEmpty()) {
-                    firstNonEmptyLine = i
-                    return@run
+        for (comment in PsiTreeUtil.findChildrenOfType(file, PsiComment::class.java)) {
+            val commentText = comment.text
+            val commentStart = comment.textRange.startOffset
+            var offset = 0
+
+            for (line in commentText.split('\n')) {
+                val index = line.indexOf(COMMENT_PREFIX)
+                if (index >= 0) {
+                    val tail =
+                        line.substring(index + COMMENT_PREFIX.length)
+                            .substringBefore("*/")
+                            .trim()
+                    val tokens =
+                        tail
+                            .split(',', ' ', '\t')
+                            .asSequence()
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                            .map { it.removePrefix(TOKEN_PREFIX) }
+                            .toSet()
+
+                    if (tokens.isNotEmpty()) {
+                        val lineNumber = lineOfOffset(starts, commentStart + offset + index)
+                        if (lineNumber == firstNonEmptyLine) {
+                            fileWide.addAll(tokens)
+                        } else {
+                            lineToRules[lineNumber] = lineToRules[lineNumber].orEmpty() + tokens
+                        }
+                    }
                 }
-            }
-        }
-
-        for (i in lines.indices) {
-            val raw = lines[i].trimEnd('\r')
-
-            val idx = raw.indexOf(COMMENT_PREFIX)
-            if (idx < 0) continue
-
-            val tail = raw.substring(idx + COMMENT_PREFIX.length).trim()
-            if (tail.isBlank()) continue
-
-            val tokens =
-                tail
-                    .split(',', ' ', '\t')
-                    .asSequence()
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .map { it.removePrefix(TOKEN_PREFIX) }
-                    .toSet()
-
-            if (tokens.isEmpty()) continue
-
-            if (i == firstNonEmptyLine) {
-                fileWide.addAll(tokens)
-            } else {
-                lineToRules[i] = tokens
+                offset += line.length + 1
             }
         }
 
