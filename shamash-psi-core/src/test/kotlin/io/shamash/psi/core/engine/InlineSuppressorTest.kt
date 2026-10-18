@@ -52,12 +52,7 @@ class InlineSuppressorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
     fun testCommentLookingTextInMultilineKotlinStringIsIgnored() {
         assertKept(
             "Sample.kt",
-            """
-            val text = """ + "\"\"\"" + """
-            // shamash:ignore all
-            """ + "\"\"\"" + """
-            class Sample
-            """.trimIndent(),
+            listOf("val text = \"\"\"", "// shamash:ignore all", "\"\"\"", "class Sample").joinToString("\n"),
         )
     }
 
