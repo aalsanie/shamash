@@ -49,6 +49,25 @@ class InlineSuppressorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
         )
     }
 
+    fun testCommentLookingTextInMultilineKotlinStringIsIgnored() {
+        assertKept(
+            "Sample.kt",
+            """
+            val text = \"\"\"
+            // shamash:ignore all
+            \"\"\"
+            class Sample
+            """.trimIndent(),
+        )
+    }
+
+    fun testKotlinSuppressAnnotationSupportsMultipleArguments() {
+        assertSuppressed(
+            "Sample.kt",
+            "@Suppress(\"unused\", \"shamash:arch.rule\")\\nclass Sample",
+        )
+    }
+
     fun testActualLineCommentSuppressesFile() {
         assertSuppressed(
             "Sample.kt",
