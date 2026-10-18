@@ -63,6 +63,13 @@ class InlineSuppressorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
         )
     }
 
+    fun testKotlinSuppressAnnotationDoesNotAffectAdjacentDeclaration() {
+        assertKept(
+            "Sample.kt",
+            "@Suppress(\"shamash:arch.rule\")\nclass First\nclass Sample",
+        )
+    }
+
     fun testActualLineCommentSuppressesFile() {
         assertSuppressed(
             "Sample.kt",
