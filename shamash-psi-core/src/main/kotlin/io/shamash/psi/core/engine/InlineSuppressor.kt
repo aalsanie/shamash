@@ -225,8 +225,6 @@ internal object InlineSuppressor {
             }
             return false
         }
-
-
     }
 
     private fun lineOfOffset(
@@ -280,7 +278,8 @@ internal object InlineSuppressor {
                 val index = line.indexOf(COMMENT_PREFIX)
                 if (index >= 0) {
                     val tail =
-                        line.substring(index + COMMENT_PREFIX.length)
+                        line
+                            .substring(index + COMMENT_PREFIX.length)
                             .substringBefore("*/")
                             .trim()
                     val tokens =
