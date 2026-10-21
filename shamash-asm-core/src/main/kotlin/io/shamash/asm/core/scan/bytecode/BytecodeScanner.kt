@@ -214,7 +214,8 @@ class BytecodeScanner {
             if (!includeByScope(bucket)) continue
 
             val maxJarBytes = scan.maxJarBytes
-            if (maxJarBytes != null) {
+            val scanContents = scan.scope == ScanScope.ALL_SOURCES || bucket == BytecodeOrigin.Bucket.PROJECT
+            if (maxJarBytes != null && scanContents) {
                 try {
                     val size = Files.size(jar)
                     if (size > maxJarBytes.toLong()) {
@@ -363,6 +364,9 @@ class BytecodeScanner {
 
         for (origin in projectFirst) {
             if (truncated) break
+            if (scan.scope == ScanScope.PROJECT_WITH_EXTERNAL_BUCKETS && origin.bucket == BytecodeOrigin.Bucket.EXTERNAL) {
+                continue
+            }
 
             when (origin.kind) {
                 BytecodeOrigin.Kind.CLASSES_DIR -> {
