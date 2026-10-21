@@ -17,12 +17,15 @@
  */
 package io.shamash.psi.core.engine
 
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.artifacts.contract.Finding
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtDeclaration
 
 /**
  * `// shamash:ignore <ruleId>|all` suppresses the file on its first non-empty line,
@@ -41,7 +44,7 @@ internal object InlineSuppressor {
 
         val text = file.text ?: return findings
 
-        val commentDirectives = parseCommentDirectives(text)
+        val commentDirectives = parseCommentDirectives(file, text)
         val fileWideSuppressed: Set<String> = commentDirectives.fileWide
         val hasFileWideAll = fileWideSuppressed.contains("all")
 
@@ -61,7 +64,7 @@ internal object InlineSuppressor {
                 continue
             }
 
-            if (isSuppressedByAnnotation(file, text, f, anchorOffset, commentDirectives)) {
+            if (isSuppressedByAnnotation(file, f, anchorOffset, commentDirectives)) {
                 continue
             }
 
@@ -73,7 +76,6 @@ internal object InlineSuppressor {
 
     private fun isSuppressedByAnnotation(
         file: PsiFile,
-        fileText: String,
         f: Finding,
         anchorOffset: Int?,
         commentDirectives: CommentDirectives,
@@ -94,28 +96,14 @@ internal object InlineSuppressor {
             }
         }
 
-        // Use file text because non-physical Kotlin PSI may have no Document.
-        val isKotlin = file.virtualFile?.extension?.lowercase() == "kt"
-        if (!isKotlin) return false
+        if (file.virtualFile?.extension?.lowercase() != "kt") return false
 
-        /*
-         * Kotlin PSI may start at an annotation. Anchor at the declaration keyword so
-         * the preceding-line window includes @Suppress itself.
-         */
-        val declOffset =
-            guessAnchorOffsetFromText(fileText, f)
-                ?: anchorOffset
-                ?: element?.textRange?.startOffset
-                ?: return false
-
-        val declLine = commentDirectives.lineOfOffset(declOffset)
-        val fromLine = maxOf(0, declLine - 3)
-        val window = commentDirectives.linesWindow(fromLine, declLine)
-
-        return window.contains("@Suppress(\"${TOKEN_PREFIX}all\"") ||
-            window.contains("@Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"") ||
-            window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}all\"") ||
-            window.contains("@kotlin.Suppress(\"${TOKEN_PREFIX}${f.ruleId}\"")
+        val declaration =
+            (element as? KtDeclaration)
+                ?: anchorOffset?.let { offset ->
+                    file.findElementAt(offset)?.let { PsiTreeUtil.getParentOfType(it, KtDeclaration::class.java, false) }
+                }
+        return commentDirectives.isSuppressedByKotlinAnnotation(declaration, f.ruleId)
     }
 
     private fun locateAnchorOffset(
@@ -192,8 +180,8 @@ internal object InlineSuppressor {
     private data class CommentDirectives(
         val lineToRules: Map<Int, Set<String>>,
         val fileWide: Set<String>,
+        val annotationRules: Map<KtDeclaration, Set<String>>,
         val lineStartOffsets: IntArray,
-        val text: String,
     ) {
         fun lineOfOffset(offset: Int): Int {
             var lo = 0
@@ -224,24 +212,22 @@ internal object InlineSuppressor {
             return false
         }
 
-        /** Inclusive [fromLine], exclusive [toLine]. */
-        fun linesWindow(
-            fromLine: Int,
-            toLine: Int,
-        ): String {
-            if (fromLine >= toLine) return ""
-            if (lineStartOffsets.isEmpty()) return ""
-
-            val safeFrom = fromLine.coerceIn(0, lineStartOffsets.size - 1)
-            val safeTo = toLine.coerceIn(0, lineStartOffsets.size)
-
-            if (safeFrom >= safeTo) return ""
-
-            val start = lineStartOffsets.getOrElse(safeFrom) { 0 }
-            val end = if (safeTo < lineStartOffsets.size) lineStartOffsets[safeTo] else text.length
-            if (start >= end) return ""
-            return text.substring(start, minOf(end, text.length))
+        fun isSuppressedByKotlinAnnotation(
+            declaration: KtDeclaration?,
+            ruleId: String,
+        ): Boolean {
+            if (declaration == null) return false
+            val rules = annotationRules[declaration] ?: return false
+            return "all" in rules || ruleId in rules
         }
+    }
+
+    private fun lineOfOffset(
+        starts: IntArray,
+        offset: Int,
+    ): Int {
+        val match = starts.binarySearch(offset)
+        return if (match >= 0) match else (-match - 2).coerceAtLeast(0)
     }
 
     private fun buildLineStartOffsets(text: String): IntArray {
@@ -269,55 +255,73 @@ internal object InlineSuppressor {
         return starts
     }
 
-    private fun parseCommentDirectives(text: String): CommentDirectives {
-        val lines = text.split('\n')
+    private fun parseCommentDirectives(
+        file: PsiFile,
+        text: String,
+    ): CommentDirectives {
         val starts = buildLineStartOffsets(text)
-
         val lineToRules = mutableMapOf<Int, Set<String>>()
         val fileWide = mutableSetOf<String>()
+        val firstNonEmptyLine = text.lineSequence().indexOfFirst { it.trim().isNotEmpty() }.coerceAtLeast(0)
 
-        var firstNonEmptyLine = 0
-        run {
-            for (i in lines.indices) {
-                if (lines[i].trim().isNotEmpty()) {
-                    firstNonEmptyLine = i
-                    return@run
+        for (comment in PsiTreeUtil.findChildrenOfType(file, PsiComment::class.java)) {
+            val commentText = comment.text
+            val commentStart = comment.textRange.startOffset
+            var offset = 0
+
+            for (line in commentText.split('\n')) {
+                val index = line.indexOf(COMMENT_PREFIX)
+                if (index >= 0) {
+                    val tail =
+                        line
+                            .substring(index + COMMENT_PREFIX.length)
+                            .substringBefore("*/")
+                            .trim()
+                    val tokens =
+                        tail
+                            .split(',', ' ', '\t')
+                            .asSequence()
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                            .map { it.removePrefix(TOKEN_PREFIX) }
+                            .toSet()
+
+                    if (tokens.isNotEmpty()) {
+                        val lineNumber = lineOfOffset(starts, commentStart + offset + index)
+                        if (lineNumber == firstNonEmptyLine) {
+                            fileWide.addAll(tokens)
+                        } else {
+                            lineToRules[lineNumber] = lineToRules[lineNumber].orEmpty() + tokens
+                        }
+                    }
                 }
+                offset += line.length + 1
             }
         }
 
-        for (i in lines.indices) {
-            val raw = lines[i].trimEnd('\r')
+        val annotationRules = mutableMapOf<KtDeclaration, Set<String>>()
+        if (file.virtualFile?.extension?.lowercase() == "kt") {
+            for (annotation in PsiTreeUtil.findChildrenOfType(file, KtAnnotationEntry::class.java)) {
+                if (annotation.shortName?.asString() != "Suppress") continue
 
-            val idx = raw.indexOf(COMMENT_PREFIX)
-            if (idx < 0) continue
+                val rules =
+                    annotation.valueArguments
+                        .mapNotNull { it.getArgumentExpression()?.text }
+                        .filter { it.startsWith("\"${TOKEN_PREFIX}") && it.endsWith('"') }
+                        .map { it.removeSurrounding("\"").removePrefix(TOKEN_PREFIX) }
+                        .toSet()
+                if (rules.isEmpty()) continue
 
-            val tail = raw.substring(idx + COMMENT_PREFIX.length).trim()
-            if (tail.isBlank()) continue
-
-            val tokens =
-                tail
-                    .split(',', ' ', '\t')
-                    .asSequence()
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .map { it.removePrefix(TOKEN_PREFIX) }
-                    .toSet()
-
-            if (tokens.isEmpty()) continue
-
-            if (i == firstNonEmptyLine) {
-                fileWide.addAll(tokens)
-            } else {
-                lineToRules[i] = tokens
+                val declaration = PsiTreeUtil.getParentOfType(annotation, KtDeclaration::class.java, false) ?: continue
+                annotationRules[declaration] = annotationRules[declaration].orEmpty() + rules
             }
         }
 
         return CommentDirectives(
             lineToRules = lineToRules,
             fileWide = fileWide,
+            annotationRules = annotationRules,
             lineStartOffsets = starts,
-            text = text,
         )
     }
 }
