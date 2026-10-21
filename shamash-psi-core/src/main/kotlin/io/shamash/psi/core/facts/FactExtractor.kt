@@ -43,7 +43,9 @@ import io.shamash.psi.core.facts.model.v1.FactsIndex
 import io.shamash.psi.core.facts.model.v1.FieldFact
 import io.shamash.psi.core.facts.model.v1.MethodFact
 import io.shamash.psi.core.facts.model.v1.Visibility
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UElement
@@ -715,19 +717,28 @@ object FactExtractor {
     private fun visibilityOf(f: PsiField): Visibility = visibilityOf(f as PsiElement)
 
     private fun containingClassFqnOfU(u: UElement): String? {
-        val psi = u.sourcePsi ?: return null
-
-        val psiClass = PsiTreeUtil.getParentOfType(psi, PsiClass::class.java, false)
-        val qn = psiClass?.qualifiedName
-        if (qn != null) return qn
-
-        if (psiClass != null) {
-            val uClass = psiClass.toUElementOfType<UClass>()
-            val uq = uClass?.qualifiedName
-            if (uq != null) return uq
+        var parent = u.uastParent
+        while (parent != null) {
+            if (parent is UClass) {
+                parent.qualifiedName?.let { return it }
+                break
+            }
+            parent = parent.uastParent
         }
 
-        return null
+        val psi = u.sourcePsi ?: u.javaPsi ?: return null
+        val psiClass = PsiTreeUtil.getParentOfType(psi, PsiClass::class.java, false)
+        psiClass?.qualifiedName?.let { return it }
+
+        val ktClass = PsiTreeUtil.getParentOfType(psi, KtClassOrObject::class.java, false) ?: return null
+        val enclosingClasses =
+            generateSequence(ktClass) { PsiTreeUtil.getParentOfType(it, KtClassOrObject::class.java, true) }.toList()
+        if (enclosingClasses.any { it.name == null }) return null
+
+        val nestedNames = enclosingClasses.mapNotNull { it.name }.asReversed()
+
+        val packageName = (ktClass.containingFile as? KtFile)?.packageFqName?.asString().orEmpty()
+        return (listOf(packageName).filter { it.isNotBlank() } + nestedNames).joinToString(".")
     }
 
     private fun addDep(
