@@ -22,7 +22,7 @@ Before enabling publishing:
 
 1. Request candidate `shamash` and a vendor account through [SDKMAN vendor onboarding](https://sdkman.io/vendors/).
 2. Confirm that the Distroplane SDKMAN provider's vendor API authentication remains supported for the provisioned account; the pinned release candidate uses the legacy consumer-key API.
-3. Configure environment protection and vendor secrets. Do not publish until the distribution ZIP exists in a completed GitHub Release.
+3. Configure environment protection and vendor secrets. After verifying compatibility with the provisioned SDKMAN vendor API, set the protected environment variable `SDKMAN_VENDOR_API_VERIFIED=true`. Publishing remains blocked without it. Do not publish until the distribution ZIP exists in a completed GitHub Release.
 4. Run the workflow with publishing disabled; inspect the immutable plan and digest before explicitly publishing.
 5. Verify candidate availability with the SDKMAN client after the provider reports acceptance; acceptance alone does not prove that users can install it.
 
