@@ -3,6 +3,7 @@
 
 import argparse
 from pathlib import Path, PurePosixPath
+from shutil import copyfileobj
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 
 
@@ -27,7 +28,7 @@ def package_sdkman(source: Path, destination: Path, version: str) -> None:
             mode = (member.external_attr >> 16) & 0o170000
             if mode == 0o120000:
                 raise ValueError(f"Symbolic links are not supported: {name}")
-            contents[relative] = (member, archive.read(member))
+            contents[relative] = member
 
     required = {"bin/shamash", "bin/shamash.bat"}
     if not required.issubset(contents) or not any(
@@ -38,14 +39,15 @@ def package_sdkman(source: Path, destination: Path, version: str) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(destination.suffix + ".tmp")
     try:
-        with ZipFile(temporary, "w", compression=ZIP_DEFLATED) as output:
-            for name, (original, data) in sorted(contents.items()):
+        with ZipFile(source) as original, ZipFile(temporary, "w", compression=ZIP_DEFLATED) as output:
+            for name, member in sorted(contents.items()):
                 info = ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
                 info.compress_type = ZIP_DEFLATED
                 info.create_system = 3
                 permissions = 0o755 if name == "bin/shamash" else 0o644
                 info.external_attr = (0o100000 | permissions) << 16
-                output.writestr(info, data)
+                with original.open(member) as reader, output.open(info, "w") as writer:
+                    copyfileobj(reader, writer, length=1024 * 1024)
         with ZipFile(temporary) as verify:
             if verify.testzip() is not None:
                 raise BadZipFile("Packaged SDKMAN archive failed CRC verification")
