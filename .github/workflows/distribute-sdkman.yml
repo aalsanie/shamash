@@ -58,7 +58,9 @@ jobs:
         env:
           SDKMAN_CONSUMER_KEY: ${{ secrets.SDKMAN_CONSUMER_KEY }}
           SDKMAN_CONSUMER_TOKEN: ${{ secrets.SDKMAN_CONSUMER_TOKEN }}
+          SDKMAN_VENDOR_API_VERIFIED: ${{ vars.SDKMAN_VENDOR_API_VERIFIED }}
         run: |
+          test "$SDKMAN_VENDOR_API_VERIFIED" = "true"
           test -n "$SDKMAN_CONSUMER_KEY"
           test -n "$SDKMAN_CONSUMER_TOKEN"
       - name: Publish to SDKMAN
