@@ -1,3 +1,5 @@
+[English](./QUICK_START.md) · [Español](./docs/QUICK_START.es.md) · [简体中文](./docs/QUICK_START.zh-CN.md) · [Português (Brasil)](./docs/QUICK_START.pt-BR.md) · [Русский](./docs/QUICK_START.ru.md)
+
 # Shamash quick start
 
 ## 1. Build the JVM project

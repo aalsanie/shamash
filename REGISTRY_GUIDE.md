@@ -1,3 +1,5 @@
+[English](./REGISTRY_GUIDE.md) · [Español](./docs/REGISTRY_GUIDE.es.md) · [简体中文](./docs/REGISTRY_GUIDE.zh-CN.md) · [Português (Brasil)](./docs/REGISTRY_GUIDE.pt-BR.md) · [Русский](./docs/REGISTRY_GUIDE.ru.md)
+
 # Registry Guide
 
 Shamash ships with the built-in `default` ASM rule registry. Registry selection is optional; if no registry is selected, Shamash uses the built-in registry.
