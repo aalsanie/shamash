@@ -1,217 +1,115 @@
 <p align="center">
+  <a href="../README.md">English</a> •
+  <a href="./README.es.md">Español</a> •
+  <a href="./README.zh-CN.md">简体中文</a> •
+  <a href="./README.pt-BR.md">Português (Brasil)</a> •
+  <a href="./README.ru.md">Русский</a>
+</p>
+
+<p align="center">
   <img src="../assets/shamash_logo.png" alt="Shamash" width="180"/>
 </p>
 
 # Shamash
 
-**Detén la deriva arquitectónica de la JVM antes de que llegue a main.**
+**Controla la arquitectura de Java y Kotlin sin escribir pruebas de arquitectura.**
 
-Shamash analiza aplicaciones Java/Kotlin compiladas, detecta ciclos de dependencias e infracciones arquitectónicas y puede impedir que nuevas infracciones lleguen al código en CI, sin necesidad de escribir pruebas de arquitectura.
-
-- **CLI primero:** herramienta independiente para Java 17+ destinada al uso local y a CI.
-- **Primer análisis sin configuración:** detecta riesgos arquitectónicos útiles antes de aprender el modelo de configuración.
-- **Adecuado para proyectos existentes:** crea una línea base de la deuda actual una sola vez y, a partir de ahí, falla únicamente ante nuevas infracciones.
-- **IntelliJ:** un único espacio de trabajo con Build Analysis y Source Analysis.
-- **Capacidades avanzadas cuando hagan falta:** siguen disponibles los roles/reglas personalizados, facts, grafos, hotspots, registries y múltiples formatos de informe.
+Detecta ciclos de dependencias, aplica límites entre paquetes y roles e identifica puntos críticos de acoplamiento. Analiza el código compilado desde la CLI o CI y obtén hallazgos y correcciones sobre el código fuente en IntelliJ.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
-[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
+[![Licencia](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
 
-## Uso
+## Primer análisis
 
-Shamash analiza bytecode compilado. Primero, compila el proyecto:
-
-```bash
-./gradlew classes
-# or: ./mvnw package
-```
-
-Después, ejecuta:
+Necesitas **Java 17 o posterior** y las clases compiladas. Descarga el [archivo de la CLI y las sumas de verificación](https://github.com/aalsanie/shamash/releases/latest), verifica el archivo y añade el directorio `bin` al `PATH` (`shamash` en Unix, `shamash.bat` en Windows).
 
 ```bash
+./gradlew classes  # or ./mvnw package
 shamash scan
 ```
 
-Este primer análisis no requiere configuración. El modo de descubrimiento es solo informativo: no crea configuración, informes ni líneas base en el proyecto, y nunca falla debido a los hallazgos.
+Sin configuración, el análisis muestra los hallazgos sin modificar archivos del proyecto ni devolver un error por las infracciones arquitectónicas.
 
-Ejemplo de la salida:
-
-```text
-Shamash - discovery scan
-Report-only mode. No project files were changed.
-
-Shamash found 3 architecture issues
-
-ERROR   graph.noCycles
-        Dependency cycle detected ...
-
-WARN    metrics.maxFanOut
-        ...
-
-642 classes scanned
-1 errors, 2 warnings, 0 info
-
-Ready to enforce architecture? Run: shamash init
-```
-
-Si Shamash no encuentra clases compiladas, detecta proyectos Gradle/Maven habituales y muestra el comando de compilación exacto que debe ejecutarse primero.
-
-## Instalar la CLI
-
-Requiere Java 17 o una versión posterior.
-
-Descarga `shamash-cli-<version>.zip` y `SHA256SUMS.txt` desde GitHub Releases, verifica la suma de comprobación, extrae el archivo y utiliza:
-
-```text
-bin/shamash      # Linux/macOS
-bin/shamash.bat  # Windows
-```
-
-El nombre del launcher forma parte del contrato del producto empaquetado y se somete a pruebas de humo en Linux, Windows y macOS antes de cada versión.
-
-## Aplicar reglas de arquitectura en un proyecto
-
-Crea la configuración predeterminada y reducida:
+## Aplicar reglas
 
 ```bash
 shamash init
-```
-
-Esto escribe:
-
-```text
-shamash/configs/asm.yml
-```
-
-La configuración starter predeterminada es intencionadamente pequeña y comienza con una regla para detectar ciclos de dependencias. Las políticas específicas de frameworks son opcionales:
-
-```bash
-shamash init --preset spring
-```
-
-La referencia avanzada completa sigue estando disponible:
-
-```bash
-shamash init --preset reference
-```
-
-Valida la configuración:
-
-```bash
 shamash validate
+shamash scan --fail-on ERROR
 ```
 
-Después, ejecuta el análisis normalmente:
+`init` crea `shamash/configs/asm.yml` con una regla para detectar ciclos de dependencias. Usa `shamash init --preset spring` para los valores predeterminados de Spring o `--preset reference` para el ejemplo completo.
 
-```bash
-shamash scan
-```
-
-Los hallazgos se muestran de forma predeterminada. Usa `--all-findings` para ver la lista completa y `--verbose` para obtener diagnósticos del motor.
-
-## Proyectos existentes: acepta la deuda actual una sola vez
-
-Después de `shamash init`, ejecuta:
-
-```bash
-shamash baseline create
-```
-
-Este comando analiza el proyecto actual, escribe la línea base configurada y garantiza que `baseline.mode` sea `VERIFY`. Las líneas base existentes están protegidas; para reemplazarlas es necesario usar `--force`.
-
-Confirma ambos archivos en el repositorio:
-
-```text
-shamash/configs/asm.yml
-.shamash/baseline/asm-baseline.json
-```
-
-Con el modo de línea base `VERIFY`, los análisis posteriores suprimen las huellas ya aceptadas y muestran las nuevas infracciones.
+En un proyecto existente, ejecuta `shamash baseline create` para aceptar los hallazgos actuales. Incluye en el repositorio la configuración actualizada y `.shamash/baseline/asm-baseline.json`; los siguientes análisis mostrarán las infracciones nuevas.
 
 ## GitHub Actions
-
-Compila la aplicación y después utiliza la Action oficial:
 
 ```yaml
 name: Architecture
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: [pull_request, push]
 
 jobs:
-  shamash:
+  architecture:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
       - run: ./gradlew classes
-      - uses: aalsanie/shamash@v0.92.0
-```
-
-Para aplicar una configuración definida:
-
-```yaml
       - uses: aalsanie/shamash@v0.92.0
         with:
           config: shamash/configs/asm.yml
           fail-on: ERROR
 ```
 
-La Action verifica la suma de comprobación de la versión antes de ejecutarse.
+Para Maven, sustituye el paso de compilación por `./mvnw package`. La acción verifica la suma de comprobación de la CLI antes de analizar.
+
+**Códigos de salida:** `0` análisis completado sin alcanzar el umbral; `2` error de configuración o entrada; `3` análisis fallido o incompleto; `4` hallazgos que alcanzan o superan el umbral.
 
 ## IntelliJ
 
-Instala **Shamash** desde JetBrains Marketplace y abre:
+[Instala el complemento desde JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) y abre **Tools → Shamash**. **Build Analysis** examina el código compilado; **Source Analysis** ofrece hallazgos, exclusiones y correcciones sobre el código fuente.
 
-```text
-Tools → Shamash
+## Biblioteca
+
+Disponible en Maven Central para Java 17 o posterior.
+
+**Gradle**
+```kotlin
+dependencies {
+    implementation("io.github.aalsanie:shamash-asm-core:0.92.0")
+}
 ```
 
-Shamash utiliza una única ventana de herramientas. Sus áreas de primer nivel son:
+**Maven**
+```xml
+<dependency>
+    <groupId>io.github.aalsanie</groupId>
+    <artifactId>shamash-asm-core</artifactId>
+    <version>0.92.0</version>
+</dependency>
+```
 
-- **Build Analysis** — comprobaciones arquitectónicas sobre bytecode compilado, hallazgos, roles, grafos e informes.
-- **Source Analysis** — comprobaciones basadas en código fuente, supresiones y correcciones.
+```kotlin
+import io.shamash.asm.core.scan.ScanOptions
+import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import java.nio.file.Path
 
-ASM y PSI siguen existiendo internamente porque resuelven problemas técnicos diferentes, pero los usuarios no necesitan conocer esos nombres de motores para empezar.
+val result = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = Path.of(".")))
+check(result.isSuccess) { result.toString() }
+val findings = requireNotNull(result.engine).findings
+```
 
-## Comportamiento en CI y códigos de salida
+`isSuccess` confirma que el análisis terminó correctamente, no que esté libre de infracciones.
 
-Los análisis configurados utilizan estos códigos de salida estables:
+## Funciones avanzadas
 
-- `0` análisis correcto y hallazgos por debajo del umbral
-- `2` problema de configuración/entrada (incluida la ausencia de bytecode compilado)
-- `3` fallo en tiempo de ejecución/del motor
-- `4` los hallazgos alcanzaron el umbral seleccionado mediante `--fail-on`
+Configura restricciones de API y anotaciones, reglas sobre el origen de archivos JAR, métricas de dependencias y comprobaciones de grafos. Exporta informes JSON, SARIF, HTML o XML y consulta hechos, puntos críticos y puntuaciones arquitectónicas. Amplía las reglas mediante registros personalizados.
 
-El modo de descubrimiento es solo informativo y devuelve `0` después de un análisis correcto, incluso si detecta riesgos arquitectónicos.
+[Opciones de la CLI y sumas de verificación](./QUICK_START.es.md) · [Ejemplos de configuración](../docs/asm/schema/) · [Registros personalizados](./REGISTRY_GUIDE.es.md) · [Pruebas de rendimiento](../benchmarks/)
 
-## Capacidades avanzadas
-
-Los equipos avanzados pueden seguir utilizando:
-
-- dependencias entre roles arquitectónicos y reglas de paquetes
-- reglas de grafos de dependencias y límites de ciclos
-- métricas de acoplamiento/tamaño de clases
-- restricciones de API/anotaciones
-- restricciones según el origen de los JAR
-- exportación de facts y `shamash facts`
-- análisis de grafos/hotspots/puntuación y `shamash analysis`
-- formatos de informe JSON, SARIF, HTML y XML
-- registries de reglas personalizados
-- excepciones y líneas base
-
-Consulta `docs/asm/` y `REGISTRY_GUIDE.md` para ver la referencia avanzada del motor y la configuración.
-
-## Seguridad
-
-No divulgues vulnerabilidades en un issue público. Sigue [`SECURITY.md`](../SECURITY.md).
-
-## Licencia
-
-Apache License 2.0. Consulta [`LICENSE`](../LICENSE).
+[Historial de cambios](../CHANGELOG.md) · [Seguridad](../SECURITY.md) · [Contribuir](../CONTRIBUTING.md) · [License](../LICENSE)
