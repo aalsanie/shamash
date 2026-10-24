@@ -1,0 +1,48 @@
+name: SDKMAN distribution plan
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing published Shamash release version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: distroplane-sdkman-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Download and verify published CLI
+        shell: bash
+        env:
+          SHAMASH_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$SHAMASH_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          mkdir -p release-assets
+          BASE="https://github.com/aalsanie/shamash/releases/download/v${SHAMASH_VERSION}"
+          ARCHIVE="shamash-sdkman-${SHAMASH_VERSION}.zip"
+          curl --fail --location --silent --show-error --retry 3 "$BASE/$ARCHIVE" -o "release-assets/$ARCHIVE"
+          curl --fail --location --silent --show-error --retry 3 "$BASE/SHA256SUMS.txt" -o release-assets/SHA256SUMS.txt
+          ENTRY=$(awk -v file="$ARCHIVE" '$2 == file { print }' release-assets/SHA256SUMS.txt)
+          [[ $(printf '%s\n' "$ENTRY" | grep -c .) -eq 1 ]] || exit 1
+          (cd release-assets && printf '%s\n' "$ENTRY" | sha256sum --check --status)
+          python scripts/prepare_distroplane_sdkman.py "$SHAMASH_VERSION" "release-assets/$ARCHIVE" distroplane.json
+      - name: Plan SDKMAN publication
+        id: plan
+        uses: aalsanie/distroplane@047670573718d279948f8831be71968b3ef7a9a6 # v0.9.0-rc.2
+        with:
+          version: 0.9.0-rc.2
+          command: plan
+          config: distroplane.json
+          upload-plan: 'true'

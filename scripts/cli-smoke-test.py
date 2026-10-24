@@ -52,10 +52,12 @@ def main() -> None:
             archive.extractall(temp)
 
         roots = sorted(path for path in temp.iterdir() if path.is_dir() and path.name.startswith("shamash-"))
-        if len(roots) != 1:
-            fail(f"Expected one extracted Shamash distribution, found {len(roots)}")
-
-        root = roots[0]
+        if len(roots) == 1:
+            root = roots[0]
+        elif not roots and (temp / "bin" / "shamash").is_file():
+            root = temp
+        else:
+            fail(f"Expected one Shamash distribution root, found {len(roots)}")
         executable = root / "bin" / ("shamash.bat" if os.name == "nt" else "shamash")
         if not executable.is_file():
             fail(f"CLI launcher not found: {executable}")
