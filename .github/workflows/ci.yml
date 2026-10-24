@@ -95,6 +95,24 @@ jobs:
           VERSION=${VERSION%.zip}
           python scripts/package_sdkman.py "$SOURCE" "$RUNNER_TEMP/shamash-sdkman-$VERSION.zip" "$VERSION"
           python scripts/cli-smoke-test.py "$RUNNER_TEMP/shamash-sdkman-$VERSION.zip"
+      - name: Prepare Distroplane plan fixture
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE=$(find "$RUNNER_TEMP" -maxdepth 1 -name 'shamash-sdkman-*.zip' -print -quit)
+          test -n "$ARCHIVE"
+          VERSION=${ARCHIVE##*/shamash-sdkman-}
+          VERSION=${VERSION%.zip}
+          python scripts/prepare_distroplane_sdkman.py "$VERSION" "$ARCHIVE" "$RUNNER_TEMP/distroplane.json"
+      - name: Validate Distroplane SDKMAN plan
+        if: runner.os == 'Linux'
+        uses: aalsanie/distroplane@047670573718d279948f8831be71968b3ef7a9a6 # v0.9.0-rc.2
+        with:
+          version: 0.9.0-rc.2
+          command: plan
+          config: ${{ runner.temp }}/distroplane.json
+          state-dir: ${{ runner.temp }}/distroplane-state
 
   plugin-verifier:
     name: IntelliJ Plugin Verifier
