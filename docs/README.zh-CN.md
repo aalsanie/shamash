@@ -1,217 +1,115 @@
 <p align="center">
+  <a href="../README.md">English</a> •
+  <a href="./README.es.md">Español</a> •
+  <a href="./README.zh-CN.md">简体中文</a> •
+  <a href="./README.pt-BR.md">Português (Brasil)</a> •
+  <a href="./README.ru.md">Русский</a>
+</p>
+
+<p align="center">
   <img src="../assets/shamash_logo.png" alt="Shamash" width="180"/>
 </p>
 
 # Shamash
 
-**在架构漂移进入 main 分支之前阻止它。**
+**无需编写架构测试，即可检查 Java 和 Kotlin 项目的架构。**
 
-Shamash 扫描已编译的 Java/Kotlin 应用，发现依赖循环和架构违规，并且无需编写架构测试代码，就能在 CI 中阻止新的违规进入代码库。
-
-- **CLI 优先：** 独立的 Java 17+ 工具，可用于本地开发和 CI。
-- **首次扫描无需配置：** 在学习配置模型之前，就能先看到有价值的架构风险。
-- **适合存量项目：** 只需为现有技术债建立一次基线，之后仅对新增违规失败。
-- **IntelliJ：** 在一个工作区中提供 Build Analysis 和 Source Analysis。
-- **按需使用高级能力：** 自定义角色/规则、facts、图、热点、registry 以及多种报告格式仍然可用。
+检测依赖环、约束包与架构角色之间的边界，并识别高耦合区域。通过命令行或 CI 检查已编译代码，也可在 IntelliJ 中查看源码级问题并使用修复功能。
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
-[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
+[![许可证](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
 
-## 使用方法
+## 首次扫描
 
-Shamash 分析已编译的字节码。请先构建项目：
-
-```bash
-./gradlew classes
-# or: ./mvnw package
-```
-
-然后运行：
+需要 **Java 17 或更高版本**和已编译的类文件。从[发布页面下载命令行工具及校验和文件](https://github.com/aalsanie/shamash/releases/latest)，验证压缩包后，将其 `bin` 目录加入 `PATH`（Unix 使用 `shamash`，Windows 使用 `shamash.bat`）。
 
 ```bash
+./gradlew classes  # or ./mvnw package
 shamash scan
 ```
 
-首次扫描不需要任何配置。发现模式仅用于报告：它不会在项目中创建配置、报告或基线，也不会因为发现问题而让命令失败。
+未提供配置时，扫描会显示发现的问题，但不会写入项目文件，也不会仅因架构违规而返回失败状态。
 
-输出示例：
-
-```text
-Shamash - discovery scan
-Report-only mode. No project files were changed.
-
-Shamash found 3 architecture issues
-
-ERROR   graph.noCycles
-        Dependency cycle detected ...
-
-WARN    metrics.maxFanOut
-        ...
-
-642 classes scanned
-1 errors, 2 warnings, 0 info
-
-Ready to enforce architecture? Run: shamash init
-```
-
-如果 Shamash 找不到已编译的类，它会识别常见的 Gradle/Maven 项目，并给出应先执行的准确构建命令。
-
-## 安装 CLI
-
-需要 Java 17 或更高版本。
-
-从 GitHub Releases 下载 `shamash-cli-<version>.zip` 和 `SHA256SUMS.txt`，验证校验和，解压后使用：
-
-```text
-bin/shamash      # Linux/macOS
-bin/shamash.bat  # Windows
-```
-
-启动器名称属于已打包产品的稳定契约，并会在发布前于 Linux、Windows 和 macOS 上进行冒烟测试。
-
-## 在项目中执行架构约束
-
-创建精简的默认配置：
+## 启用规则检查
 
 ```bash
 shamash init
-```
-
-它会写入：
-
-```text
-shamash/configs/asm.yml
-```
-
-默认 starter 配置刻意保持精简，并从依赖循环规则开始。特定框架的策略需要显式启用：
-
-```bash
-shamash init --preset spring
-```
-
-完整的高级参考配置仍然可用：
-
-```bash
-shamash init --preset reference
-```
-
-验证配置：
-
-```bash
 shamash validate
+shamash scan --fail-on ERROR
 ```
 
-然后正常扫描：
+`init` 会创建包含依赖环检测规则的 `shamash/configs/asm.yml`。使用 `shamash init --preset spring` 生成 Spring 默认规则，或使用 `--preset reference` 获取完整示例。
 
-```bash
-shamash scan
-```
-
-默认会打印发现项。使用 `--all-findings` 查看完整列表，使用 `--verbose` 查看引擎诊断信息。
-
-## 现有项目：一次性接受当前技术债
-
-执行 `shamash init` 后，运行：
-
-```bash
-shamash baseline create
-```
-
-该命令会分析当前项目、写入已配置的基线，并确保 `baseline.mode` 为 `VERIFY`。已有基线会受到保护；如需替换，必须使用 `--force`。
-
-将以下两个文件一起提交：
-
-```text
-shamash/configs/asm.yml
-.shamash/baseline/asm-baseline.json
-```
-
-当基线模式为 `VERIFY` 时，后续扫描会抑制已接受的指纹，并暴露新的违规。
+对于现有项目，运行 `shamash baseline create` 将当前问题纳入基线。将更新后的配置和 `.shamash/baseline/asm-baseline.json` 提交到版本控制；后续扫描将报告新增违规。
 
 ## GitHub Actions
-
-先构建应用，然后使用官方 Action：
 
 ```yaml
 name: Architecture
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: [pull_request, push]
 
 jobs:
-  shamash:
+  architecture:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
       - run: ./gradlew classes
-      - uses: aalsanie/shamash@v0.92.0
-```
-
-如需按配置执行架构约束：
-
-```yaml
       - uses: aalsanie/shamash@v0.92.0
         with:
           config: shamash/configs/asm.yml
           fail-on: ERROR
 ```
 
-Action 会在执行前验证发布文件的校验和。
+Maven 项目请将构建步骤替换为 `./mvnw package`。此 Action 会在扫描前验证下载的命令行工具的校验和。
+
+**退出码：** `0` 扫描完成且未达到失败阈值；`2` 配置或输入错误；`3` 扫描失败或不完整；`4` 发现的问题达到或超过失败阈值。
 
 ## IntelliJ
 
-从 JetBrains Marketplace 安装 **Shamash**，然后打开：
+从 [JetBrains Marketplace 安装插件](https://plugins.jetbrains.com/plugin/29504-shamash)，然后打开 **Tools → Shamash**。**Build Analysis** 检查已编译代码；**Source Analysis** 提供源码级问题定位、抑制规则和修复功能。
 
-```text
-Tools → Shamash
+## 库集成
+
+已发布至 Maven Central，要求 Java 17 或更高版本。
+
+**Gradle**
+```kotlin
+dependencies {
+    implementation("io.github.aalsanie:shamash-asm-core:0.92.0")
+}
 ```
 
-Shamash 只有一个工具窗口。一级区域包括：
+**Maven**
+```xml
+<dependency>
+    <groupId>io.github.aalsanie</groupId>
+    <artifactId>shamash-asm-core</artifactId>
+    <version>0.92.0</version>
+</dependency>
+```
 
-- **Build Analysis** — 对已编译字节码执行架构检查，并展示发现项、角色、图和报告。
-- **Source Analysis** — 提供基于源码的检查、抑制和修复。
+```kotlin
+import io.shamash.asm.core.scan.ScanOptions
+import io.shamash.asm.core.scan.ShamashAsmScanRunner
+import java.nio.file.Path
 
-ASM 和 PSI 在内部仍然存在，因为它们解决不同的技术问题；但用户无需理解这些引擎名称即可开始使用。
+val result = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = Path.of(".")))
+check(result.isSuccess) { result.toString() }
+val findings = requireNotNull(result.engine).findings
+```
 
-## CI 行为和退出码
+`isSuccess` 表示扫描已成功完成，并不表示不存在架构违规。
 
-配置模式下的扫描使用以下稳定退出码：
+## 进阶功能
 
-- `0` 扫描成功，且发现项低于失败阈值
-- `2` 配置/输入问题（包括缺少已编译字节码）
-- `3` 运行时/引擎失败
-- `4` 发现项达到所选的 `--fail-on` 阈值
+可配置 API 与注解限制、JAR 来源规则、依赖度量和依赖图检查。支持导出 JSON、SARIF、HTML、XML 报告，以及查看事实数据、热点与架构评分；还可扩展自定义规则注册表。
 
-发现模式仅用于报告；成功完成扫描后，即使发现架构风险，也会返回 `0`。
+[命令行选项与校验和](./QUICK_START.zh-CN.md) · [配置示例](../docs/asm/schema/) · [自定义规则注册表](./REGISTRY_GUIDE.zh-CN.md) · [性能基准测试](../benchmarks/)
 
-## 高级能力
-
-高级团队仍然可以使用：
-
-- 架构角色依赖和包规则
-- 依赖图规则和循环限制
-- 耦合度/类大小指标
-- API/注解限制
-- JAR 来源限制
-- facts 导出和 `shamash facts`
-- 图/热点/评分分析和 `shamash analysis`
-- JSON、SARIF、HTML 和 XML 报告格式
-- 自定义规则 registry
-- 例外和基线
-
-高级引擎/配置参考请参阅 `docs/asm/` 和 `REGISTRY_GUIDE.md`。
-
-## 安全
-
-请不要在公开 issue 中披露漏洞。请遵循 [`SECURITY.md`](../SECURITY.md)。
-
-## 许可证
-
-Apache License 2.0。请参阅 [`LICENSE`](../LICENSE)。
+[更新日志](../CHANGELOG.md) · [安全政策](../SECURITY.md) · [参与贡献](../CONTRIBUTING.md) · [License](../LICENSE)
