@@ -10,173 +10,80 @@
 
 # Shamash
 
-Shamash scans compiled Java and Kotlin applications for dependency cycles and architecture violations without requiring architecture-test code.
+**Architecture checks for Java and Kotlin, without architecture tests.**
 
-- Scan without configuration.
-- Baseline existing violations and enforce new ones in CI.
-- Use the CLI, IntelliJ plugin or Java/Kotlin library.
-- Extend checks with custom rules and registries.
+Detect dependency cycles, enforce package and role boundaries, and surface coupling hotspots. Use compiled-code checks in the CLI or CI, with source-aware findings and fixes in IntelliJ.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
 
-## Quick start
+## First scan
 
-Requires Java 17 or newer.
-
-### 1. Install the CLI
-
-Download `shamash-cli-<version>.zip` and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/aalsanie/shamash/releases), verify the checksum and extract the archive.
-
-```text
-bin/shamash      # Linux/macOS
-bin/shamash.bat  # Windows
-```
-
-The following examples assume the launcher is on your `PATH`.
-
-### 2. Build your project
+Requires **Java 17+** and compiled classes. Download the [CLI archive and checksums](https://github.com/aalsanie/shamash/releases/latest), verify the archive, and add its `bin` directory to your `PATH` (`shamash` on Unix, `shamash.bat` on Windows).
 
 ```bash
-./gradlew classes
-# or: ./mvnw package
-```
-
-If compiled classes are missing, Shamash detects common Gradle/Maven projects and suggests a build command.
-
-### 3. Run your first scan
-
-```bash
+./gradlew classes  # or ./mvnw package
 shamash scan
 ```
 
-Without a configuration, Shamash runs in discovery mode. It reports findings without creating configuration, reports or baselines.
+Without a config, the scan reports findings but does not write project files or fail because of architecture violations.
 
-Example output:
-
-```text
-Shamash - discovery scan
-Report-only mode. No project files were changed.
-
-Shamash found 3 architecture issues
-
-ERROR   graph.noCycles
-        Dependency cycle detected ...
-
-WARN    metrics.maxFanOut
-        ...
-
-642 classes scanned
-1 errors, 2 warnings, 0 info
-
-Ready to enforce architecture? Run: shamash init
-```
-
-## Turn discovery into enforcement
-
-Create the default configuration:
+## Enforce rules
 
 ```bash
 shamash init
-```
-
-This writes `shamash/configs/asm.yml` with a dependency-cycle rule.
-
-For Spring-specific rules:
-
-```bash
-shamash init --preset spring
-```
-
-For the full reference configuration:
-
-```bash
-shamash init --preset reference
-```
-
-Validate and scan:
-
-```bash
 shamash validate
-shamash scan
+shamash scan --fail-on ERROR
 ```
 
-Use `--all-findings` for the complete findings list and `--verbose` for diagnostics.
+`init` creates `shamash/configs/asm.yml` with a dependency-cycle rule. Use `shamash init --preset spring` for Spring defaults or `--preset reference` for the full example.
 
-## Existing projects: accept current debt once
-
-After `shamash init`, run:
-
-```bash
-shamash baseline create
-```
-
-After a complete, successful scan, this writes the configured baseline and sets `baseline.mode` to `VERIFY`. Replacing an existing baseline requires `--force`.
-
-Commit the configuration and baseline:
-
-```text
-shamash/configs/asm.yml
-.shamash/baseline/asm-baseline.json
-```
-
-Later scans suppress accepted violations and report new ones.
+For an existing codebase, run `shamash baseline create` to accept current findings. Commit the updated config and `.shamash/baseline/asm-baseline.json`; subsequent scans report new violations.
 
 ## GitHub Actions
-
-Build the application before running Shamash:
 
 ```yaml
 name: Architecture
 
-on:
-  pull_request:
-  push:
-    branches: [main]
+on: [pull_request, push]
 
 jobs:
-  shamash:
+  architecture:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
       - run: ./gradlew classes
-      - uses: aalsanie/shamash@v0.92.0
-```
-
-For configured enforcement:
-
-```yaml
       - uses: aalsanie/shamash@v0.92.0
         with:
           config: shamash/configs/asm.yml
           fail-on: ERROR
 ```
 
-The action verifies the release checksum before execution.
+Replace the build step with `./mvnw package` for Maven. The Action verifies the CLI download checksum before scanning.
+
+**Exit codes:** `0` completed below threshold; `2` configuration or input error; `3` failed or incomplete scan; `4` findings at or above the threshold.
+
+## IntelliJ
+
+[Install from JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) and open **Tools → Shamash**. **Build Analysis** checks compiled code; **Source Analysis** provides source-aware findings, suppressions, and fixes.
 
 ## Library
 
-Embed the bytecode engine in Java or Kotlin applications. Requires Java 17 or newer.
+Published on Maven Central for Java 17+.
 
-### Gradle
-
+**Gradle**
 ```kotlin
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation("io.github.aalsanie:shamash-asm-core:0.92.0")
 }
 ```
 
-### Maven
-
+**Maven**
 ```xml
 <dependency>
     <groupId>io.github.aalsanie</groupId>
@@ -185,69 +92,22 @@ dependencies {
 </dependency>
 ```
 
-Shared contracts and report exporters are included as transitive dependencies.
-
-### Usage
-
-Scan a compiled project:
-
 ```kotlin
 import io.shamash.asm.core.scan.ScanOptions
 import io.shamash.asm.core.scan.ShamashAsmScanRunner
 import java.nio.file.Path
 
-val result = ShamashAsmScanRunner().run(
-    ScanOptions(projectBasePath = Path.of("."))
-)
+val result = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = Path.of(".")))
 check(result.isSuccess) { result.toString() }
 val findings = requireNotNull(result.engine).findings
 ```
 
-A successful scan can still contain architecture violations. `isSuccess` indicates that validation and analysis completed without execution errors or truncation.
+`isSuccess` confirms scan completion, not the absence of violations.
 
-## IntelliJ
+## Beyond the basics
 
-Install from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash), then open:
+Configure API and annotation restrictions, JAR-origin rules, dependency metrics, and graph checks. Export JSON, SARIF, HTML, or XML reports; inspect facts, hotspots, and architecture scores. Add custom rule registries where built-in rules aren't enough.
 
-```text
-Tools → Shamash
-```
+[CLI options and checksums](./QUICK_START.md) · [Configuration examples](./docs/asm/schema/) · [Custom registries](./REGISTRY_GUIDE.md) · [Benchmarks](./benchmarks/)
 
-The tool window contains:
-
-- **Build Analysis** — compiled-bytecode checks, findings, roles, graphs and reports.
-- **Source Analysis** — source-aware checks, suppressions and fixes.
-
-## CI behavior and exit codes
-
-Configured scans use these exit codes:
-
-- `0` successful scan and findings below threshold
-- `2` configuration/input problem, including missing compiled bytecode
-- `3` runtime failure or incomplete scan
-- `4` findings reached the selected `--fail-on` threshold
-
-Discovery scans return `0` after successful analysis, regardless of findings.
-
-## Advanced capabilities
-
-- Architecture role dependencies and package rules
-- Dependency graph rules and cycle limits
-- Coupling and class-size metrics
-- API and annotation restrictions
-- JAR-origin restrictions
-- Facts export and `shamash facts`
-- Graphs, hotspots, scoring and `shamash analysis`
-- JSON, SARIF, HTML and XML reports
-- Custom rule registries
-- Exceptions and baselines
-
-See [`docs/asm/`](./docs/asm/), [`REGISTRY_GUIDE.md`](./REGISTRY_GUIDE.md) and [`benchmarks/`](./benchmarks/).
-
-## Security
-
-Report vulnerabilities through [`SECURITY.md`](./SECURITY.md).
-
-## License
-
-Apache License 2.0. See [`LICENSE`](./LICENSE).
+[Changelog](./CHANGELOG.md) · [Security](./SECURITY.md) · [Contributing](./CONTRIBUTING.md) · [License](./LICENSE)
