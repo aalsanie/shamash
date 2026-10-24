@@ -1,4 +1,4 @@
-name: SDKMAN distribution
+name: SDKMAN distribution plan
 
 on:
   workflow_dispatch:
@@ -7,11 +7,6 @@ on:
         description: Existing published Shamash release version
         required: true
         type: string
-      publish:
-        description: Publish to SDKMAN after vendor onboarding
-        required: true
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -21,9 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  distribute:
+  plan:
     runs-on: ubuntu-latest
-    environment: sdkman-distribution
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -52,39 +46,3 @@ jobs:
           command: plan
           config: distroplane.json
           upload-plan: 'true'
-      - name: Verify publisher credentials
-        if: ${{ inputs.publish }}
-        shell: bash
-        env:
-          SDKMAN_CONSUMER_KEY: ${{ secrets.SDKMAN_CONSUMER_KEY }}
-          SDKMAN_CONSUMER_TOKEN: ${{ secrets.SDKMAN_CONSUMER_TOKEN }}
-          SDKMAN_VENDOR_API_VERIFIED: ${{ vars.SDKMAN_VENDOR_API_VERIFIED }}
-        run: |
-          test "$SDKMAN_VENDOR_API_VERIFIED" = "true"
-          test -n "$SDKMAN_CONSUMER_KEY"
-          test -n "$SDKMAN_CONSUMER_TOKEN"
-      - name: Publish to SDKMAN
-        if: ${{ inputs.publish }}
-        uses: aalsanie/distroplane@047670573718d279948f8831be71968b3ef7a9a6 # v0.9.0-rc.2
-        env:
-          SDKMAN_CONSUMER_KEY: ${{ secrets.SDKMAN_CONSUMER_KEY }}
-          SDKMAN_CONSUMER_TOKEN: ${{ secrets.SDKMAN_CONSUMER_TOKEN }}
-        with:
-          version: 0.9.0-rc.2
-          command: apply
-          config: distroplane.json
-          plan: ${{ steps.plan.outputs.plan-path }}
-          journal: .distroplane/sdkman.journal
-          credential-mappings: |
-            sdkman-key=SDKMAN_CONSUMER_KEY
-            sdkman-token=SDKMAN_CONSUMER_TOKEN
-          upload-evidence: 'true'
-      - name: Preserve publication journal
-        if: ${{ always() && inputs.publish }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: sdkman-publication-journal
-          path: |
-            distroplane.json
-            .distroplane/**
-          if-no-files-found: warn
