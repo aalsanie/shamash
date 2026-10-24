@@ -1,0 +1,88 @@
+name: SDKMAN distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing published Shamash release version
+        required: true
+        type: string
+      publish:
+        description: Publish to SDKMAN after vendor onboarding
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: distroplane-sdkman-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    environment: sdkman-distribution
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Download and verify published CLI
+        shell: bash
+        env:
+          SHAMASH_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$SHAMASH_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          mkdir -p release-assets
+          BASE="https://github.com/aalsanie/shamash/releases/download/v${SHAMASH_VERSION}"
+          ARCHIVE="shamash-sdkman-${SHAMASH_VERSION}.zip"
+          curl --fail --location --silent --show-error --retry 3 "$BASE/$ARCHIVE" -o "release-assets/$ARCHIVE"
+          curl --fail --location --silent --show-error --retry 3 "$BASE/SHA256SUMS.txt" -o release-assets/SHA256SUMS.txt
+          ENTRY=$(awk -v file="$ARCHIVE" '$2 == file { print }' release-assets/SHA256SUMS.txt)
+          [[ $(printf '%s\n' "$ENTRY" | grep -c .) -eq 1 ]] || exit 1
+          (cd release-assets && printf '%s\n' "$ENTRY" | sha256sum --check --status)
+          python scripts/prepare_distroplane_sdkman.py "$SHAMASH_VERSION" "release-assets/$ARCHIVE" distroplane.json
+      - name: Plan SDKMAN publication
+        id: plan
+        uses: aalsanie/distroplane@047670573718d279948f8831be71968b3ef7a9a6 # v0.9.0-rc.2
+        with:
+          version: 0.9.0-rc.2
+          command: plan
+          config: distroplane.json
+          upload-plan: 'true'
+      - name: Verify publisher credentials
+        if: ${{ inputs.publish }}
+        shell: bash
+        env:
+          SDKMAN_CONSUMER_KEY: ${{ secrets.SDKMAN_CONSUMER_KEY }}
+          SDKMAN_CONSUMER_TOKEN: ${{ secrets.SDKMAN_CONSUMER_TOKEN }}
+        run: |
+          test -n "$SDKMAN_CONSUMER_KEY"
+          test -n "$SDKMAN_CONSUMER_TOKEN"
+      - name: Publish to SDKMAN
+        if: ${{ inputs.publish }}
+        uses: aalsanie/distroplane@047670573718d279948f8831be71968b3ef7a9a6 # v0.9.0-rc.2
+        env:
+          SDKMAN_CONSUMER_KEY: ${{ secrets.SDKMAN_CONSUMER_KEY }}
+          SDKMAN_CONSUMER_TOKEN: ${{ secrets.SDKMAN_CONSUMER_TOKEN }}
+        with:
+          version: 0.9.0-rc.2
+          command: apply
+          config: distroplane.json
+          plan: ${{ steps.plan.outputs.plan-path }}
+          journal: .distroplane/sdkman.journal
+          credential-mappings: |
+            sdkman-key=SDKMAN_CONSUMER_KEY
+            sdkman-token=SDKMAN_CONSUMER_TOKEN
+          upload-evidence: 'true'
+      - name: Preserve publication journal
+        if: ${{ always() && inputs.publish }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sdkman-publication-journal
+          path: |
+            distroplane.json
+            .distroplane/**
+          if-no-files-found: warn
