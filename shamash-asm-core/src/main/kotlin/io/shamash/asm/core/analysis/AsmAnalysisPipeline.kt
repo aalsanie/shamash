@@ -487,7 +487,7 @@ object AsmAnalysisPipeline {
         OverallWeights(
             cycles = 0.30,
             dependencyDensity = 0.20,
-            layeringViolations = 0.25,
+            layeringViolations = 0.0,
             godClassPrevalence = 0.15,
             externalCoupling = 0.10,
         )

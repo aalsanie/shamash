@@ -156,7 +156,7 @@ class AsmAnalysisPipelineTest {
                                     OverallWeights(
                                         cycles = 0.0,
                                         dependencyDensity = 0.0,
-                                        layeringViolations = 100.0,
+                                        layeringViolations = 0.0,
                                         godClassPrevalence = 0.0,
                                         externalCoupling = 1.0,
                                     ),
