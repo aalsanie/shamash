@@ -102,9 +102,9 @@ class ProjectRoleIndex private constructor(
         val fromFiles = collectViaVfsScan(include, exclude, indexedJavaFiles = bySearch.classToFilePath.values.toSet())
         val collected =
             Collected(
-                classFacts = (bySearch.classFacts + fromFiles.classFacts).distinctBy { it.fqName }.sortedBy { it.fqName },
-                classToAnnotations = fromFiles.classToAnnotations + bySearch.classToAnnotations,
-                classToFilePath = fromFiles.classToFilePath + bySearch.classToFilePath,
+                classFacts = (fromFiles.classFacts + bySearch.classFacts).distinctBy { it.fqName }.sortedBy { it.fqName },
+                classToAnnotations = bySearch.classToAnnotations + fromFiles.classToAnnotations,
+                classToFilePath = bySearch.classToFilePath + fromFiles.classToFilePath,
             )
 
         val roleClassifier = RoleClassifier(multiRole = false)
@@ -207,7 +207,7 @@ class ProjectRoleIndex private constructor(
 
                 if (vf.isDirectory) return@iterateChildrenRecursively true
                 if (vf.fileType.isBinary) return@iterateChildrenRecursively true
-                if (vf.extension !in setOf("java", "kt", "kts")) return@iterateChildrenRecursively true
+                if (vf.extension != "java" && vf.extension != "kt" && vf.extension != "kts") return@iterateChildrenRecursively true
 
                 val path = GlobMatcher.normalizePath(vf.path)
                 if (vf.extension == "java" && path in indexedJavaFiles) return@iterateChildrenRecursively true
