@@ -47,6 +47,9 @@ import io.shamash.asm.core.engine.rules.RuleRegistry
 import io.shamash.asm.core.export.analysis.AnalysisExporter
 import io.shamash.asm.core.export.facts.FactsExporter
 import io.shamash.asm.core.export.roles.RolesExporter
+import io.shamash.asm.core.export.rules.RulePlanEntry
+import io.shamash.asm.core.export.rules.RulePlanExporter
+import io.shamash.asm.core.export.rules.RulePlanStatus
 import io.shamash.asm.core.facts.model.ClassFact
 import io.shamash.asm.core.facts.query.FactIndex
 import io.shamash.export.api.Exporters
@@ -109,23 +112,34 @@ class ShamashAsmEngine
             var skippedRuleInstances = 0
             var notFoundRuleInstances = 0
             var failedRuleInstances = 0
+            val rulePlan =
+                if (config.export.enabled && config.export.artifacts?.rulePlan?.enabled == true) {
+                    mutableListOf<RulePlanEntry>()
+                } else {
+                    null
+                }
 
             for (ruleDef in config.rules) {
                 configuredRuleDefs++
-
-                if (!ruleDef.enabled) {
-                    skippedRuleDefs++
-                    continue
-                }
-
                 val type = ruleDef.type.trim()
                 val name = ruleDef.name.trim()
                 val baseRuleId = "$type.$name"
+
+                if (!ruleDef.enabled) {
+                    skippedRuleDefs++
+                    rulePlan?.add(
+                        RulePlanEntry(baseRuleId, null, null, RulePlanStatus.DISABLED, ruleDef.severity, ruleDef.scope),
+                    )
+                    continue
+                }
 
                 val rule: Rule? = registry.resolve(ruleDef)
 
                 if (rule == null) {
                     notFoundRuleInstances++
+                    rulePlan?.add(
+                        RulePlanEntry(baseRuleId, null, null, RulePlanStatus.NOT_FOUND, ruleDef.severity, ruleDef.scope),
+                    )
 
                     // WARN is reported by config validation; it must not become an engine failure.
                     when (config.project.validation.unknownRule) {
@@ -149,6 +163,9 @@ class ShamashAsmEngine
                 val instanceRoles: List<String?> = expandInstanceRoles(ruleDef.roles)
                 if (instanceRoles.isEmpty()) {
                     skippedRuleDefs++
+                    rulePlan?.add(
+                        RulePlanEntry(baseRuleId, rule.id, null, RulePlanStatus.NO_ROLES, ruleDef.severity, ruleDef.scope),
+                    )
                     continue
                 }
 
@@ -160,6 +177,9 @@ class ShamashAsmEngine
                         roleTrimmed != null && ruleDef.scope?.excludeRoles?.any { it.trim() == roleTrimmed } == true
                     if (excludedByScope) {
                         skippedRuleInstances++
+                        rulePlan?.add(
+                            RulePlanEntry(instanceRuleId, rule.id, roleTrimmed, RulePlanStatus.EXCLUDED, ruleDef.severity, ruleDef.scope),
+                        )
                         continue
                     }
 
@@ -178,7 +198,21 @@ class ShamashAsmEngine
                         for (f in produced) {
                             findingsOut += normalizeFinding(f, instanceRuleId)
                         }
+                        rulePlan?.add(
+                            RulePlanEntry(
+                                instanceRuleId,
+                                rule.id,
+                                roleTrimmed,
+                                RulePlanStatus.EXECUTED,
+                                ruleDef.severity,
+                                effectiveDef.scope,
+                                produced.size,
+                            ),
+                        )
                     } catch (pe: ParamError) {
+                        rulePlan?.add(
+                            RulePlanEntry(instanceRuleId, rule.id, roleTrimmed, RulePlanStatus.FAILED, ruleDef.severity, effectiveDef.scope),
+                        )
                         failedRuleInstances++
                         errors +=
                             EngineError.ruleExecutionFailed(
@@ -188,6 +222,9 @@ class ShamashAsmEngine
                                 t = pe,
                             )
                     } catch (t: Throwable) {
+                        rulePlan?.add(
+                            RulePlanEntry(instanceRuleId, rule.id, roleTrimmed, RulePlanStatus.FAILED, ruleDef.severity, effectiveDef.scope),
+                        )
                         failedRuleInstances++
                         errors +=
                             EngineError.ruleExecutionFailed(
@@ -318,6 +355,28 @@ class ShamashAsmEngine
                                 }
                             }
 
+                            var rulePlanPath = sidecars.rulePlanPath
+                            if (rulePlanPath != null) {
+                                try {
+                                    RulePlanExporter.export(
+                                        entries = requireNotNull(rulePlan),
+                                        outputPath = rulePlanPath,
+                                        toolName = toolName,
+                                        toolVersion = toolVersion,
+                                        projectName = projectName,
+                                        generatedAtEpochMillis = generatedAtEpochMillis,
+                                    )
+                                } catch (t: Throwable) {
+                                    errors +=
+                                        EngineError.exportFailed(
+                                            message = "Rule plan export failed",
+                                            details = mapOf("rulePlanPath" to rulePlanPath.toString()),
+                                            t = t,
+                                        )
+                                    rulePlanPath = null
+                                }
+                            }
+
                             var analysisGraphsPath = sidecars.analysisGraphsPath
                             if (analysisGraphsPath != null) {
                                 try {
@@ -402,7 +461,7 @@ class ShamashAsmEngine
                                 baselineWritten = false,
                                 factsPath = factsPath,
                                 rolesPath = rolesPath,
-                                rulePlanPath = sidecars.rulePlanPath,
+                                rulePlanPath = rulePlanPath,
                                 analysisGraphsPath = analysisGraphsPath,
                                 analysisHotspotsPath = analysisHotspotsPath,
                                 analysisScoresPath = analysisScoresPath,
