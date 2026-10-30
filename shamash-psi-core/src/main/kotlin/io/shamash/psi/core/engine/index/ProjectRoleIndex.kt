@@ -99,7 +99,7 @@ class ProjectRoleIndex private constructor(
 
         val bySearch = collectViaAllClassesSearch(include, exclude)
 
-        val fromFiles = collectViaVfsScan(include, exclude, kotlinOnly = bySearch.classFacts.isNotEmpty())
+        val fromFiles = collectViaVfsScan(include, exclude, indexedJavaFiles = bySearch.classToFilePath.values.toSet())
         val collected =
             Collected(
                 classFacts = (bySearch.classFacts + fromFiles.classFacts).distinctBy { it.fqName }.sortedBy { it.fqName },
@@ -187,7 +187,7 @@ class ProjectRoleIndex private constructor(
     private fun collectViaVfsScan(
         include: List<String>,
         exclude: List<String>,
-        kotlinOnly: Boolean,
+        indexedJavaFiles: Set<String>,
     ): Collected {
         val roots = collectContentRoots()
         if (roots.isEmpty()) {
@@ -207,10 +207,10 @@ class ProjectRoleIndex private constructor(
 
                 if (vf.isDirectory) return@iterateChildrenRecursively true
                 if (vf.fileType.isBinary) return@iterateChildrenRecursively true
-                if (kotlinOnly && vf.extension != "kt" && vf.extension != "kts") return@iterateChildrenRecursively true
+                if (vf.extension !in setOf("java", "kt", "kts")) return@iterateChildrenRecursively true
 
                 val path = GlobMatcher.normalizePath(vf.path)
-
+                if (vf.extension == "java" && path in indexedJavaFiles) return@iterateChildrenRecursively true
                 if (!SourceGlobFilter.matches(path, include, exclude)) return@iterateChildrenRecursively true
 
                 val psiFile: PsiFile = psiManager.findFile(vf) ?: return@iterateChildrenRecursively true
