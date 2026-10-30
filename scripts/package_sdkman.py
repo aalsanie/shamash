@@ -8,7 +8,7 @@ from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 
 
 def package_sdkman(source: Path, destination: Path, version: str) -> None:
-    prefix = f"shamash-cli-{version}/"
+    prefix = f"shamash-{version}/"
     contents = {}
     with ZipFile(source) as archive:
         for member in archive.infolist():
