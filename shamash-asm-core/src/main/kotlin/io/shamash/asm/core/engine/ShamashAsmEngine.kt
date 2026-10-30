@@ -112,7 +112,10 @@ class ShamashAsmEngine
             var skippedRuleInstances = 0
             var notFoundRuleInstances = 0
             var failedRuleInstances = 0
-            val captureRulePlan = config.export.enabled && config.export.artifacts?.rulePlan?.enabled == true
+            val captureRulePlan =
+                config.export.enabled && config.export.artifacts
+                    ?.rulePlan
+                    ?.enabled == true
             val rulePlan = if (captureRulePlan) mutableListOf<RulePlanEntry>() else null
 
             for (ruleDef in config.rules) {
@@ -125,13 +128,13 @@ class ShamashAsmEngine
                     skippedRuleDefs++
                     rulePlan?.add(
                         RulePlanEntry(
-                                baseRuleId,
-                                null,
-                                null,
-                                RulePlanStatus.DISABLED,
-                                ruleDef.severity,
-                                ruleDef.scope,
-                            ),
+                            baseRuleId,
+                            null,
+                            null,
+                            RulePlanStatus.DISABLED,
+                            ruleDef.severity,
+                            ruleDef.scope,
+                        ),
                     )
                     continue
                 }
@@ -142,13 +145,13 @@ class ShamashAsmEngine
                     notFoundRuleInstances++
                     rulePlan?.add(
                         RulePlanEntry(
-                                baseRuleId,
-                                null,
-                                null,
-                                RulePlanStatus.NOT_FOUND,
-                                ruleDef.severity,
-                                ruleDef.scope,
-                            ),
+                            baseRuleId,
+                            null,
+                            null,
+                            RulePlanStatus.NOT_FOUND,
+                            ruleDef.severity,
+                            ruleDef.scope,
+                        ),
                     )
 
                     // WARN is reported by config validation; it must not become an engine failure.
@@ -175,13 +178,13 @@ class ShamashAsmEngine
                     skippedRuleDefs++
                     rulePlan?.add(
                         RulePlanEntry(
-                                baseRuleId,
-                                rule.id,
-                                null,
-                                RulePlanStatus.NO_ROLES,
-                                ruleDef.severity,
-                                ruleDef.scope,
-                            ),
+                            baseRuleId,
+                            rule.id,
+                            null,
+                            RulePlanStatus.NO_ROLES,
+                            ruleDef.severity,
+                            ruleDef.scope,
+                        ),
                     )
                     continue
                 }
