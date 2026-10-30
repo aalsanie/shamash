@@ -321,7 +321,6 @@ object AsmAnalysisPipeline {
                     val cycles = if (pkg in inCycle) 1.0 else 0.0
                     val out = (fanOutProject[pkg] ?: 0).toDouble()
                     val depDensity = (out / denom).coerceIn(0.0, 1.0)
-                    val layering = 0.0 // Layering violations are not measured yet.
                     val godPrev = (godAvgByPackage[pkg] ?: 0.0).coerceIn(0.0, 1.0)
 
                     val succAll = pkgGraphExternal.successors(pkg)
@@ -333,7 +332,6 @@ object AsmAnalysisPipeline {
                         linkedMapOf(
                             "cycles" to cycles,
                             "dependencyDensity" to depDensity,
-                            "layeringViolations" to layering,
                             "godClassPrevalence" to godPrev,
                             "externalCoupling" to externalCoupling,
                         )
@@ -345,7 +343,6 @@ object AsmAnalysisPipeline {
                             listOf(
                                 weights.cycles to cycles,
                                 weights.dependencyDensity to depDensity,
-                                weights.layeringViolations to layering,
                                 weights.godClassPrevalence to godPrev,
                                 weights.externalCoupling to externalCoupling,
                             ),
