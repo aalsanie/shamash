@@ -99,13 +99,13 @@ class ProjectRoleIndex private constructor(
 
         val bySearch = collectViaAllClassesSearch(include, exclude)
 
-        // Fallback strategy: VFS walk + FactExtractor (covers Kotlin reliably, avoids "no classes" cases).
+        val fromFiles = collectViaVfsScan(include, exclude, kotlinOnly = bySearch.classFacts.isNotEmpty())
         val collected =
-            if (bySearch.classFacts.isNotEmpty()) {
-                bySearch
-            } else {
-                collectViaVfsScan(include, exclude)
-            }
+            Collected(
+                classFacts = (bySearch.classFacts + fromFiles.classFacts).distinctBy { it.fqName }.sortedBy { it.fqName },
+                classToAnnotations = fromFiles.classToAnnotations + bySearch.classToAnnotations,
+                classToFilePath = fromFiles.classToFilePath + bySearch.classToFilePath,
+            )
 
         val roleClassifier = RoleClassifier(multiRole = false)
         val classification = roleClassifier.classify(collected.classFacts, config.roles)
@@ -187,6 +187,7 @@ class ProjectRoleIndex private constructor(
     private fun collectViaVfsScan(
         include: List<String>,
         exclude: List<String>,
+        kotlinOnly: Boolean,
     ): Collected {
         val roots = collectContentRoots()
         if (roots.isEmpty()) {
@@ -206,6 +207,7 @@ class ProjectRoleIndex private constructor(
 
                 if (vf.isDirectory) return@iterateChildrenRecursively true
                 if (vf.fileType.isBinary) return@iterateChildrenRecursively true
+                if (kotlinOnly && vf.extension != "kt" && vf.extension != "kts") return@iterateChildrenRecursively true
 
                 val path = GlobMatcher.normalizePath(vf.path)
 
