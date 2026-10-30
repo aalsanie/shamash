@@ -23,6 +23,7 @@ import io.shamash.asm.core.config.schema.v1.model.RuleScope
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 internal enum class RulePlanStatus {
     DISABLED,
@@ -73,9 +74,16 @@ internal object RulePlanExporter {
                 rules = entries,
             )
 
-        outputPath.parent?.let { Files.createDirectories(it) }
-        Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8).use { writer ->
-            mapper.writeValue(writer, document)
+        val directory = outputPath.toAbsolutePath().parent
+        Files.createDirectories(directory)
+        val temporary = Files.createTempFile(directory, "rule-plan-", ".tmp")
+        try {
+            Files.newBufferedWriter(temporary, StandardCharsets.UTF_8).use { writer ->
+                mapper.writeValue(writer, document)
+            }
+            Files.move(temporary, outputPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(temporary)
         }
     }
 }
