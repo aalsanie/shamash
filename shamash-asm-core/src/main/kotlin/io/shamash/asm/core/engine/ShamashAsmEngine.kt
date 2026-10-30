@@ -112,12 +112,8 @@ class ShamashAsmEngine
             var skippedRuleInstances = 0
             var notFoundRuleInstances = 0
             var failedRuleInstances = 0
-            val rulePlan =
-                if (config.export.enabled && config.export.artifacts?.rulePlan?.enabled == true) {
-                    mutableListOf<RulePlanEntry>()
-                } else {
-                    null
-                }
+            val captureRulePlan = config.export.enabled && config.export.artifacts?.rulePlan?.enabled == true
+            val rulePlan = if (captureRulePlan) mutableListOf<RulePlanEntry>() else null
 
             for (ruleDef in config.rules) {
                 configuredRuleDefs++
@@ -128,7 +124,14 @@ class ShamashAsmEngine
                 if (!ruleDef.enabled) {
                     skippedRuleDefs++
                     rulePlan?.add(
-                        RulePlanEntry(baseRuleId, null, null, RulePlanStatus.DISABLED, ruleDef.severity, ruleDef.scope),
+                        RulePlanEntry(
+                                baseRuleId,
+                                null,
+                                null,
+                                RulePlanStatus.DISABLED,
+                                ruleDef.severity,
+                                ruleDef.scope,
+                            ),
                     )
                     continue
                 }
@@ -138,7 +141,14 @@ class ShamashAsmEngine
                 if (rule == null) {
                     notFoundRuleInstances++
                     rulePlan?.add(
-                        RulePlanEntry(baseRuleId, null, null, RulePlanStatus.NOT_FOUND, ruleDef.severity, ruleDef.scope),
+                        RulePlanEntry(
+                                baseRuleId,
+                                null,
+                                null,
+                                RulePlanStatus.NOT_FOUND,
+                                ruleDef.severity,
+                                ruleDef.scope,
+                            ),
                     )
 
                     // WARN is reported by config validation; it must not become an engine failure.
@@ -164,7 +174,14 @@ class ShamashAsmEngine
                 if (instanceRoles.isEmpty()) {
                     skippedRuleDefs++
                     rulePlan?.add(
-                        RulePlanEntry(baseRuleId, rule.id, null, RulePlanStatus.NO_ROLES, ruleDef.severity, ruleDef.scope),
+                        RulePlanEntry(
+                                baseRuleId,
+                                rule.id,
+                                null,
+                                RulePlanStatus.NO_ROLES,
+                                ruleDef.severity,
+                                ruleDef.scope,
+                            ),
                     )
                     continue
                 }
@@ -178,7 +195,14 @@ class ShamashAsmEngine
                     if (excludedByScope) {
                         skippedRuleInstances++
                         rulePlan?.add(
-                            RulePlanEntry(instanceRuleId, rule.id, roleTrimmed, RulePlanStatus.EXCLUDED, ruleDef.severity, ruleDef.scope),
+                            RulePlanEntry(
+                                instanceRuleId,
+                                rule.id,
+                                roleTrimmed,
+                                RulePlanStatus.EXCLUDED,
+                                ruleDef.severity,
+                                ruleDef.scope,
+                            ),
                         )
                         continue
                     }
@@ -211,7 +235,14 @@ class ShamashAsmEngine
                         )
                     } catch (pe: ParamError) {
                         rulePlan?.add(
-                            RulePlanEntry(instanceRuleId, rule.id, roleTrimmed, RulePlanStatus.FAILED, ruleDef.severity, effectiveDef.scope),
+                            RulePlanEntry(
+                                instanceRuleId,
+                                rule.id,
+                                roleTrimmed,
+                                RulePlanStatus.FAILED,
+                                ruleDef.severity,
+                                effectiveDef.scope,
+                            ),
                         )
                         failedRuleInstances++
                         errors +=
@@ -223,7 +254,14 @@ class ShamashAsmEngine
                             )
                     } catch (t: Throwable) {
                         rulePlan?.add(
-                            RulePlanEntry(instanceRuleId, rule.id, roleTrimmed, RulePlanStatus.FAILED, ruleDef.severity, effectiveDef.scope),
+                            RulePlanEntry(
+                                instanceRuleId,
+                                rule.id,
+                                roleTrimmed,
+                                RulePlanStatus.FAILED,
+                                ruleDef.severity,
+                                effectiveDef.scope,
+                            ),
                         )
                         failedRuleInstances++
                         errors +=
