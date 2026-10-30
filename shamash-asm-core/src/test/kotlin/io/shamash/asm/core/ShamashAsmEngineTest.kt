@@ -17,8 +17,8 @@
  */
 package io.shamash.asm.core
 
-import io.shamash.artifacts.contract.Finding
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.contract.FindingSeverity
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.asm.core.config.schema.v1.model.AnalysisConfig
@@ -229,7 +229,9 @@ class ShamashAsmEngineTest {
                     exportEnabled = true,
                     exportArtifacts = ExportArtifactsConfig(rulePlan = ExportToggleArtifactConfig(enabled = true)),
                 )
-            val result = ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(project, "demo", config, FactIndex.empty())
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule()))
+                    .analyze(project, "demo", config, FactIndex.empty())
             assertTrue(result.isSuccess, result.errors.toString())
             val path = assertNotNull(assertNotNull(result.export).rulePlanPath)
             val rules = jacksonObjectMapper().readTree(path.toFile())["rules"]
