@@ -28,9 +28,9 @@ class DistributionTest(unittest.TestCase):
 
     def fixture(self, extra=None):
         entries = {
-            "shamash-cli-0.92.0/bin/shamash": b"#!/bin/sh\n",
-            "shamash-cli-0.92.0/bin/shamash.bat": b"@echo off\r\n",
-            "shamash-cli-0.92.0/lib/shamash.jar": b"jar",
+            "shamash-0.92.0/bin/shamash": b"#!/bin/sh\n",
+            "shamash-0.92.0/bin/shamash.bat": b"@echo off\r\n",
+            "shamash-0.92.0/lib/shamash.jar": b"jar",
         }
         if extra:
             entries.update(extra)
@@ -61,6 +61,11 @@ class DistributionTest(unittest.TestCase):
             )
         )
 
+    def test_rejects_old_incorrect_archive_root(self):
+        self.fixture({"shamash-cli-0.92.0/bin/shamash": b"unexpected"})
+        with self.assertRaises(ValueError):
+            self.package.package_sdkman(self.source, self.sdkman, "0.92.0")
+
     def test_rejects_unexpected_archive_roots(self):
         self.fixture({"unrelated/payload": b"bad"})
         with self.assertRaises(ValueError):
@@ -69,8 +74,8 @@ class DistributionTest(unittest.TestCase):
 
     def test_rejects_missing_runtime_dependencies(self):
         with ZipFile(self.source, "w") as archive:
-            archive.writestr("shamash-cli-0.92.0/bin/shamash", b"#!/bin/sh")
-            archive.writestr("shamash-cli-0.92.0/bin/shamash.bat", b"@echo off")
+            archive.writestr("shamash-0.92.0/bin/shamash", b"#!/bin/sh")
+            archive.writestr("shamash-0.92.0/bin/shamash.bat", b"@echo off")
         with self.assertRaises(ValueError):
             self.package.package_sdkman(self.source, self.sdkman, "0.92.0")
 
@@ -81,7 +86,7 @@ class DistributionTest(unittest.TestCase):
             self.prepare.prepare("0.93.0", self.sdkman, self.root / "config.json")
 
     def test_rejects_path_traversal(self):
-        self.fixture({"shamash-cli-0.92.0/../payload": b"bad"})
+        self.fixture({"shamash-0.92.0/../payload": b"bad"})
         with self.assertRaises(ValueError):
             self.package.package_sdkman(self.source, self.sdkman, "0.92.0")
 
