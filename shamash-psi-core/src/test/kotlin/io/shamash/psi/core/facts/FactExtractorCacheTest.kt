@@ -70,6 +70,59 @@ class FactExtractorCacheTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuil
             },
             refreshed.facts.dependencies.toString(),
         )
+        assertSame(refreshed, FactExtractor.extractResult(caller))
+
+        replaceSource(target, "package example; class Target { void ping() {} }")
+
+        val restored = FactExtractor.extractResult(caller)
+        assertNotSame(refreshed, restored)
+        assertTrue(
+            restored.facts.dependencies.any {
+                it.kind == DependencyKind.METHOD_CALL &&
+                    it.toTypeFqn == "example.Target" &&
+                    it.detail == "call:ping"
+            },
+            restored.facts.dependencies.toString(),
+        )
+    }
+
+    fun testJavaCallRebindsAfterInheritedMethodMovesToSubclass() {
+        val parent = javaFile("Parent.java", "package example; class Parent { void ping() {} }")
+        val child = javaFile("Child.java", "package example; class Child extends Parent {}")
+        val caller = javaFile("Caller.java", "package example; class Caller { void call(Child target) { target.ping(); } }")
+
+        val before = FactExtractor.extractResult(caller)
+        assertTrue(before.errors.isEmpty(), before.errors.toString())
+        assertTrue(
+            before.facts.dependencies.any {
+                it.kind == DependencyKind.METHOD_CALL &&
+                    it.toTypeFqn == "example.Parent" &&
+                    it.detail == "call:ping"
+            },
+            before.facts.dependencies.toString(),
+        )
+
+        replaceSource(parent, "package example; class Parent {}")
+        replaceSource(child, "package example; class Child extends Parent { void ping() {} }")
+
+        val after = FactExtractor.extractResult(caller)
+        assertTrue(after.errors.isEmpty(), after.errors.toString())
+        assertNotSame(before, after)
+        assertTrue(
+            after.facts.dependencies.any {
+                it.kind == DependencyKind.METHOD_CALL &&
+                    it.toTypeFqn == "example.Child" &&
+                    it.detail == "call:ping"
+            },
+            after.facts.dependencies.toString(),
+        )
+        assertFalse(
+            after.facts.dependencies.any {
+                it.kind == DependencyKind.METHOD_CALL && it.toTypeFqn == "example.Parent"
+            },
+            after.facts.dependencies.toString(),
+        )
+        assertSame(after, FactExtractor.extractResult(caller))
     }
 
     fun testKotlinCallerRefreshesWhenAnotherKotlinSourceChanges() {
