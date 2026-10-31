@@ -17,6 +17,7 @@
  */
 package io.shamash.asm.core
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.contract.FindingSeverity
 import io.shamash.artifacts.report.layout.ExportOutputLayout
@@ -189,6 +190,14 @@ class ShamashAsmEngineTest {
             assertTrue(Files.size(exp.factsPath) > 0L)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ROLES_JSON_FILE_NAME), exp.rolesPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME), exp.rulePlanPath)
+            val rulePlan = assertNotNull(exp.rulePlanPath)
+            assertTrue(Files.exists(rulePlan))
+            val rules = jacksonObjectMapper().readTree(rulePlan.toFile())
+            assertEquals("shamash.rules.plan", rules["schemaId"].asText())
+            assertEquals(1, rules["schemaVersion"].asInt())
+            assertEquals("test.alwaysFinding", rules["rules"][0]["ruleId"].asText())
+            assertEquals("EXECUTED", rules["rules"][0]["status"].asText())
+            assertEquals(1, rules["rules"][0]["findingsProduced"].asInt())
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME), exp.analysisGraphsPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME), exp.analysisHotspotsPath)
             assertEquals(exp.outputDir.resolve(ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME), exp.analysisScoresPath)
@@ -204,6 +213,31 @@ class ShamashAsmEngineTest {
             assertTrue(Files.size(exp.analysisScoresPath) > 0L)
         } finally {
             project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `rule plan records disabled and unknown rules without claiming execution`() {
+        withBaselineProject { project ->
+            val disabled = RuleDef("test", "alwaysFinding", null, false, FindingSeverity.ERROR, null, emptyMap())
+            val missing = RuleDef("test", "missing", null, true, FindingSeverity.ERROR, null, emptyMap())
+            val config =
+                minimalConfig(
+                    projectName = "demo",
+                    rules = listOf(disabled, missing),
+                    baselineMode = BaselineMode.NONE,
+                    exportEnabled = true,
+                    exportArtifacts = ExportArtifactsConfig(rulePlan = ExportToggleArtifactConfig(enabled = true)),
+                )
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule()))
+                    .analyze(project, "demo", config, FactIndex.empty())
+            assertTrue(result.isSuccess, result.errors.toString())
+            val path = assertNotNull(assertNotNull(result.export).rulePlanPath)
+            val rules = jacksonObjectMapper().readTree(path.toFile())["rules"]
+            assertEquals(2, rules.size())
+            assertEquals("DISABLED", rules[0]["status"].asText())
+            assertEquals("NOT_FOUND", rules[1]["status"].asText())
         }
     }
 
