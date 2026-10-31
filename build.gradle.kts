@@ -7,9 +7,19 @@ plugins {
     kotlin("jvm") version "2.4.10" apply false
     id("org.jetbrains.intellij.platform") version "2.10.5" apply false
     id("com.diffplug.spotless") version "8.9.0" apply false
-    id("org.jetbrains.kotlinx.kover") version "0.9.9" apply false
+    id("org.jetbrains.kotlinx.kover") version "0.9.9"
     id("com.vanniktech.maven.publish") version "0.35.0" apply false
     id("org.jetbrains.dokka") version "2.2.0" apply false
+}
+
+// Merge production coverage with tests from all modules, including cross-module integration tests.
+dependencies {
+    kover(project(":shamash-artifacts"))
+    kover(project(":shamash-export"))
+    kover(project(":shamash-asm-core"))
+    kover(project(":shamash-psi-core"))
+    kover(project(":shamash-cli"))
+    kover(project(":shamash-intellij-plugin"))
 }
 
 allprojects {
