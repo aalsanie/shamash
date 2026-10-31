@@ -23,6 +23,7 @@ import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.GraphsConfig
 import io.shamash.asm.core.config.schema.v1.model.HotspotsConfig
 import io.shamash.asm.core.config.schema.v1.model.OverallScoringConfig
+import io.shamash.asm.core.config.schema.v1.model.OverallWeights
 import io.shamash.asm.core.config.schema.v1.model.ScoreModel
 import io.shamash.asm.core.config.schema.v1.model.ScoreThresholds
 import io.shamash.asm.core.config.schema.v1.model.ScoringConfig
@@ -134,6 +135,43 @@ class AsmAnalysisPipelineTest {
         val overall = assertNotNull(scoring.overall)
         assertTrue(overall.rows.isNotEmpty())
         assertTrue(overall.rows.all { it.score in 0.0..1.0 })
+    }
+
+    @Test
+    fun `scoring excludes unmeasured layering violations and renormalizes measured weights`() {
+        val facts = tinyFactsGraph()
+        val cfg =
+            AnalysisConfig(
+                graphs = GraphsConfig(enabled = false, granularity = Granularity.PACKAGE, includeExternalBuckets = false),
+                hotspots = HotspotsConfig(enabled = false, topN = 5, includeExternal = false),
+                scoring =
+                    ScoringConfig(
+                        enabled = true,
+                        model = ScoreModel.V1,
+                        godClass = GodClassScoringConfig(enabled = false, weights = null, thresholds = null),
+                        overall =
+                            OverallScoringConfig(
+                                enabled = true,
+                                weights =
+                                    OverallWeights(
+                                        cycles = 0.0,
+                                        dependencyDensity = 0.0,
+                                        layeringViolations = 0.0,
+                                        godClassPrevalence = 0.0,
+                                        externalCoupling = 1.0,
+                                    ),
+                                thresholds = null,
+                            ),
+                    ),
+            )
+
+        val overall = assertNotNull(AsmAnalysisPipeline.run(facts, cfg).scoring?.overall)
+        val row = overall.rows.single()
+
+        assertEquals(1.0, row.raw["externalCoupling"])
+        assertEquals(1.0, row.score)
+        assertTrue("layeringViolations" !in row.raw)
+        assertTrue("layeringViolations" !in row.normalized)
     }
 
     private fun tinyFactsGraph(): FactIndex {
