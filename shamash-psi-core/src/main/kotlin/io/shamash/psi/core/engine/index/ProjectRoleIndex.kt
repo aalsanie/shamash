@@ -99,13 +99,13 @@ class ProjectRoleIndex private constructor(
 
         val bySearch = collectViaAllClassesSearch(include, exclude)
 
-        // Fallback strategy: VFS walk + FactExtractor (covers Kotlin reliably, avoids "no classes" cases).
+        val fromFiles = collectViaVfsScan(include, exclude, indexedJavaFiles = bySearch.classToFilePath.values.toSet())
         val collected =
-            if (bySearch.classFacts.isNotEmpty()) {
-                bySearch
-            } else {
-                collectViaVfsScan(include, exclude)
-            }
+            Collected(
+                classFacts = (fromFiles.classFacts + bySearch.classFacts).distinctBy { it.fqName }.sortedBy { it.fqName },
+                classToAnnotations = bySearch.classToAnnotations + fromFiles.classToAnnotations,
+                classToFilePath = bySearch.classToFilePath + fromFiles.classToFilePath,
+            )
 
         val roleClassifier = RoleClassifier(multiRole = false)
         val classification = roleClassifier.classify(collected.classFacts, config.roles)
@@ -187,6 +187,7 @@ class ProjectRoleIndex private constructor(
     private fun collectViaVfsScan(
         include: List<String>,
         exclude: List<String>,
+        indexedJavaFiles: Set<String>,
     ): Collected {
         val roots = collectContentRoots()
         if (roots.isEmpty()) {
@@ -206,9 +207,10 @@ class ProjectRoleIndex private constructor(
 
                 if (vf.isDirectory) return@iterateChildrenRecursively true
                 if (vf.fileType.isBinary) return@iterateChildrenRecursively true
+                if (vf.extension != "java" && vf.extension != "kt" && vf.extension != "kts") return@iterateChildrenRecursively true
 
                 val path = GlobMatcher.normalizePath(vf.path)
-
+                if (vf.extension == "java" && path in indexedJavaFiles) return@iterateChildrenRecursively true
                 if (!SourceGlobFilter.matches(path, include, exclude)) return@iterateChildrenRecursively true
 
                 val psiFile: PsiFile = psiManager.findFile(vf) ?: return@iterateChildrenRecursively true

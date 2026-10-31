@@ -375,6 +375,9 @@ object ConfigSemanticValidatorV1 {
                         if (!v.isFinite()) errors += err("$path.$k", "must be finite")
                         if (v < 0.0) errors += err("$path.$k", "must be >= 0")
                     }
+                    if (weights.layeringViolations > 0.0) {
+                        errors += err("$path.layeringViolations", "layering violations are not measured by scoring V1; use 0")
+                    }
                 }
 
                 else -> {

@@ -74,6 +74,23 @@ class ConfigValidationTest {
         )
     }
 
+    @Test
+    fun `unmeasured layering weight is rejected rather than silently ignored`() {
+        val ref = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }.replace("\r\n", "\n")
+        val original = "    overall:\n      enabled: true\n      weights: null"
+        val adjusted =
+            "    overall:\n      enabled: true\n      weights:\n" +
+                "        cycles: 0.3\n" +
+                "        dependencyDensity: 0.2\n" +
+                "        layeringViolations: 0.25\n" +
+                "        godClassPrevalence: 0.15\n" +
+                "        externalCoupling: 0.1"
+        assertTrue(original in ref)
+        val result = ConfigValidation.loadAndValidateV1(StringReader(ref.replace(original, adjusted)))
+        assertTrue(!result.ok)
+        assertTrue(result.errors.any { it.message.contains("layering violations are not measured") })
+    }
+
     private fun setUnknownRulePolicy(
         yaml: String,
         policy: String,

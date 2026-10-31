@@ -176,7 +176,7 @@ analysis:
       weights: null
       thresholds: null
 
-    # Overall scoring summarizes health of the codebase at a glance.
+    # Overall scoring summarizes measured metrics. Layering violations are not yet scored in V1.
     overall:
       enabled: true
       weights: null
