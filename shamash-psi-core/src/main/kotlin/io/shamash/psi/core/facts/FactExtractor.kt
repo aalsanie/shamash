@@ -82,7 +82,7 @@ object FactExtractor {
     private fun cacheStamp(file: PsiFile): CacheStamp =
         CacheStamp(
             fileModificationStamp = file.modificationStamp,
-            psiModificationCount = PsiModificationTracker.MODIFICATION_COUNT.modificationCount,
+            psiModificationCount = PsiModificationTracker.getInstance(file.project).modificationCount,
             projectRootModificationCount = ProjectRootModificationTracker.getInstance(file.project).modificationCount,
         )
 
@@ -120,10 +120,25 @@ object FactExtractor {
             }
 
         val stabilized = result.stabilize()
+        ProgressManager.checkCanceled()
 
-        // A partial/error result must be reattempted on the next scan. Also avoid
-        // publishing facts computed while PSI or project roots were changing.
-        if (!stabilized.hasErrors && stamp == cacheStamp(file)) {
+        // An extraction spanning project modifications is not a coherent snapshot.
+        // Fail closed rather than returning potentially stale facts to the engine.
+        if (stamp != cacheStamp(file)) {
+            return FactsResult(
+                facts = emptyFacts(),
+                errors =
+                    stabilized.errors +
+                        FactsError(
+                            fileId = fileId,
+                            phase = "cacheConsistency",
+                            message = "Project PSI or roots changed during facts extraction; retry the scan.",
+                        ),
+            ).stabilize()
+        }
+
+        // Retain only successful, coherent results. Failed extraction is retried.
+        if (!stabilized.hasErrors) {
             file.putUserData(CACHE_KEY, CacheEntry(stamp, stabilized))
         }
         return stabilized
