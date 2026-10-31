@@ -21,6 +21,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
@@ -36,12 +37,12 @@ import com.intellij.psi.util.CachedValuesManager
 import com.intellij.psi.util.PsiModificationTracker
 import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.psi.core.config.SourceGlobFilter
+import io.shamash.psi.core.config.schema.v1.model.Role
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
+import io.shamash.psi.core.config.schema.v1.model.SourceGlobsV1
 import io.shamash.psi.core.engine.RoleClassifier
 import io.shamash.psi.core.facts.FactExtractor
 import io.shamash.psi.core.facts.model.v1.ClassFact
-import java.security.MessageDigest
-import kotlin.collections.isNotEmpty
 
 /**
  * Project-wide roles keep dependencies on other source files from appearing external.
@@ -54,48 +55,69 @@ class ProjectRoleIndex private constructor(
         private val KEY: Key<ProjectRoleIndex> = Key.create("shamash.psi.projectRoleIndex")
 
         fun getInstance(project: Project): ProjectRoleIndex =
-            project.getUserData(KEY) ?: ProjectRoleIndex(project).also { project.putUserData(KEY, it) }
+            synchronized(KEY) {
+                project.getUserData(KEY) ?: ProjectRoleIndex(project).also { project.putUserData(KEY, it) }
+            }
+    }
+
+    /** Only the configuration inputs used by the index; unrelated rule settings cannot invalidate it. */
+    private data class IndexInputs(
+        val roles: Map<String, Role>,
+        val sourceGlobs: SourceGlobsV1,
+    ) {
+        companion object {
+            fun from(config: ShamashPsiConfigV1): IndexInputs =
+                IndexInputs(
+                    roles = config.roles.toMap(),
+                    sourceGlobs =
+                        config.project.sourceGlobs.let { globs ->
+                            globs.copy(include = globs.include.toList(), exclude = globs.exclude.toList())
+                        },
+                )
+        }
     }
 
     private data class SnapshotCache(
-        val fingerprint: String,
-        val snapshot: ProjectRoleIndexSnapshot,
+        val inputs: IndexInputs,
+        val value: CachedValue<ProjectRoleIndexSnapshot>,
     )
 
-    private val cacheKey: Key<CachedValue<SnapshotCache>> = Key.create("shamash.psi.projectRoleIndex.snapshotCache.v1")
+    private val cacheLock = Any()
+
+    @Volatile
+    private var cache: SnapshotCache? = null
 
     fun getOrBuild(config: ShamashPsiConfigV1): ProjectRoleIndexSnapshot {
-        val fp = fingerprint(config)
+        val inputs = IndexInputs.from(config)
+        val selected =
+            cache?.takeIf { it.inputs == inputs }
+                ?: synchronized(cacheLock) {
+                    cache?.takeIf { it.inputs == inputs }
+                        ?: createCache(inputs).also { cache = it }
+                }
 
-        val cv =
-            project.getUserData(cacheKey) ?: CachedValuesManager
-                .getManager(project)
-                .createCachedValue {
-                    CachedValueProvider.Result.create(
-                        SnapshotCache(
-                            fingerprint = fp,
-                            snapshot = buildSnapshot(config),
-                        ),
-                        PsiModificationTracker.MODIFICATION_COUNT,
-                    )
-                }.also { project.putUserData(cacheKey, it) }
-
-        val cached = cv.value
-        if (cached.fingerprint == fp) return cached.snapshot
-
-        // Replace the CachedValue when config changes; its contents cannot be mutated.
-        val rebuilt = SnapshotCache(fp, buildSnapshot(config))
-        val newCv =
-            CachedValuesManager.getManager(project).createCachedValue {
-                CachedValueProvider.Result.create(rebuilt, PsiModificationTracker.MODIFICATION_COUNT)
-            }
-        project.putUserData(cacheKey, newCv)
-        return rebuilt.snapshot
+        // Never compute a project-wide snapshot under cacheLock. Concurrent requests may
+        // select different configurations; each must receive its own matching snapshot.
+        return selected.value.value
     }
 
-    private fun buildSnapshot(config: ShamashPsiConfigV1): ProjectRoleIndexSnapshot {
-        val include = config.project.sourceGlobs.include
-        val exclude = config.project.sourceGlobs.exclude
+    private fun createCache(inputs: IndexInputs): SnapshotCache {
+        val roots = ProjectRootModificationTracker.getInstance(project)
+        val value =
+            CachedValuesManager.getManager(project).createCachedValue {
+                CachedValueProvider.Result.create(
+                    buildSnapshot(inputs),
+                    PsiModificationTracker.MODIFICATION_COUNT,
+                    roots,
+                )
+            }
+        return SnapshotCache(inputs, value)
+    }
+
+    private fun buildSnapshot(inputs: IndexInputs): ProjectRoleIndexSnapshot {
+        ProgressManager.checkCanceled()
+        val include = inputs.sourceGlobs.include
+        val exclude = inputs.sourceGlobs.exclude
 
         val bySearch = collectViaAllClassesSearch(include, exclude)
 
@@ -108,7 +130,7 @@ class ProjectRoleIndex private constructor(
             )
 
         val roleClassifier = RoleClassifier(multiRole = false)
-        val classification = roleClassifier.classify(collected.classFacts, config.roles)
+        val classification = roleClassifier.classify(collected.classFacts, inputs.roles)
 
         return ProjectRoleIndexSnapshot(
             roleToClasses = classification.roleToClasses,
@@ -256,37 +278,6 @@ class ProjectRoleIndex private constructor(
         return deduped
     }
 
-    private fun fingerprint(config: ShamashPsiConfigV1): String {
-        // Fingerprint roles and source globs; rule params do not affect this index.
-
-        val rolesPart =
-            config.roles.entries
-                .sortedBy { it.key }
-                .joinToString(";") { (k, v) ->
-                    val matchStable = v.match.toString()
-                    "$k:${v.priority}:$matchStable"
-                }
-
-        val includePart =
-            config.project.sourceGlobs.include
-                .sorted()
-                .joinToString(",") { GlobMatcher.normalizePath(it) }
-        val excludePart =
-            config.project.sourceGlobs.exclude
-                .sorted()
-                .joinToString(",") { GlobMatcher.normalizePath(it) }
-
-        val material = "$rolesPart|inc:$includePart|exc:$excludePart"
-        return sha256Hex(material)
-    }
-
-    private fun sha256Hex(s: String): String {
-        val md = MessageDigest.getInstance("SHA-256")
-        val bytes = md.digest(s.toByteArray(Charsets.UTF_8))
-        val sb = StringBuilder(bytes.size * 2)
-        for (b in bytes) sb.append(((b.toInt() and 0xff) + 0x100).toString(16).substring(1))
-        return sb.toString()
-    }
 }
 
 data class ProjectRoleIndexSnapshot(
