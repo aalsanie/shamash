@@ -34,7 +34,6 @@ import io.shamash.psi.core.config.schema.v1.model.ValidationConfigV1
 import io.shamash.psi.core.engine.index.ProjectRoleIndex
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -165,7 +164,7 @@ class ProjectRoleIndexTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
         assertFalse("example.Changed" in before.classToRole)
 
         val manager = PsiDocumentManager.getInstance(project)
-        val document = assertNotNull(manager.getDocument(file))
+        val document = requireNotNull(manager.getDocument(file))
         WriteCommandAction.runWriteCommandAction(project) {
             document.setText("package example; class Changed {}")
             manager.commitDocument(document)
@@ -185,7 +184,7 @@ class ProjectRoleIndexTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
         val countBefore = tracker.modificationCount
 
         ApplicationManager.getApplication().runWriteAction {
-            val model = ModuleRootManager.getInstance(module).modifiableModel
+            val model = ModuleRootManager.getInstance(myFixture.module).modifiableModel
             try {
                 model.contentEntries.first().addSourceFolder(additionalRoot, false)
                 model.commit()
