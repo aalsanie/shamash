@@ -35,8 +35,8 @@ import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
-import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.PsiModificationTracker
+import com.intellij.psi.util.PsiTreeUtil
 import io.shamash.psi.core.facts.kotlin.KotlinAnalysisCallOwnerResolver
 import io.shamash.psi.core.facts.model.v1.ClassFact
 import io.shamash.psi.core.facts.model.v1.DependencyFact
