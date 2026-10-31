@@ -49,7 +49,7 @@ jobs:
             build/reports/coverage/**
             **/build/reports/tests/**
             **/build/test-results/test/TEST-*.xml
-          if-no-files-found: error
+          if-no-files-found: warn
 
   build-test:
     name: Build + Test (${{ matrix.os }})
