@@ -20,6 +20,7 @@ package io.shamash.psi.core.facts
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.JavaRecursiveElementVisitor
@@ -35,6 +36,7 @@ import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.psi.util.PsiModificationTracker
 import io.shamash.psi.core.facts.kotlin.KotlinAnalysisCallOwnerResolver
 import io.shamash.psi.core.facts.model.v1.ClassFact
 import io.shamash.psi.core.facts.model.v1.DependencyFact
@@ -60,12 +62,29 @@ import org.jetbrains.uast.visitor.AbstractUastVisitor
 object FactExtractor {
     private val log = Logger.getInstance(FactExtractor::class.java)
 
+    /**
+     * UAST and PSI facts resolve declarations in other files, so a file stamp alone
+     * cannot validate cached dependencies (e.g. method-call targets or inheritance).
+     */
+    private data class CacheStamp(
+        val fileModificationStamp: Long,
+        val psiModificationCount: Long,
+        val projectRootModificationCount: Long,
+    )
+
     private data class CacheEntry(
-        val stamp: Long,
+        val stamp: CacheStamp,
         val result: FactsResult,
     )
 
-    private val CACHE_KEY: Key<CacheEntry> = Key.create("shamash.psi.facts.cache.v2")
+    private val CACHE_KEY: Key<CacheEntry> = Key.create("shamash.psi.facts.cache.v3")
+
+    private fun cacheStamp(file: PsiFile): CacheStamp =
+        CacheStamp(
+            fileModificationStamp = file.modificationStamp,
+            psiModificationCount = PsiModificationTracker.MODIFICATION_COUNT.modificationCount,
+            projectRootModificationCount = ProjectRootModificationTracker.getInstance(file.project).modificationCount,
+        )
 
     /** Compatibility API that drops structured errors; use [extractResult] to retain them. */
     fun extract(file: PsiFile): FactsIndex = extractResult(file).facts
@@ -73,7 +92,7 @@ object FactExtractor {
     fun extractResult(file: PsiFile): FactsResult {
         ProgressManager.checkCanceled()
 
-        val stamp = file.modificationStamp
+        val stamp = cacheStamp(file)
         val cached = file.getUserData(CACHE_KEY)
         if (cached != null && cached.stamp == stamp) return cached.result
 
@@ -102,7 +121,11 @@ object FactExtractor {
 
         val stabilized = result.stabilize()
 
-        file.putUserData(CACHE_KEY, CacheEntry(stamp, stabilized))
+        // A partial/error result must be reattempted on the next scan. Also avoid
+        // publishing facts computed while PSI or project roots were changing.
+        if (!stabilized.hasErrors && stamp == cacheStamp(file)) {
+            file.putUserData(CACHE_KEY, CacheEntry(stamp, stabilized))
+        }
         return stabilized
     }
 
