@@ -34,8 +34,8 @@ import io.shamash.psi.core.config.schema.v1.model.ValidationConfigV1
 import io.shamash.psi.core.engine.index.ProjectRoleIndex
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotSame
 import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 

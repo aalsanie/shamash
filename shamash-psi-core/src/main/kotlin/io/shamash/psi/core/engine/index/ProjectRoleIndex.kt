@@ -277,7 +277,6 @@ class ProjectRoleIndex private constructor(
         }
         return deduped
     }
-
 }
 
 data class ProjectRoleIndexSnapshot(
