@@ -76,7 +76,7 @@ class ConfigValidationTest {
 
     @Test
     fun `unmeasured layering weight is rejected rather than silently ignored`() {
-        val ref = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }
+        val ref = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }.replace("\r\n", "\n")
         val original = "    overall:\n      enabled: true\n      weights: null"
         val adjusted =
             "    overall:\n      enabled: true\n      weights:\n" +
