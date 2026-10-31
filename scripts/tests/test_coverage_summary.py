@@ -83,6 +83,7 @@ class CoverageSummaryTest(unittest.TestCase):
         ET.SubElement(entry, "counter", type="BRANCH", covered="1", missed="1")
         with self.assertRaisesRegex(ValueError, "Negative LINE"):
             coverage_summary.counters(entry)
+        entry.find("counter[@type='LINE']").set("covered", "1")
         ET.SubElement(entry, "counter", type="BRANCH", covered="1", missed="1")
         with self.assertRaisesRegex(ValueError, "Duplicate BRANCH"):
             coverage_summary.counters(entry)
