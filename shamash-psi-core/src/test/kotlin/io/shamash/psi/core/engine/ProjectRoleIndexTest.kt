@@ -200,8 +200,7 @@ class ProjectRoleIndexTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilde
         assertEquals(before.classToFilePath, after.classToFilePath)
     }
 
-    private fun role(suffix: String): Role =
-        Role(description = null, priority = 1, match = Matcher.ClassNameEndsWith(suffix))
+    private fun role(suffix: String): Role = Role(description = null, priority = 1, match = Matcher.ClassNameEndsWith(suffix))
 
     private fun addMixedSources() {
         myFixture.addFileToProject(
