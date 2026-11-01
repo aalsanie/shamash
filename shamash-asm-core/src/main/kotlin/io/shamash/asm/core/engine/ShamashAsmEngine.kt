@@ -770,8 +770,7 @@ class ShamashAsmEngine
             return out
         }
 
-        private fun loadBaselineFile(path: Path): Set<String> =
-            BaselineStore().loadFile(path)?.fingerprints.orEmpty()
+        private fun loadBaselineFile(path: Path): Set<String> = BaselineStore().loadFile(path)?.fingerprints.orEmpty()
 
         private fun writeBaselineFile(
             path: Path,
