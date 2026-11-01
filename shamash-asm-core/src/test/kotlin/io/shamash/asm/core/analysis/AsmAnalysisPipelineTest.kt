@@ -186,9 +186,11 @@ class AsmAnalysisPipelineTest {
         assertFalse("godClassPrevalence" in row.normalized)
         assertEquals(setOf("cycles", "dependencyDensity", "externalCoupling"), row.raw.keys)
         assertEquals(
-            (0.30 * row.raw.getValue("cycles") +
-                0.20 * row.raw.getValue("dependencyDensity") +
-                0.10 * row.raw.getValue("externalCoupling")) / 0.60,
+            (
+                0.30 * row.raw.getValue("cycles") +
+                    0.20 * row.raw.getValue("dependencyDensity") +
+                    0.10 * row.raw.getValue("externalCoupling")
+            ) / 0.60,
             row.score,
             1e-12,
         )
@@ -222,10 +224,12 @@ class AsmAnalysisPipelineTest {
         val row = overall.rows.single()
         assertTrue("godClassPrevalence" in row.raw)
         assertEquals(
-            (0.30 * row.raw.getValue("cycles") +
-                0.20 * row.raw.getValue("dependencyDensity") +
-                0.15 * row.raw.getValue("godClassPrevalence") +
-                0.10 * row.raw.getValue("externalCoupling")) / 0.75,
+            (
+                0.30 * row.raw.getValue("cycles") +
+                    0.20 * row.raw.getValue("dependencyDensity") +
+                    0.15 * row.raw.getValue("godClassPrevalence") +
+                    0.10 * row.raw.getValue("externalCoupling")
+            ) / 0.75,
             row.score,
             1e-12,
         )
@@ -263,10 +267,12 @@ class AsmAnalysisPipelineTest {
         val weights = OverallWeights(1.0, 0.0, 0.0, 0.0, 1.0)
         val row =
             assertNotNull(
-                AsmAnalysisPipeline.run(
-                    facts,
-                    scoringConfig(overallWeights = weights, thresholds = ScoreThresholds(0.5, 0.9)),
-                ).scoring?.overall,
+                AsmAnalysisPipeline
+                    .run(
+                        facts,
+                        scoringConfig(overallWeights = weights, thresholds = ScoreThresholds(0.5, 0.9)),
+                    ).scoring
+                    ?.overall,
             ).rows.single()
 
         assertEquals(0.5, row.score, 1e-12)
