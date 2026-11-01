@@ -389,29 +389,39 @@ object ConfigSemanticValidatorV1 {
         validateWeights(analysis.scoring.overall.weights, "analysis.scoring.overall.weights")
 
         if (analysis.scoring.enabled) {
-            val godClass = analysis.scoring.godClass
-            if (godClass.enabled && godClass.weights != null) {
-                val weights = godClass.weights
-                val available = listOf(weights.methods, weights.fields, weights.fanOut, weights.fanIn, weights.packageSpread)
-                if (available.all { it.isFinite() && it >= 0.0 } && available.sum() == 0.0) {
-                    errors += err("analysis.scoring.godClass.weights", "at least one available metric must have positive weight")
-                }
-                if (available.all { it.isFinite() && it >= 0.0 } && !available.sum().isFinite()) {
-                    errors += err("analysis.scoring.godClass.weights", "total weight must be finite")
+            fun requireEffectiveWeight(
+                values: List<Double>,
+                path: String,
+            ) {
+                if (values.any { !it.isFinite() || it < 0.0 }) return
+                val total = values.sum()
+                if (!total.isFinite()) {
+                    errors += err(path, "total weight must be finite")
+                } else if (total == 0.0) {
+                    errors += err(path, "at least one available metric must have positive weight")
                 }
             }
 
-            val overall = analysis.scoring.overall
-            if (overall.enabled && overall.weights != null) {
-                val weights = overall.weights
-                val available =
-                    listOf(weights.cycles, weights.dependencyDensity, weights.externalCoupling) +
-                        if (godClass.enabled) listOf(weights.godClassPrevalence) else emptyList()
-                if (available.all { it.isFinite() && it >= 0.0 } && available.sum() == 0.0) {
-                    errors += err("analysis.scoring.overall.weights", "at least one available metric must have positive weight")
+            val godClass = analysis.scoring.godClass
+            if (godClass.enabled) {
+                godClass.weights?.let { weights ->
+                    requireEffectiveWeight(
+                        listOf(weights.methods, weights.fields, weights.fanOut, weights.fanIn, weights.packageSpread),
+                        "analysis.scoring.godClass.weights",
+                    )
                 }
-                if (available.all { it.isFinite() && it >= 0.0 } && !available.sum().isFinite()) {
-                    errors += err("analysis.scoring.overall.weights", "total weight must be finite")
+            }
+
+            if (analysis.scoring.overall.enabled) {
+                analysis.scoring.overall.weights?.let { weights ->
+                    val available =
+                        buildList {
+                            add(weights.cycles)
+                            add(weights.dependencyDensity)
+                            if (godClass.enabled) add(weights.godClassPrevalence)
+                            add(weights.externalCoupling)
+                        }
+                    requireEffectiveWeight(available, "analysis.scoring.overall.weights")
                 }
             }
         }
