@@ -17,7 +17,10 @@
  */
 package io.shamash.asm.core.config
 
+import io.shamash.asm.core.config.schema.v1.model.OverallWeights
 import java.io.StringReader
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -77,6 +80,7 @@ class ConfigValidationTest {
     @Test
     fun `removed scoring weight is rejected with its exact path even when zero`() {
         val original = "    overall:\n      enabled: true\n      weights: null"
+        assertTrue(original in referenceYaml())
         for (value in listOf("0.0", "0.25")) {
             val yaml =
                 referenceYaml().replace(
@@ -97,10 +101,10 @@ class ConfigValidationTest {
 
             val raw = ConfigLoader.loadRaw(StringReader(yaml))
             val error =
-                kotlin.test.assertFailsWith<ConfigLoader.ConfigBindException> {
+                assertFailsWith<ConfigLoader.ConfigBindException> {
                     ConfigLoader.bindV1(raw)
                 }
-            assertTrue(error.path == "analysis.scoring.overall.weights.layeringViolations")
+            assertEquals("analysis.scoring.overall.weights.layeringViolations", error.path)
         }
     }
 
@@ -114,7 +118,7 @@ class ConfigValidationTest {
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
         assertTrue(result.ok, result.errors.toString())
         val weights = assertNotNull(result.config).analysis.scoring.overall.weights
-        assertTrue(weights == io.shamash.asm.core.config.schema.v1.model.OverallWeights(0.3, 0.2, 0.15, 0.1))
+        assertEquals(OverallWeights(0.3, 0.2, 0.15, 0.1), weights)
     }
 
     @Test
