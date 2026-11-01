@@ -17,8 +17,11 @@
  */
 package io.shamash.asm.core.config
 
+import io.shamash.asm.core.config.schema.v1.model.OverallWeights
 import java.io.StringReader
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -75,20 +78,49 @@ class ConfigValidationTest {
     }
 
     @Test
-    fun `unmeasured layering weight is rejected rather than silently ignored`() {
-        val ref = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }.replace("\r\n", "\n")
+    fun `removed scoring weight is rejected with its exact path even when zero`() {
         val original = "    overall:\n      enabled: true\n      weights: null"
-        val adjusted =
-            "    overall:\n      enabled: true\n      weights:\n" +
-                "        cycles: 0.3\n" +
-                "        dependencyDensity: 0.2\n" +
-                "        layeringViolations: 0.25\n" +
-                "        godClassPrevalence: 0.15\n" +
-                "        externalCoupling: 0.1"
-        assertTrue(original in ref)
-        val result = ConfigValidation.loadAndValidateV1(StringReader(ref.replace(original, adjusted)))
-        assertTrue(!result.ok)
-        assertTrue(result.errors.any { it.message.contains("layering violations are not measured") })
+        assertTrue(original in referenceYaml())
+        for (value in listOf("0.0", "0.25")) {
+            val yaml =
+                referenceYaml().replace(
+                    original,
+                    overallWeights(cycles = 0.3, density = 0.2, prevalence = 0.15, external = 0.1) +
+                        "\n        layeringViolations: $value",
+                )
+            val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
+            assertTrue(!result.ok)
+            assertTrue(result.config == null)
+            assertTrue(
+                result.errors.any {
+                    it.path == "analysis.scoring.overall.weights.layeringViolations" &&
+                        it.message.contains("Unsupported scoring weight")
+                },
+                result.errors.toString(),
+            )
+
+            val raw = ConfigLoader.loadRaw(StringReader(yaml))
+            val error =
+                assertFailsWith<ConfigLoader.ConfigBindException> {
+                    ConfigLoader.bindV1(raw)
+                }
+            assertEquals("analysis.scoring.overall.weights.layeringViolations", error.path)
+        }
+    }
+
+    @Test
+    fun `four measured overall weights bind and validate`() {
+        val yaml =
+            referenceYaml().replace(
+                "    overall:\n      enabled: true\n      weights: null",
+                overallWeights(cycles = 0.3, density = 0.2, prevalence = 0.15, external = 0.1),
+            )
+        val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
+        assertTrue(result.ok, result.errors.toString())
+        val weights =
+            assertNotNull(result.config)
+                .analysis.scoring.overall.weights
+        assertEquals(OverallWeights(0.3, 0.2, 0.15, 0.1), weights)
     }
 
     @Test
@@ -181,7 +213,6 @@ class ConfigValidationTest {
         "    overall:\n      enabled: true\n      weights:\n" +
             "        cycles: $cycles\n" +
             "        dependencyDensity: $density\n" +
-            "        layeringViolations: 0.0\n" +
             "        godClassPrevalence: $prevalence\n" +
             "        externalCoupling: $external"
 

@@ -7,6 +7,7 @@
 
 ### Changed
 - Shared baseline JSON parsing/serialization across the artifact store and ASM engine; exposed exact-path baseline loading and encoding in the artifacts API.
+- Removed `layeringViolations` from ASM `OverallWeights` (breaking constructor/data-class ABI) and the overall scoring configuration; configurations containing the removed weight now fail validation.
 
 ## [0.92.0]
 

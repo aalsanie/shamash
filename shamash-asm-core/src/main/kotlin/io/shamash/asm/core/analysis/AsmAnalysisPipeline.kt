@@ -277,9 +277,6 @@ object AsmAnalysisPipeline {
 
         val weights = cfg.weights ?: DEFAULT_OVERALL_WEIGHTS
         val thresholds = cfg.thresholds?.let { ScoreThresholds(it.warning, it.error) } ?: DEFAULT_THRESHOLDS
-        require(weights.layeringViolations == 0.0) {
-            "analysis.scoring.overall.weights.layeringViolations is not measured by scoring V1; use 0"
-        }
         val weightedMetrics =
             buildList {
                 add("cycles" to weights.cycles)
@@ -501,7 +498,6 @@ object AsmAnalysisPipeline {
         OverallWeights(
             cycles = 0.30,
             dependencyDensity = 0.20,
-            layeringViolations = 0.0,
             godClassPrevalence = 0.15,
             externalCoupling = 0.10,
         )

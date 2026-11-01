@@ -702,20 +702,18 @@ public final class io/shamash/asm/core/config/schema/v1/model/OverallScoringConf
 }
 
 public final class io/shamash/asm/core/config/schema/v1/model/OverallWeights {
-	public fun <init> (DDDDD)V
+	public fun <init> (DDDD)V
 	public final fun component1 ()D
 	public final fun component2 ()D
 	public final fun component3 ()D
 	public final fun component4 ()D
-	public final fun component5 ()D
-	public final fun copy (DDDDD)Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
-	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;DDDDDILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
+	public final fun copy (DDDD)Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
+	public static synthetic fun copy$default (Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;DDDDILjava/lang/Object;)Lio/shamash/asm/core/config/schema/v1/model/OverallWeights;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCycles ()D
 	public final fun getDependencyDensity ()D
 	public final fun getExternalCoupling ()D
 	public final fun getGodClassPrevalence ()D
-	public final fun getLayeringViolations ()D
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

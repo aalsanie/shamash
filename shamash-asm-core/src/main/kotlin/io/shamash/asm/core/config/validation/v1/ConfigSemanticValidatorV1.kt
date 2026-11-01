@@ -368,15 +368,11 @@ object ConfigSemanticValidatorV1 {
                     listOf(
                         "cycles" to weights.cycles,
                         "dependencyDensity" to weights.dependencyDensity,
-                        "layeringViolations" to weights.layeringViolations,
                         "godClassPrevalence" to weights.godClassPrevalence,
                         "externalCoupling" to weights.externalCoupling,
                     ).forEach { (k, v) ->
                         if (!v.isFinite()) errors += err("$path.$k", "must be finite")
                         if (v < 0.0) errors += err("$path.$k", "must be >= 0")
-                    }
-                    if (weights.layeringViolations > 0.0) {
-                        errors += err("$path.layeringViolations", "layering violations are not measured by scoring V1; use 0")
                     }
                 }
 

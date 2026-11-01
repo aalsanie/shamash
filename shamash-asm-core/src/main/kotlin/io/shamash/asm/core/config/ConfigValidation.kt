@@ -78,6 +78,24 @@ object ConfigValidation {
                 )
             }
 
+        val analysis = (raw as? Map<*, *>)?.get("analysis") as? Map<*, *>
+        val scoring = analysis?.get("scoring") as? Map<*, *>
+        val overall = scoring?.get("overall") as? Map<*, *>
+        val weights = overall?.get("weights") as? Map<*, *>
+        if (weights?.containsKey("layeringViolations") == true) {
+            return Result(
+                config = null,
+                errors =
+                    listOf(
+                        ValidationError(
+                            path = "analysis.scoring.overall.weights.layeringViolations",
+                            message = "Unsupported scoring weight: layeringViolations",
+                            severity = ValidationSeverity.ERROR,
+                        ),
+                    ),
+            )
+        }
+
         val structural =
             try {
                 schemaValidator.validate(raw)
