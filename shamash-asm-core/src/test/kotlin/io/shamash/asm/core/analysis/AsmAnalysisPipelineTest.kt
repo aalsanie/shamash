@@ -249,6 +249,31 @@ class AsmAnalysisPipelineTest {
     }
 
     @Test
+    fun `weighted score at the warning threshold is classified as warning`() {
+        val owner = cls("com/example/One", "One.class")
+        val facts =
+            FactIndex(
+                classes = listOf(owner),
+                methods = emptyList(),
+                fields = emptyList(),
+                edges = listOf(dep(owner.type, TypeRef.fromInternalName("external/Lib"))),
+                roles = emptyMap(),
+                classToRole = emptyMap(),
+            )
+        val weights = OverallWeights(1.0, 0.0, 0.0, 0.0, 1.0)
+        val row =
+            assertNotNull(
+                AsmAnalysisPipeline.run(
+                    facts,
+                    scoringConfig(overallWeights = weights, thresholds = ScoreThresholds(0.5, 0.9)),
+                ).scoring?.overall,
+            ).rows.single()
+
+        assertEquals(0.5, row.score, 1e-12)
+        assertEquals(SeverityBand.WARN, row.band)
+    }
+
+    @Test
     fun `unavailable-only overall weights fail rather than report a healthy score`() {
         val weights =
             OverallWeights(
