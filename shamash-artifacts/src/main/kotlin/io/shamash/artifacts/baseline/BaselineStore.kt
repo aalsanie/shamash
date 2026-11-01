@@ -156,7 +156,9 @@ class BaselineStore {
                             fingerprints = values
                         }
 
-                        else -> invalid("unknown field ${parser.currentName}")
+                        else -> {
+                            invalid("unknown field ${parser.currentName}")
+                        }
                     }
                 }
 
