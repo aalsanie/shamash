@@ -204,7 +204,7 @@ class MainTest {
         val init = runCli("init", "--project", tmp.toString(), "--preset", "reference")
         assertEquals(0, init.exitCode, diagnostics(init))
         val config = tmp.resolve("shamash/configs/asm.yml")
-        val original = config.readText(StandardCharsets.UTF_8)
+        val original = config.readText(StandardCharsets.UTF_8).replace("\r\n", "\n")
         val yaml =
             original
                 .replace("    godClass:\n      enabled: true", "    godClass:\n      enabled: false")
