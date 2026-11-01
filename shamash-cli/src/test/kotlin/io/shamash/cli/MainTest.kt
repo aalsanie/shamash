@@ -181,6 +181,27 @@ class MainTest {
     }
 
     @Test
+    fun `malformed baseline fails configured scan without suppression or overwrite`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "com.example.App", "package com.example; public class App {}")
+        val init = runCli("init", "--project", tmp.toString(), "--preset", "reference")
+        assertEquals(0, init.exitCode, diagnostics(init))
+        val generated = runCli("baseline", "create", "--project", tmp.toString())
+        assertEquals(0, generated.exitCode, diagnostics(generated))
+
+        val baseline = tmp.resolve(".shamash/baseline/asm-baseline.json")
+        assertTrue(Files.exists(baseline))
+        val invalid = "{\"version\":1,\"fingerprints\":[\"bad\" \"also-bad\"]}"
+        Files.writeString(baseline, invalid, StandardCharsets.UTF_8)
+
+        val result = runCli("scan", "--project", tmp.toString(), "--fail-on", "NONE")
+        assertEquals(3, result.exitCode, diagnostics(result))
+        assertTrue(result.stderr.contains("Baseline handling failed"), diagnostics(result))
+        assertEquals(invalid, Files.readString(baseline, StandardCharsets.UTF_8))
+    }
+
+    @Test
     fun `validate with no config exits two`(
         @TempDir tmp: Path,
     ) {
