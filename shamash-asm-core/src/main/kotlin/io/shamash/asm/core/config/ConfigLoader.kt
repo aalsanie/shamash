@@ -311,12 +311,17 @@ object ConfigLoader {
         map: Map<String, Any?>,
         path: String,
     ): OverallWeights {
+        if (map.containsKey("layeringViolations")) {
+            throw ConfigBindException(
+                "$path.layeringViolations",
+                "Unsupported scoring weight: layeringViolations",
+            )
+        }
         fun reqDouble(key: String): Double = map.reqDouble(key, "$path.$key")
 
         return OverallWeights(
             cycles = reqDouble("cycles"),
             dependencyDensity = reqDouble("dependencyDensity"),
-            layeringViolations = reqDouble("layeringViolations"),
             godClassPrevalence = reqDouble("godClassPrevalence"),
             externalCoupling = reqDouble("externalCoupling"),
         )
