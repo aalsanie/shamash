@@ -289,9 +289,10 @@ class AsmAnalysisPipelineTest {
                 godClassPrevalence = 1.0,
                 externalCoupling = 0.0,
             )
-        val error = assertFailsWith<IllegalArgumentException> {
-            AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = weights))
-        }
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = weights))
+            }
         assertTrue(error.message.orEmpty().contains("analysis.scoring.overall.weights"))
     }
 
@@ -299,9 +300,10 @@ class AsmAnalysisPipelineTest {
     fun `all-zero god-class weights fail even without any classes`() {
         val weights = GodClassWeights(0.0, 0.0, 0.0, 0.0, 0.0)
         val emptyFacts = FactIndex(emptyList(), emptyList(), emptyList(), emptyList(), emptyMap(), emptyMap())
-        val error = assertFailsWith<IllegalArgumentException> {
-            AsmAnalysisPipeline.run(emptyFacts, scoringConfig(godEnabled = true, godWeights = weights))
-        }
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                AsmAnalysisPipeline.run(emptyFacts, scoringConfig(godEnabled = true, godWeights = weights))
+            }
         assertTrue(error.message.orEmpty().contains("analysis.scoring.godClass.weights"))
     }
 
