@@ -317,6 +317,7 @@ object ConfigLoader {
                 "Unsupported scoring weight: layeringViolations",
             )
         }
+
         fun reqDouble(key: String): Double = map.reqDouble(key, "$path.$key")
 
         return OverallWeights(
