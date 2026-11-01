@@ -19,9 +19,9 @@ package io.shamash.asm.core.config
 
 import io.shamash.asm.core.config.schema.v1.model.OverallWeights
 import java.io.StringReader
+import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -117,7 +117,9 @@ class ConfigValidationTest {
             )
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
         assertTrue(result.ok, result.errors.toString())
-        val weights = assertNotNull(result.config).analysis.scoring.overall.weights
+        val weights =
+            assertNotNull(result.config)
+                .analysis.scoring.overall.weights
         assertEquals(OverallWeights(0.3, 0.2, 0.15, 0.1), weights)
     }
 
