@@ -93,12 +93,13 @@ class ConfigValidationTest {
 
     @Test
     fun `overall scoring rejects weights assigned only to disabled god-class analysis`() {
-        val yaml = referenceYaml()
-            .replace("    godClass:\n      enabled: true", "    godClass:\n      enabled: false")
-            .replace(
-                "    overall:\n      enabled: true\n      weights: null",
-                overallWeights(cycles = 0.0, density = 0.0, prevalence = 1.0, external = 0.0),
-            )
+        val yaml =
+            referenceYaml()
+                .replace("    godClass:\n      enabled: true", "    godClass:\n      enabled: false")
+                .replace(
+                    "    overall:\n      enabled: true\n      weights: null",
+                    overallWeights(cycles = 0.0, density = 0.0, prevalence = 1.0, external = 0.0),
+                )
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
 
         assertTrue(!result.ok)
@@ -113,15 +114,16 @@ class ConfigValidationTest {
 
     @Test
     fun `god-class scoring rejects all-zero weights when enabled`() {
-        val yaml = referenceYaml().replace(
-            "    godClass:\n      enabled: true\n      weights: null",
-            "    godClass:\n      enabled: true\n      weights:\n" +
-                "        methods: 0.0\n" +
-                "        fields: 0.0\n" +
-                "        fanOut: 0.0\n" +
-                "        fanIn: 0.0\n" +
-                "        packageSpread: 0.0",
-        )
+        val yaml =
+            referenceYaml().replace(
+                "    godClass:\n      enabled: true\n      weights: null",
+                "    godClass:\n      enabled: true\n      weights:\n" +
+                    "        methods: 0.0\n" +
+                    "        fields: 0.0\n" +
+                    "        fanOut: 0.0\n" +
+                    "        fanIn: 0.0\n" +
+                    "        packageSpread: 0.0",
+            )
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
 
         assertTrue(!result.ok)
@@ -136,10 +138,11 @@ class ConfigValidationTest {
 
     @Test
     fun `god-class-only overall weights are valid when god-class analysis is enabled`() {
-        val yaml = referenceYaml().replace(
-            "    overall:\n      enabled: true\n      weights: null",
-            overallWeights(cycles = 0.0, density = 0.0, prevalence = 1.0, external = 0.0),
-        )
+        val yaml =
+            referenceYaml().replace(
+                "    overall:\n      enabled: true\n      weights: null",
+                overallWeights(cycles = 0.0, density = 0.0, prevalence = 1.0, external = 0.0),
+            )
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
         assertTrue(result.ok, result.errors.toString())
     }
@@ -147,18 +150,20 @@ class ConfigValidationTest {
     @Test
     fun `disabled scoring components do not require positive total weights`() {
         val allZero = overallWeights(cycles = 0.0, density = 0.0, prevalence = 0.0, external = 0.0)
-        val yaml = referenceYaml()
-            .replace("    overall:\n      enabled: true\n      weights: null", allZero.replace("enabled: true", "enabled: false"))
+        val yaml =
+            referenceYaml()
+                .replace("    overall:\n      enabled: true\n      weights: null", allZero.replace("enabled: true", "enabled: false"))
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
         assertTrue(result.ok, result.errors.toString())
     }
 
     @Test
     fun `overall scoring rejects all-zero available weights even with god-class enabled`() {
-        val yaml = referenceYaml().replace(
-            "    overall:\n      enabled: true\n      weights: null",
-            overallWeights(cycles = 0.0, density = 0.0, prevalence = 0.0, external = 0.0),
-        )
+        val yaml =
+            referenceYaml().replace(
+                "    overall:\n      enabled: true\n      weights: null",
+                overallWeights(cycles = 0.0, density = 0.0, prevalence = 0.0, external = 0.0),
+            )
         val result = ConfigValidation.loadAndValidateV1(StringReader(yaml))
         assertTrue(!result.ok)
         assertTrue(result.errors.any { it.path == "analysis.scoring.overall.weights" }, result.errors.toString())
