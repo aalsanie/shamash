@@ -2,6 +2,12 @@
 
 ## [unreleased]
 
+### Fixed
+- Reject malformed baseline JSON, duplicate keys/fingerprints and non-SHA-256 fingerprint values before applying suppressions.
+
+### Changed
+- Shared baseline JSON parsing/serialization across the artifact store and ASM engine; exposed exact-path baseline loading and encoding in the artifacts API.
+
 ## [0.92.0]
 
 ### Added

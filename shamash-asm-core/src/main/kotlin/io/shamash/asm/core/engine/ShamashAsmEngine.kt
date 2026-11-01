@@ -18,6 +18,7 @@
 package io.shamash.asm.core.engine
 
 import io.shamash.artifacts.baseline.BaselineFingerprint
+import io.shamash.artifacts.baseline.BaselineStore
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.params.ParamError
 import io.shamash.artifacts.report.layout.ExportOutputLayout
@@ -769,22 +770,14 @@ class ShamashAsmEngine
             return out
         }
 
-        private fun loadBaselineFile(path: Path): Set<String> {
-            if (!Files.exists(path)) return emptySet()
-            val raw = Files.readString(path, StandardCharsets.UTF_8)
-            val version = parseIntField(raw, "version")
-            if (version != 1) {
-                throw IllegalStateException("Unsupported baseline version $version in $path (supported: 1).")
-            }
-            return parseStringArrayField(raw, "fingerprints")
-        }
+        private fun loadBaselineFile(path: Path): Set<String> = BaselineStore().loadFile(path)?.fingerprints.orEmpty()
 
         private fun writeBaselineFile(
             path: Path,
             fingerprints: Set<String>,
         ) {
             Files.createDirectories(path.parent)
-            val json = serializeBaselineJson(fingerprints)
+            val json = BaselineStore().serialize(fingerprints)
 
             val tmp = Files.createTempFile(path.parent, ".${path.name}.", ".tmp")
             try {
@@ -794,154 +787,6 @@ class ShamashAsmEngine
             } finally {
                 Files.deleteIfExists(tmp)
             }
-        }
-
-        private fun serializeBaselineJson(fingerprints: Set<String>): String {
-            val sb = StringBuilder(64 + fingerprints.size * 72)
-            sb.append("{\n")
-            sb.append("  \"version\": 1,\n")
-            sb.append("  \"fingerprints\": [")
-
-            var first = true
-            for (fp in fingerprints.sorted()) {
-                if (!first) sb.append(',')
-                sb
-                    .append('\n')
-                    .append("    \"")
-                    .append(escapeJson(fp))
-                    .append('"')
-                first = false
-            }
-
-            if (fingerprints.isNotEmpty()) sb.append('\n').append("  ")
-            sb.append("]\n")
-            sb.append("}\n")
-            return sb.toString()
-        }
-
-        private fun escapeJson(s: String): String {
-            val out = StringBuilder(s.length + 16)
-            for (ch in s) {
-                when (ch) {
-                    '\\' -> out.append("\\\\")
-                    '"' -> out.append("\\\"")
-                    '\n' -> out.append("\\n")
-                    '\r' -> out.append("\\r")
-                    '\t' -> out.append("\\t")
-                    else -> out.append(ch)
-                }
-            }
-            return out.toString()
-        }
-
-        private fun parseIntField(
-            json: String,
-            fieldName: String,
-        ): Int {
-            val idx = json.indexOf("\"$fieldName\"")
-            if (idx < 0) throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
-            val colon = json.indexOf(':', idx)
-            if (colon < 0) throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
-            var i = colon + 1
-            while (i < json.length && json[i].isWhitespace()) i++
-            val start = i
-            while (i < json.length && (json[i].isDigit() || json[i] == '-')) i++
-            if (start == i) throw IllegalStateException("Invalid baseline JSON: \"$fieldName\" is not a number.")
-            return json.substring(start, i).trim().toInt()
-        }
-
-        private fun parseStringArrayField(
-            json: String,
-            fieldName: String,
-        ): Set<String> {
-            val idx = json.indexOf("\"$fieldName\"")
-            if (idx < 0) throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
-            val colon = json.indexOf(':', idx)
-            if (colon < 0) throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
-            val openBracket = json.indexOf('[', colon)
-            if (openBracket < 0) throw IllegalStateException("Invalid baseline JSON: missing '[' for \"$fieldName\".")
-            val closeBracket = json.indexOf(']', openBracket)
-            if (closeBracket < 0) throw IllegalStateException("Invalid baseline JSON: missing ']' for \"$fieldName\".")
-            val slice = json.substring(openBracket + 1, closeBracket)
-            return extractJsonStringLiterals(slice)
-        }
-
-        private fun extractJsonStringLiterals(slice: String): Set<String> {
-            val out = LinkedHashSet<String>()
-            var i = 0
-            while (i < slice.length) {
-                while (i < slice.length && slice[i].isWhitespace()) i++
-                if (i >= slice.length) break
-                if (slice[i] != '"') {
-                    i++
-                    continue
-                }
-
-                i++
-                val sb = StringBuilder()
-                while (i < slice.length) {
-                    val ch = slice[i]
-                    when (ch) {
-                        '"' -> {
-                            i++
-                            break
-                        }
-
-                        '\\' -> {
-                            if (i + 1 >= slice.length) throw IllegalStateException("Invalid baseline JSON: trailing escape.")
-                            val next = slice[i + 1]
-                            when (next) {
-                                '"', '\\', '/' -> {
-                                    sb.append(next)
-                                }
-
-                                'b' -> {
-                                    sb.append('\b')
-                                }
-
-                                'f' -> {
-                                    sb.append('\u000C')
-                                }
-
-                                'n' -> {
-                                    sb.append('\n')
-                                }
-
-                                'r' -> {
-                                    sb.append('\r')
-                                }
-
-                                't' -> {
-                                    sb.append('\t')
-                                }
-
-                                'u' -> {
-                                    if (i + 5 >= slice.length) {
-                                        throw IllegalStateException("Invalid baseline JSON: incomplete unicode escape.")
-                                    }
-                                    val hex = slice.substring(i + 2, i + 6)
-                                    sb.append(hex.toInt(16).toChar())
-                                    i += 4
-                                }
-
-                                else -> {
-                                    throw IllegalStateException("Invalid baseline JSON: unsupported escape \\$next.")
-                                }
-                            }
-                            i += 2
-                            continue
-                        }
-
-                        else -> {
-                            sb.append(ch)
-                            i++
-                        }
-                    }
-                }
-                out += sb.toString()
-                while (i < slice.length && slice[i] != '"') i++
-            }
-            return out
         }
 
         private fun resolveBaselinePath(

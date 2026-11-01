@@ -121,14 +121,17 @@ class BaselineCoordinatorTest {
         val coordinator = BaselineCoordinator(store)
         val outDir = Files.createTempDirectory("shamash-baseline-out")
 
-        coordinator.writeBaseline(outDir, setOf("a"), mergeWithExisting = false)
-        assertEquals(setOf("a"), store.load(outDir)!!.fingerprints)
+        val a = "a".repeat(64)
+        val b = "b".repeat(64)
+        val c = "c".repeat(64)
+        coordinator.writeBaseline(outDir, setOf(a), mergeWithExisting = false)
+        assertEquals(setOf(a), store.load(outDir)!!.fingerprints)
 
-        coordinator.writeBaseline(outDir, setOf("b"), mergeWithExisting = true)
-        assertEquals(setOf("a", "b"), store.load(outDir)!!.fingerprints)
+        coordinator.writeBaseline(outDir, setOf(b), mergeWithExisting = true)
+        assertEquals(setOf(a, b), store.load(outDir)!!.fingerprints)
 
-        coordinator.writeBaseline(outDir, setOf("c"), mergeWithExisting = false)
-        assertEquals(setOf("c"), store.load(outDir)!!.fingerprints)
+        coordinator.writeBaseline(outDir, setOf(c), mergeWithExisting = false)
+        assertEquals(setOf(c), store.load(outDir)!!.fingerprints)
     }
 
     @Test

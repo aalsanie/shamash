@@ -17,6 +17,10 @@
  */
 package io.shamash.artifacts.baseline
 
+import com.fasterxml.jackson.core.JacksonException
+import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.JsonToken
+import com.fasterxml.jackson.core.StreamReadFeature
 import io.shamash.artifacts.util.json.JsonEscaper
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -34,6 +38,8 @@ class BaselineStore {
     private companion object {
         private const val FILE_NAME: String = "baseline.json"
         private const val VERSION: Int = 1
+        private val FINGERPRINT = Regex("[0-9a-f]{64}")
+        private val JSON_FACTORY = JsonFactory.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build()
     }
 
     fun baselinePath(outputDir: Path): Path = outputDir.resolve(FILE_NAME).normalize()
@@ -45,13 +51,13 @@ class BaselineStore {
      *
      * @throws IllegalStateException if the file exists but cannot be parsed safely.
      */
-    fun load(outputDir: Path): Baseline? {
-        val path = baselinePath(outputDir)
+    fun load(outputDir: Path): Baseline? = loadFile(baselinePath(outputDir))
+
+    /** Reads a baseline from its exact path; missing files produce null. */
+    fun loadFile(path: Path): Baseline? {
         if (!Files.exists(path)) return null
 
-        val raw = Files.readString(path, StandardCharsets.UTF_8)
-        val parsed = parseBaseline(raw)
-
+        val parsed = parseBaseline(Files.readString(path, StandardCharsets.UTF_8))
         if (parsed.version != VERSION) {
             throw IllegalStateException(
                 "Unsupported baseline version ${parsed.version} in $path (supported: $VERSION).",
@@ -70,7 +76,7 @@ class BaselineStore {
         val path = baselinePath(outputDir)
         Files.createDirectories(path.parent)
 
-        val json = serializeBaseline(fingerprints)
+        val json = serialize(fingerprints)
 
         val tmp = path.resolveSibling("${path.name}.tmp")
         Files.writeString(tmp, json, StandardCharsets.UTF_8)
@@ -82,7 +88,9 @@ class BaselineStore {
         }
     }
 
-    private fun serializeBaseline(fingerprints: Set<String>): String {
+    /** Encodes the same versioned baseline format used by the ASM engine. */
+    fun serialize(fingerprints: Set<String>): String {
+        require(fingerprints.all(FINGERPRINT::matches)) { "Baseline fingerprints must be lowercase SHA-256 hex strings." }
         val sb = StringBuilder(64 + fingerprints.size * 72)
         sb.append("{\n")
         sb.append("  \"version\": ").append(VERSION).append(",\n")
@@ -107,139 +115,62 @@ class BaselineStore {
         return sb.toString()
     }
 
-    private fun parseBaseline(raw: String): Baseline {
-        val version = parseIntField(raw, "version")
-        val fingerprints = parseStringArrayField(raw, "fingerprints")
-        return Baseline(
-            version = version,
-            fingerprints = fingerprints,
-        )
-    }
+    private fun parseBaseline(raw: String): Baseline =
+        try {
+            JSON_FACTORY.createParser(raw).use { parser ->
+                if (parser.nextToken() != JsonToken.START_OBJECT) {
+                    invalid("expected a JSON object")
+                }
 
-    private fun parseIntField(
-        json: String,
-        fieldName: String,
-    ): Int {
-        val idx = json.indexOf("\"$fieldName\"")
-        if (idx < 0) throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
+                var version: Int? = null
+                var fingerprints: Set<String>? = null
 
-        val colon = json.indexOf(':', idx)
-        if (colon < 0) throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
+                while (true) {
+                    val field = parser.nextToken() ?: invalid("unexpected end of object")
+                    if (field == JsonToken.END_OBJECT) break
+                    if (field != JsonToken.FIELD_NAME) invalid("expected a field name")
 
-        var i = colon + 1
-        while (i < json.length && json[i].isWhitespace()) i++
-
-        val start = i
-        while (i < json.length && (json[i].isDigit() || json[i] == '-')) i++
-
-        if (start == i) throw IllegalStateException("Invalid baseline JSON: \"$fieldName\" is not a number.")
-        return json.substring(start, i).trim().toInt()
-    }
-
-    private fun parseStringArrayField(
-        json: String,
-        fieldName: String,
-    ): Set<String> {
-        val idx = json.indexOf("\"$fieldName\"")
-        if (idx < 0) throw IllegalStateException("Missing field \"$fieldName\" in baseline JSON.")
-
-        val colon = json.indexOf(':', idx)
-        if (colon < 0) throw IllegalStateException("Invalid baseline JSON: missing ':' after \"$fieldName\".")
-
-        val openBracket = json.indexOf('[', colon)
-        if (openBracket < 0) throw IllegalStateException("Invalid baseline JSON: missing '[' for \"$fieldName\".")
-
-        val closeBracket = json.indexOf(']', openBracket)
-        if (closeBracket < 0) throw IllegalStateException("Invalid baseline JSON: missing ']' for \"$fieldName\".")
-
-        val arraySlice = json.substring(openBracket + 1, closeBracket)
-        return extractJsonStringLiterals(arraySlice)
-    }
-
-    private fun extractJsonStringLiterals(slice: String): Set<String> {
-        val out = LinkedHashSet<String>()
-        var i = 0
-
-        while (i < slice.length) {
-            while (i < slice.length && slice[i].isWhitespace()) i++
-            if (i >= slice.length) break
-
-            if (slice[i] != '"') {
-                i++
-                continue
-            }
-
-            i++
-            val sb = StringBuilder()
-
-            while (i < slice.length) {
-                val ch = slice[i]
-                when (ch) {
-                    '"' -> {
-                        i++
-                        break
-                    }
-
-                    '\\' -> {
-                        if (i + 1 >= slice.length) {
-                            throw IllegalStateException("Invalid baseline JSON: trailing escape in string literal.")
+                    when (parser.currentName) {
+                        "version" -> {
+                            if (parser.nextToken() != JsonToken.VALUE_NUMBER_INT) {
+                                invalid("\"version\" is not a number")
+                            }
+                            version = parser.text.toIntOrNull() ?: invalid("\"version\" must be a 32-bit integer")
                         }
-                        val next = slice[i + 1]
-                        when (next) {
-                            '"', '\\', '/' -> {
-                                sb.append(next)
-                            }
 
-                            'b' -> {
-                                sb.append('\b')
+                        "fingerprints" -> {
+                            if (parser.nextToken() != JsonToken.START_ARRAY) {
+                                invalid("\"fingerprints\" must be an array")
                             }
-
-                            'f' -> {
-                                sb.append('\u000C')
-                            }
-
-                            'n' -> {
-                                sb.append('\n')
-                            }
-
-                            'r' -> {
-                                sb.append('\r')
-                            }
-
-                            't' -> {
-                                sb.append('\t')
-                            }
-
-                            'u' -> {
-                                if (i + 5 >= slice.length) {
-                                    throw IllegalStateException("Invalid baseline JSON: incomplete unicode escape.")
+                            val values = LinkedHashSet<String>()
+                            while (true) {
+                                val token = parser.nextToken() ?: invalid("unterminated fingerprints array")
+                                if (token == JsonToken.END_ARRAY) break
+                                if (token != JsonToken.VALUE_STRING) invalid("fingerprints must contain only strings")
+                                val fingerprint = parser.text
+                                if (!FINGERPRINT.matches(fingerprint)) {
+                                    invalid("fingerprint must be a lowercase 64-character SHA-256 hex string")
                                 }
-                                val hex = slice.substring(i + 2, i + 6)
-                                val code = hex.toInt(16)
-                                sb.append(code.toChar())
-                                i += 4
+                                if (!values.add(fingerprint)) invalid("duplicate fingerprint")
                             }
-
-                            else -> {
-                                throw IllegalStateException(
-                                    "Invalid baseline JSON: unsupported escape sequence \\$next.",
-                                )
-                            }
+                            fingerprints = values
                         }
-                        i += 2
-                        continue
-                    }
 
-                    else -> {
-                        sb.append(ch)
-                        i++
+                        else -> {
+                            invalid("unknown field ${parser.currentName}")
+                        }
                     }
                 }
-            }
 
-            out.add(sb.toString())
+                if (parser.nextToken() != null) invalid("trailing data after baseline object")
+                Baseline(
+                    version = version ?: invalid("missing field \"version\""),
+                    fingerprints = fingerprints ?: invalid("missing field \"fingerprints\""),
+                )
+            }
+        } catch (e: JacksonException) {
+            throw IllegalStateException("Invalid baseline JSON: ${e.originalMessage}", e)
         }
 
-        return out
-    }
+    private fun invalid(message: String): Nothing = throw IllegalStateException("Invalid baseline JSON: $message.")
 }
