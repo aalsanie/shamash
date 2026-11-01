@@ -255,7 +255,6 @@
                   "properties": {
                     "cycles": { "type": "number", "minimum": 0 },
                     "dependencyDensity": { "type": "number", "minimum": 0 },
-                    "layeringViolations": { "type": "number", "minimum": 0 },
                     "godClassPrevalence": { "type": "number", "minimum": 0 },
                     "externalCoupling": { "type": "number", "minimum": 0 }
                   }
