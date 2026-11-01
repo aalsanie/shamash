@@ -176,7 +176,7 @@ analysis:
       weights: null
       thresholds: null
 
-    # Overall scoring summarizes measured metrics. Layering violations are not yet scored in V1.
+    # Overall scoring summarizes measured package metrics.
     overall:
       enabled: true
       weights: null
