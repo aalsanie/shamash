@@ -387,6 +387,44 @@ object ConfigSemanticValidatorV1 {
 
         validateWeights(analysis.scoring.godClass.weights, "analysis.scoring.godClass.weights")
         validateWeights(analysis.scoring.overall.weights, "analysis.scoring.overall.weights")
+
+        if (analysis.scoring.enabled) {
+            fun requireEffectiveWeight(
+                values: List<Double>,
+                path: String,
+            ) {
+                if (values.any { !it.isFinite() || it < 0.0 }) return
+                val total = values.sum()
+                if (!total.isFinite()) {
+                    errors += err(path, "total weight must be finite")
+                } else if (total == 0.0) {
+                    errors += err(path, "at least one available metric must have positive weight")
+                }
+            }
+
+            val godClass = analysis.scoring.godClass
+            if (godClass.enabled) {
+                godClass.weights?.let { weights ->
+                    requireEffectiveWeight(
+                        listOf(weights.methods, weights.fields, weights.fanOut, weights.fanIn, weights.packageSpread),
+                        "analysis.scoring.godClass.weights",
+                    )
+                }
+            }
+
+            if (analysis.scoring.overall.enabled) {
+                analysis.scoring.overall.weights?.let { weights ->
+                    val available =
+                        buildList {
+                            add(weights.cycles)
+                            add(weights.dependencyDensity)
+                            if (godClass.enabled) add(weights.godClassPrevalence)
+                            add(weights.externalCoupling)
+                        }
+                    requireEffectiveWeight(available, "analysis.scoring.overall.weights")
+                }
+            }
+        }
     }
 
     private fun validateScope(

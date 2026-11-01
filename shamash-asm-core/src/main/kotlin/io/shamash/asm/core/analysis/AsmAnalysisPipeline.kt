@@ -186,6 +186,15 @@ object AsmAnalysisPipeline {
 
         val weights = cfg.weights ?: DEFAULT_GOD_WEIGHTS
         val thresholds = cfg.thresholds?.let { ScoreThresholds(it.warning, it.error) } ?: DEFAULT_THRESHOLDS
+        val weightedMetrics =
+            listOf(
+                "methods" to weights.methods,
+                "fields" to weights.fields,
+                "fanOut" to weights.fanOut,
+                "fanIn" to weights.fanIn,
+                "packageSpread" to weights.packageSpread,
+            )
+        validateEffectiveWeights(weightedMetrics, "analysis.scoring.godClass.weights")
 
         val classGraph = RuleUtil.buildDependencyGraph(facts, Granularity.CLASS, includeExternalBuckets = false)
         val fanOut = RuleUtil.fanOut(classGraph)
@@ -243,16 +252,7 @@ object AsmAnalysisPipeline {
                             "packageSpread" to normInt(raw.getValue("packageSpread"), maxSpread),
                         )
 
-                    val score =
-                        weightedAverage(
-                            listOf(
-                                weights.methods to normalized.getValue("methods"),
-                                weights.fields to normalized.getValue("fields"),
-                                weights.fanOut to normalized.getValue("fanOut"),
-                                weights.fanIn to normalized.getValue("fanIn"),
-                                weights.packageSpread to normalized.getValue("packageSpread"),
-                            ),
-                        )
+                    val score = weightedAverage(weightedMetrics.map { (name, weight) -> weight to normalized.getValue(name) })
 
                     ClassScoreRow(
                         classFqn = id,
@@ -277,6 +277,17 @@ object AsmAnalysisPipeline {
 
         val weights = cfg.weights ?: DEFAULT_OVERALL_WEIGHTS
         val thresholds = cfg.thresholds?.let { ScoreThresholds(it.warning, it.error) } ?: DEFAULT_THRESHOLDS
+        require(weights.layeringViolations == 0.0) {
+            "analysis.scoring.overall.weights.layeringViolations is not measured by scoring V1; use 0"
+        }
+        val weightedMetrics =
+            buildList {
+                add("cycles" to weights.cycles)
+                add("dependencyDensity" to weights.dependencyDensity)
+                if (god != null) add("godClassPrevalence" to weights.godClassPrevalence)
+                add("externalCoupling" to weights.externalCoupling)
+            }
+        validateEffectiveWeights(weightedMetrics, "analysis.scoring.overall.weights")
 
         val projectPkgs =
             facts.classes
@@ -296,18 +307,20 @@ object AsmAnalysisPipeline {
         val pkgGraphExternal = RuleUtil.buildDependencyGraph(facts, Granularity.PACKAGE, includeExternalBuckets = true)
 
         // God class prevalence: mean of god-class score by package.
-        val godScoreByClass = god?.rows?.associate { it.classFqn to it.score }.orEmpty()
         val godAvgByPackage = LinkedHashMap<String, Double>()
-        val godCntByPackage = LinkedHashMap<String, Int>()
-        for (c in facts.classes.sortedBy { it.fqName }) {
-            val pkg = c.packageName
-            val s = godScoreByClass[c.fqName] ?: 0.0
-            godAvgByPackage[pkg] = (godAvgByPackage[pkg] ?: 0.0) + s
-            godCntByPackage[pkg] = (godCntByPackage[pkg] ?: 0) + 1
-        }
-        for ((pkg, sum) in godAvgByPackage.toMap()) {
-            val cnt = godCntByPackage[pkg] ?: 1
-            godAvgByPackage[pkg] = (sum / cnt.toDouble()).coerceIn(0.0, 1.0)
+        if (god != null) {
+            val godScoreByClass = god.rows.associate { it.classFqn to it.score }
+            val godCntByPackage = LinkedHashMap<String, Int>()
+            for (c in facts.classes.sortedBy { it.fqName }) {
+                val pkg = c.packageName
+                val s = godScoreByClass[c.fqName] ?: 0.0
+                godAvgByPackage[pkg] = (godAvgByPackage[pkg] ?: 0.0) + s
+                godCntByPackage[pkg] = (godCntByPackage[pkg] ?: 0) + 1
+            }
+            for ((pkg, sum) in godAvgByPackage.toMap()) {
+                val cnt = godCntByPackage[pkg] ?: 1
+                godAvgByPackage[pkg] = (sum / cnt.toDouble()).coerceIn(0.0, 1.0)
+            }
         }
 
         // Dependency density: use local out-degree density as a per-package proxy.
@@ -321,7 +334,7 @@ object AsmAnalysisPipeline {
                     val cycles = if (pkg in inCycle) 1.0 else 0.0
                     val out = (fanOutProject[pkg] ?: 0).toDouble()
                     val depDensity = (out / denom).coerceIn(0.0, 1.0)
-                    val godPrev = (godAvgByPackage[pkg] ?: 0.0).coerceIn(0.0, 1.0)
+                    val godPrev = if (god != null) (godAvgByPackage[pkg] ?: 0.0).coerceIn(0.0, 1.0) else null
 
                     val succAll = pkgGraphExternal.successors(pkg)
                     val totalOut = succAll.size.toDouble()
@@ -332,21 +345,12 @@ object AsmAnalysisPipeline {
                         linkedMapOf(
                             "cycles" to cycles,
                             "dependencyDensity" to depDensity,
-                            "godClassPrevalence" to godPrev,
-                            "externalCoupling" to externalCoupling,
                         )
+                    if (godPrev != null) raw["godClassPrevalence"] = godPrev
+                    raw["externalCoupling"] = externalCoupling
 
                     val normalized = raw.toMap()
-
-                    val score =
-                        weightedAverage(
-                            listOf(
-                                weights.cycles to cycles,
-                                weights.dependencyDensity to depDensity,
-                                weights.godClassPrevalence to godPrev,
-                                weights.externalCoupling to externalCoupling,
-                            ),
-                        )
+                    val score = weightedAverage(weightedMetrics.map { (name, weight) -> weight to normalized.getValue(name) })
 
                     PackageScoreRow(
                         packageName = pkg,
@@ -450,16 +454,26 @@ object AsmAnalysisPipeline {
     private fun stableEdges(edges: List<DependencyEdge>): List<DependencyEdge> =
         edges.sortedWith(compareBy<DependencyEdge>({ it.from.fqName }, { it.to.fqName }, { it.kind.name }, { it.detail ?: "" }))
 
-    private fun weightedAverage(terms: List<Pair<Double, Double>>): Double {
-        var wSum = 0.0
-        var sum = 0.0
-        for ((w, v) in terms) {
-            if (!w.isFinite() || w <= 0.0) continue
-            val vv = if (v.isFinite()) v else 0.0
-            wSum += w
-            sum += (w * vv)
+    private fun validateEffectiveWeights(
+        metrics: List<Pair<String, Double>>,
+        path: String,
+    ) {
+        for ((name, weight) in metrics) {
+            require(weight.isFinite() && weight >= 0.0) { "$path.$name must be finite and >= 0" }
         }
-        return if (wSum <= 0.0) 0.0 else (sum / wSum).coerceIn(0.0, 1.0)
+        val total = metrics.sumOf { it.second }
+        require(total.isFinite() && total > 0.0) { "$path must have a positive, finite total weight for available metrics" }
+    }
+
+    private fun weightedAverage(terms: List<Pair<Double, Double>>): Double {
+        val totalWeight = terms.sumOf { it.first }
+        require(totalWeight.isFinite() && totalWeight > 0.0) { "Scoring requires positive, finite effective weight" }
+        var weightedSum = 0.0
+        for ((weight, value) in terms) {
+            require(weight.isFinite() && weight >= 0.0 && value.isFinite()) { "Scoring requires finite metrics and nonnegative weights" }
+            weightedSum += weight * value
+        }
+        return (weightedSum / totalWeight).coerceIn(0.0, 1.0)
     }
 
     private fun band(

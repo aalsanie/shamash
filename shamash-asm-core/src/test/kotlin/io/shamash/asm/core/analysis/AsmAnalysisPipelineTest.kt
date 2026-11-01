@@ -19,6 +19,7 @@ package io.shamash.asm.core.analysis
 
 import io.shamash.asm.core.config.schema.v1.model.AnalysisConfig
 import io.shamash.asm.core.config.schema.v1.model.GodClassScoringConfig
+import io.shamash.asm.core.config.schema.v1.model.GodClassWeights
 import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.GraphsConfig
 import io.shamash.asm.core.config.schema.v1.model.HotspotsConfig
@@ -38,6 +39,8 @@ import io.shamash.asm.core.facts.model.TypeRef
 import io.shamash.asm.core.facts.query.FactIndex
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -173,6 +176,178 @@ class AsmAnalysisPipelineTest {
         assertTrue("layeringViolations" !in row.raw)
         assertTrue("layeringViolations" !in row.normalized)
     }
+
+    @Test
+    fun `disabled god-class analysis is omitted and remaining default weights are normalized`() {
+        val result = assertNotNull(AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig()).scoring?.overall)
+        val row = result.rows.single()
+
+        assertFalse("godClassPrevalence" in row.raw)
+        assertFalse("godClassPrevalence" in row.normalized)
+        assertEquals(setOf("cycles", "dependencyDensity", "externalCoupling"), row.raw.keys)
+        assertEquals(
+            (
+                0.30 * row.raw.getValue("cycles") +
+                    0.20 * row.raw.getValue("dependencyDensity") +
+                    0.10 * row.raw.getValue("externalCoupling")
+            ) / 0.60,
+            row.score,
+            1e-12,
+        )
+        assertEquals(AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig()), AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig()))
+    }
+
+    @Test
+    fun `enabled god-class analysis preserves measured zero and default weighted score`() {
+        val facts =
+            FactIndex(
+                classes = listOf(cls("com/example/Empty", "Empty.class")),
+                methods = emptyList(),
+                fields = emptyList(),
+                edges = emptyList(),
+                roles = emptyMap(),
+                classToRole = emptyMap(),
+            )
+        val result = assertNotNull(AsmAnalysisPipeline.run(facts, scoringConfig(godEnabled = true)).scoring)
+        val godClass = assertNotNull(result.godClass)
+        assertEquals(0.0, godClass.rows.single().score)
+        val row = assertNotNull(result.overall).rows.single()
+        assertEquals(0.0, row.raw["godClassPrevalence"])
+        assertEquals(0.0, row.normalized["godClassPrevalence"])
+        assertEquals(0.0, row.score)
+        assertEquals(SeverityBand.OK, row.band)
+    }
+
+    @Test
+    fun `enabled god-class analysis retains its configured weight in the overall score`() {
+        val overall = assertNotNull(AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(godEnabled = true)).scoring?.overall)
+        val row = overall.rows.single()
+        assertTrue("godClassPrevalence" in row.raw)
+        assertEquals(
+            (
+                0.30 * row.raw.getValue("cycles") +
+                    0.20 * row.raw.getValue("dependencyDensity") +
+                    0.15 * row.raw.getValue("godClassPrevalence") +
+                    0.10 * row.raw.getValue("externalCoupling")
+            ) / 0.75,
+            row.score,
+            1e-12,
+        )
+    }
+
+    @Test
+    fun `custom weighting ignores the unavailable god-class component`() {
+        val custom =
+            OverallWeights(
+                cycles = 0.0,
+                dependencyDensity = 0.0,
+                layeringViolations = 0.0,
+                godClassPrevalence = 10.0,
+                externalCoupling = 2.0,
+            )
+        val cfg = scoringConfig(overallWeights = custom, thresholds = ScoreThresholds(0.7, 1.0))
+        val row = assertNotNull(AsmAnalysisPipeline.run(tinyFactsGraph(), cfg).scoring?.overall).rows.single()
+        assertEquals(1.0, row.score)
+        assertEquals(SeverityBand.ERROR, row.band)
+        assertFalse("godClassPrevalence" in row.raw)
+    }
+
+    @Test
+    fun `weighted score at the warning threshold is classified as warning`() {
+        val owner = cls("com/example/One", "One.class")
+        val facts =
+            FactIndex(
+                classes = listOf(owner),
+                methods = emptyList(),
+                fields = emptyList(),
+                edges = listOf(dep(owner.type, TypeRef.fromInternalName("external/Lib"))),
+                roles = emptyMap(),
+                classToRole = emptyMap(),
+            )
+        val weights = OverallWeights(1.0, 0.0, 0.0, 0.0, 1.0)
+        val row =
+            assertNotNull(
+                AsmAnalysisPipeline
+                    .run(
+                        facts,
+                        scoringConfig(overallWeights = weights, thresholds = ScoreThresholds(0.5, 0.9)),
+                    ).scoring
+                    ?.overall,
+            ).rows.single()
+
+        assertEquals(0.5, row.score, 1e-12)
+        assertEquals(SeverityBand.WARN, row.band)
+    }
+
+    @Test
+    fun `unavailable-only overall weights fail rather than report a healthy score`() {
+        val weights =
+            OverallWeights(
+                cycles = 0.0,
+                dependencyDensity = 0.0,
+                layeringViolations = 0.0,
+                godClassPrevalence = 1.0,
+                externalCoupling = 0.0,
+            )
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = weights))
+            }
+        assertTrue(error.message.orEmpty().contains("analysis.scoring.overall.weights"))
+    }
+
+    @Test
+    fun `all-zero god-class weights fail even without any classes`() {
+        val weights = GodClassWeights(0.0, 0.0, 0.0, 0.0, 0.0)
+        val emptyFacts = FactIndex(emptyList(), emptyList(), emptyList(), emptyList(), emptyMap(), emptyMap())
+        val error =
+            assertFailsWith<IllegalArgumentException> {
+                AsmAnalysisPipeline.run(emptyFacts, scoringConfig(godEnabled = true, godWeights = weights))
+            }
+        assertTrue(error.message.orEmpty().contains("analysis.scoring.godClass.weights"))
+    }
+
+    @Test
+    fun `all-zero weights are irrelevant when their scoring component is disabled`() {
+        val overall = OverallWeights(0.0, 0.0, 0.0, 0.0, 0.0)
+        val god = GodClassWeights(0.0, 0.0, 0.0, 0.0, 0.0)
+        val cfg = scoringConfig(overallEnabled = false, godWeights = god, overallWeights = overall)
+        assertEquals(null, AsmAnalysisPipeline.run(tinyFactsGraph(), cfg).scoring?.overall)
+        assertEquals(null, AsmAnalysisPipeline.run(tinyFactsGraph(), cfg).scoring?.godClass)
+    }
+
+    @Test
+    fun `non-finite and negative effective weights fail for direct library callers`() {
+        for (weight in listOf(Double.NaN, Double.POSITIVE_INFINITY, -1.0)) {
+            val weights = OverallWeights(weight, 0.0, 0.0, 0.0, 1.0)
+            assertFailsWith<IllegalArgumentException> {
+                AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = weights))
+            }
+        }
+        val unsupported = OverallWeights(0.0, 0.0, 1.0, 0.0, 1.0)
+        assertFailsWith<IllegalArgumentException> {
+            AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = unsupported))
+        }
+    }
+
+    private fun scoringConfig(
+        godEnabled: Boolean = false,
+        overallEnabled: Boolean = true,
+        godWeights: GodClassWeights? = null,
+        overallWeights: OverallWeights? = null,
+        thresholds: ScoreThresholds? = null,
+    ): AnalysisConfig =
+        AnalysisConfig(
+            graphs = GraphsConfig(enabled = false, granularity = Granularity.PACKAGE, includeExternalBuckets = false),
+            hotspots = HotspotsConfig(enabled = false, topN = 5, includeExternal = false),
+            scoring =
+                ScoringConfig(
+                    enabled = true,
+                    model = ScoreModel.V1,
+                    godClass = GodClassScoringConfig(enabled = godEnabled, weights = godWeights, thresholds = null),
+                    overall = OverallScoringConfig(enabled = overallEnabled, weights = overallWeights, thresholds = thresholds),
+                ),
+        )
 
     private fun tinyFactsGraph(): FactIndex {
         val a = cls("com/example/A", originPath = "src/main/kotlin/com/example/A.kt")
