@@ -177,7 +177,6 @@ data class GodClassWeights(
 data class OverallWeights(
     val cycles: Double,
     val dependencyDensity: Double,
-    val layeringViolations: Double,
     val godClassPrevalence: Double,
     val externalCoupling: Double,
 )
