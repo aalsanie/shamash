@@ -85,28 +85,29 @@ class BaselineStoreTest {
         val fingerprint = "a".repeat(64)
         val valid = "{\"version\":1,\"fingerprints\":[\"$fingerprint\"]}"
 
-        val invalid = listOf(
-            "{\"version\":1,\"fingerprints\":[\"$fingerprint\" \"$fingerprint\"]}",
-            "{\"version\":1,\"fingerprints\":[\"$fingerprint\",]}",
-            "{\"version\":1,\"fingerprints\":[\"$fingerprint\"}",
-            "{\"version\":1,\"fingerprints\":[\"$fingerprint\"]}garbage",
-            "$valid $valid",
-            "{\"version\":1,\"version\":1,\"fingerprints\":[]}",
-            "{\"version\":1,\"fingerprints\":[],\"fingerprints\":[]}",
-            "{\"version\":1,\"fingerprints\":[],\"extra\":0}",
-            "{\"version\":1,\"fingerprints\":null}",
-            "{\"version\":1,\"fingerprints\":\"$fingerprint\"}",
-            "{\"version\":1,\"fingerprints\":[123]}",
-            "{\"version\":1.0,\"fingerprints\":[]}",
-            "{\"version\":true,\"fingerprints\":[]}",
-            "{\"version\":2147483648,\"fingerprints\":[]}",
-            "{\"version\":1,\"fingerprints\":[\"$fingerprint\",\"$fingerprint\"]}",
-            "{\"version\":1,\"fingerprints\":[\"bad\"]}",
-            "{\"version\":1,\"fingerprints\":[\"${"A".repeat(64)}\"]}",
-            "{\"version\":1,\"fingerprints\":[\"\\uZZZZ\"]}",
-            "{\"version\":1,\"fingerprints\":[\"\\q\"]}",
-            "{\"version\":1,\"fingerprints\":[\"unterminated]}",
-        )
+        val invalid =
+            listOf(
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\" \"$fingerprint\"]}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\",]}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\"}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\"]}garbage",
+                "$valid $valid",
+                "{\"version\":1,\"version\":1,\"fingerprints\":[]}",
+                "{\"version\":1,\"fingerprints\":[],\"fingerprints\":[]}",
+                "{\"version\":1,\"fingerprints\":[],\"extra\":0}",
+                "{\"version\":1,\"fingerprints\":null}",
+                "{\"version\":1,\"fingerprints\":\"$fingerprint\"}",
+                "{\"version\":1,\"fingerprints\":[123]}",
+                "{\"version\":1.0,\"fingerprints\":[]}",
+                "{\"version\":true,\"fingerprints\":[]}",
+                "{\"version\":2147483648,\"fingerprints\":[]}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\",\"$fingerprint\"]}",
+                "{\"version\":1,\"fingerprints\":[\"bad\"]}",
+                "{\"version\":1,\"fingerprints\":[\"${"A".repeat(64)}\"]}",
+                "{\"version\":1,\"fingerprints\":[\"\\uZZZZ\"]}",
+                "{\"version\":1,\"fingerprints\":[\"\\q\"]}",
+                "{\"version\":1,\"fingerprints\":[\"unterminated]}",
+            )
         for (json in invalid) {
             Files.writeString(store.baselinePath(dir), json, StandardCharsets.UTF_8)
             assertFailsWith<IllegalStateException>("Expected invalid baseline: $json") { store.load(dir) }
