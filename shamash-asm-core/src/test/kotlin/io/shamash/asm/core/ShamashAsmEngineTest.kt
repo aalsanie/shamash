@@ -342,6 +342,37 @@ class ShamashAsmEngineTest {
     }
 
     @Test
+    fun `malformed baseline fails verification without suppressing findings or changing the file`() {
+        val fingerprint = "a".repeat(64)
+        val malformed =
+            listOf(
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\" \"$fingerprint\"]}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\",]}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\"],\"version\":1}",
+                "{\"version\":1,\"fingerprints\":[\"$fingerprint\"]} extra",
+                "{\"version\":1,\"fingerprints\":[\"invalid\"]}",
+            )
+        for (raw in malformed) {
+            withBaselineProject { project ->
+                val baseline = project.resolve(".shamash/baseline.json")
+                Files.createDirectories(baseline.parent)
+                Files.writeString(baseline, raw)
+                val config = baselineConfig(exportEnabled = false)
+                val verify = config.copy(baseline = config.baseline.copy(mode = BaselineMode.VERIFY))
+
+                val result =
+                    ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule()))
+                        .analyze(project, "demo", verify, FactIndex.empty())
+
+                assertFalse(result.isSuccess, "Invalid baseline unexpectedly passed: $raw")
+                assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED }, result.errors.toString())
+                assertEquals(1, result.findings.size, "Malformed baseline suppressed findings: $raw")
+                assertEquals(raw, Files.readString(baseline))
+            }
+        }
+    }
+
+    @Test
     fun `baseline generated with relative or absolute finding path verifies against the other form`() {
         for (generateWithRelativePath in listOf(true, false)) {
             withBaselineProject { project ->
