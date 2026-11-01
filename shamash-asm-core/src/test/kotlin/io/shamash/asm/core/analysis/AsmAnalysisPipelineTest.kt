@@ -141,7 +141,7 @@ class AsmAnalysisPipelineTest {
     }
 
     @Test
-    fun `scoring excludes unmeasured layering violations and renormalizes measured weights`() {
+    fun `overall scoring uses the four supported weights`() {
         val facts = tinyFactsGraph()
         val cfg =
             AnalysisConfig(
@@ -159,7 +159,6 @@ class AsmAnalysisPipelineTest {
                                     OverallWeights(
                                         cycles = 0.0,
                                         dependencyDensity = 0.0,
-                                        layeringViolations = 0.0,
                                         godClassPrevalence = 0.0,
                                         externalCoupling = 1.0,
                                     ),
@@ -173,8 +172,8 @@ class AsmAnalysisPipelineTest {
 
         assertEquals(1.0, row.raw["externalCoupling"])
         assertEquals(1.0, row.score)
-        assertTrue("layeringViolations" !in row.raw)
-        assertTrue("layeringViolations" !in row.normalized)
+        assertEquals(setOf("cycles", "dependencyDensity", "externalCoupling"), row.raw.keys)
+        assertEquals(row.raw.keys, row.normalized.keys)
     }
 
     @Test
@@ -241,7 +240,6 @@ class AsmAnalysisPipelineTest {
             OverallWeights(
                 cycles = 0.0,
                 dependencyDensity = 0.0,
-                layeringViolations = 0.0,
                 godClassPrevalence = 10.0,
                 externalCoupling = 2.0,
             )
@@ -264,7 +262,7 @@ class AsmAnalysisPipelineTest {
                 roles = emptyMap(),
                 classToRole = emptyMap(),
             )
-        val weights = OverallWeights(1.0, 0.0, 0.0, 0.0, 1.0)
+        val weights = OverallWeights(1.0, 0.0, 0.0, 1.0)
         val row =
             assertNotNull(
                 AsmAnalysisPipeline
@@ -285,7 +283,6 @@ class AsmAnalysisPipelineTest {
             OverallWeights(
                 cycles = 0.0,
                 dependencyDensity = 0.0,
-                layeringViolations = 0.0,
                 godClassPrevalence = 1.0,
                 externalCoupling = 0.0,
             )
@@ -309,7 +306,7 @@ class AsmAnalysisPipelineTest {
 
     @Test
     fun `all-zero weights are irrelevant when their scoring component is disabled`() {
-        val overall = OverallWeights(0.0, 0.0, 0.0, 0.0, 0.0)
+        val overall = OverallWeights(0.0, 0.0, 0.0, 0.0)
         val god = GodClassWeights(0.0, 0.0, 0.0, 0.0, 0.0)
         val cfg = scoringConfig(overallEnabled = false, godWeights = god, overallWeights = overall)
         assertEquals(null, AsmAnalysisPipeline.run(tinyFactsGraph(), cfg).scoring?.overall)
@@ -319,14 +316,10 @@ class AsmAnalysisPipelineTest {
     @Test
     fun `non-finite and negative effective weights fail for direct library callers`() {
         for (weight in listOf(Double.NaN, Double.POSITIVE_INFINITY, -1.0)) {
-            val weights = OverallWeights(weight, 0.0, 0.0, 0.0, 1.0)
+            val weights = OverallWeights(weight, 0.0, 0.0, 1.0)
             assertFailsWith<IllegalArgumentException> {
                 AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = weights))
             }
-        }
-        val unsupported = OverallWeights(0.0, 0.0, 1.0, 0.0, 1.0)
-        assertFailsWith<IllegalArgumentException> {
-            AsmAnalysisPipeline.run(tinyFactsGraph(), scoringConfig(overallWeights = unsupported))
         }
     }
 
