@@ -198,6 +198,37 @@ class MainTest {
     }
 
     @Test
+    fun `unavailable-only scoring weights fail validation and scan commands`(
+        @TempDir tmp: Path,
+    ) {
+        val init = runCli("init", "--project", tmp.toString(), "--preset", "reference")
+        assertEquals(0, init.exitCode, diagnostics(init))
+        val config = tmp.resolve("shamash/configs/asm.yml")
+        val original = config.readText(StandardCharsets.UTF_8)
+        val yaml =
+            original
+                .replace("    godClass:\n      enabled: true", "    godClass:\n      enabled: false")
+                .replace(
+                    "    overall:\n      enabled: true\n      weights: null",
+                    "    overall:\n      enabled: true\n      weights:\n" +
+                        "        cycles: 0.0\n" +
+                        "        dependencyDensity: 0.0\n" +
+                        "        layeringViolations: 0.0\n" +
+                        "        godClassPrevalence: 1.0\n" +
+                        "        externalCoupling: 0.0",
+                )
+        assertFalse(yaml == original)
+        Files.writeString(config, yaml, StandardCharsets.UTF_8)
+
+        for (command in listOf(arrayOf("validate"), arrayOf("scan"), arrayOf("baseline", "create"))) {
+            val result = runCli(*command, "--project", tmp.toString())
+            assertEquals(2, result.exitCode, diagnostics(result))
+            assertTrue(result.stderr.contains("analysis.scoring.overall.weights"), diagnostics(result))
+        }
+        assertFalse(tmp.resolve(".shamash/baseline/asm-baseline.json").exists())
+    }
+
+    @Test
     fun `malformed config is a configuration error`(
         @TempDir tmp: Path,
     ) {
