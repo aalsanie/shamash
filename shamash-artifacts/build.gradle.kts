@@ -17,6 +17,7 @@ repositories {
 }
 
 dependencies {
+    implementation("com.fasterxml.jackson.core:jackson-core:2.22.1")
 
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
