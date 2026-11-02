@@ -63,3 +63,7 @@ gradlew clean runIde
 ```shell
 gradlew.bat spotlessApply
 ```
+
+## Licensing contributions
+
+Contributions to core modules and the CLI are submitted for inclusion under AGPL-3.0-only; IntelliJ plugin contributions remain Apache-2.0. You must have permission to contribute and retain any applicable third-party copyright and license notices. Submitting code does not transfer copyright ownership.
