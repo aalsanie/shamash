@@ -11,6 +11,7 @@ import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import java.nio.file.Files
 import java.nio.file.Path
+import java.io.StringReader
 import kotlin.io.path.isRegularFile
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,6 +58,20 @@ class ShippedConfigurationTest {
             val result = Files.newBufferedReader(file).use { ConfigValidation.loadAndValidateV1(it, registry) }
             assertTrue(result.ok, "$file: ${result.errors}")
             assertNotNull(result.config, file.toString())
+        }
+    }
+
+    @Test
+    fun `broken schema and outdated graph parameter names remain invalid`() {
+        val root = repositoryRoot()
+        val file = root.resolve("docs/asm/schema/v1/examples/18_graph_max_cycles.yml")
+        val yaml = Files.readString(file)
+        val invalidScope = yaml.replace("    severity: WARNING", "    severity: WARNING\n    scope: null")
+        val invalidKey = yaml.replace("maxCycles: 0", "max: 0")
+        assertTrue(invalidScope != yaml && invalidKey != yaml)
+        for (invalid in listOf(invalidScope, invalidKey)) {
+            val result = ConfigValidation.loadAndValidateV1(StringReader(invalid), DefaultRuleRegistry.create())
+            assertTrue(!result.ok, "Invalid example unexpectedly passed: $invalid")
         }
     }
 
