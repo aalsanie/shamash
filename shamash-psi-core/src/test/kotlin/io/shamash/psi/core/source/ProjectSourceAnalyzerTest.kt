@@ -32,7 +32,8 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
             "package demo; class Service { java.util.List<java.util.Map<String, ? extends Repository[]>> repos; }",
         )
         val snapshot = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+        assertEquals(2, snapshot.coverage.analyzedFiles)
+        assertFalse(snapshot.coverage.truncated)
         val edge = snapshot.references.single {
             it.target is SourceTarget.Internal &&
                 (it.target as SourceTarget.Internal).entity.signature == "demo.Repository" &&
