@@ -60,6 +60,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val validationErrors: List<ValidationError> = emptyList(),
         val engineErrors: List<EngineError> = emptyList(),
         val sourceFacts: ProjectSourceSnapshot? = null,
+        val sourceGraph: io.shamash.psi.core.source.SourceGraphSnapshot? = null,
     )
 
     fun interface Backend {
