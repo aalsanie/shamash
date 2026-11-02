@@ -7,6 +7,8 @@
  */
 package io.shamash.psi.core.source
 
+import java.util.ArrayDeque
+
 /**
  * Deterministic iterative graph algorithms. No recursive DFS or enumeration of simple cycles.
  * Sorting costs are separate from the linear graph traversals.
