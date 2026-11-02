@@ -85,6 +85,52 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         }, callerTargets.toString())
     }
 
+    fun testKotlinObjectsExtensionsCompanionsAndAliasesRemainDistinct() {
+        java("Repository.java", "package demo; public class Repository {}")
+        kotlin(
+            "Declarations.kt",
+            """
+            package demo
+            typealias Db = Repository
+            object Registry { val repo: Db = Repository() }
+            fun Repository.extension(): Repository = this
+            class Factory {
+                companion object { fun make(): Repository = Repository() }
+            }
+            """.trimIndent(),
+        )
+        kotlin(
+            "Use.kt",
+            """
+            package demo
+            class Use {
+                fun call() {
+                    val db: Db = Registry.repo
+                    db.extension()
+                    Factory.make()
+                }
+            }
+            """.trimIndent(),
+        )
+        val snapshot = analyze()
+        assertTrue(snapshot.entities.any {
+            it.id.declarationKind == SourceEntityKind.TYPE_ALIAS && it.id.signature == "demo.Db"
+        })
+        assertTrue(snapshot.entities.any {
+            it.id.declarationKind == SourceEntityKind.OBJECT && it.id.signature.contains("Registry")
+        })
+        assertTrue(snapshot.entities.any {
+            it.id.declarationKind == SourceEntityKind.FUNCTION && it.id.signature.contains("extension")
+        })
+        assertTrue(snapshot.entities.any {
+            it.id.signature.contains("Factory.Companion.make")
+        })
+        assertTrue(snapshot.references.any {
+            it.from.signature.contains("Use") &&
+                (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("demo.Repository") == true
+        }, snapshot.diagnostics.toString())
+    }
+
     fun testTestRootAndNestedRootsAreExcludedOrDeduplicated() {
         val nested = myFixture.tempDirFixture.findOrCreateDir("src/main/java/demo")
         PsiTestUtil.addSourceRoot(myFixture.module, nested)
