@@ -10,15 +10,10 @@ package io.shamash.asm.core.engine.rules.api
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.params.ParamError
 import io.shamash.artifacts.params.Params
-import io.shamash.artifacts.util.PathNormalizer
-import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
-import io.shamash.asm.core.config.schema.v1.model.RuleScope
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.engine.rules.Rule
-import io.shamash.asm.core.facts.model.FieldRef
-import io.shamash.asm.core.facts.model.MethodRef
-import io.shamash.asm.core.facts.model.SourceLocation
+import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
 import java.util.regex.Pattern
 
@@ -35,22 +30,18 @@ class ForbiddenAnnotationUsageRule : Rule {
 
         if (patterns.isEmpty()) return emptyList()
 
-        val includePkg = compileRegexList(rule.scope?.includePackages)
-        val excludePkg = compileRegexList(rule.scope?.excludePackages)
-
-        val includeGlobs = rule.scope?.includeGlobs?.filter { it.isNotBlank() } ?: emptyList()
-        val excludeGlobs = rule.scope?.excludeGlobs?.filter { it.isNotBlank() } ?: emptyList()
+        val scope = RuleUtil.compileScope(rule.scope)
+        val owners = facts.classes.associateBy { it.fqName }
 
         val out = mutableListOf<Finding>()
         val ruleId = ruleKey(rule)
         val severity = rule.severity
 
-        for (c in facts.classes) {
-            val pkg = c.packageName
-            val filePath = filePathOf(c.location)
-            if (!inScope(pkg, filePath, includePkg, excludePkg, includeGlobs, excludeGlobs)) continue
+        for (c in facts.classes.sortedBy { it.fqName }) {
+            if (!RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)) continue
+            val filePath = RuleUtil.filePathOf(c.location)
 
-            for (ann in c.annotationsFqns) {
+            for (ann in c.annotationsFqns.sorted()) {
                 val matched = matchesAny(patterns, ann) ?: continue
                 out +=
                     Finding(
@@ -71,12 +62,12 @@ class ForbiddenAnnotationUsageRule : Rule {
             }
         }
 
-        for (m in facts.methods) {
-            val pkg = m.owner.packageName
-            val filePath = filePathOf(m.location)
-            if (!inScope(pkg, filePath, includePkg, excludePkg, includeGlobs, excludeGlobs)) continue
+        for (m in facts.methods.sortedWith(compareBy({ it.owner.fqName }, { it.name }, { it.desc }))) {
+            val owner = owners[m.owner.fqName] ?: continue
+            if (!RuleUtil.ownerAllowed(owner, rule, scope, facts.classToRole)) continue
+            val filePath = RuleUtil.filePathOf(m.location)
 
-            for (ann in m.annotationsFqns) {
+            for (ann in m.annotationsFqns.sorted()) {
                 val matched = matchesAny(patterns, ann) ?: continue
                 val ownerFqn = m.owner.fqName
                 out +=
@@ -99,12 +90,12 @@ class ForbiddenAnnotationUsageRule : Rule {
             }
         }
 
-        for (f in facts.fields) {
-            val pkg = f.owner.packageName
-            val filePath = filePathOf(f.location)
-            if (!inScope(pkg, filePath, includePkg, excludePkg, includeGlobs, excludeGlobs)) continue
+        for (f in facts.fields.sortedWith(compareBy({ it.owner.fqName }, { it.name }, { it.desc }))) {
+            val owner = owners[f.owner.fqName] ?: continue
+            if (!RuleUtil.ownerAllowed(owner, rule, scope, facts.classToRole)) continue
+            val filePath = RuleUtil.filePathOf(f.location)
 
-            for (ann in f.annotationsFqns) {
+            for (ann in f.annotationsFqns.sorted()) {
                 val matched = matchesAny(patterns, ann) ?: continue
                 val ownerFqn = f.owner.fqName
                 out +=
@@ -163,42 +154,5 @@ class ForbiddenAnnotationUsageRule : Rule {
         return null
     }
 
-    private fun ruleKey(rule: RuleDef): String = "${rule.type.trim()}.${rule.name.trim()}"
-
-    private fun compileRegexList(list: List<String>?): List<Regex> =
-        list
-            ?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
-            ?.map { Regex(it) }
-            ?: emptyList()
-
-    private fun inScope(
-        packageName: String,
-        filePath: String,
-        includePkg: List<Regex>,
-        excludePkg: List<Regex>,
-        includeGlobs: List<String>,
-        excludeGlobs: List<String>,
-    ): Boolean {
-        if (includePkg.isNotEmpty() && includePkg.none { it.containsMatchIn(packageName) }) return false
-        if (excludePkg.isNotEmpty() && excludePkg.any { it.containsMatchIn(packageName) }) return false
-
-        val fp = GlobMatcher.normalizePath(filePath)
-        if (includeGlobs.isNotEmpty() && includeGlobs.none { GlobMatcher.matches(it, fp) }) return false
-        if (excludeGlobs.isNotEmpty() && excludeGlobs.any { GlobMatcher.matches(it, fp) }) return false
-
-        return true
-    }
-
-    private fun filePathOf(loc: SourceLocation?): String {
-        if (loc == null) return ""
-        val n = loc.normalized()
-        val container = n.containerPath
-        val entry = n.entryPath
-        val base =
-            when {
-                container != null && entry != null -> "${PathNormalizer.normalize(container)}!/${entry.replace('\\', '/')}"
-                else -> PathNormalizer.normalize(n.originPath)
-            }
-        return base
-    }
+    private fun ruleKey(rule: RuleDef): String = RuleUtil.canonicalRuleId(rule)
 }
