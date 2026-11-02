@@ -480,6 +480,30 @@ class ShamashAsmEngineTest {
     }
 
     @Test
+    fun `no-overwrite skips complete report publication but blocks baseline generation`() {
+        withBaselineProject { project ->
+            val dir = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            val old = dir.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(old, "previous")
+            val config = minimalConfig("demo", emptyList(), BaselineMode.NONE, true)
+            val noOverwrite = config.copy(export = config.export.copy(overwrite = false))
+            val engine = ShamashAsmEngine()
+            val complete = engine.analyze(project, "demo", noOverwrite, FactIndex.empty())
+            assertTrue(complete.isSuccess, complete.errors.toString())
+            assertEquals(null, complete.export)
+            assertEquals("previous", Files.readString(old))
+
+            val creating = noOverwrite.copy(baseline = noOverwrite.baseline.copy(mode = BaselineMode.GENERATE))
+            val rejected = engine.analyze(project, "demo", creating, FactIndex.empty())
+            assertFalse(rejected.isSuccess)
+            assertTrue(rejected.errors.any { it.code == EngineError.Code.EXPORT_FAILED })
+            assertTrue(rejected.errors.any { it.code == EngineError.Code.BASELINE_FAILED })
+            assertEquals("previous", Files.readString(old))
+            assertFalse(Files.exists(project.resolve(".shamash/baseline.json")))
+        }
+    }
+
+    @Test
     fun `missing required analysis sidecar rolls back report publication`() {
         withBaselineProject { project ->
             val config =
