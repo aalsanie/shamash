@@ -110,9 +110,11 @@ internal object RuleUtil {
         if (scope.includePackages.isNotEmpty() && scope.includePackages.none { it.containsMatchIn(pkg) }) return false
         if (scope.excludePackages.isNotEmpty() && scope.excludePackages.any { it.containsMatchIn(pkg) }) return false
 
-        val fp = GlobMatcher.normalizePath(filePathOf(c.location))
-        if (scope.includeGlobs.isNotEmpty() && scope.includeGlobs.none { GlobMatcher.matches(it, fp) }) return false
-        if (scope.excludeGlobs.isNotEmpty() && scope.excludeGlobs.any { GlobMatcher.matches(it, fp) }) return false
+        if (scope.includeGlobs.isNotEmpty() || scope.excludeGlobs.isNotEmpty()) {
+            val fp = GlobMatcher.normalizePath(filePathOf(c.location))
+            if (scope.includeGlobs.isNotEmpty() && scope.includeGlobs.none { GlobMatcher.matches(it, fp) }) return false
+            if (scope.excludeGlobs.isNotEmpty() && scope.excludeGlobs.any { GlobMatcher.matches(it, fp) }) return false
+        }
 
         return true
     }
