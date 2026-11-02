@@ -22,6 +22,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
+import io.shamash.intellij.plugin.analysis.AnalysisOutcome
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.LegacySourceBackend
 import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController
@@ -33,6 +34,10 @@ import io.shamash.psi.core.scan.ShamashProjectScanRunner
 class RunPsiScanAction(
     private val runner: ShamashProjectScanRunner = ShamashProjectScanRunner(),
 ) : AnAction() {
+    override fun update(e: AnActionEvent) {
+        e.presentation.isEnabled = e.project?.let { !IdeAnalysisCoordinator.getInstance(it).state().active } == true
+    }
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
 
@@ -49,6 +54,9 @@ class RunPsiScanAction(
                     ),
                 )
 
+            IdeAnalysisCoordinator.getInstance(project).analyze { _, _ ->
+                AnalysisOutcome.Unavailable("No PSI configuration found for the legacy source scan")
+            }
             ShamashPsiUiStateService.getInstance(project).updateValidation(errors)
 
             PsiActionUtil.notify(
