@@ -151,11 +151,18 @@ private class VersionCommand : CommandBase("version", "Print Shamash CLI version
     }
 }
 
+internal object LicenseInfo {
+    fun lines(version: String): List<String> =
+        listOf(
+            "Shamash CLI: AGPL-3.0-only",
+            "License: https://www.gnu.org/licenses/agpl-3.0.html",
+            "Source: https://github.com/aalsanie/shamash/tree/v$version",
+        )
+}
+
 private class LicenseCommand : CommandBase("license", "Show license and source") {
     override fun run(): ExitCode {
-        Console.println("Shamash CLI: AGPL-3.0-only")
-        Console.println("License: https://www.gnu.org/licenses/agpl-3.0.html")
-        Console.println("Source: https://github.com/aalsanie/shamash/tree/v${CliMeta.version}")
+        LicenseInfo.lines(CliMeta.version).forEach(Console::println)
         return ExitCode.OK
     }
 }

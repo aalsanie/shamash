@@ -28,6 +28,18 @@ class MainTest {
     )
 
     @Test
+    fun `license information references the exact version`() {
+        assertEquals(
+            listOf(
+                "Shamash CLI: AGPL-3.0-only",
+                "License: https://www.gnu.org/licenses/agpl-3.0.html",
+                "Source: https://github.com/aalsanie/shamash/tree/v1.0.0",
+            ),
+            LicenseInfo.lines("1.0.0"),
+        )
+    }
+
+    @Test
     fun `version prints version and exits zero`() {
         val r = runCli("version")
         assertEquals(0, r.exitCode, diagnostics(r))
