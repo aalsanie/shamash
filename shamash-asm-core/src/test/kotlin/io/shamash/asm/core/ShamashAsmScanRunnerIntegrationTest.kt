@@ -168,8 +168,10 @@ class ShamashAsmScanRunnerIntegrationTest {
                 assertEquals(1, result.classUnits)
                 assertTrue(result.truncated)
                 assertFalse(result.isSuccess)
-                assertNull(result.engine)
-                assertTrue(result.scanErrors.any { it.message.contains("Baseline generation skipped") })
+                val engine = assertNotNull(result.engine)
+                assertFalse(engine.isSuccess)
+                assertTrue(engine.errors.any { it.message.contains("truncated") })
+                assertTrue(engine.errors.any { it.message.contains("Baseline generation skipped") })
                 if (existing) {
                     assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
                 } else {
@@ -197,7 +199,7 @@ class ShamashAsmScanRunnerIntegrationTest {
             assertEquals(1, result.classUnits)
             assertTrue(result.scanErrors.any { it.phase == ScanError.Phase.BYTECODE_SCAN })
             assertFalse(result.isSuccess)
-            assertNull(result.engine)
+            assertFalse(assertNotNull(result.engine).isSuccess)
             assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
         }
     }
@@ -219,7 +221,7 @@ class ShamashAsmScanRunnerIntegrationTest {
             assertEquals(2, result.classUnits)
             assertTrue(result.factsErrors.isNotEmpty())
             assertFalse(result.isSuccess)
-            assertNull(result.engine)
+            assertFalse(assertNotNull(result.engine).isSuccess)
             assertContentEquals(baselineBytes, Files.readAllBytes(baseline))
 
             val partial = runner.run(ScanOptions(project))
