@@ -67,7 +67,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         coordinator.cancel()
         release.countDown()
         assertEquals(AnalysisPhase.CANCELLED, coordinator.state().phase)
-        assertNull(coordinator.state().visibleResult)
+        assertTrue(coordinator.state().visibleResult?.request != request)
     }
 
     fun testEditingSourceMarksCompletedSnapshotStaleWithoutAutoRerun() {
@@ -113,6 +113,42 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         awaitTerminal()
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertEquals(before, delivered.get())
+    }
+
+    fun testSupersededAnalysisCannotPublishWhenTheOldBackendReturnsLate() {
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val a = assertNotNull(coordinator.analyze { _, _ ->
+            started.countDown()
+            try {
+                release.await(10, TimeUnit.SECONDS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+            AnalysisOutcome.Complete(
+                IdeAnalysisCoordinator.SourcePresentation(),
+                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+            )
+        })
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(started.await(10, TimeUnit.SECONDS))
+
+        val done = CountDownLatch(1)
+        val b = assertNotNull(coordinator.analyze { _, _ ->
+            done.countDown()
+            AnalysisOutcome.Complete(
+                IdeAnalysisCoordinator.SourcePresentation(),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2),
+            )
+        })
+        release.countDown()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertTrue(b.generation > a.generation)
+        assertEquals(b, coordinator.state().visibleResult?.request)
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
     }
 
     fun testBackendFailureLeavesPriorResultAndDurableDiagnostic() {
@@ -163,6 +199,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
             val newSourceRoot = myFixture.tempDirFixture.findOrCreateDir("additional/java")
             PsiTestUtil.addSourceRoot(myModule, newSourceRoot)
         }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
         assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
         assertEquals(prior, coordinator.state().visibleResult)
