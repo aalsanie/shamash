@@ -136,6 +136,8 @@ class PublicationLicensingTest(unittest.TestCase):
                     "META-INF/LICENSE": license_bytes,
                     "META-INF/SOURCE": (source or publications.SOURCE_BASE + version).encode(),
                     "META-INF/THIRD_PARTY_NOTICES.md": notices,
+                    "META-INF/LICENSES/ASM-BSD-3-Clause.txt": b"BSD license",
+                    "META-INF/LICENSES/SLF4J-MIT.txt": b"MIT license",
                 }
                 with zipfile.ZipFile(path, "w") as archive:
                     for name, data in entries.items():
@@ -148,6 +150,8 @@ class PublicationLicensingTest(unittest.TestCase):
                 {"missing": "META-INF/LICENSE"},
                 {"missing": "META-INF/SOURCE"},
                 {"missing": "META-INF/THIRD_PARTY_NOTICES.md"},
+                {"missing": "META-INF/LICENSES/ASM-BSD-3-Clause.txt"},
+                {"missing": "META-INF/LICENSES/SLF4J-MIT.txt"},
                 {"license_bytes": b"wrong"},
                 {"source": "https://example.invalid"},
                 {"notices": b""},
