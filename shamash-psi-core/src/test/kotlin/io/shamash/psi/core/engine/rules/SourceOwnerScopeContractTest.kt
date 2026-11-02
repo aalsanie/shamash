@@ -165,7 +165,7 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
     fun testNestedKotlinClassesFollowTheirOwnRoles() {
         val file = myFixture.configureByText(
             "Nested.kt",
-            "package example\\nclass Parent { class Nested }",
+            "package example\nclass Parent { class Nested }",
         )
         val extracted = FactExtractor.extractResult(file)
         assertTrue(extracted.errors.isEmpty(), extracted.errors.toString())
