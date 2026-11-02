@@ -155,9 +155,12 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                 if (fallback == null) fallback = parent
             }
             if (parent is PsiMethod || parent is PsiField ||
-                parent is KtNamedFunction || parent is KtProperty || parent is KtTypeAlias
+                parent is KtNamedFunction || parent is KtTypeAlias
             ) {
                 return parent
+            }
+            if (parent is KtProperty) {
+                if (PsiTreeUtil.getParentOfType(parent, KtNamedFunction::class.java) == null) return parent
             }
             parent = parent.parent
         }
@@ -190,12 +193,14 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                 signature = name
             }
             is KtNamedFunction -> {
+                if (PsiTreeUtil.getParentOfType(element, KtNamedFunction::class.java) != null) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.FUNCTION
                 signature = qualifiedKotlinName(element) + "(" +
                     element.valueParameters.joinToString(",") { it.typeReference?.text.orEmpty() } + ")"
             }
             is KtProperty -> {
+                if (PsiTreeUtil.getParentOfType(element, KtNamedFunction::class.java) != null) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.PROPERTY
                 signature = qualifiedKotlinName(element)
