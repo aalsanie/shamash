@@ -257,7 +257,10 @@ object FactExtractor {
                         val psiMethod: PsiMethod? = node.javaPsi
                         val source = node.sourcePsi
                         val sourceMethod = source is PsiMethod || source is KtNamedFunction || source is KtConstructor<*>
-                        val generatedAccessor = source is KtProperty || source is KtParameter
+                        val generatedAccessor =
+                            source is KtProperty ||
+                                source is KtParameter ||
+                                (source is PsiMethod && (source.navigationElement is KtProperty || source.navigationElement is KtParameter))
                         val range = safeRangeU(node)
 
                         if (sourceMethod && !generatedAccessor) {
