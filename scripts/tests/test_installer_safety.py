@@ -14,7 +14,7 @@ VERSION = "0.92.0"
 DIST = f"shamash-cli-{VERSION}"
 
 
-def archive(*, missing=False, traversal=False, symlink=False):
+def archive(*, missing=False, traversal=False, symlink=False, reserved=False):
     stream = BytesIO()
     with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as z:
         z.writestr(f"{DIST}/bin/shamash", "#!/bin/sh\n")
@@ -23,6 +23,9 @@ def archive(*, missing=False, traversal=False, symlink=False):
             z.writestr(f"{DIST}/lib/app.jar", "jar")
         if traversal:
             z.writestr(f"{DIST}/../../escape.txt", "bad")
+        if reserved:
+            z.writestr(f"{DIST}/lib/CON.jar", "bad")
+            z.writestr(f"{DIST}/lib/stream:payload.jar", "bad")
         if symlink:
             entry = zipfile.ZipInfo(f"{DIST}/lib/link.jar")
             entry.create_system = 3
@@ -164,6 +167,7 @@ function global:Invoke-WebRequest {
         for name, payload in (("corrupt", b"not zip"),
                               ("layout", archive(missing=True)),
                               ("traversal", archive(traversal=True)),
+                              ("reserved", archive(reserved=True)),
                               ("symlink", archive(symlink=True))):
             with self.subTest(name=name):
                 self.owned() if not self.dest.exists() else None
