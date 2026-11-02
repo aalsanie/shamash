@@ -78,6 +78,8 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
 
         if (!check.fields && !check.methods && !check.classes) return emptyList()
 
+        val eligibleOwners = RuleUtil.scopedClasses(facts, rule).mapTo(HashSet()) { it.fqName }
+        if (eligibleOwners.isEmpty()) return emptyList()
         val sev = RuleUtil.severity(rule)
         val filePath = normalizePath(file.virtualFile?.path ?: file.name)
         val scope = GlobalSearchScope.projectScope(file.project)
@@ -94,6 +96,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                 scope = scope,
                 check = check,
                 ignoreRoles = ignoreRoles,
+                eligibleOwners = eligibleOwners,
                 ignoreNameRegexes = ignoreNameRegexes,
                 ignoreMemberExact = ignoreMemberExact,
                 ignoreMemberPrefix = ignoreMemberPrefix,
@@ -110,6 +113,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                 scope = scope,
                 check = check,
                 ignoreRoles = ignoreRoles,
+                eligibleOwners = eligibleOwners,
                 ignoreNameRegexes = ignoreNameRegexes,
                 ignoreMemberExact = ignoreMemberExact,
                 ignoreMemberPrefix = ignoreMemberPrefix,
@@ -129,6 +133,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
         scope: GlobalSearchScope,
         check: Check,
         ignoreRoles: Set<String>?,
+        eligibleOwners: Set<String>,
         ignoreNameRegexes: List<Regex>,
         ignoreMemberExact: Set<String>,
         ignoreMemberPrefix: Set<String>,
@@ -144,6 +149,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
 
                     val classFqn = node.qualifiedName
                     if (classFqn.isNullOrBlank()) return false
+                    if (classFqn !in eligibleOwners) return false
 
                     val role = facts.classToRole[classFqn]
                     if (ignoreRoles != null && role != null && role in ignoreRoles) return false
@@ -239,6 +245,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                             if (ReferencesSearch.search(anchor, scope).findFirst() != null) continue
 
                             val innerFqn = inner.qualifiedName ?: continue
+                            if (innerFqn !in eligibleOwners) continue
                             out +=
                                 Finding(
                                     ruleId = ruleInstanceId,
@@ -269,6 +276,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
         scope: GlobalSearchScope,
         check: Check,
         ignoreRoles: Set<String>?,
+        eligibleOwners: Set<String>,
         ignoreNameRegexes: List<Regex>,
         ignoreMemberExact: Set<String>,
         ignoreMemberPrefix: Set<String>,
@@ -282,6 +290,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
             ProgressManager.checkCanceled()
 
             val classFqn = cls.qualifiedName ?: continue
+            if (classFqn !in eligibleOwners) continue
             val role = facts.classToRole[classFqn]
             if (ignoreRoles != null && role != null && role in ignoreRoles) continue
 
@@ -341,6 +350,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                     if (ReferencesSearch.search(inner, scope).findFirst() != null) continue
 
                     val innerFqn = inner.qualifiedName ?: continue
+                            if (innerFqn !in eligibleOwners) continue
                     out +=
                         Finding(
                             ruleId = ruleInstanceId,
