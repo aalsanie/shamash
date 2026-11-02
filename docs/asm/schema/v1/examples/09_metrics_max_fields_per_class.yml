@@ -57,7 +57,6 @@ rules:
     enabled: true
     severity: WARNING
     roles: null
-    scope: null
     params:
       maxFields: 30
 
