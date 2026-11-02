@@ -204,9 +204,18 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
         return when (nav) {
             is PsiClass, is PsiMethod, is PsiField,
             is KtClassOrObject, is KtNamedFunction, is KtProperty, is KtTypeAlias -> nav
-            else -> when (element) {
-                is PsiMember -> element
-                else -> null
+            else -> {
+                // Kotlin light elements may navigate to a name identifier rather than the declaration.
+                var parent: PsiElement? = nav.parent
+                while (parent != null && parent !is PsiFile) {
+                    if (parent is KtClassOrObject || parent is KtNamedFunction ||
+                        parent is KtProperty || parent is KtTypeAlias
+                    ) {
+                        return parent
+                    }
+                    parent = parent.parent
+                }
+                element as? PsiMember
             }
         }
     }
