@@ -275,8 +275,8 @@ rules:
       includeGlobs:
         - "**/com/acme/core/CoreService.class"
     params:
-      root: "com.allowed"
-      allowDefaultPackage: false
+      roots:
+        - "build/classes"
 
   # ---------------------------------------------------------------------------
   # graph.*
