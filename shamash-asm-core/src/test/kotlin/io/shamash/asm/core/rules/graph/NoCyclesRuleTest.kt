@@ -11,6 +11,7 @@ import io.shamash.artifacts.baseline.BaselineCoordinator
 import io.shamash.artifacts.contract.FindingSeverity
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.SchemaResources
+import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.engine.rules.graph.NoCyclesRule
 import io.shamash.asm.core.facts.model.ClassFact
@@ -32,7 +33,8 @@ class NoCyclesRuleTest {
     @Test
     fun `unrelated cycle does not invalidate an existing baseline`() {
         val yaml = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }
-        val config = assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(yaml)).config)
+        val reference = assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(yaml)).config)
+        val config = reference.copy(analysis = reference.analysis.copy(graphs = reference.analysis.graphs.copy(granularity = Granularity.CLASS)))
         val rule =
             RuleDef(
                 type = "graph",
@@ -41,7 +43,7 @@ class NoCyclesRuleTest {
                 enabled = true,
                 severity = FindingSeverity.ERROR,
                 scope = null,
-                params = mapOf("granularity" to "class"),
+                params = emptyMap(),
             )
         val evaluator = NoCyclesRule()
         val original = evaluator.evaluate(facts(listOf("z.A" to "z.B", "z.B" to "z.A")), rule, config)
