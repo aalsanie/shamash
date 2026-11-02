@@ -34,6 +34,7 @@ distributions {
         contents {
             from(rootProject.file("LICENSE"))
             from(rootProject.file("THIRD_PARTY_NOTICES.md"))
+            from(rootProject.file("LICENSES")) { into("LICENSES") }
         }
     }
 }

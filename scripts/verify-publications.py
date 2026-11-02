@@ -52,7 +52,7 @@ def verify_license_pom(pom):
 
 def verify_license_payload(archive, version, expected_license):
     names = set(archive.namelist())
-    for path in ("META-INF/LICENSE", "META-INF/SOURCE", "META-INF/THIRD_PARTY_NOTICES.md"):
+    for path in ("META-INF/LICENSE", "META-INF/SOURCE", "META-INF/THIRD_PARTY_NOTICES.md", "META-INF/LICENSES/ASM-BSD-3-Clause.txt", "META-INF/LICENSES/SLF4J-MIT.txt"):
         require(path in names, f"Missing archive licensing metadata: {path}")
     require(archive.read("META-INF/LICENSE") == expected_license, "Incorrect archive license bytes")
     require(archive.read("META-INF/SOURCE").decode("utf-8").strip() == SOURCE_BASE + version, "Incorrect archive source URL")

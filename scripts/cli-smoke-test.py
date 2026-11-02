@@ -75,6 +75,10 @@ def main() -> None:
         if not (root / "THIRD_PARTY_NOTICES.md").is_file():
             fail("Missing packaged third-party notices.")
 
+        for name in ("ASM-BSD-3-Clause.txt", "SLF4J-MIT.txt"):
+            if not (root / "LICENSES" / name).is_file():
+                fail(f"Missing bundled license: {name}")
+
         javac = shutil.which("javac")
         if javac is None:
             fail("javac not found")

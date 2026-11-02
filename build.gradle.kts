@@ -51,6 +51,7 @@ subprojects {
             rename { "LICENSE" }
         }
         from(rootProject.file("THIRD_PARTY_NOTICES.md")) { into("META-INF") }
+        from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
         from(sourcePointer) {
             into("META-INF")
             rename { "SOURCE" }
