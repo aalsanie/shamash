@@ -131,13 +131,15 @@ class RuleContractTest {
                     mapOf("max" to 0),
                     mapOf(key to -1),
                     mapOf(key to "oops"),
+                    mapOf(key to "0"),
+                    mapOf(key to null),
                     mapOf(key to 0, "unexpected" to true),
                     emptyMap(),
                 ) + (
                     if (key == "maxDensity") {
                         listOf(mapOf(key to 2.0), mapOf(key to Double.NaN), mapOf(key to Double.POSITIVE_INFINITY))
                     } else {
-                        listOf(mapOf(key to 0.5), mapOf(key to Long.MAX_VALUE))
+                        listOf(mapOf(key to 0.0), mapOf(key to 0.5), mapOf(key to Long.MAX_VALUE))
                     }
                 )
             for (params in samples) {
