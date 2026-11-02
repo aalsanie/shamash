@@ -152,17 +152,27 @@ private class VersionCommand : CommandBase("version", "Print Shamash CLI version
 }
 
 internal object LicenseInfo {
-    fun lines(version: String): List<String> =
+    private const val REPOSITORY = "https://github.com/aalsanie/shamash"
+
+    fun sourceUrl(stream: java.io.InputStream?): String =
+        stream
+            ?.bufferedReader(StandardCharsets.UTF_8)
+            ?.use { it.readLine()?.trim() }
+            ?.takeIf { it.startsWith("$REPOSITORY/tree/") }
+            ?: REPOSITORY
+
+    fun lines(sourceUrl: String): List<String> =
         listOf(
             "Shamash CLI: AGPL-3.0-only",
             "License: https://www.gnu.org/licenses/agpl-3.0.html",
-            "Source: https://github.com/aalsanie/shamash/tree/v$version",
+            "Source: $sourceUrl",
         )
 }
 
 private class LicenseCommand : CommandBase("license", "Show license and source") {
     override fun run(): ExitCode {
-        LicenseInfo.lines(CliMeta.version).forEach(Console::println)
+        val source = LicenseInfo.sourceUrl(CliMeta::class.java.getResourceAsStream("/META-INF/SOURCE"))
+        LicenseInfo.lines(source).forEach(Console::println)
         return ExitCode.OK
     }
 }
