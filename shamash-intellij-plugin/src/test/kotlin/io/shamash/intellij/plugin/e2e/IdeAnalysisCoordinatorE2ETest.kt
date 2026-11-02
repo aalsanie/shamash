@@ -35,7 +35,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
                 AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
             )
         }
-        assertNotNull(request)
+        kotlin.test.assertNotNull(request)
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(completed.await(10, TimeUnit.SECONDS))
         awaitTerminal()
@@ -61,7 +61,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
                 AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2),
             )
         }
-        assertNotNull(request)
+        kotlin.test.assertNotNull(request)
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(started.await(10, TimeUnit.SECONDS))
         coordinator.cancel()
@@ -76,7 +76,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val source = myFixture.addFileToProject("src/main/java/Sample.java", "class Sample {}")
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val done = CountDownLatch(1)
-        assertNotNull(coordinator.analyze { _, _ ->
+        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             done.countDown()
             AnalysisOutcome.Complete(
                 IdeAnalysisCoordinator.SourcePresentation(),
@@ -89,7 +89,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val originalGeneration = coordinator.state().visibleResult?.request?.generation
 
         runInEdtAndWait {
-            val doc = assertNotNull(FileDocumentManager.getInstance().getDocument(source.virtualFile))
+            val doc = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(source.virtualFile))
             WriteCommandAction.runWriteCommandAction(project) { doc.insertString(doc.textLength, " // changed") }
         }
         assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
@@ -106,7 +106,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         Disposer.dispose(owner)
         val before = delivered.get()
 
-        assertNotNull(coordinator.analyze { _, _ ->
+        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             AnalysisOutcome.Complete(IdeAnalysisCoordinator.SourcePresentation(), AnalysisCoverage())
         })
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
@@ -119,7 +119,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val a = assertNotNull(coordinator.analyze { _, _ ->
+        val a = kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             started.countDown()
             try {
                 release.await(10, TimeUnit.SECONDS)
@@ -135,7 +135,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(started.await(10, TimeUnit.SECONDS))
 
         val done = CountDownLatch(1)
-        val b = assertNotNull(coordinator.analyze { _, _ ->
+        val b = kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             done.countDown()
             AnalysisOutcome.Complete(
                 IdeAnalysisCoordinator.SourcePresentation(),
@@ -154,7 +154,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testBackendFailureLeavesPriorResultAndDurableDiagnostic() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val good = CountDownLatch(1)
-        assertNotNull(coordinator.analyze { _, _ ->
+        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             good.countDown()
             AnalysisOutcome.Complete(
                 IdeAnalysisCoordinator.SourcePresentation(),
@@ -164,10 +164,10 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(good.await(10, TimeUnit.SECONDS))
         awaitTerminal()
-        val prior = assertNotNull(coordinator.state().visibleResult)
+        val prior = kotlin.test.assertNotNull(coordinator.state().visibleResult)
 
         val failed = CountDownLatch(1)
-        assertNotNull(coordinator.analyze { _, _ ->
+        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             failed.countDown()
             error("injected extraction failure")
         })
@@ -183,7 +183,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testModuleRootModificationMakesPreviousResultStale() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val done = CountDownLatch(1)
-        assertNotNull(coordinator.analyze { _, _ ->
+        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
             done.countDown()
             AnalysisOutcome.Complete(
                 IdeAnalysisCoordinator.SourcePresentation(),
@@ -193,7 +193,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(done.await(10, TimeUnit.SECONDS))
         awaitTerminal()
-        val prior = assertNotNull(coordinator.state().visibleResult)
+        val prior = kotlin.test.assertNotNull(coordinator.state().visibleResult)
 
         runInEdtAndWait {
             val newSourceRoot = myFixture.tempDirFixture.findOrCreateDir("additional/java")
@@ -219,10 +219,10 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         writeFile(configPath, config)
         ShamashPsiSettingsState.getInstance(project).state.configPath = configPath.toString()
         runInEdtAndWait {
-            val doc = assertNotNull(FileDocumentManager.getInstance().getDocument(vf))
+            val doc = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(vf))
             WriteCommandAction.runWriteCommandAction(project) { doc.insertString(doc.textLength, " // unsaved") }
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(doc))
-            val extraDoc = assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile))
+            val extraDoc = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile))
             WriteCommandAction.runWriteCommandAction(project) { extraDoc.insertString(extraDoc.textLength, " // unrelated unsaved") }
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(extraDoc))
         }
@@ -230,10 +230,10 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(originalBytes, Files.readAllBytes(Path.of(vf.path)).toList())
         assertEquals(extraBytes, Files.readAllBytes(Path.of(extra.virtualFile.path)).toList())
         assertEquals(true, FileDocumentManager.getInstance().isDocumentUnsaved(
-            assertNotNull(FileDocumentManager.getInstance().getDocument(vf)),
+            kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(vf)),
         ))
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(
-            assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile)),
+            kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile)),
         ))
         IdeAnalysisCoordinator.getInstance(project).cancel()
     }
