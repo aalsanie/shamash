@@ -58,6 +58,7 @@ fun main(args: Array<String>) {
             AnalysisCommand(),
             RegistryCommand(),
             VersionCommand(),
+            LicenseCommand(),
         )
     parser.subcommands(*commands.toTypedArray())
 
@@ -146,6 +147,15 @@ private abstract class CommandBase(
 private class VersionCommand : CommandBase("version", "Print Shamash CLI version") {
     override fun run(): ExitCode {
         Console.println("shamash-cli ${CliMeta.version}")
+        return ExitCode.OK
+    }
+}
+
+private class LicenseCommand : CommandBase("license", "Show license and source") {
+    override fun run(): ExitCode {
+        Console.println("Shamash CLI: AGPL-3.0-only")
+        Console.println("License: https://www.gnu.org/licenses/agpl-3.0.html")
+        Console.println("Source: https://github.com/aalsanie/shamash/tree/v${CliMeta.version}")
         return ExitCode.OK
     }
 }

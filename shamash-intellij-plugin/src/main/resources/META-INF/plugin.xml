@@ -11,6 +11,9 @@
         <br/><br/>
         The IntelliJ plugin provides one Shamash workspace with <b>Build Analysis</b> for compiled-bytecode
         checks and <b>Source Analysis</b> for source-aware feedback, suppressions and fixes.
+            <br/><br/>
+        Plugin source: <a href="https://github.com/aalsanie/shamash">Shamash</a> (Apache-2.0);
+        core dependencies: AGPL-3.0-only. See bundled licenses and source metadata.
     ]]></description>
 
     <depends>com.intellij.modules.java</depends>

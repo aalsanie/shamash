@@ -1,4 +1,4 @@
-# Copyright 2025-2026 @aalsanie. SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 @aalsanie. SPDX-License-Identifier: AGPL-3.0-only
 
 import importlib.util
 from pathlib import Path
@@ -6,6 +6,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
+import zipfile
 from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -111,6 +113,47 @@ class PluginDiscoveryVerificationTest(unittest.TestCase):
             self.report(status=status)
             with self.subTest(status=status), self.assertRaises(ValueError):
                 plugin_tests.verify(self.source, self.results)
+
+
+class PublicationLicensingTest(unittest.TestCase):
+    def test_pom_license(self):
+        def make(name, url):
+            return ET.fromstring(
+                '<project xmlns="http://maven.apache.org/POM/4.0.0"><licenses><license>'
+                f'<name>{name}</name><url>{url}</url></license></licenses></project>'
+            )
+        publications.verify_license_pom(make(publications.LICENSE_NAME, publications.LICENSE_URL))
+        for name, url in (("Apache-2.0", publications.LICENSE_URL), (publications.LICENSE_NAME, "wrong")):
+            with self.subTest(name=name, url=url), self.assertRaises(ValueError):
+                publications.verify_license_pom(make(name, url))
+
+    def test_archive_license_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sample.jar"
+            version, expected = "1.0.0", b"sample AGPL"
+            def check(license_bytes=expected, source=None, notices=b"copyright notice", missing=None):
+                entries = {
+                    "META-INF/LICENSE": license_bytes,
+                    "META-INF/SOURCE": (source or publications.SOURCE_BASE + version).encode(),
+                    "META-INF/THIRD_PARTY_NOTICES.md": notices,
+                }
+                with zipfile.ZipFile(path, "w") as archive:
+                    for name, data in entries.items():
+                        if name != missing:
+                            archive.writestr(name, data)
+                with zipfile.ZipFile(path) as archive:
+                    publications.verify_license_payload(archive, version, expected)
+            check()
+            for scenario in (
+                {"missing": "META-INF/LICENSE"},
+                {"missing": "META-INF/SOURCE"},
+                {"missing": "META-INF/THIRD_PARTY_NOTICES.md"},
+                {"license_bytes": b"wrong"},
+                {"source": "https://example.invalid"},
+                {"notices": b""},
+            ):
+                with self.subTest(**scenario), self.assertRaises(ValueError):
+                    check(**scenario)
 
 
 if __name__ == "__main__":

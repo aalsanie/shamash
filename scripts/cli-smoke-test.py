@@ -67,6 +67,14 @@ def main() -> None:
         if version.returncode != 0 or "shamash-cli" not in version.stdout:
             fail("Packaged CLI version command failed.", version.stdout)
 
+        licensed = run_cli(executable, "license")
+        if licensed.returncode != 0 or "AGPL-3.0-only" not in licensed.stdout:
+            fail("Packaged CLI license command failed.", licensed.stdout)
+        if not (root / "LICENSE").read_text(encoding="utf-8").lstrip().startswith("GNU AFFERO GENERAL PUBLIC LICENSE"):
+            fail("Missing packaged AGPL license.")
+        if not (root / "THIRD_PARTY_NOTICES.md").is_file():
+            fail("Missing packaged third-party notices.")
+
         javac = shutil.which("javac")
         if javac is None:
             fail("javac not found")

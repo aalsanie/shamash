@@ -160,7 +160,11 @@ jobs:
           SIGNED=$(find shamash-intellij-plugin/build/distributions -maxdepth 1 -name '*-signed.zip' -print -quit)
           test -n "$SIGNED" || { echo "Signed plugin ZIP not found"; exit 1; }
           cp "$SIGNED" "release-assets/shamash-intellij-plugin-${VERSION}.zip"
-          (cd release-assets && sha256sum *.zip > SHA256SUMS.txt)
+          git archive --format=tar.gz --prefix="shamash-${VERSION}/" --output="release-assets/shamash-src-${VERSION}.tar.gz" HEAD
+          (cd release-assets && sha256sum *.zip *.tar.gz > SHA256SUMS.txt)
+          mkdir -p source-check
+          tar -xzf "release-assets/shamash-src-${VERSION}.tar.gz" -C source-check
+          (cd "source-check/shamash-${VERSION}" && chmod +x gradlew && ./gradlew --stacktrace :shamash-cli:distZip)
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-assets
@@ -230,6 +234,7 @@ jobs:
           generate_release_notes: true
           files: |
             release-assets/*.zip
+            release-assets/*.tar.gz
             release-assets/SHA256SUMS.txt
 
   publish-marketplace:
