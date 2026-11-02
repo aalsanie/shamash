@@ -28,6 +28,21 @@ class MainTest {
     )
 
     @Test
+    fun `license command exits successfully`() {
+        val result = runCli("license")
+        assertEquals(0, result.exitCode, diagnostics(result))
+        assertTrue(result.stdout.contains("AGPL-3.0-only"))
+        assertTrue(result.stdout.contains("https://github.com/aalsanie/shamash/tree/v"))
+    }
+
+    @Test
+    fun `license command implementation is covered in process`() {
+        val type = Class.forName("io.shamash.cli.LicenseCommand")
+        val command = type.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
+        type.getMethod("execute").apply { isAccessible = true }.invoke(command)
+    }
+
+    @Test
     fun `license information references the exact version`() {
         assertEquals(
             listOf(
