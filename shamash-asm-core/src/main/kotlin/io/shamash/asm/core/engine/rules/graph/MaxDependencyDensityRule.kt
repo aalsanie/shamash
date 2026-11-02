@@ -47,7 +47,7 @@ class MaxDependencyDensityRule : Rule {
             facts.classes
                 .asSequence()
                 .sortedBy { it.fqName }
-                .firstOrNull { c ->
+                .first { c ->
                     val roleId = facts.classToRole[c.fqName]
                     RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
                 }
@@ -60,9 +60,9 @@ class MaxDependencyDensityRule : Rule {
                 message =
                     "Dependency density ($densityPct%) exceeds max " +
                         "(${max * 100.0}%) at granularity '${granularity.name.lowercase()}'.",
-                filePath = anchor?.let { RuleUtil.filePathOf(it.location) } ?: "",
+                filePath = RuleUtil.filePathOf(anchor.location),
                 severity = rule.severity,
-                classFqn = anchor?.fqName,
+                classFqn = anchor.fqName,
                 memberName = null,
                 data =
                     buildMap {

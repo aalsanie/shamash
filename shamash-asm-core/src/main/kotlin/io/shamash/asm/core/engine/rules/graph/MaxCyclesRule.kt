@@ -44,13 +44,11 @@ class MaxCyclesRule : Rule {
         val count = cyclic.size
         if (count <= max) return emptyList()
 
-        val cycleLimit = 10
-
         val anchor =
             facts.classes
                 .asSequence()
                 .sortedBy { it.fqName }
-                .firstOrNull { c ->
+                .first { c ->
                     val roleId = facts.classToRole[c.fqName]
                     RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
                 }
@@ -59,9 +57,9 @@ class MaxCyclesRule : Rule {
             Finding(
                 ruleId = RuleUtil.canonicalRuleId(rule),
                 message = "Cycle count ($count) exceeds max ($max) at granularity '${granularity.name.lowercase()}'.",
-                filePath = anchor?.let { RuleUtil.filePathOf(it.location) } ?: "",
+                filePath = RuleUtil.filePathOf(anchor.location),
                 severity = rule.severity,
-                classFqn = anchor?.fqName,
+                classFqn = anchor.fqName,
                 memberName = null,
                 data =
                     buildMap {
