@@ -201,6 +201,52 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertTrue(snapshot.diagnostics.any { it.phase == "limit" })
     }
 
+    fun testRealJavaReferencesProduceClosedPackageCycleWithNavigableWitnesses() {
+        myFixture.addFileToProject(
+            "src/main/java/a/A.java",
+            "package a; public class A { b.B dependency; }",
+        )
+        myFixture.addFileToProject(
+            "src/main/java/b/B.java",
+            "package b; public class B { a.A dependency; }",
+        )
+        val source = analyze()
+        val graph = SourceGraphAnalyzer().analyze(source)
+        assertEquals(1, graph.cycles.size, graph.diagnostics.toString())
+        val concern = graph.cycles.single()
+        assertEquals(setOf("a", "b"), concern.members.map { it.packageName }.toSet())
+        assertEquals(2, concern.witness.size)
+        for (edge in concern.witness) {
+            assertEquals(edge.target, concern.witness[(concern.witness.indexOf(edge) + 1) % 2].from)
+            assertTrue(edge.witnesses.isNotEmpty())
+            for (witness in edge.witnesses) {
+                val file = com.intellij.openapi.vfs.VirtualFileManager.getInstance()
+                    .findFileByUrl(witness.reference.fileUrl)
+                assertTrue(file != null && file.isValid, "Unnavigable source witness: $witness")
+                assertTrue(witness.reference.length > 0)
+                assertTrue(witness.reference.offset >= 0)
+                assertEquals(witness.from.fileUrl, witness.reference.fileUrl)
+            }
+        }
+    }
+
+    fun testRealJavaKotlinPackageCycleUsesResolvedCrossLanguageEvidence() {
+        myFixture.addFileToProject(
+            "src/main/java/a/A.java",
+            "package a; public class A { b.K dependency; }",
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/K.kt",
+            "package b\nclass K { val dependency: a.A? = null }",
+        )
+        val source = analyze()
+        val graph = SourceGraphAnalyzer().analyze(source)
+        assertEquals(1, graph.cycles.size, graph.diagnostics.toString())
+        assertEquals(setOf("a", "b"), graph.cycles.single().members.map { it.packageName }.toSet())
+        assertTrue(graph.cycles.single().witness.all { it.witnesses.isNotEmpty() })
+        assertTrue(graph.entityUses.values.any { it.isNotEmpty() })
+    }
+
     private fun analyze(): ProjectSourceSnapshot = ProjectSourceAnalyzer(project).analyze(ProgressIndicatorBase())
 
     private fun java(name: String, source: String) =
