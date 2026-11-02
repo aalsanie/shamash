@@ -321,7 +321,7 @@ class ShamashAsmEngine
             if (config.export.enabled && errors.isEmpty()) {
                 try {
                     val outputDir = resolveExportDir(projectBasePath, config)
-                    if (!config.export.overwrite && anyRequestedReportExists(outputDir, config.export.formats)) {
+                    if (!config.export.overwrite && anyManagedReportExists(outputDir)) {
                         errors += EngineError.exportFailed(
                             message = "Reports already exist and overwrite is disabled",
                             details = mapOf("outputDir" to outputDir.toString()),
@@ -746,25 +746,8 @@ class ShamashAsmEngine
             )
         }
 
-        private fun anyRequestedReportExists(
-            outputDir: Path,
-            formats: List<ExportFormat>,
-        ): Boolean {
-            if (formats.isEmpty()) return false
-            return listOf(
-                ExportOutputLayout.JSON_FILE_NAME,
-                ExportOutputLayout.SARIF_FILE_NAME,
-                ExportOutputLayout.XML_FILE_NAME,
-                ExportOutputLayout.HTML_FILE_NAME,
-                ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME,
-                ExportOutputLayout.FACTS_JSON_FILE_NAME,
-                ExportOutputLayout.ROLES_JSON_FILE_NAME,
-                ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME,
-                ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME,
-                ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME,
-                ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME,
-            ).any { Files.exists(outputDir.resolve(it)) }
-        }
+        private fun anyManagedReportExists(outputDir: Path): Boolean =
+            ExportOutputLayout.MANAGED_REPORT_FILE_NAMES.any { Files.exists(outputDir.resolve(it)) }
 
         private data class ExportSidecarPaths(
             val factsPath: Path?,
