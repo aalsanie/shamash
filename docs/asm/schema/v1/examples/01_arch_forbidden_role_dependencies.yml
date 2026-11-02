@@ -74,7 +74,6 @@ rules:
     roles: null
     enabled: true
     severity: ERROR
-    scope: null
     params:
       direction: transitive
       forbidden:
