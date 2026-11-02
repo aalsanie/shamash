@@ -8,9 +8,8 @@
 package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
-import io.shamash.artifacts.params.ParamError
-import io.shamash.artifacts.params.Params
 import io.shamash.asm.core.config.schema.v1.model.Granularity
+import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.engine.rules.Rule
@@ -26,21 +25,23 @@ class MaxDependencyDensityRule : Rule {
         rule: RuleDef,
         config: ShamashAsmConfigV1,
     ): List<Finding> {
-        val params = readParams(rule) ?: return emptyList()
+        val max = GraphThresholdParams.density(rule.params, "rules.${rule.type}.${rule.name}.params")
+        val granularity = Granularity.PACKAGE
+        val includeExternal = false
 
         val scope = RuleUtil.compileScope(rule.scope)
 
         val g =
             RuleUtil.buildDependencyGraph(
                 facts = facts,
-                granularity = params.granularity,
-                includeExternalBuckets = params.includeExternal,
+                granularity = granularity,
+                includeExternalBuckets = includeExternal,
                 scope = scope,
                 rule = rule,
             )
 
         val density = RuleUtil.dependencyDensity(g)
-        if (density <= params.max) return emptyList()
+        if (density <= max) return emptyList()
 
         val anchor =
             facts.classes
@@ -58,53 +59,22 @@ class MaxDependencyDensityRule : Rule {
                 ruleId = RuleUtil.canonicalRuleId(rule),
                 message =
                     "Dependency density ($densityPct%) exceeds max " +
-                        "(${params.max * 100.0}%) at granularity '${params.granularity.name.lowercase()}'.",
+                        "(${max * 100.0}%) at granularity '${granularity.name.lowercase()}'.",
                 filePath = anchor?.let { RuleUtil.filePathOf(it.location) } ?: "",
                 severity = rule.severity,
                 classFqn = anchor?.fqName,
                 memberName = null,
                 data =
                     buildMap {
-                        put("max", params.max.toString())
+                        put("max", max.toString())
                         put("density", density.toString())
                         put("nodes", g.nodes.size.toString())
                         put("edges", g.edgeCount.toString())
-                        put("granularity", params.granularity.name.lowercase())
-                        put("includeExternal", params.includeExternal.toString())
+                        put("granularity", granularity.name.lowercase())
+                        put("includeExternal", includeExternal.toString())
                     },
             ),
         )
     }
 
-    private data class ReadParams(
-        val max: Double,
-        val granularity: Granularity,
-        val includeExternal: Boolean,
-    )
-
-    private fun readParams(rule: RuleDef): ReadParams? {
-        val p = Params.of(rule.params, path = "rules.${rule.type}.${rule.name}.params")
-
-        val max: Double =
-            try {
-                p.requireDouble("max", min = 0.0, max = 1.0)
-            } catch (_: Throwable) {
-                return null
-            }
-
-        val granularity = parseGranularity(runCatching { p.optionalString("granularity") }.getOrNull())
-        val includeExternal = runCatching { p.optionalBoolean("includeExternal") }.getOrNull() ?: false
-
-        return ReadParams(max = max, granularity = granularity, includeExternal = includeExternal)
-    }
-
-    private fun parseGranularity(s: String?): Granularity {
-        val v = s?.trim()?.lowercase()
-        return when (v) {
-            "class" -> Granularity.CLASS
-            "module" -> Granularity.MODULE
-            "package", null, "" -> Granularity.PACKAGE
-            else -> Granularity.PACKAGE
-        }
-    }
 }

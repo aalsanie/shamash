@@ -32,6 +32,8 @@ import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.RuleScope
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
+import io.shamash.asm.core.engine.rules.ContextAwareRule
+import io.shamash.asm.core.engine.rules.RuleExecutionContext
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleRegistry
@@ -207,11 +209,11 @@ class ShamashAsmEngine
                         executedRuleInstances++
 
                         val produced: List<Finding> =
-                            rule.evaluate(
-                                facts = factsWithRoles,
-                                rule = effectiveDef,
-                                config = config,
-                            )
+                            if (rule is ContextAwareRule) {
+                                rule.evaluate(factsWithRoles, effectiveDef, config, RuleExecutionContext(projectBasePath))
+                            } else {
+                                rule.evaluate(factsWithRoles, effectiveDef, config)
+                            }
 
                         for (f in produced) {
                             findingsOut += normalizeFinding(f, instanceRuleId)

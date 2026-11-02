@@ -14,7 +14,7 @@ import io.shamash.asm.core.facts.query.FactIndex
 
 /**
  * Return deterministic findings for identical inputs. The engine applies exceptions and baselines.
- * Malformed parameters should yield no findings; the engine reports unexpected execution errors.
+ * Malformed parameters must throw; the engine reports execution errors.
  */
 interface Rule {
     /** Canonical base id (`type.name`), without the engine's role suffix. */
