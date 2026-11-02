@@ -64,6 +64,20 @@ subprojects {
         }
     }
 
+    tasks.withType<org.gradle.api.tasks.bundling.Zip>().matching { it.name == "dokkaJavadocJar" }.configureEach {
+        dependsOn(writeSourcePointer)
+        from(licenseFile) {
+            into("META-INF")
+            rename { "LICENSE" }
+        }
+        from(rootProject.file("THIRD_PARTY_NOTICES.md")) { into("META-INF") }
+        from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
+        from(sourcePointer) {
+            into("META-INF")
+            rename { "SOURCE" }
+        }
+    }
+
 
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension>("kotlin") {
