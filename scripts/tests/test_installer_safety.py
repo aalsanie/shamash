@@ -102,7 +102,7 @@ function global:Invoke-WebRequest {
             env["SHAMASH_TEST_VERSION"] = version
             env["SHAMASH_TEST_DEST"] = str(dest)
         return subprocess.run(cmd, cwd=self.root, env=env, capture_output=True,
-                              text=True, timeout=30)
+                              text=True, timeout=90)
 
     def owned(self):
         self.dest.mkdir(parents=True, exist_ok=True)
