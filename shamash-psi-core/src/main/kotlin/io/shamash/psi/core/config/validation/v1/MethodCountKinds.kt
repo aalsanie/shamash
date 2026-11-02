@@ -20,10 +20,12 @@ internal object MethodCountKinds {
     )
 
     fun decode(params: Map<String, Any?>, path: String): Set<Kind> {
-        val raw = Params.of(params, path).optionalStringList("countKinds") ?: return setOf(Kind.DECLARED)
+        if ("countKinds" !in params) return setOf(Kind.DECLARED)
+        val raw = Params.of(params, path).optionalStringList("countKinds")
+            ?: throw ParamError("$path.countKinds", "must be a list")
         if (raw.isEmpty()) throw ParamError("$path.countKinds", "must be non-empty")
         return raw.mapIndexed { index, value ->
-            wireNames[value] ?: throw ParamError("$path.countKinds[$index]", "Unknown countKind '$value'")
+            wireNames[value.trim()] ?: throw ParamError("$path.countKinds[$index]", "Unknown countKind '$value'")
         }.toSet()
     }
 
