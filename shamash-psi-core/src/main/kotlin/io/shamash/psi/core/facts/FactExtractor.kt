@@ -49,6 +49,7 @@ import org.jetbrains.uast.UField
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UastCallKind
+import org.jetbrains.uast.UastVisibility
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -269,7 +270,13 @@ object FactExtractor {
                                     containingClassFqn = fromClassFqn,
                                     name = node.name,
                                     signature = buildSignature(node),
-                                    visibility = visibilityOf(psiMethod as PsiElement?),
+                                    visibility =
+                                        when (node.visibility) {
+                                            UastVisibility.PUBLIC -> Visibility.PUBLIC
+                                            UastVisibility.PROTECTED -> Visibility.PROTECTED
+                                            UastVisibility.PRIVATE -> Visibility.PRIVATE
+                                            else -> visibilityOf(psiMethod as PsiElement?)
+                                        },
                                     isStatic = psiMethod?.hasModifierProperty(PsiModifier.STATIC) ?: false,
                                     isAbstract = psiMethod?.hasModifierProperty(PsiModifier.ABSTRACT) ?: false,
                                     isConstructor = node.isConstructor,
