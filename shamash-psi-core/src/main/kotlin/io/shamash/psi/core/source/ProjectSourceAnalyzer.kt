@@ -16,7 +16,6 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
-import java.util.LinkedHashMap
 
 /**
  * Collects per-file immutable source facts under short smart read actions. Aggregation is
@@ -44,7 +43,7 @@ class ProjectSourceAnalyzer(
         val allowedFiles = scope.files.mapTo(HashSet()) { it.file.url }
         val diagnostics = ArrayList<SourceDiagnostic>()
         val entities = ArrayList<SourceEntity>()
-        val dependencies = ArrayList<SourceDependency>()
+        val relationships = SourceRelationshipAccumulator(profile)
         var failed = 0
         var analyzed = 0
         var changed = false
@@ -94,7 +93,7 @@ class ProjectSourceAnalyzer(
                 } else {
                     analyzed++
                     entities += collected.entities
-                    dependencies += collected.references
+                    collected.references.forEach(relationships::add)
                     diagnostics += collected.diagnostics
                 }
             } catch (cancel: ProcessCanceledException) {
@@ -108,42 +107,21 @@ class ProjectSourceAnalyzer(
             changed = true
             diagnostics += SourceDiagnostic(null, "revision", "Sources or roots changed before publication")
         }
-        // Build a bounded relationship index from value types only (no PSI access).
-        val relationships = LinkedHashMap<Pair<SourceEntityId, SourceEntityId>, MutableRelationship>()
-        for (dep in dependencies) {
-            indicator.checkCanceled()
-            val target = dep.target as? SourceTarget.Internal ?: continue
-            val pair = dep.from to target.entity
-            var accumulator = relationships[pair]
-            if (accumulator == null) {
-                if (relationships.size >= profile.maxRelationships) {
-                    truncated = true
-                    continue
-                }
-                accumulator = MutableRelationship()
-                relationships[pair] = accumulator
-            }
-            accumulator.kinds += dep.kind
-            accumulator.occurrences++
-            if (accumulator.witnesses.size < profile.maxWitnesses) accumulator.witnesses += dep.evidence
-        }
+        truncated = truncated || relationships.truncated
         if (truncated) diagnostics += SourceDiagnostic(null, "limit", "Source analysis reached an internal resource bound")
-        val unresolved = dependencies.count { it.target is SourceTarget.Unresolved }.toLong()
+        val unresolved = relationships.unresolvedOccurrences
         val complete = !truncated && !changed && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
         return ProjectSourceSnapshot(
             profile = profile,
             entities = entities.distinctBy { it.id }.sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
-            references = dependencies.sortedWith(compareBy({ it.from.fileUrl }, { it.evidence.offset }, { it.target.toString() })),
-            relationships =
-                relationships.map { (key, value) ->
-                    SourceRelationship(key.first, key.second, value.kinds.toSet(), value.occurrences, value.witnesses.toList())
-                }.sortedWith(compareBy({ it.from.moduleId }, { it.from.fileUrl }, { it.toString() })),
+            references = relationships.evidence(),
+            relationships = relationships.relationships(),
             diagnostics = diagnostics.distinct(),
             coverage = SourceCoverage(
                 eligibleFiles = scope.files.size,
                 analyzedFiles = analyzed,
                 failedFiles = failed,
-                resolvedOccurrences = dependencies.count { it.target !is SourceTarget.Unresolved }.toLong(),
+                resolvedOccurrences = relationships.resolvedOccurrences,
                 unresolvedOccurrences = unresolved,
                 excludedFiles = scope.excluded,
                 truncated = truncated || changed,
@@ -152,9 +130,4 @@ class ProjectSourceAnalyzer(
         )
     }
 
-    private class MutableRelationship {
-        val kinds = LinkedHashSet<SourceDependencyKind>()
-        val witnesses = ArrayList<SourceReference>()
-        var occurrences = 0L
-    }
 }
