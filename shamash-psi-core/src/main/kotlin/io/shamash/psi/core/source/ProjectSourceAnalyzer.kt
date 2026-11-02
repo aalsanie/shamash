@@ -80,14 +80,16 @@ class ProjectSourceAnalyzer(
                     if (file == null) {
                         error = "No PSI file available for ${item.file.url}"
                     } else {
-                        val location = SourceDependencyExtractor.SourceLocation(item.module.name, item.sourceRoot.url, item.file.url)
+                        val location =
+                            SourceDependencyExtractor.SourceLocation(item.module.name, item.sourceRoot.url, item.file.url)
                         result = extractor.extract(file, location)
                     }
                 }
                 val collected = result
                 if (collected == null) {
                     failed++
-                    diagnostics += SourceDiagnostic(item.file.url, "extract", error ?: "Source extraction produced no result")
+                    diagnostics +=
+                        SourceDiagnostic(item.file.url, "extract", error ?: "Source extraction produced no result")
                 } else {
                     analyzed++
                     entities += collected.entities
@@ -98,19 +100,24 @@ class ProjectSourceAnalyzer(
                 throw cancel
             } catch (t: Throwable) {
                 failed++
-                diagnostics += SourceDiagnostic(item.file.url, "extract", "${t.javaClass.simpleName}: ${t.message ?: "source failed"}")
+                diagnostics +=
+                    SourceDiagnostic(item.file.url, "extract", "${t.javaClass.simpleName}: ${t.message ?: "source failed"}")
             }
         }
         if (!revisionsMatch()) changed = true
         if (changed) throw SourceRevisionChangedException()
         if (!revisionsMatch()) throw SourceRevisionChangedException()
         truncated = truncated || relationships.truncated
-        if (truncated) diagnostics += SourceDiagnostic(null, "limit", "Source analysis reached an internal resource bound")
+        if (truncated) {
+            diagnostics += SourceDiagnostic(null, "limit", "Source analysis reached an internal resource bound")
+        }
         val unresolved = relationships.unresolvedOccurrences
         val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
         return ProjectSourceSnapshot(
             profile = profile,
-            entities = entities.distinctBy { it.id }.sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
+            entities =
+                entities.distinctBy { it.id }
+                    .sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
             references = relationships.evidence(),
             relationships = relationships.relationships(),
             diagnostics = diagnostics.distinct(),
