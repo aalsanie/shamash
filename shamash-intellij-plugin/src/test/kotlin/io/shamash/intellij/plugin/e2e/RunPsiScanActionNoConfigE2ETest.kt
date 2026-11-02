@@ -24,7 +24,7 @@ import io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiSettingsState
 
 class RunPsiScanActionNoConfigE2ETest : ShamashPluginE2eTestBase() {
-    fun testRunPsiScanWithoutConfigPublishesValidationErrorsAndSelectsConfigTab() {
+    fun testRunPsiScanWithoutConfigStartsSourceAnalysisWithoutOpeningConfig() {
         ShamashPsiSettingsState.getInstance(project).state.configPath = null
 
         val tabs = JBTabbedPane()
@@ -35,11 +35,10 @@ class RunPsiScanActionNoConfigE2ETest : ShamashPluginE2eTestBase() {
 
         fire(RunPsiScanAction())
 
-        val state = ShamashPsiUiStateService.getInstance(project)
-        assertTrue(state.lastValidationErrors.isNotEmpty())
-        val err = state.lastValidationErrors.first()
-        assertTrue(err.message.contains("Config file not found", ignoreCase = true))
-
-        assertSame(controller.configTab.component(), tabs.selectedComponent)
+        val lifecycle = io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator.getInstance(project)
+        assertTrue(lifecycle.state().requestGeneration > 0)
+        assertTrue(ShamashPsiUiStateService.getInstance(project).lastValidationErrors.isEmpty())
+        assertSame(controller.dashboardTab.component(), tabs.selectedComponent)
+        lifecycle.cancel()
     }
 }

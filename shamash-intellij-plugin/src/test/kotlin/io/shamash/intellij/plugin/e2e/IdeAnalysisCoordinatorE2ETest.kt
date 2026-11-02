@@ -253,6 +253,36 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         IdeAnalysisCoordinator.getInstance(project).cancel()
     }
 
+    fun testNoConfigMixedSourceAnalysisPublishesResolvedFactsWithoutBuildOrSave() {
+        val javaRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, javaRoot)
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot)
+        myFixture.addFileToProject("src/main/java/demo/Repository.java", "package demo; public class Repository {}")
+        myFixture.addFileToProject(
+            "src/main/kotlin/demo/Service.kt",
+            "package demo\nclass Service { val repository: Repository = Repository() }",
+        )
+        val source = myFixture.addFileToProject("src/main/java/demo/Caller.java", "package demo; class Caller {}")
+        val disk = Files.readAllBytes(Path.of(source.virtualFile.path)).toList()
+        val document = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(source.virtualFile))
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                document.setText("package demo; class Caller { Repository repo; }")
+            }
+        }
+        fire(RunPsiScanAction())
+        awaitTerminal()
+        val state = IdeAnalysisCoordinator.getInstance(project).state()
+        val facts = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceFacts)
+        assertTrue(facts.entities.any { it.id.signature == "demo.Repository" })
+        assertTrue(facts.relationships.any { it.target.signature == "demo.Repository" })
+        assertTrue(facts.entities.any { it.id.signature == "demo.Service" })
+        assertEquals(disk, Files.readAllBytes(Path.of(source.virtualFile.path)).toList())
+        assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
+        assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
+    }
+
     private fun awaitTerminal() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         repeat(100) {
