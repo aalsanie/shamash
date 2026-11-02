@@ -60,7 +60,6 @@ rules:
     enabled: true
     severity: ERROR
     roles: null
-    scope: null
     params: {}
 
 exceptions: []
