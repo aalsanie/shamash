@@ -44,7 +44,8 @@ class ProjectSourceCollector(private val project: Project) {
             val eligible =
                 index.isInSourceContent(file) &&
                     !index.isInTestSourceContent(file) &&
-                    !index.isInLibrary(file) &&
+                    !index.isInLibraryClasses(file) &&
+                    !index.isInLibrarySource(file) &&
                     module != null &&
                     root != null &&
                     !generated(module, root)
