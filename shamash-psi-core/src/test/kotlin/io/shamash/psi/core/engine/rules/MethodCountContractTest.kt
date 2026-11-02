@@ -44,7 +44,9 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
             )
         val config = config()
         val role = config.roles.keys.first()
-        val facts = withRole(FactExtractor.extractResult(file).facts, "example.Sample", role)
+        val extracted = FactExtractor.extractResult(file)
+        assertTrue(extracted.facts.methods.any { it.isConstructor })
+        val facts = withRole(extracted.facts, "example.Sample", role)
 
         assertCount(file, facts, config, role, listOf("publicMethods"), 1)
         assertCount(file, facts, config, role, listOf("privateMethods"), 3)
@@ -74,7 +76,7 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
                 class Sample {
                     val generated: String = "text"
                     var mutable: Int = 0
-                    constructor()
+                    constructor() {}
                     fun visible() {}
                     private fun hiddenOne() {}
                     private fun hiddenTwo() {}
@@ -86,6 +88,7 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         val role = config.roles.keys.first()
         val extracted = FactExtractor.extractResult(file)
         assertTrue(extracted.errors.isEmpty(), extracted.errors.toString())
+        assertTrue(extracted.facts.methods.any { it.isConstructor })
         assertTrue(extracted.facts.methods.none { it.name == "getGenerated" || it.name == "getMutable" || it.name == "setMutable" })
         val facts = withRole(extracted.facts, "example.Sample", role)
         assertCount(file, facts, config, role, listOf("publicMethods"), 1)
