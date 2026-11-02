@@ -160,5 +160,24 @@ class PublicationLicensingTest(unittest.TestCase):
                     check(**scenario)
 
 
+class SourceLicenseTest(unittest.TestCase):
+    def test_module_source_headers(self):
+        root = SCRIPTS.parent
+        for module in ("shamash-artifacts", "shamash-export", "shamash-asm-core", "shamash-psi-core", "shamash-cli"):
+            for source in (root / module / "src").rglob("*"):
+                if source.suffix in (".kt", ".java"):
+                    self.assertIn(
+                        "SPDX-License-Identifier: AGPL-3.0-only",
+                        source.read_text(encoding="utf-8").split("*/", 1)[0],
+                        str(source),
+                    )
+        for source in (root / "shamash-intellij-plugin" / "src").rglob("*.kt"):
+            self.assertIn(
+                "Licensed under the Apache License",
+                source.read_text(encoding="utf-8").split("*/", 1)[0],
+                str(source),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
