@@ -82,12 +82,15 @@ class SourceGraphAnalyzer {
         val entityOut = entities.associateWith { mutableSetOf<SourceEntityId>() }
         val entityIn = entities.associateWith { mutableSetOf<SourceEntityId>() }
         val entityOccurrences = HashMap<SourceEntityId, Long>()
+        val entityIncomingOccurrences = HashMap<SourceEntityId, Long>()
         val packageEdges = HashMap<Pair<SourcePackageId, SourcePackageId>, PackageAccumulator>()
         for ((relation, witnesses) in valid) {
             checkCancelled()
             entityOut.getValue(relation.from).add(relation.target)
             entityIn.getValue(relation.target).add(relation.from)
             entityOccurrences[relation.from] = addCounts(entityOccurrences[relation.from] ?: 0, relation.occurrences)
+            entityIncomingOccurrences[relation.target] =
+                addCounts(entityIncomingOccurrences[relation.target] ?: 0, relation.occurrences)
             val fromPackage = packageByEntity.getValue(relation.from)
             val targetPackage = packageByEntity.getValue(relation.target)
             if (fromPackage == targetPackage) continue // Keep the entity edge, not a package self-edge.
@@ -108,6 +111,10 @@ class SourceGraphAnalyzer {
             entities.associateWith { id ->
                 SourceDependencySummary(entityUses.getValue(id).size, entityOccurrences[id] ?: 0L)
             }
+        val entityIncomingCounts =
+            entities.associateWith { id ->
+                SourceDependencySummary(entityUsedBy.getValue(id).size, entityIncomingOccurrences[id] ?: 0L)
+            }
         val packageDeps =
             packageEdges.entries.map { (key, value) ->
                 SourcePackageDependency(
@@ -122,17 +129,24 @@ class SourceGraphAnalyzer {
         val packageOut = packages.keys.associateWith { mutableSetOf<SourcePackageId>() }
         val packageIn = packages.keys.associateWith { mutableSetOf<SourcePackageId>() }
         val packageOccurrences = HashMap<SourcePackageId, Long>()
+        val packageIncomingOccurrences = HashMap<SourcePackageId, Long>()
         for (edge in packageDeps) {
             checkCancelled()
             packageOut.getValue(edge.from).add(edge.target)
             packageIn.getValue(edge.target).add(edge.from)
             packageOccurrences[edge.from] = addCounts(packageOccurrences[edge.from] ?: 0L, edge.occurrences)
+            packageIncomingOccurrences[edge.target] =
+                addCounts(packageIncomingOccurrences[edge.target] ?: 0L, edge.occurrences)
         }
         val uses = packageOut.mapValues { (_, targets) -> targets.sorted() }
         val usedBy = packageIn.mapValues { (_, sources) -> sources.sorted() }
         val packageCounts =
             packages.keys.associateWith { id ->
                 SourceDependencySummary(uses.getValue(id).size, packageOccurrences[id] ?: 0L)
+            }
+        val packageIncomingCounts =
+            packages.keys.associateWith { id ->
+                SourceDependencySummary(usedBy.getValue(id).size, packageIncomingOccurrences[id] ?: 0L)
             }
         val edgeByPair = packageDeps.associateBy { it.from to it.target }
         val cycles =
@@ -163,7 +177,8 @@ class SourceGraphAnalyzer {
                 snapshot.coverage.unresolvedOccurrences == 0L &&
                 snapshot.coverage.analyzedFiles == snapshot.coverage.eligibleFiles &&
                 snapshot.coverage.eligibleFiles > 0 &&
-                !invalidEvidence
+                !invalidEvidence &&
+                diagnostics.isEmpty()
         return SourceGraphSnapshot(
             profileId = profile.id,
             coverage = snapshot.coverage,
@@ -173,11 +188,13 @@ class SourceGraphAnalyzer {
             entityUses = entityUses,
             entityUsedBy = entityUsedBy,
             entityCounts = entityCounts,
+            entityIncomingCounts = entityIncomingCounts,
             packages = packages,
             packageDependencies = packageDeps,
             packageUses = uses,
             packageUsedBy = usedBy,
             packageCounts = packageCounts,
+            packageIncomingCounts = packageIncomingCounts,
             externalEvidence = external,
             externalEvidenceIsSampled = true,
             cycles = cycles,
