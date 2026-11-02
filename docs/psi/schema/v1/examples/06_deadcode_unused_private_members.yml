@@ -52,6 +52,6 @@ rules:
       ignoreRoles: ["anyClass"]
 
       # Optional: ignore members whose names match this regex
-      ignoreNameRegex: "^_.*$"
+      ignoreNameRegex: ["^_.*$"]
 
 exceptions: []
