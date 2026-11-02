@@ -41,6 +41,7 @@ class MaxFieldsPerClassRule : Rule {
         val classes = facts.classes.sortedBy { it.fqName }
         for (c in classes) {
             if (!RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)) continue
+            val roleId = facts.classToRole[c.fqName]
 
             val fields = fieldsByOwner[c.fqName].orEmpty()
             val count = fields.size
