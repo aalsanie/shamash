@@ -94,6 +94,13 @@ internal object RuleUtil {
         return true
     }
 
+    fun ownerAllowed(
+        owner: ClassFact,
+        rule: RuleDef,
+        scope: CompiledScope,
+        classToRole: Map<String, String>,
+    ): Boolean = classInScope(owner, scope) && roleAllowed(rule, scope, classToRole[owner.fqName])
+
     /** Checks package regexes and path globs. Call [roleAllowed] separately for role filtering. */
     fun classInScope(
         c: ClassFact,
@@ -161,8 +168,7 @@ internal object RuleUtil {
         val selectedClasses =
             if (filterSources) {
                 facts.classes.filter { c ->
-                    classInScope(c, effectiveScope) &&
-                        (rule == null || roleAllowed(rule, effectiveScope, facts.classToRole[c.fqName]))
+                    if (rule == null) classInScope(c, effectiveScope) else ownerAllowed(c, rule, effectiveScope, facts.classToRole)
                 }
             } else {
                 facts.classes

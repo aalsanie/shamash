@@ -38,14 +38,7 @@ class GraphNoCyclesSpec : RuleSpec {
             }
         }
 
-        if (!config.analysis.graphs.enabled) {
-            errors +=
-                ValidationError(
-                    path = rulePath,
-                    message = "Rule '${key.canonicalId()}' is enabled but analysis.graphs.enabled is false; rule will have no effect.",
-                    severity = ValidationSeverity.WARNING,
-                )
-        }
+
 
         return errors
     }

@@ -8,9 +8,6 @@
 package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
-import io.shamash.artifacts.params.ParamError
-import io.shamash.artifacts.params.Params
-import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.engine.rules.Rule
@@ -26,14 +23,14 @@ class NoCyclesRule : Rule {
         rule: RuleDef,
         config: ShamashAsmConfigV1,
     ): List<Finding> {
-        val params = readParams(rule) ?: return emptyList()
+        if (rule.params.isNotEmpty()) throw io.shamash.artifacts.params.ParamError("rules.${rule.type}.${rule.name}.params", "does not accept parameters")
         val scope = RuleUtil.compileScope(rule.scope)
 
         val g =
             RuleUtil.buildDependencyGraph(
                 facts = facts,
-                granularity = params.granularity,
-                includeExternalBuckets = params.includeExternal,
+                granularity = config.analysis.graphs.granularity,
+                includeExternalBuckets = config.analysis.graphs.includeExternalBuckets,
                 scope = scope,
                 rule = rule,
             )
@@ -41,7 +38,7 @@ class NoCyclesRule : Rule {
         val cyclic = RuleUtil.cyclicComponents(g)
         if (cyclic.isEmpty()) return emptyList()
 
-        val limit = params.maxCyclesReported
+        val limit = 10
         if (limit <= 0) return emptyList()
 
         val anchorClass =
@@ -72,15 +69,15 @@ class NoCyclesRule : Rule {
             out +=
                 Finding(
                     ruleId = RuleUtil.canonicalRuleId(rule),
-                    message = "Cycle detected at granularity '${params.granularity.name.lowercase()}': $cycleStr",
+                    message = "Cycle detected at granularity '${config.analysis.graphs.granularity.name.lowercase()}': $cycleStr",
                     filePath = anchorPath,
                     severity = rule.severity,
                     classFqn = anchorClass?.fqName,
                     memberName = null,
                     data =
                         buildMap {
-                            put("granularity", params.granularity.name.lowercase())
-                            put("includeExternal", params.includeExternal.toString())
+                            put("granularity", config.analysis.graphs.granularity.name.lowercase())
+                            put("includeExternal", config.analysis.graphs.includeExternalBuckets.toString())
                             put("cycleIndex", (idx + 1).toString())
                             put("cycleCount", cycleCount.toString()) // SCC count, from full sweep
                             put("cycle", cycleStr)
@@ -94,15 +91,15 @@ class NoCyclesRule : Rule {
             out +=
                 Finding(
                     ruleId = RuleUtil.canonicalRuleId(rule),
-                    message = "Cycle detected at granularity '${params.granularity.name.lowercase()}', but cycle details were truncated.",
+                    message = "Cycle detected at granularity '${config.analysis.graphs.granularity.name.lowercase()}', but cycle details were truncated.",
                     filePath = anchorPath,
                     severity = rule.severity,
                     classFqn = anchorClass?.fqName,
                     memberName = null,
                     data =
                         buildMap {
-                            put("granularity", params.granularity.name.lowercase())
-                            put("includeExternal", params.includeExternal.toString())
+                            put("granularity", config.analysis.graphs.granularity.name.lowercase())
+                            put("includeExternal", config.analysis.graphs.includeExternalBuckets.toString())
                             put("cycleCount", cycleCount.toString())
                             put("cyclesTruncated", "true")
                         },
@@ -112,44 +109,4 @@ class NoCyclesRule : Rule {
         return out
     }
 
-    private data class ReadParams(
-        val granularity: Granularity,
-        val includeExternal: Boolean,
-        val maxCyclesReported: Int,
-    )
-
-    private fun readParams(rule: RuleDef): ReadParams? {
-        val p = Params.of(rule.params, path = "rules.${rule.type}.${rule.name}.params")
-
-        val granularity = parseGranularity(runCatching { p.optionalString("granularity") }.getOrNull())
-        val includeExternal = runCatching { p.optionalBoolean("includeExternal") }.getOrNull() ?: false
-
-        val maxCyclesReported =
-            try {
-                val v = runCatching { p.optionalInt("maxCyclesReported") }.getOrNull()
-                when {
-                    v == null -> 10
-                    v < 0 -> 0
-                    else -> v
-                }
-            } catch (_: ParamError) {
-                10
-            }
-
-        return ReadParams(
-            granularity = granularity,
-            includeExternal = includeExternal,
-            maxCyclesReported = maxCyclesReported,
-        )
-    }
-
-    private fun parseGranularity(s: String?): Granularity {
-        val v = s?.trim()?.lowercase()
-        return when (v) {
-            "class" -> Granularity.CLASS
-            "module" -> Granularity.MODULE
-            "package", null, "" -> Granularity.PACKAGE
-            else -> Granularity.PACKAGE
-        }
-    }
 }

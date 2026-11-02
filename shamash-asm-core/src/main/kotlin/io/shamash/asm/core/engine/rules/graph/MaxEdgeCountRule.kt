@@ -8,7 +8,6 @@
 package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
-import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
@@ -25,8 +24,8 @@ class MaxEdgeCountRule : Rule {
         config: ShamashAsmConfigV1,
     ): List<Finding> {
         val max = GraphThresholdParams.edges(rule.params, "rules.${rule.type}.${rule.name}.params")
-        val granularity = Granularity.PACKAGE
-        val includeExternal = false
+        val granularity = config.analysis.graphs.granularity
+        val includeExternal = config.analysis.graphs.includeExternalBuckets
 
         val scope = RuleUtil.compileScope(rule.scope)
 
