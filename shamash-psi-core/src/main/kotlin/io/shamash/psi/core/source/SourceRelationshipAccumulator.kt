@@ -86,7 +86,9 @@ class SourceRelationshipAccumulator(private val profile: SourceAnalysisProfile) 
                 value.total,
                 value.witnesses.map { it.evidence },
             )
-        }.sortedWith(compareBy({ it.from.moduleId }, { it.from.fileUrl }, { it.target.moduleId }, { it.target.signature }))
+        }.sortedWith(
+            compareBy({ it.from.moduleId }, { it.from.fileUrl }, { it.target.moduleId }, { it.target.signature }),
+        )
 
     /** Retained evidence only; occurrence totals are in relationships and coverage. */
     fun evidence(): List<SourceDependency> =
