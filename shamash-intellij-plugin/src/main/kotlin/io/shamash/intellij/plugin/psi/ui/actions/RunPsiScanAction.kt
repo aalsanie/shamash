@@ -19,6 +19,7 @@ package io.shamash.intellij.plugin.psi.ui.actions
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.psi.PsiDocumentManager
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.ProjectSourceBackend
 
@@ -30,6 +31,8 @@ class RunPsiScanAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
+        // Synchronize unsaved editor text with PSI; this does not save document bytes to disk.
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         coordinator.analyze(ProjectSourceBackend(project, coordinator))
     }
