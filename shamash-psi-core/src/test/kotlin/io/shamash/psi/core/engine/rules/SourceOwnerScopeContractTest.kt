@@ -162,6 +162,35 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
         )), config()).isEmpty())
     }
 
+    fun testNestedKotlinClassesFollowTheirOwnRoles() {
+        val file = myFixture.configureByText(
+            "Nested.kt",
+            "package example\\nclass Parent { class Nested }",
+        )
+        val extracted = FactExtractor.extractResult(file)
+        assertTrue(extracted.errors.isEmpty(), extracted.errors.toString())
+        val facts = extracted.facts.copy(
+            classToRole = mapOf("example.Parent" to "parent", "example.Parent.Nested" to "nested"),
+        )
+        val scope = RuleScope(
+            includeRoles = listOf("parent"),
+            excludeRoles = null,
+            includePackages = listOf("^example$"),
+            excludePackages = null,
+            includeGlobs = listOf("**/Nested.kt"),
+            excludeGlobs = null,
+        )
+        val definition = rule("naming", "bannedSuffixes", mapOf("banned" to listOf("Parent", "Nested")))
+            .copy(scope = scope)
+        assertEquals(listOf("example.Parent"), RuleUtil.scopedClasses(facts, definition).map { it.fqName })
+        assertTrue(RuleUtil.scopedClasses(facts, definition.copy(
+            scope = scope.copy(excludeRoles = listOf("parent")),
+        )).isEmpty())
+        assertTrue(RuleUtil.scopedClasses(facts, definition.copy(
+            scope = scope.copy(excludeGlobs = listOf("**/Nested.kt")),
+        )).isEmpty())
+    }
+
     private fun FactsIndex.withRole(classFqn: String, role: String): FactsIndex =
         copy(classToRole = mapOf(classFqn to role), roles = mapOf(role to setOf(classFqn)))
 
