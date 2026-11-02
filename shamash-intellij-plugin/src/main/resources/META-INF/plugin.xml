@@ -58,6 +58,9 @@
         <action id="io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
                 class="io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
                 text="Shamash: Run Source Scan"/>
+        <action id="io.shamash.intellij.plugin.psi.ui.actions.CancelSourceAnalysisAction"
+                class="io.shamash.intellij.plugin.psi.ui.actions.CancelSourceAnalysisAction"
+                text="Shamash: Cancel Source Analysis"/>
         <action id="io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
                 class="io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
                 text="Shamash: Validate Source Config"/>
