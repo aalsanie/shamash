@@ -44,40 +44,27 @@ subprojects {
             file.writeText("https://github.com/aalsanie/shamash/tree/v${project.version}\n")
         }
     }
-    tasks.withType<Jar>().configureEach {
-        dependsOn(writeSourcePointer)
-        from(licenseFile) {
-            into("META-INF")
-            rename { "LICENSE" }
-        }
-        from(rootProject.file("THIRD_PARTY_NOTICES.md")) { into("META-INF") }
-        from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
-        from(sourcePointer) {
-            into("META-INF")
-            rename { "SOURCE" }
-        }
-        if (project.name == "shamash-intellij-plugin") {
-            from(rootProject.file("LICENSE")) {
-                into("META-INF/LICENSES")
-                rename { "AGPL-3.0-only.txt" }
+    tasks.withType<org.gradle.api.tasks.bundling.Zip>()
+        .matching { it is Jar || it.name == "dokkaJavadocJar" }
+        .configureEach {
+            dependsOn(writeSourcePointer)
+            from(licenseFile) {
+                into("META-INF")
+                rename { "LICENSE" }
+            }
+            from(rootProject.file("THIRD_PARTY_NOTICES.md")) { into("META-INF") }
+            from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
+            from(sourcePointer) {
+                into("META-INF")
+                rename { "SOURCE" }
+            }
+            if (project.name == "shamash-intellij-plugin") {
+                from(rootProject.file("LICENSE")) {
+                    into("META-INF/LICENSES")
+                    rename { "AGPL-3.0-only.txt" }
+                }
             }
         }
-    }
-
-    tasks.withType<org.gradle.api.tasks.bundling.Zip>().matching { it.name == "dokkaJavadocJar" }.configureEach {
-        dependsOn(writeSourcePointer)
-        from(licenseFile) {
-            into("META-INF")
-            rename { "LICENSE" }
-        }
-        from(rootProject.file("THIRD_PARTY_NOTICES.md")) { into("META-INF") }
-        from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
-        from(sourcePointer) {
-            into("META-INF")
-            rename { "SOURCE" }
-        }
-    }
-
 
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension>("kotlin") {
