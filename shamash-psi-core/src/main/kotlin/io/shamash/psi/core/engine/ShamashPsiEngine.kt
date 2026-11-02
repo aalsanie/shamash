@@ -18,6 +18,7 @@ import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.RuleScope
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
+import io.shamash.psi.core.config.schema.v1.model.UnknownRulePolicyV1
 import io.shamash.psi.core.engine.index.ProjectRoleIndex
 import io.shamash.psi.core.engine.index.ProjectRoleIndexSnapshot
 import io.shamash.psi.core.engine.registry.RuleRegistry
@@ -134,7 +135,14 @@ class ShamashPsiEngine {
             val baseId = "${ruleDef.type}.${ruleDef.name}"
             val rule = RuleRegistry.find(baseId)
             if (rule == null) {
-                log.debug("Unknown rule '$baseId' (enabled=${ruleDef.enabled})")
+                val message = "Unknown enabled rule '$baseId' (not implemented)"
+                when (config.project.validation.unknownRule) {
+                    UnknownRulePolicyV1.ERROR -> {
+                        errors += EngineError(fileId, "rule:unknown", message, ruleId = baseId)
+                    }
+                    UnknownRulePolicyV1.WARN -> log.warn(message)
+                    UnknownRulePolicyV1.IGNORE -> Unit
+                }
                 continue
             }
 
@@ -142,6 +150,8 @@ class ShamashPsiEngine {
                 ProgressManager.checkCanceled()
 
                 if (role != null && ruleDef.scope?.excludeRoles?.contains(role) == true) continue
+                if (role != null && ruleDef.scope?.includeRoles != null &&
+                    role !in ruleDef.scope.includeRoles) continue
 
                 val effectiveRule =
                     if (role == null) {
