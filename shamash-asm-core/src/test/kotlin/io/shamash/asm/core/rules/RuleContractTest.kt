@@ -326,7 +326,7 @@ class RuleContractTest {
             val actual = evaluator.evaluate(outside, def.copy(roles = listOf("core")), baseConfig, context)
             assertEquals(listOf("b.Active"), actual.map { it.classFqn })
 
-            val invalid = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf("\\u0000")))
+            val invalid = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf("\u0000")))
             assertTrue(OriginAllowOnlyRootSpec().validate("rules[0]", invalid, baseConfig).isNotEmpty())
             assertFailsWith<ParamError> { evaluator.evaluate(FactIndex.empty(), invalid, baseConfig, context) }
 
@@ -335,7 +335,7 @@ class RuleContractTest {
                     classes =
                         listOf(
                             outside.classes.first().copy(
-                                location = location("\\u0000"),
+                                location = location("\u0000"),
                             ),
                         ),
                 )
