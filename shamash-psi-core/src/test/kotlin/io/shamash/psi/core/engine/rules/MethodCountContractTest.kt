@@ -116,6 +116,15 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         val empty = definition(role, emptyList())
         assertTrue(spec.validate("rules[0]", empty, config).isNotEmpty())
         assertFailsWith<ParamError> { MetricsMaxMethodsByRoleRule().evaluate(file, facts, empty, config) }
+
+        for (raw in listOf(null, listOf(1))) {
+            val invalid = definition(role, null).copy(params = mapOf("limits" to mapOf(role to 0), "countKinds" to raw))
+            assertTrue(spec.validate("rules[0]", invalid, config).isNotEmpty())
+            assertFailsWith<ParamError> { MetricsMaxMethodsByRoleRule().evaluate(file, facts, invalid, config) }
+        }
+        val emptyLimits = definition(role, listOf("publicMethods")).copy(params = mapOf("limits" to emptyMap<String, Int>()))
+        assertTrue(spec.validate("rules[0]", emptyLimits, config).isNotEmpty())
+        assertFailsWith<ParamError> { MetricsMaxMethodsByRoleRule().evaluate(file, facts, emptyLimits, config) }
     }
 
     private fun assertCount(
