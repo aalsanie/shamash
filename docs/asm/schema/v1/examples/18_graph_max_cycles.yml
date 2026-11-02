@@ -58,7 +58,6 @@ rules:
     enabled: true
     severity: WARNING
     roles: null
-    scope: null
     params:
       maxCycles: 0
 
