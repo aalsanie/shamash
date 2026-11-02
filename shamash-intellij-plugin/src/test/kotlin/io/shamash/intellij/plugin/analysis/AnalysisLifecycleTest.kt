@@ -24,9 +24,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AnalysisLifecycleTest {
-    private fun complete(name: String) = AnalysisOutcome.Complete(name, AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1))
+    private fun complete(name: String) =
+        AnalysisOutcome.Complete(name, AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1))
     private fun partial(name: String?) =
-        AnalysisOutcome.Partial(name, AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 1, failedFiles = 1), listOf("resolution incomplete"))
+        AnalysisOutcome.Partial(
+            name,
+            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 1, failedFiles = 1),
+            listOf("resolution incomplete"),
+        )
 
     @Test
     fun `late A cannot replace B even when A finishes after B`() {
@@ -180,7 +185,9 @@ class AnalysisLifecycleTest {
     fun `zero eligible sources cannot be marked complete by a backend`() {
         val lifecycle = AnalysisLifecycle<String>()
         val request = requireNotNull(lifecycle.begin())
-        assertTrue(lifecycle.publish(request, AnalysisOutcome.Complete("claimed clean", AnalysisCoverage(eligibleFiles = 0))))
+        assertTrue(
+            lifecycle.publish(request, AnalysisOutcome.Complete("claimed clean", AnalysisCoverage(eligibleFiles = 0))),
+        )
         val state = lifecycle.snapshot()
         assertEquals(AnalysisPhase.UNAVAILABLE, state.phase)
         assertEquals(Completeness.UNAVAILABLE, state.attemptCompleteness)
