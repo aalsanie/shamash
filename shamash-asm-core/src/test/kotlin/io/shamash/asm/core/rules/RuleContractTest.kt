@@ -210,6 +210,63 @@ class RuleContractTest {
     }
 
     @Test
+    fun `graph threshold findings select included source anchors`() {
+        val source = listOf(
+            "a.Ignored" to location("build/classes/a/Ignored.class"),
+            "b.Active" to location("build/classes/b/Active.class"),
+            "c.Active" to location("build/classes/c/Active.class"),
+        )
+        val baseFacts = facts(source)
+        val types = source.map { TypeRef.fromInternalName(it.first.replace('.', '/')) }
+        val edges = listOf(1 to 2, 2 to 1).map { (a, b) ->
+            DependencyEdge(types[a], types[b], DependencyKind.METHOD_CALL, source[a].second)
+        }
+        val selected = baseFacts.copy(
+            edges = edges,
+            classToRole = mapOf("a.Ignored" to "other", "b.Active" to "core", "c.Active" to "core"),
+        )
+        val cases = listOf(
+            MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
+            MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
+            MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
+        )
+        for ((evaluator, definition) in cases) {
+            val findings = evaluator.evaluate(selected, definition.copy(roles = listOf("core")), baseConfig)
+            assertEquals(1, findings.size)
+            assertEquals("b.Active", findings.single().classFqn)
+        }
+    }
+
+    @Test
+    fun `origin scope and unsupported filesystem paths are explicit`() {
+        val project = Files.createTempDirectory("shamash-origin-scope")
+        try {
+            val def = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf(project.resolve("allowed").toString())))
+            val outside = facts(
+                listOf(
+                    "a.Ignored" to location(project.resolve("outside/A.class").toString()),
+                    "b.Active" to location(project.resolve("outside/B.class").toString()),
+                ),
+            ).copy(classToRole = mapOf("a.Ignored" to "other", "b.Active" to "core"))
+            val evaluator = AllowOnlyRootRule()
+            val context = RuleExecutionContext(project)
+            val actual = evaluator.evaluate(outside, def.copy(roles = listOf("core")), baseConfig, context)
+            assertEquals(listOf("b.Active"), actual.map { it.classFqn })
+
+            val invalid = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf("\\u0000")))
+            assertTrue(OriginAllowOnlyRootSpec().validate("rules[0]", invalid, baseConfig).isNotEmpty())
+            assertFailsWith<ParamError> { evaluator.evaluate(FactIndex.empty(), invalid, baseConfig, context) }
+
+            val invalidOrigin = outside.copy(classes = listOf(outside.classes.first().copy(
+                location = location("\\u0000"),
+            )))
+            assertFailsWith<ParamError> { evaluator.evaluate(invalidOrigin, def, baseConfig, context) }
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `origin params reject undocumented package aliases and malformed root arrays`() {
         val spec = OriginAllowOnlyRootSpec()
         for (params in listOf(
