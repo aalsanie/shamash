@@ -82,6 +82,9 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
         )), config()).isEmpty())
         assertTrue(evaluator.evaluate(file, facts, base.copy(roles = listOf("repository")), config()).isEmpty())
         assertTrue(evaluator.evaluate(file, facts.copy(classToRole = emptyMap()), base.copy(scope = valid), config()).isEmpty())
+        assertFailsWith<ParamError> {
+            evaluator.evaluate(file, facts, base.copy(params = base.params + ("kinds" to listOf("invalidKind"))), config())
+        }
     }
 
     fun testRootPackageRequiresConfiguredAutoRootAndAppliesOwnerScope() {
