@@ -480,6 +480,56 @@ class ShamashAsmEngineTest {
     }
 
     @Test
+    fun `missing required analysis sidecar rolls back report publication`() {
+        withBaselineProject { project ->
+            val config =
+                baselineConfig(exportEnabled = true).let { base ->
+                    base.copy(
+                        analysis =
+                            base.analysis.copy(
+                                graphs = base.analysis.graphs.copy(enabled = false),
+                                hotspots = base.analysis.hotspots.copy(enabled = false),
+                                scoring = base.analysis.scoring.copy(enabled = false),
+                            ),
+                        export =
+                            base.export.copy(
+                                artifacts =
+                                    ExportArtifactsConfig(
+                                        analysis =
+                                            ExportAnalysisArtifactsConfig(
+                                                enabled = true,
+                                                graphs = true,
+                                                hotspots = false,
+                                                scoring = false,
+                                            ),
+                                    ),
+                            ),
+                    )
+                }
+            val destination = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            Files.writeString(destination.resolve(ExportOutputLayout.JSON_FILE_NAME), "old")
+            Files.writeString(destination.resolve("notes.txt"), "unrelated")
+            val baseline = project.resolve(".shamash/baseline.json")
+            Files.writeString(baseline, "baseline")
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    projectBasePath = project,
+                    projectName = "demo",
+                    config = config,
+                    facts = FactIndex.empty(),
+                )
+            assertFalse(result.isSuccess)
+            assertEquals(1, result.findings.size)
+            assertEquals(null, result.export)
+            assertTrue(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED })
+            assertEquals("old", Files.readString(destination.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("unrelated", Files.readString(destination.resolve("notes.txt")))
+            assertEquals("baseline", Files.readString(baseline))
+            assertFalse(Files.exists(destination.resolve(ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME)))
+        }
+    }
+
+    @Test
     fun `returned facts include the same classified roles used in exports`() {
         withBaselineProject { project ->
             val cls =
