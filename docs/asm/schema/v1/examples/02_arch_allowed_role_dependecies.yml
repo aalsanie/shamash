@@ -62,11 +62,10 @@ rules:
     roles: null
     enabled: true
     severity: "ERROR"
-    scope: null
     params:
       allow:
-        api: ["domain"]
-        persistence: ["domain"]
+        - "api->domain"
+        - "persistence->domain"
 
   # Optional: if both exist, forbidden wins at runtime.
   - type: "arch"
@@ -74,9 +73,8 @@ rules:
     roles: null
     enabled: true
     severity: "ERROR"
-    scope: null
     params:
-      forbid:
+      forbidden:
         api: ["persistence"]
 
 exceptions: []
