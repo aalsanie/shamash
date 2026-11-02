@@ -36,6 +36,7 @@ import io.shamash.psi.core.facts.model.v1.FieldFact
 import io.shamash.psi.core.facts.model.v1.MethodFact
 import io.shamash.psi.core.facts.model.v1.Visibility
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedFunction
@@ -255,7 +256,7 @@ object FactExtractor {
 
                         val psiMethod: PsiMethod? = node.javaPsi
                         val source = node.sourcePsi
-                        val sourceMethod = source is PsiMethod || source is KtNamedFunction
+                        val sourceMethod = source is PsiMethod || source is KtNamedFunction || source is KtConstructor<*>
                         val generatedAccessor = source is KtProperty || source is KtParameter
                         val range = safeRangeU(node)
 
