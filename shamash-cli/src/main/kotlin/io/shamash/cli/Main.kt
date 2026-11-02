@@ -722,7 +722,7 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
     }
 }
 
-private fun restoreBaseline(
+internal fun restoreBaseline(
     path: Path,
     previous: ByteArray?,
 ) {
