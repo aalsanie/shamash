@@ -50,12 +50,27 @@ def verify_license_pom(pom):
     require(pom.findtext("m:licenses/m:license/m:url", namespaces=NS) == LICENSE_URL, "Incorrect POM license URL")
 
 
+def source_url(version):
+    root = Path(__file__).resolve().parents[1]
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            cwd=root, capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        return SOURCE_BASE + version
+    revision = result.stdout.strip()
+    if result.returncode == 0 and re.fullmatch("[0-9a-f]{40}", revision):
+        return "https://github.com/aalsanie/shamash/tree/" + revision
+    return SOURCE_BASE + version
+
+
 def verify_license_payload(archive, version, expected_license):
     names = set(archive.namelist())
     for path in ("META-INF/LICENSE", "META-INF/SOURCE", "META-INF/THIRD_PARTY_NOTICES.md", "META-INF/LICENSES/ASM-BSD-3-Clause.txt", "META-INF/LICENSES/SLF4J-MIT.txt"):
         require(path in names, f"Missing archive licensing metadata: {path}")
     require(archive.read("META-INF/LICENSE") == expected_license, "Incorrect archive license bytes")
-    require(archive.read("META-INF/SOURCE").decode("utf-8").strip() == SOURCE_BASE + version, "Incorrect archive source URL")
+    require(archive.read("META-INF/SOURCE").decode("utf-8").strip() == source_url(version), "Incorrect archive source URL")
     require(bool(archive.read("META-INF/THIRD_PARTY_NOTICES.md").strip()), "Empty third-party notices")
 
 
