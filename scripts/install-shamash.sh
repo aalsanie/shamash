@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION=\${1:?version required}
+VERSION=${1:?version required}
 [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
   echo "Invalid Shamash version: expected MAJOR.MINOR.PATCH." >&2
   exit 1
 }
-DEST=\${2:-"$HOME/.local/share/shamash/$VERSION"}
+DEST=${2:-"$HOME/.local/share/shamash/$VERSION"}
 ZIP="shamash-cli-$VERSION.zip"
 
 DEST=$(python3 - "$DEST" <<'PY'
