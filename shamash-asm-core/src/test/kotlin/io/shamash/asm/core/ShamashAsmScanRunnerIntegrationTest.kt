@@ -364,6 +364,38 @@ class ShamashAsmScanRunnerIntegrationTest {
     }
 
     @Test
+    fun `configured origin roots resolve against the scan project`() {
+        val project = Files.createTempDirectory("shamash-origin-yaml")
+        try {
+            writeClass(project, "a/A")
+            val configPath = project.resolve("shamash/configs/asm.yml")
+            Files.createDirectories(configPath.parent)
+            for ((root, expected) in listOf(
+                "build/classes/java/main" to 0,
+                "build/classes/java/main-other" to 1,
+            )) {
+                val yaml =
+                    minimalConfigYaml()
+                        .replace(
+                            "rules: []",
+                            "rules:\\n  - { type: origin, name: allowOnlyRoot, enabled: true, severity: ERROR, params: { roots: [$root] } }",
+                        ).replace("\\n", "\n")
+                Files.writeString(configPath, yaml)
+                val validation = Files.newBufferedReader(configPath).use { ConfigValidation.loadAndValidateV1(it) }
+                assertTrue(validation.ok, validation.errors.toString())
+                val scan = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = project, projectName = "origin-fixture"))
+                assertTrue(scan.scanErrors.isEmpty(), scan.scanErrors.toString())
+                val engine = assertNotNull(scan.engine)
+                assertTrue(engine.isSuccess, engine.errors.toString())
+                assertEquals(expected, engine.findings.size)
+                if (expected > 0) assertEquals("a.A", engine.findings.single().classFqn)
+            }
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `invalid graph parameter from YAML fails before scanning`() {
         val project = Files.createTempDirectory("shamash-graph-config-invalid")
         try {
