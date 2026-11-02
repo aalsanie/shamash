@@ -29,11 +29,14 @@ import io.shamash.psi.core.facts.model.v1.FactsIndex
 class ShamashPsiEngine {
     private val log: Logger = Logger.getInstance(ShamashPsiEngine::class.java)
 
-    /** Compatibility API that drops structured errors; use [analyzeFileResult] to retain them. */
     fun analyzeFile(
         file: PsiFile,
         config: ShamashPsiConfigV1,
-    ): List<Finding> = analyzeFileResult(file, config).findings
+    ): List<Finding> {
+        val result = analyzeFileResult(file, config)
+        check(!result.hasErrors) { "PSI analysis is incomplete; use analyzeFileResult for diagnostics" }
+        return result.findings
+    }
 
     fun analyzeFileResult(
         file: PsiFile,
