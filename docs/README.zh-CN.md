@@ -18,7 +18,7 @@
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
-[![许可证](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](../LICENSE)
+[![许可证](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](../LICENSE)
 
 ## 首次扫描
 
