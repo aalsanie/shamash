@@ -20,7 +20,12 @@ import java.nio.file.attribute.BasicFileAttributes
  * Renders a complete report generation away from its destination and swaps directories only on success.
  * Existing non-report files are copied into the staging directory and retained.
  */
-class CoherentReportPublisher {
+class CoherentReportPublisher(
+    private val moveDirectory: (Path, Path) -> Unit = { from, to ->
+        Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+        Unit
+    },
+) {
     fun <T> publish(
         outputDir: Path,
         render: (Path) -> T,
@@ -43,13 +48,13 @@ class CoherentReportPublisher {
             if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
                 val reserved = Files.createTempDirectory(parent, ".shamash-previous-")
                 Files.delete(reserved)
-                Files.move(destination, reserved, StandardCopyOption.ATOMIC_MOVE)
+                moveDirectory(destination, reserved)
                 backup = reserved
             }
             try {
-                Files.move(stage, destination, StandardCopyOption.ATOMIC_MOVE)
+                moveDirectory(stage, destination)
             } catch (failure: Throwable) {
-                backup?.let { Files.move(it, destination, StandardCopyOption.ATOMIC_MOVE) }
+                backup?.let { moveDirectory(it, destination) }
                 backup = null
                 throw failure
             }
@@ -57,7 +62,7 @@ class CoherentReportPublisher {
             return result
         } finally {
             if (Files.exists(stage, LinkOption.NOFOLLOW_LINKS)) deleteTree(stage)
-            if (published) backup?.let { deleteTree(it) }
+            if (published) backup?.let { runCatching { deleteTree(it) } }
         }
     }
 
