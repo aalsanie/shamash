@@ -46,7 +46,10 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
     fun testJavaToKotlinAndKotlinToJavaResolveDeclarations() {
         java("JavaTarget.java", "package demo; public class JavaTarget { public void ping() {} }")
         kotlin("KotlinTarget.kt", "package demo\nclass KotlinTarget { fun pong(j: JavaTarget) { j.ping() } }")
-        java("JavaCaller.java", "package demo; class JavaCaller { void call(KotlinTarget k) { k.pong(new JavaTarget()); } }")
+        java(
+            "JavaCaller.java",
+            "package demo; class JavaCaller { void call(KotlinTarget k) { k.pong(new JavaTarget()); } }",
+        )
         val snapshot = analyze()
         val edges = snapshot.references.filter { it.target is SourceTarget.Internal }
         assertTrue(edges.any {
@@ -175,7 +178,8 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
     fun testFileLimitMarksSnapshotIncomplete() {
         java("A.java", "package demo; class A {}")
         java("B.java", "package demo; class B {}")
-        val snapshot = ProjectSourceAnalyzer(project, SourceAnalysisProfile(maxFiles = 1)).analyze(ProgressIndicatorBase())
+        val snapshot =
+            ProjectSourceAnalyzer(project, SourceAnalysisProfile(maxFiles = 1)).analyze(ProgressIndicatorBase())
         assertFalse(snapshot.complete)
         assertTrue(snapshot.coverage.truncated)
         assertEquals(1, snapshot.coverage.eligibleFiles)
