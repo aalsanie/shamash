@@ -17,7 +17,18 @@
  */
 package io.shamash.intellij.plugin.analysis
 
-enum class AnalysisPhase { IDLE, WAITING_FOR_INDEX, EXTRACTING, BUILDING_GRAPH, COMPLETED, PARTIAL, UNAVAILABLE, FAILED, CANCELLED, STALE }
+enum class AnalysisPhase {
+    IDLE,
+    WAITING_FOR_INDEX,
+    EXTRACTING,
+    BUILDING_GRAPH,
+    COMPLETED,
+    PARTIAL,
+    UNAVAILABLE,
+    FAILED,
+    CANCELLED,
+    STALE,
+}
 enum class ResultRelation { CURRENT, PREVIOUS, STALE }
 enum class Completeness { COMPLETE, PARTIAL, UNAVAILABLE }
 
