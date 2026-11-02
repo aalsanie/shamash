@@ -134,6 +134,20 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         }, snapshot.diagnostics.toString())
     }
 
+    fun testGenericKotlinTypeAliasesRetainAllResolvedArguments() {
+        java("Repository.java", "package demo; public class Repository {}")
+        kotlin("Aliases.kt", "package demo\ntypealias Repositories = List<Repository>")
+        kotlin(
+            "AliasUser.kt",
+            "package demo\nclass AliasUser { val items: Repositories = emptyList() }",
+        )
+        val result = analyze()
+        assertTrue(result.references.any {
+            it.from.signature == "demo.AliasUser.items" &&
+                (it.target as? SourceTarget.Internal)?.entity?.signature == "demo.Repository"
+        }, result.references.toString())
+    }
+
     fun testTestRootAndNestedRootsAreExcludedOrDeduplicated() {
         val nested = myFixture.tempDirFixture.findOrCreateDir("src/main/java/demo")
         PsiTestUtil.addSourceRoot(myFixture.module, nested)
