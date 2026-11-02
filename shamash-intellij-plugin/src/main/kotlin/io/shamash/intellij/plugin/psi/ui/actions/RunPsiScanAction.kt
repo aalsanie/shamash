@@ -20,24 +20,15 @@ package io.shamash.intellij.plugin.psi.ui.actions
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.progress.ProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
-import com.intellij.openapi.progress.Task
-import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
-import io.shamash.artifacts.baseline.BaselineConfig
-import io.shamash.artifacts.contract.Finding
-import io.shamash.intellij.plugin.ShamashPluginInfo
+import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
+import io.shamash.intellij.plugin.analysis.LegacySourceBackend
 import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController
 import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiConfigLocator
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.config.ValidationSeverity
-import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.scan.ShamashProjectScanRunner
-import io.shamash.psi.core.scan.ShamashScanOptions
-import java.io.StringReader
 
 class RunPsiScanAction(
     private val runner: ShamashProjectScanRunner = ShamashProjectScanRunner(),
@@ -74,107 +65,11 @@ class RunPsiScanAction(
             return
         }
 
-        FileDocumentManager.getInstance().saveAllDocuments()
+        // Commit in-memory editor text to PSI without flushing unrelated editor buffers to disk.
         PsiDocumentManager.getInstance(project).commitAllDocuments()
-
         val doc = FileDocumentManager.getInstance().getDocument(vf)
         val yaml = doc?.text ?: String(vf.contentsToByteArray())
-        scanInBackground(project, yaml)
+        IdeAnalysisCoordinator.getInstance(project).analyze(LegacySourceBackend(project, yaml, runner))
     }
 
-    private fun scanInBackground(
-        project: Project,
-        yaml: String,
-    ) {
-        object : Task.Backgroundable(project, "Shamash PSI Scan", true) {
-            private var validationErrors: List<ValidationError> = emptyList()
-            private var engineErrors: List<EngineError> = emptyList()
-            private var findings = emptyList<Finding>()
-
-            override fun run(indicator: ProgressIndicator) {
-                indicator.isIndeterminate = true
-                ProgressManager.checkCanceled()
-
-                val result =
-                    runner.scanProject(
-                        project = project,
-                        configReader = StringReader(yaml),
-                        options =
-                            ShamashScanOptions.ide(
-                                toolVersion = ShamashPluginInfo.version,
-                                baseline = BaselineConfig.OFF,
-                                exportReports = false,
-                            ),
-                        indicator = indicator,
-                    )
-
-                validationErrors = result.configErrors
-                engineErrors = result.engineErrors
-                findings = result.findings
-
-                ProgressManager.checkCanceled()
-            }
-
-            override fun onSuccess() {
-                ApplicationManager.getApplication().invokeLater {
-                    ShamashPsiUiStateService.getInstance(project).updateValidation(validationErrors)
-                    ShamashPsiUiStateService.getInstance(project).updateFindings(findings)
-
-                    val tw = ShamashPsiToolWindowController.getInstance(project)
-
-                    PsiActionUtil.openPsiToolWindow(project)
-
-                    if (validationErrors.any { it.severity == ValidationSeverity.ERROR }) {
-                        tw.select(ShamashPsiToolWindowController.Tab.CONFIG)
-                        tw.refreshAll()
-
-                        PsiActionUtil.notify(
-                            project,
-                            "Shamash PSI",
-                            "Config invalid. Fix errors in Config tab.",
-                            NotificationType.WARNING,
-                        )
-                        return@invokeLater
-                    }
-
-                    if (engineErrors.isNotEmpty()) {
-                        tw.select(ShamashPsiToolWindowController.Tab.FINDINGS)
-                        tw.refreshAll()
-
-                        PsiActionUtil.notify(
-                            project,
-                            "Shamash PSI",
-                            "Scan incomplete: ${engineErrors.size} engine errors occurred during analysis. Partial findings are shown.",
-                            NotificationType.WARNING,
-                        )
-                        return@invokeLater
-                    }
-
-                    val count = findings.size
-                    if (count == 0) {
-                        PsiActionUtil.notify(
-                            project,
-                            "Shamash PSI",
-                            "Scan completed: 0 findings. (Either the project is clean, or rules produced no findings for the scanned sources.)",
-                            NotificationType.INFORMATION,
-                        )
-                    } else {
-                        PsiActionUtil.notify(
-                            project,
-                            "Shamash PSI",
-                            "Scan completed: $count findings.",
-                            NotificationType.INFORMATION,
-                        )
-                    }
-
-                    tw.select(ShamashPsiToolWindowController.Tab.FINDINGS)
-                    tw.refreshAll()
-                }
-            }
-
-            override fun onThrowable(error: Throwable) {
-                PsiActionUtil.notify(project, "Shamash PSI", "Scan failed: ${error.message}", NotificationType.ERROR)
-            }
-        }.queue()
-    }
 }
