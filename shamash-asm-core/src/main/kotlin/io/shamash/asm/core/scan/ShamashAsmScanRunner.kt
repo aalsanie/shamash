@@ -8,11 +8,11 @@
 package io.shamash.asm.core.scan
 
 import io.shamash.asm.core.config.ProjectLayout
-import io.shamash.asm.core.config.schema.v1.model.BaselineMode
 import io.shamash.asm.core.config.schema.v1.model.ExportArtifactsConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportFactsArtifactConfig
 import io.shamash.asm.core.config.schema.v1.model.ExportFormat
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
+import io.shamash.asm.core.engine.EngineError
 import io.shamash.asm.core.engine.ShamashAsmEngine
 import io.shamash.asm.core.facts.FactExtractor
 import io.shamash.asm.core.scan.bytecode.BytecodeScanner
@@ -146,26 +146,22 @@ class ShamashAsmScanRunner(
                 )
             }
 
-        if (effectiveConfig.baseline.mode == BaselineMode.GENERATE &&
-            (scan.truncated || runnerErrors.isNotEmpty() || factsResult.errors.isNotEmpty())
-        ) {
-            return ScanResult(
-                options = options,
-                appliedOverrides = appliedOverrides,
-                configPath = configPath,
-                config = effectiveConfig,
-                configErrors = validation.errors,
-                origins = scan.origins,
-                classUnits = scan.units.size,
-                truncated = scan.truncated,
-                factsErrors = factsResult.errors,
-                scanErrors =
-                    runnerErrors +
-                        ScanError.of(
-                            phase = ScanError.Phase.ENGINE,
-                            message = "Baseline generation skipped: scan or fact extraction is incomplete.",
-                        ),
-            )
+        val inputErrors = buildList {
+            runnerErrors.forEach { error ->
+                add(EngineError.factsExtractionFailed(
+                    message = "Bytecode scan incomplete: ${error.message}",
+                    details = mapOf("path" to error.path.orEmpty()),
+                ))
+            }
+            factsResult.errors.forEach { error ->
+                add(EngineError.factsExtractionFailed(
+                    message = "Facts extraction incomplete: ${error.message}",
+                    details = mapOf("origin" to error.originId, "phase" to error.phase),
+                ))
+            }
+            if (scan.truncated) {
+                add(EngineError.factsExtractionFailed("Bytecode scan was truncated by its class limit"))
+            }
         }
 
         val engineResult =
@@ -176,6 +172,7 @@ class ShamashAsmScanRunner(
                     config = effectiveConfig,
                     facts = factsResult.facts,
                     includeFactsInResult = options.includeFactsInResult,
+                    inputErrors = inputErrors,
                 )
             } catch (t: Throwable) {
                 return ScanResult(
