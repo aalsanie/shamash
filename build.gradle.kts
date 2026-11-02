@@ -41,7 +41,18 @@ subprojects {
         doLast {
             val file = sourcePointer.get().asFile
             file.parentFile.mkdirs()
-            file.writeText("https://github.com/aalsanie/shamash/tree/v${project.version}\n")
+            val revision =
+                runCatching {
+                    ProcessBuilder("git", "rev-parse", "--verify", "HEAD")
+                        .directory(rootProject.projectDir)
+                        .redirectErrorStream(true)
+                        .start()
+                        .let { process ->
+                            val result = process.inputStream.bufferedReader().use { it.readText().trim() }
+                            result.takeIf { process.waitFor() == 0 && it.matches(Regex("[0-9a-f]{40}")) }
+                        }
+                }.getOrNull()
+            file.writeText("https://github.com/aalsanie/shamash/tree/${revision ?: "v${project.version}"}\n")
         }
     }
     tasks.withType<org.gradle.api.tasks.bundling.Zip>()
