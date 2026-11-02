@@ -36,23 +36,26 @@ subprojects {
 
     val licenseFile = rootProject.file(if (project.name == "shamash-intellij-plugin") "shamash-intellij-plugin/LICENSE" else "LICENSE")
     val sourcePointer = layout.buildDirectory.file("generated/license/SOURCE.txt")
+    val sourceRevision =
+        providers.provider {
+            runCatching {
+                ProcessBuilder("git", "rev-parse", "--verify", "HEAD")
+                    .directory(rootProject.projectDir)
+                    .redirectErrorStream(true)
+                    .start()
+                    .let { process ->
+                        val result = process.inputStream.bufferedReader().use { it.readText().trim() }
+                        result.takeIf { process.waitFor() == 0 && it.matches(Regex("[0-9a-f]{40}")) }
+                    }
+            }.getOrNull() ?: "v${project.version}"
+        }
     val writeSourcePointer = tasks.register("writeSourcePointer") {
+        inputs.property("sourceRevision", sourceRevision)
         outputs.file(sourcePointer)
         doLast {
             val file = sourcePointer.get().asFile
             file.parentFile.mkdirs()
-            val revision =
-                runCatching {
-                    ProcessBuilder("git", "rev-parse", "--verify", "HEAD")
-                        .directory(rootProject.projectDir)
-                        .redirectErrorStream(true)
-                        .start()
-                        .let { process ->
-                            val result = process.inputStream.bufferedReader().use { it.readText().trim() }
-                            result.takeIf { process.waitFor() == 0 && it.matches(Regex("[0-9a-f]{40}")) }
-                        }
-                }.getOrNull()
-            file.writeText("https://github.com/aalsanie/shamash/tree/${revision ?: "v${project.version}"}\n")
+            file.writeText("https://github.com/aalsanie/shamash/tree/${sourceRevision.get()}\n")
         }
     }
     tasks.withType<org.gradle.api.tasks.bundling.Zip>()
