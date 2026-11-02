@@ -17,6 +17,9 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 class GraphMaxEdgeCountSpec : RuleSpec {
     override val key: RuleKey = RuleKey("graph", "maxEdgeCount")
 
-    override fun validate(rulePath: String, rule: RuleDef, config: ShamashAsmConfigV1): List<ValidationError> =
-        GraphThresholdParams.errors(rule.params, "$rulePath.params", "maxEdges")
+    override fun validate(
+        rulePath: String,
+        rule: RuleDef,
+        config: ShamashAsmConfigV1,
+    ): List<ValidationError> = GraphThresholdParams.errors(rule.params, "$rulePath.params", "maxEdges")
 }

@@ -23,8 +23,11 @@ import java.nio.file.Path
 class AllowOnlyRootRule : ContextAwareRule {
     override val id = "origin.allowOnlyRoot"
 
-    override fun evaluate(facts: FactIndex, rule: RuleDef, config: ShamashAsmConfigV1): List<Finding> =
-        evaluate(facts, rule, config, RuleExecutionContext(null))
+    override fun evaluate(
+        facts: FactIndex,
+        rule: RuleDef,
+        config: ShamashAsmConfigV1,
+    ): List<Finding> = evaluate(facts, rule, config, RuleExecutionContext(null))
 
     override fun evaluate(
         facts: FactIndex,
@@ -58,7 +61,12 @@ class AllowOnlyRootRule : ContextAwareRule {
         }
     }
 
-    private fun resolve(raw: String, at: String, context: RuleExecutionContext, config: ShamashAsmConfigV1): Path {
+    private fun resolve(
+        raw: String,
+        at: String,
+        context: RuleExecutionContext,
+        config: ShamashAsmConfigV1,
+    ): Path {
         val path =
             try {
                 Path.of(raw).normalize()
@@ -66,9 +74,12 @@ class AllowOnlyRootRule : ContextAwareRule {
                 throw ParamError(at, "invalid filesystem path: '$raw'")
             }
         val absolute =
-            if (path.isAbsolute) path else {
-                val base = context.projectBasePath
-                    ?: throw ParamError(at, "relative origin paths require explicit projectBasePath")
+            if (path.isAbsolute) {
+                path
+            } else {
+                val base =
+                    context.projectBasePath
+                        ?: throw ParamError(at, "relative origin paths require explicit projectBasePath")
                 base.toAbsolutePath().normalize().resolve(path)
             }
         val normalized = absolute.normalize()

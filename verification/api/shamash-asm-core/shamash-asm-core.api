@@ -1394,6 +1394,10 @@ public final class io/shamash/asm/core/engine/ShamashAsmEngine {
 	public static synthetic fun validateConfig$default (Lio/shamash/asm/core/engine/ShamashAsmEngine;Ljava/io/Reader;Lio/shamash/asm/core/config/SchemaValidator;ILjava/lang/Object;)Lio/shamash/asm/core/config/ConfigValidation$Result;
 }
 
+public abstract interface class io/shamash/asm/core/engine/rules/ContextAwareRule : io/shamash/asm/core/engine/rules/Rule {
+	public abstract fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/engine/rules/RuleExecutionContext;)Ljava/util/List;
+}
+
 public final class io/shamash/asm/core/engine/rules/DefaultRuleRegistry : io/shamash/asm/core/engine/rules/RuleRegistry {
 	public static final field Companion Lio/shamash/asm/core/engine/rules/DefaultRuleRegistry$Companion;
 	public fun all ()Ljava/util/List;
@@ -1421,6 +1425,11 @@ public final class io/shamash/asm/core/engine/rules/DefaultRuleRegistry$Companio
 public abstract interface class io/shamash/asm/core/engine/rules/Rule {
 	public abstract fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
 	public abstract fun getId ()Ljava/lang/String;
+}
+
+public final class io/shamash/asm/core/engine/rules/RuleExecutionContext {
+	public fun <init> (Ljava/nio/file/Path;)V
+	public final fun getProjectBasePath ()Ljava/nio/file/Path;
 }
 
 public abstract interface class io/shamash/asm/core/engine/rules/RuleRegistry {
@@ -1531,9 +1540,10 @@ public final class io/shamash/asm/core/engine/rules/metrics/MaxPackageSpreadRule
 	public fun getId ()Ljava/lang/String;
 }
 
-public final class io/shamash/asm/core/engine/rules/origin/AllowOnlyRootRule : io/shamash/asm/core/engine/rules/Rule {
+public final class io/shamash/asm/core/engine/rules/origin/AllowOnlyRootRule : io/shamash/asm/core/engine/rules/ContextAwareRule {
 	public fun <init> ()V
 	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;)Ljava/util/List;
+	public fun evaluate (Lio/shamash/asm/core/facts/query/FactIndex;Lio/shamash/asm/core/config/schema/v1/model/RuleDef;Lio/shamash/asm/core/config/schema/v1/model/ShamashAsmConfigV1;Lio/shamash/asm/core/engine/rules/RuleExecutionContext;)Ljava/util/List;
 	public fun getId ()Ljava/lang/String;
 }
 

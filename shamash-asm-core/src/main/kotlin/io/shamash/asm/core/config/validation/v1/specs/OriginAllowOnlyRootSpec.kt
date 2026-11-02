@@ -17,6 +17,9 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 class OriginAllowOnlyRootSpec : RuleSpec {
     override val key = RuleKey("origin", "allowOnlyRoot")
 
-    override fun validate(rulePath: String, rule: RuleDef, config: ShamashAsmConfigV1): List<ValidationError> =
-        OriginRootsParams.errors(rule.params, "$rulePath.params")
+    override fun validate(
+        rulePath: String,
+        rule: RuleDef,
+        config: ShamashAsmConfigV1,
+    ): List<ValidationError> = OriginRootsParams.errors(rule.params, "$rulePath.params")
 }

@@ -15,7 +15,10 @@ import java.nio.file.InvalidPathException
 import java.nio.file.Path
 
 internal object OriginRootsParams {
-    fun roots(raw: Map<String, Any?>, path: String): List<String> {
+    fun roots(
+        raw: Map<String, Any?>,
+        path: String,
+    ): List<String> {
         val params = Params.of(raw, path)
         val unknown = params.unknownKeys(setOf("roots")).sorted().firstOrNull()
         if (unknown != null) throw ParamError("$path.$unknown", "is not supported; use 'roots' (filesystem paths)")
@@ -31,7 +34,10 @@ internal object OriginRootsParams {
         }
     }
 
-    fun errors(raw: Map<String, Any?>, path: String): List<ValidationError> =
+    fun errors(
+        raw: Map<String, Any?>,
+        path: String,
+    ): List<ValidationError> =
         try {
             roots(raw, path)
             emptyList()

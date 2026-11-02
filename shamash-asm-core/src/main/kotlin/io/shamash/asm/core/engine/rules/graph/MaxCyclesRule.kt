@@ -9,9 +9,9 @@ package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.asm.core.config.schema.v1.model.Granularity
-import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
+import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
@@ -58,7 +58,7 @@ class MaxCyclesRule : Rule {
         return listOf(
             Finding(
                 ruleId = RuleUtil.canonicalRuleId(rule),
-                message = "Cycle count ($count) exceeds max (${max}) at granularity '${granularity.name.lowercase()}'.",
+                message = "Cycle count ($count) exceeds max ($max) at granularity '${granularity.name.lowercase()}'.",
                 filePath = anchor?.let { RuleUtil.filePathOf(it.location) } ?: "",
                 severity = rule.severity,
                 classFqn = anchor?.fqName,
@@ -73,5 +73,4 @@ class MaxCyclesRule : Rule {
             ),
         )
     }
-
 }

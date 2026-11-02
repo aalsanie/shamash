@@ -17,6 +17,9 @@ import io.shamash.asm.core.config.validation.v1.RuleSpec
 class GraphMaxDependencyDensitySpec : RuleSpec {
     override val key: RuleKey = RuleKey("graph", "maxDependencyDensity")
 
-    override fun validate(rulePath: String, rule: RuleDef, config: ShamashAsmConfigV1): List<ValidationError> =
-        GraphThresholdParams.errors(rule.params, "$rulePath.params", "maxDensity")
+    override fun validate(
+        rulePath: String,
+        rule: RuleDef,
+        config: ShamashAsmConfigV1,
+    ): List<ValidationError> = GraphThresholdParams.errors(rule.params, "$rulePath.params", "maxDensity")
 }

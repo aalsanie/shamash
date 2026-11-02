@@ -47,9 +47,9 @@ class GraphRoleScopeTest {
         val cases: List<Pair<Rule, Map<String, Any?>>> =
             listOf(
                 NoCyclesRule() to mapOf("granularity" to "class"),
-                MaxCyclesRule() to mapOf("max" to 0, "granularity" to "class"),
-                MaxEdgeCountRule() to mapOf("max" to 0, "granularity" to "class"),
-                MaxDependencyDensityRule() to mapOf("max" to 0.0, "granularity" to "class"),
+                MaxCyclesRule() to mapOf("maxCycles" to 0),
+                MaxEdgeCountRule() to mapOf("maxEdges" to 0),
+                MaxDependencyDensityRule() to mapOf("maxDensity" to 0.0),
                 MaxFanInRule() to mapOf("max" to 0, "granularity" to "class"),
                 MaxFanOutRule() to mapOf("max" to 0, "granularity" to "class"),
             )

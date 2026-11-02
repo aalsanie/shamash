@@ -336,10 +336,11 @@ class ShamashAsmScanRunnerIntegrationTest {
                 )
             for ((name, params) in cases) {
                 val yaml =
-                    minimalConfigYaml().replace(
-                        "rules: []",
-                        "rules:\\n  - { type: graph, name: $name, enabled: true, severity: ERROR, params: $params }",
-                    ).replace("\\n", "\n")
+                    minimalConfigYaml()
+                        .replace(
+                            "rules: []",
+                            "rules:\\n  - { type: graph, name: $name, enabled: true, severity: ERROR, params: $params }",
+                        ).replace("\\n", "\n")
                 val cfg = project.resolve("shamash/configs/asm.yml")
                 Files.createDirectories(cfg.parent)
                 Files.writeString(cfg, yaml)
@@ -350,7 +351,12 @@ class ShamashAsmScanRunnerIntegrationTest {
                 val engine = assertNotNull(scan.engine)
                 assertTrue(engine.isSuccess, engine.errors.toString())
                 assertEquals(1, engine.findings.size, name)
-                assertTrue(engine.findings.single().ruleId.contains(name))
+                assertTrue(
+                    engine.findings
+                        .single()
+                        .ruleId
+                        .contains(name),
+                )
             }
         } finally {
             project.toFile().deleteRecursively()
@@ -362,10 +368,11 @@ class ShamashAsmScanRunnerIntegrationTest {
         val project = Files.createTempDirectory("shamash-graph-config-invalid")
         try {
             val yaml =
-                minimalConfigYaml().replace(
-                    "rules: []",
-                    "rules:\\n  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { max: 0 } }",
-                ).replace("\\n", "\n")
+                minimalConfigYaml()
+                    .replace(
+                        "rules: []",
+                        "rules:\\n  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { max: 0 } }",
+                    ).replace("\\n", "\n")
             val path = project.resolve("shamash/configs/asm.yml")
             Files.createDirectories(path.parent)
             Files.writeString(path, yaml)

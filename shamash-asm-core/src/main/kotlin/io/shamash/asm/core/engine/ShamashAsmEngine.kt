@@ -33,9 +33,9 @@ import io.shamash.asm.core.config.schema.v1.model.RuleScope
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.schema.v1.model.UnknownRulePolicy
 import io.shamash.asm.core.engine.rules.ContextAwareRule
-import io.shamash.asm.core.engine.rules.RuleExecutionContext
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
 import io.shamash.asm.core.engine.rules.Rule
+import io.shamash.asm.core.engine.rules.RuleExecutionContext
 import io.shamash.asm.core.engine.rules.RuleRegistry
 import io.shamash.asm.core.export.analysis.AnalysisExporter
 import io.shamash.asm.core.export.facts.FactsExporter

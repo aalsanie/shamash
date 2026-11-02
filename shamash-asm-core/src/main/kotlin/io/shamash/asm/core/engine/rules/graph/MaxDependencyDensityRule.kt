@@ -9,9 +9,9 @@ package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.asm.core.config.schema.v1.model.Granularity
-import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
+import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.query.FactIndex
@@ -76,5 +76,4 @@ class MaxDependencyDensityRule : Rule {
             ),
         )
     }
-
 }

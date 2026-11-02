@@ -13,8 +13,15 @@ import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.facts.query.FactIndex
 import java.nio.file.Path
 
-data class RuleExecutionContext(val projectBasePath: Path?)
+class RuleExecutionContext(
+    val projectBasePath: Path?,
+)
 
 interface ContextAwareRule : Rule {
-    fun evaluate(facts: FactIndex, rule: RuleDef, config: ShamashAsmConfigV1, context: RuleExecutionContext): List<Finding>
+    fun evaluate(
+        facts: FactIndex,
+        rule: RuleDef,
+        config: ShamashAsmConfigV1,
+        context: RuleExecutionContext,
+    ): List<Finding>
 }
