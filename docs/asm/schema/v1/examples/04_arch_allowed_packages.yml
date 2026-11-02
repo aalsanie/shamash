@@ -53,7 +53,6 @@ rules:
     roles: ["core"]
     enabled: true
     severity: ERROR
-    scope: null
     params:
       allowPackages:
         - "^com\\.acme\\.app(\\..*)?$"
