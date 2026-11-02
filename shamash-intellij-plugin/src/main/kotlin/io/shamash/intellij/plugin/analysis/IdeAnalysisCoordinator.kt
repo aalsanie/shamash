@@ -65,7 +65,8 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     private val lifecycle = AnalysisLifecycle<SourcePresentation>()
-    private val executor: ExecutorService = AppExecutorUtil.createBoundedApplicationPoolExecutor("Shamash source analysis", 1)
+    private val executor: ExecutorService =
+        AppExecutorUtil.createBoundedApplicationPoolExecutor("Shamash source analysis", 1)
     private val callbacks = CopyOnWriteArrayList<(IdeAnalysisState<SourcePresentation>) -> Unit>()
     private val gate = Any()
     private var activeTask: Future<*>? = null
@@ -96,7 +97,8 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
             object : BulkFileListener {
                 override fun after(events: List<VFileEvent>) {
                     if (disposed || project.isDisposed) return
-                    val contentRoots = ProjectRootManager.getInstance(project).contentRoots.map { it.path.trimEnd('/') + "/" }
+                    val contentRoots =
+                        ProjectRootManager.getInstance(project).contentRoots.map { it.path.trimEnd('/') + "/" }
                     if (events.any { change ->
                             val path = change.path.replace('\\', '/')
                             (path.endsWith(".java") || path.endsWith(".kt")) &&
@@ -213,7 +215,11 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val data = state.visibleResult?.payload ?: return
         if (state.resultRelation != ResultRelation.CURRENT) return
         ApplicationManager.getApplication().invokeLater {
-            if (disposed || project.isDisposed || lifecycle.snapshot().visibleResult?.request != state.visibleResult.request) return@invokeLater
+            if (disposed || project.isDisposed ||
+                lifecycle.snapshot().visibleResult?.request != state.visibleResult.request
+            ) {
+                return@invokeLater
+            }
             val ui = io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService.getInstance(project)
             ui.updateFromScan(data.findings, data.validationErrors, null, null)
             // Views subscribe with their own Disposable. Never contact a possibly disposed
@@ -242,6 +248,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     companion object {
-        fun getInstance(project: Project): IdeAnalysisCoordinator = project.getService(IdeAnalysisCoordinator::class.java)
+        fun getInstance(project: Project): IdeAnalysisCoordinator =
+            project.getService(IdeAnalysisCoordinator::class.java)
     }
 }
