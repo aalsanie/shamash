@@ -158,7 +158,7 @@ internal object LicenseInfo {
         stream
             ?.bufferedReader(StandardCharsets.UTF_8)
             ?.use { it.readLine()?.trim() }
-            ?.takeIf { it.startsWith("$REPOSITORY/tree/") }
+            ?.takeIf { it.startsWith("$REPOSITORY/tree/") && it.length > "$REPOSITORY/tree/".length }
             ?: REPOSITORY
 
     fun lines(sourceUrl: String): List<String> =
