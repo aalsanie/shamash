@@ -189,6 +189,11 @@ class SourceGraphAnalyzer {
             complete = complete,
             diagnostics = diagnostics.distinct(),
             entities = entityById.values.sortedWith(ENTITY_ORDER),
+            entityRelationships =
+                valid.map { (relation, witnesses) ->
+                    relation.copy(witnesses = witnesses.map { it.evidence }.distinct())
+                },
+            entityEvidence = valid.flatMap { it.witnesses }.distinct().sortedWith(REFERENCE_ORDER),
             entityUses = entityUses,
             entityUsedBy = entityUsedBy,
             entityCounts = entityCounts,
