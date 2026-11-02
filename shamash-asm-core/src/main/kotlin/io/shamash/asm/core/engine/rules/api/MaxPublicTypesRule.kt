@@ -9,13 +9,13 @@ package io.shamash.asm.core.engine.rules.api
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
-import io.shamash.asm.core.config.validation.v1.ApiPublicTypesParams
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
+import io.shamash.asm.core.config.validation.v1.ApiPublicTypesParams
 import io.shamash.asm.core.engine.rules.Rule
 import io.shamash.asm.core.engine.rules.RuleUtil
 import io.shamash.asm.core.facts.model.Visibility
-import org.objectweb.asm.Opcodes
 import io.shamash.asm.core.facts.query.FactIndex
+import org.objectweb.asm.Opcodes
 
 class MaxPublicTypesRule : Rule {
     override val id: String = "api.maxPublicTypes"
@@ -63,7 +63,7 @@ class MaxPublicTypesRule : Rule {
                 memberName = null,
                 data =
                     buildMap {
-                        put("max", max.toString())
+                        put("max", params.max.toString())
                         put("count", count.toString())
                         put("examples", examples.joinToString(","))
                         if (count > examplesLimit) put("examplesTruncated", "true")
@@ -71,5 +71,4 @@ class MaxPublicTypesRule : Rule {
             ),
         )
     }
-
 }
