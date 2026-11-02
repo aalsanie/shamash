@@ -182,19 +182,19 @@ class MainTest {
         assertEquals(0, compiler.run(null, null, null, "-d", output.toString(), a.toString(), b.toString()))
 
         val base = discoveryLikeConfig(maxMethods = 10)
-        val ruleLine = Regex("(?m)^          - \\{ type: metrics,.*$")
+        val ruleLine = Regex("(?m)^  - \\{ type: metrics,.*$")
         for ((name, key) in listOf("maxCycles" to "maxCycles", "maxEdgeCount" to "maxEdges", "maxDependencyDensity" to "maxDensity")) {
             val max = if (name == "maxDependencyDensity") "0.0" else "0"
-            writeConfig(tmp, base.replace(ruleLine, "          - { type: graph, name: $name, enabled: true, severity: ERROR, params: { $key: $max } }"))
+            writeConfig(tmp, base.replace(ruleLine, "  - { type: graph, name: $name, enabled: true, severity: ERROR, params: { $key: $max } }"))
             val violating = runCli("scan", "--project", tmp.toString(), "--fail-on", "ERROR")
             assertEquals(4, violating.exitCode, diagnostics(violating))
             assertTrue(violating.stdout.contains(name), diagnostics(violating))
         }
-        writeConfig(tmp, base.replace(ruleLine, "          - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { maxCycles: 2 } }"))
+        writeConfig(tmp, base.replace(ruleLine, "  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { maxCycles: 2 } }"))
         val allowed = runCli("scan", "--project", tmp.toString(), "--fail-on", "ERROR")
         assertEquals(0, allowed.exitCode, diagnostics(allowed))
 
-        writeConfig(tmp, base.replace(ruleLine, "          - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { max: 0 } }"))
+        writeConfig(tmp, base.replace(ruleLine, "  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { max: 0 } }"))
         val invalid = runCli("scan", "--project", tmp.toString(), "--fail-on", "ERROR")
         assertEquals(2, invalid.exitCode, diagnostics(invalid))
         assertTrue(invalid.stderr.contains("max") || invalid.stdout.contains("max"), diagnostics(invalid))
