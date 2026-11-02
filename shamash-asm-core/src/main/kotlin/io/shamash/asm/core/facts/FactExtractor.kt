@@ -154,6 +154,7 @@ object FactExtractor {
         private var classInternalName: String? = null
         private var classAccess: Int = 0
         private var classSignature: String? = null
+        private var isNestedType: Boolean = false
         private var superInternalName: String? = null
         private var interfaceInternalNames: List<String> = emptyList()
         private var sourceFile: String? = null
@@ -210,6 +211,25 @@ object FactExtractor {
             debug: String?,
         ) {
             sourceFile = source
+        }
+
+        override fun visitInnerClass(
+            name: String?,
+            outerName: String?,
+            innerName: String?,
+            access: Int,
+        ) {
+            if (name == classInternalName && (outerName != null || innerName != null)) {
+                isNestedType = true
+            }
+        }
+
+        override fun visitOuterClass(
+            owner: String?,
+            name: String?,
+            descriptor: String?,
+        ) {
+            isNestedType = true
         }
 
         override fun visitAnnotation(
@@ -655,7 +675,7 @@ object FactExtractor {
                     annotationsFqns = classAnnotations,
                     hasMainMethod = hasMain,
                     location = loc,
-                ),
+                ).also { it.isNestedType = isNestedType },
             )
 
             addSignatureEdges(
