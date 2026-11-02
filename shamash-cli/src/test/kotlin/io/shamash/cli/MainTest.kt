@@ -607,6 +607,27 @@ class MainTest {
     }
 
     @Test
+    fun `report publication failures return runtime error without changing user files`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App { public void invoke() {} }")
+        val yaml =
+            discoveryLikeConfig(0).replace(
+                "enabled: false, outputDir: \".shamash/out/asm\", formats: [JSON], overwrite: true",
+                "enabled: true, outputDir: \".shamash/out/asm\", formats: [JSON, SARIF], overwrite: true",
+            )
+        writeConfig(tmp, yaml)
+        val blocked = tmp.resolve(".shamash/out/asm")
+        Files.createDirectories(blocked.parent)
+        Files.writeString(blocked, "unrelated file")
+        val result = runCli("scan", "--project", tmp.toString(), "--fail-on", "NONE")
+        assertEquals(3, result.exitCode, diagnostics(result))
+        assertTrue(result.stderr.contains("Export failed"), diagnostics(result))
+        assertEquals("unrelated file", Files.readString(blocked))
+        assertFalse(Files.exists(tmp.resolve(".shamash/out/asm/shamash-report.json")))
+    }
+
+    @Test
     fun `incomplete baseline creation preserves existing baseline and config`(
         @TempDir tmp: Path,
     ) {
