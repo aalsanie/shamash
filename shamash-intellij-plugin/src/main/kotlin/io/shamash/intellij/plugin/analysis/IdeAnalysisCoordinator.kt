@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.analysis
 
+import com.intellij.ProjectTopics
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
@@ -29,16 +30,15 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.openapi.vfs.newvfs.BulkFileListener
-import com.intellij.openapi.vfs.newvfs.events.VFileEvent
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.ProjectTopics
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
@@ -71,7 +71,8 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     private val gate = Any()
     private var activeTask: Future<*>? = null
     private var indicator: ProgressIndicatorBase? = null
-    @Volatile private var disposed = false
+    @Volatile
+    private var disposed = false
 
     init {
         EditorFactory.getInstance().eventMulticaster.addDocumentListener(
