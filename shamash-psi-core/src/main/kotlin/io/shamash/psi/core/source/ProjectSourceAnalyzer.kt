@@ -21,6 +21,8 @@ import com.intellij.psi.util.PsiModificationTracker
  * Collects per-file immutable source facts under short smart read actions. Aggregation is
  * deliberately outside PSI locks. Source/root changes fail closed rather than mixing revisions.
  */
+class SourceRevisionChangedException : IllegalStateException("Source or root revision changed during analysis")
+
 class ProjectSourceAnalyzer(
     private val project: Project,
     private val profile: SourceAnalysisProfile = SourceAnalysisProfile(),
@@ -70,7 +72,6 @@ class ProjectSourceAnalyzer(
             indicator.checkCanceled()
             if (!revisionsMatch()) {
                 changed = true
-                diagnostics += SourceDiagnostic(null, "revision", "Sources or roots changed during collection")
                 break
             }
             var result: SourceDependencyExtractor.FileResult? = null
@@ -103,14 +104,13 @@ class ProjectSourceAnalyzer(
                 diagnostics += SourceDiagnostic(item.file.url, "extract", "${t.javaClass.simpleName}: ${t.message ?: "source failed"}")
             }
         }
-        if (!revisionsMatch()) {
-            changed = true
-            diagnostics += SourceDiagnostic(null, "revision", "Sources or roots changed before publication")
-        }
+        if (!revisionsMatch()) changed = true
+        if (changed) throw SourceRevisionChangedException()
+        if (!revisionsMatch()) throw SourceRevisionChangedException()
         truncated = truncated || relationships.truncated
         if (truncated) diagnostics += SourceDiagnostic(null, "limit", "Source analysis reached an internal resource bound")
         val unresolved = relationships.unresolvedOccurrences
-        val complete = !truncated && !changed && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
+        val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
         return ProjectSourceSnapshot(
             profile = profile,
             entities = entities.distinctBy { it.id }.sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
@@ -124,7 +124,7 @@ class ProjectSourceAnalyzer(
                 resolvedOccurrences = relationships.resolvedOccurrences,
                 unresolvedOccurrences = unresolved,
                 excludedFiles = scope.excluded,
-                truncated = truncated || changed,
+                truncated = truncated,
             ),
             complete = complete,
         )
