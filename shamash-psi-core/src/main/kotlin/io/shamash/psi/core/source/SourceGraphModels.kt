@@ -63,6 +63,8 @@ data class SourceGraphSnapshot(
     val complete: Boolean,
     val diagnostics: List<SourceDiagnostic>,
     val entities: List<SourceEntity>,
+    val entityRelationships: List<SourceRelationship>,
+    val entityEvidence: List<SourceDependency>,
     val entityUses: Map<SourceEntityId, List<SourceEntityId>>,
     val entityUsedBy: Map<SourceEntityId, List<SourceEntityId>>,
     val entityCounts: Map<SourceEntityId, SourceDependencySummary>,
