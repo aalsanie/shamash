@@ -2,6 +2,14 @@
 
 > **Evidence level:** declared Gradle coordinates/build scripts and upstream published license metadata, **NOT** a resolved dependency graph or inspected release ZIP. Snapshot: `0af4caac359877f11612d03e4dfffb920de6b7a0`. No license changes have occurred. Every missing version/notice is intentionally marked **UNVERIFIED**; no dependency license is inherited merely from its parent.
 
+## Owner-approved module scope, 2026-11-02
+
+The owner approved **AGPL-3.0-only** as the *prospective first-party source license* for `shamash-artifacts`, `shamash-export`, `shamash-asm-core`, `shamash-psi-core`, and `shamash-cli`. The `shamash-intellij-plugin` module **remains Apache-2.0**. No new copyright grant is effective until approved L01 implementation.
+
+**Mandatory distribution blocker:** the Apache-licensed plugin module directly depends on the proposed AGPL `psi-core`, `asm-core`, `artifacts`, and `export` modules. Its existing combined plugin ZIP **cannot be declared Apache-only merely from the source-module split**. Exact binary contents plus a specifically approved narrow licensing permission, or an owner-approved separate architecture, are required. No such additional license permission, module restructure or host compatibility conclusion has been authorized. See [V1 licensing decision](v1-decision.md) §1 and §4.
+
+Root-level shared docs/scripts/examples/artwork need an explicit path-specific decision; the modules-only approval does not automatically assign them a new license. The [tracked source inventory](v1-path-inventory.csv) now records the approved module policy or remaining review status on each baseline path.
+
 ## A. Direct third-party dependencies of shipped code
 
 | Component (declared coordinate) | Version | Declared module / role | Upstream license / attribution | Distribution treatment / evidence |
