@@ -31,79 +31,112 @@ class AnnotationOwnerScopeTest {
     @Test
     fun `class method and field annotations honor the same source owner scope`() {
         val facts = facts()
-        val cfg = SchemaResources.openReferenceYaml().reader().use {
-            assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
-        }
+        val config =
+            SchemaResources.openReferenceYaml().reader().use {
+                assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
+            }
         val evaluator = ForbiddenAnnotationUsageRule()
-        val definition = RuleDef(
-            "api", "forbiddenAnnotationUsage", null, true, FindingSeverity.ERROR, null,
-            mapOf("forbid" to listOf("flag.Forbidden")),
-        )
-        assertEquals(9, evaluator.evaluate(facts, definition, cfg).size)
-        val scope = RuleScope(
-            includeRoles = listOf("core"),
-            excludeRoles = null,
-            includePackages = listOf("^a$"),
-            excludePackages = null,
-            includeGlobs = listOf("classes/**"),
-            excludeGlobs = null,
-        )
+        val definition =
+            RuleDef(
+                "api",
+                "forbiddenAnnotationUsage",
+                null,
+                true,
+                FindingSeverity.ERROR,
+                null,
+                mapOf("forbid" to listOf("flag.Forbidden")),
+            )
+        assertEquals(9, evaluator.evaluate(facts, definition, config).size)
+
+        val scope =
+            RuleScope(
+                includeRoles = listOf("core"),
+                excludeRoles = null,
+                includePackages = listOf("^a$"),
+                excludePackages = null,
+                includeGlobs = listOf("classes/**"),
+                excludeGlobs = null,
+            )
         val restricted = definition.copy(scope = scope)
-        val matching = evaluator.evaluate(facts, restricted, cfg)
+        val matching = evaluator.evaluate(facts, restricted, config)
         assertEquals(3, matching.size)
         assertEquals(setOf("class", "method", "field"), matching.mapNotNull { it.data["targetKind"] }.toSet())
         assertTrue(matching.all { it.classFqn == "a.Visible" })
-        val shuffled = facts.copy(
-            classes = facts.classes.reversed(),
-            methods = facts.methods.reversed(),
-            fields = facts.fields.reversed(),
-        )
-        assertEquals(matching, evaluator.evaluate(shuffled, restricted, cfg))
+
+        val shuffled =
+            facts.copy(
+                classes = facts.classes.reversed(),
+                methods = facts.methods.reversed(),
+                fields = facts.fields.reversed(),
+            )
+        assertEquals(matching, evaluator.evaluate(shuffled, restricted, config))
 
         val excludePackage = restricted.copy(scope = scope.copy(excludePackages = listOf("^a$")))
-        assertTrue(evaluator.evaluate(facts, excludePackage, cfg).isEmpty())
+        assertTrue(evaluator.evaluate(facts, excludePackage, config).isEmpty())
+
         val excludePath = restricted.copy(scope = scope.copy(excludeGlobs = listOf("classes/a/Visible.class")))
-        assertTrue(evaluator.evaluate(facts, excludePath, cfg).isEmpty())
-        assertTrue(evaluator.evaluate(facts, restricted.copy(roles = listOf("other")), cfg).isEmpty())
+        assertTrue(evaluator.evaluate(facts, excludePath, config).isEmpty())
+        assertTrue(evaluator.evaluate(facts, restricted.copy(roles = listOf("other")), config).isEmpty())
         assertTrue(
-            evaluator.evaluate(facts, restricted.copy(scope = scope.copy(excludeRoles = listOf("core"))), cfg).isEmpty(),
+            evaluator.evaluate(facts, restricted.copy(scope = scope.copy(excludeRoles = listOf("core"))), config).isEmpty(),
         )
-        assertTrue(evaluator.evaluate(facts.copy(classToRole = emptyMap()), restricted, cfg).isEmpty())
+        assertTrue(evaluator.evaluate(facts.copy(classToRole = emptyMap()), restricted, config).isEmpty())
     }
 
     private fun facts(): FactIndex {
-        val classes = listOf(
-            newClass("a.Visible"),
-            newClass("a.Ignored"),
-            newClass("b.Excluded"),
-        )
-        val methods = classes.map { c ->
-            MethodRef(
-                owner = c.type, name = "run", desc = "()V", signature = null, access = Opcodes.ACC_PUBLIC,
-                isConstructor = false, returnType = null, parameterTypes = emptyList(),
-                throwsTypes = emptyList(), annotationsFqns = setOf("flag.Forbidden"), location = c.location,
+        val classes =
+            listOf(
+                newClass("a.Visible"),
+                newClass("a.Ignored"),
+                newClass("b.Excluded"),
             )
-        }
-        val fields = classes.map { c ->
-            FieldRef(
-                owner = c.type, name = "field", desc = "I", signature = null, access = Opcodes.ACC_PUBLIC,
-                fieldType = null, annotationsFqns = setOf("flag.Forbidden"), location = c.location,
-            )
-        }
+        val methods =
+            classes.map { c ->
+                MethodRef(
+                    owner = c.type,
+                    name = "run",
+                    desc = "()V",
+                    signature = null,
+                    access = Opcodes.ACC_PUBLIC,
+                    isConstructor = false,
+                    returnType = null,
+                    parameterTypes = emptyList(),
+                    throwsTypes = emptyList(),
+                    annotationsFqns = setOf("flag.Forbidden"),
+                    location = c.location,
+                )
+            }
+        val fields =
+            classes.map { c ->
+                FieldRef(
+                    owner = c.type,
+                    name = "field",
+                    desc = "I",
+                    signature = null,
+                    access = Opcodes.ACC_PUBLIC,
+                    fieldType = null,
+                    annotationsFqns = setOf("flag.Forbidden"),
+                    location = c.location,
+                )
+            }
         return FactIndex(
-            classes, methods, fields, emptyList(),
-            mapOf("core" to setOf("a.Visible", "b.Excluded"), "other" to setOf("a.Ignored")),
-            mapOf("a.Visible" to "core", "a.Ignored" to "other", "b.Excluded" to "core"),
+            classes = classes,
+            methods = methods,
+            fields = fields,
+            edges = emptyList(),
+            roles = mapOf("core" to setOf("a.Visible", "b.Excluded"), "other" to setOf("a.Ignored")),
+            classToRole = mapOf("a.Visible" to "core", "a.Ignored" to "other", "b.Excluded" to "core"),
         )
     }
 
-    private fun newClass(name: String): ClassFact = ClassFact(
-        type = TypeRef.fromInternalName(name.replace('.', '/')),
-        access = Opcodes.ACC_PUBLIC,
-        superType = null,
-        interfaces = emptySet(),
-        annotationsFqns = setOf("flag.Forbidden"),
-        hasMainMethod = false,
-        location = SourceLocation(OriginKind.DIR_CLASS, "classes/" + name.replace('.', '/') + ".class"),
-    )
+    private fun newClass(name: String): ClassFact =
+        ClassFact(
+            type = TypeRef.fromInternalName(name.replace('.', '/')),
+            access = Opcodes.ACC_PUBLIC,
+            superType = null,
+            interfaces = emptySet(),
+            annotationsFqns = setOf("flag.Forbidden"),
+            hasMainMethod = false,
+            location = SourceLocation(OriginKind.DIR_CLASS, "classes/" + name.replace('.', '/') + ".class"),
+        )
 }
