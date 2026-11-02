@@ -44,6 +44,7 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
+import io.shamash.psi.core.source.ProjectSourceSnapshot
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
@@ -58,6 +59,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val findings: List<Finding> = emptyList(),
         val validationErrors: List<ValidationError> = emptyList(),
         val engineErrors: List<EngineError> = emptyList(),
+        val sourceFacts: ProjectSourceSnapshot? = null,
     )
 
     fun interface Backend {
