@@ -3,6 +3,6 @@
   "reference_sha256": {
     "shamash-artifacts/shamash-artifacts.api": "fdfcd4a48f4ae69ff3e2cef090b40569d827ce280ad6b7e6f591932584f9c53a",
     "shamash-export/shamash-export.api": "fe1194e572dfc1731edd7f80336a304e12767278de957f46abd77e866806d8e4",
-    "shamash-asm-core/shamash-asm-core.api": "6d192db092ce46341067c98e915440e7a6bdc5fc3625c7a558d5fa6b7b3b290f"
+    "shamash-asm-core/shamash-asm-core.api": "ac2a567be1bbd7a51ecd7a698379a9a21346c1fe04252d6b509c321443dfa317"
   }
 }
