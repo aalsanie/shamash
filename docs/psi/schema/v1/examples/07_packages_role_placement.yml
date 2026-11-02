@@ -13,15 +13,21 @@ roles:
   controller:
     priority: 100
     match:
-      packageContainsSegment: "controller"
+      anyOf:
+        - packageContainsSegment: "controller"
+        - classNameEndsWith: "Controller"
   service:
     priority: 80
     match:
-      packageContainsSegment: "service"
+      anyOf:
+        - packageContainsSegment: "service"
+        - classNameEndsWith: "Service"
   repository:
     priority: 60
     match:
-      packageContainsSegment: "repository"
+      anyOf:
+        - packageContainsSegment: "repository"
+        - classNameEndsWith: "Repository"
 
 rules:
   - type: "packages"
