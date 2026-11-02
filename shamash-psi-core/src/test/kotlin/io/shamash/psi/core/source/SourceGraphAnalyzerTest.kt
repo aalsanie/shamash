@@ -10,6 +10,7 @@ package io.shamash.psi.core.source
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -271,6 +272,61 @@ class SourceGraphAnalyzerTest {
         ))
         assertFalse(diagnostic.complete)
         assertFalse(diagnostic.cycleAbsenceEstablished)
+    }
+
+    @Test
+    fun `missing declarations zero counts and invalid witness ranges fail closed`() {
+        val base = fixture(listOf("a", "b"), listOf(Arc(0, 1)))
+        val edge = base.relationships.single()
+        val missing = analyzer.analyze(base.copy(
+            relationships = listOf(edge.copy(target = edge.target.copy(signature = "not-collected"))),
+        ))
+        assertFalse(missing.complete)
+        assertTrue(missing.packageDependencies.isEmpty())
+        assertTrue(missing.diagnostics.any { it.message.contains("Missing declaration") })
+
+        val zero = analyzer.analyze(base.copy(
+            relationships = listOf(edge.copy(occurrences = 0)),
+        ))
+        assertFalse(zero.complete)
+        assertTrue(zero.packageDependencies.isEmpty())
+
+        val badWitness = SourceReference(edge.from.fileUrl, -1, 3, 1)
+        val bad = analyzer.analyze(base.copy(
+            relationships = listOf(edge.copy(witnesses = listOf(badWitness))),
+            references = listOf(base.references.single().copy(evidence = badWitness)),
+        ))
+        assertFalse(bad.complete)
+        assertTrue(bad.packageDependencies.isEmpty())
+        assertTrue(bad.diagnostics.any { it.message.contains("verified source occurrence") })
+    }
+
+    @Test
+    fun `conflicting declaration identity makes the source snapshot incomplete`() {
+        val base = fixture(listOf("a", "b"), listOf(Arc(0, 1)))
+        val conflicting = base.entities.first().copy(packageName = "other")
+        val graph = analyzer.analyze(base.copy(entities = base.entities + conflicting))
+        assertFalse(graph.complete)
+        assertFalse(graph.cycleAbsenceEstablished)
+        assertTrue(graph.diagnostics.any { it.message.contains("Conflicting source declaration") })
+    }
+
+    @Test
+    fun `package evidence cap does not change occurrence or distinct-target counts`() {
+        val source = fixture(listOf("a", "b"), listOf(Arc(0, 1, 20)))
+        val graph = analyzer.analyze(source.copy(profile = source.profile.copy(maxWitnesses = 1)))
+        assertEquals(1, graph.packageDependencies.single().witnesses.size)
+        assertEquals(1, graph.entityRelationships.single().witnesses.size)
+        assertEquals(20L, graph.packageDependencies.single().occurrences)
+        assertEquals(20L, graph.entityRelationships.single().occurrences)
+    }
+
+    @Test
+    fun `source graph reduction honors cancellation before publishing`() {
+        val source = fixture(listOf("a", "b"), listOf(Arc(0, 1)))
+        assertFailsWith<IllegalStateException> {
+            analyzer.analyze(source) { throw IllegalStateException("cancelled") }
+        }
     }
 
     @Test
