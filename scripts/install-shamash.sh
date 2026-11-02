@@ -73,7 +73,7 @@ fi
 [[ "$EXPECTED" == "$ACTUAL" ]] || { echo "Checksum mismatch for $ZIP" >&2; exit 1; }
 
 python3 - "$TMP/$ZIP" "$STAGE" "$VERSION" <<'PY'
-import pathlib, shutil, stat, sys, zipfile
+import pathlib, re, shutil, stat, sys, zipfile
 archive_path, stage, version = sys.argv[1:]
 root = 'shamash-cli-' + version
 stage_path = pathlib.Path(stage)
@@ -86,7 +86,12 @@ with zipfile.ZipFile(archive_path) as archive:
         name = info.filename
         parts = name.rstrip('/').split('/')
         mode = info.external_attr >> 16
-        if (not name or '\\' in name or name.startswith('/') or
+        unsafe_part = any(
+            re.search(r'[<>:"|?*\x00-\x1F]', part) or part.rstrip(' .') != part or
+            re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?', part, re.I)
+            for part in parts
+        )
+        if (unsafe_part or not name or '\\' in name or name.startswith('/') or
             parts[0] != root or any(part in ('', '.', '..') for part in parts) or
             stat.S_ISLNK(mode) or (mode & 0o170000 not in (0, stat.S_IFREG, stat.S_IFDIR))):
             sys.exit('Unsafe distribution archive entry')
