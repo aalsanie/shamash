@@ -8,6 +8,7 @@
 package io.shamash.asm.core.rules
 
 import io.shamash.artifacts.contract.FindingSeverity
+import io.shamash.artifacts.params.ParamError
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.config.SchemaResources
 import io.shamash.asm.core.config.schema.v1.model.Granularity
@@ -33,6 +34,7 @@ import org.objectweb.asm.Opcodes
 import java.io.StringReader
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -112,6 +114,11 @@ class GraphAndTypeScopeTest {
         assertTrue(facts.classes.single { it.type.internalName == nested }.isNestedType)
         assertTrue(facts.classes.single { it.type.internalName == local }.isNestedType)
         assertFalse(facts.classes.single { it.type.internalName == dollar }.isNestedType)
+        val orphan = FactExtractor.extractResult(bytecode(
+            "sample/Orphan" + "$" + "Nested", Opcodes.ACC_PUBLIC, inner = "Nested",
+        ))
+        assertTrue(orphan.errors.isEmpty())
+        assertTrue(orphan.facts.classes.single().isNestedType)
         val spec = ApiMaxPublicTypesSpec()
         val checks = listOf(
             emptyMap<String, Any?>() to 7,
@@ -132,8 +139,22 @@ class GraphAndTypeScopeTest {
                 options.toString(),
             )
         }
-        for (invalid in listOf(mapOf("max" to 0, "includeNested" to "maybe"), mapOf("max" to 0, "extra" to true))) {
-            assertTrue(spec.validate("rules[0]", rule("api", "maxPublicTypes", invalid), config()).isNotEmpty())
+        val invalidOptions = listOf(
+            mapOf("max" to 0, "includeNested" to "maybe"),
+            mapOf("max" to 0, "includeInterfaces" to "maybe"),
+            mapOf("max" to 0, "includeEnums" to "maybe"),
+            mapOf("max" to 0, "includeAnnotations" to "maybe"),
+            mapOf("max" to 0, "extra" to true),
+            mapOf("max" to -1),
+            mapOf("max" to "not-a-number"),
+            emptyMap(),
+        )
+        for (invalid in invalidOptions) {
+            val definition = rule("api", "maxPublicTypes", invalid)
+            assertTrue(spec.validate("rules[0]", definition, config()).isNotEmpty())
+            assertFailsWith<ParamError> {
+                MaxPublicTypesRule().evaluate(facts, definition, config())
+            }
         }
     }
 
@@ -146,7 +167,10 @@ class GraphAndTypeScopeTest {
     ): BytecodeUnit {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V17, access, internal, null, "java/lang/Object", null)
-        if (outer != null) writer.visitInnerClass(internal, outer, inner, access)
+        if (outer != null || inner != null) writer.visitInnerClass(internal, outer, inner, access)
+        if (internal.contains("Top" + "$" + "Dollar")) {
+            writer.visitInnerClass("sample/Outer" + "$" + "Nested", "sample/Outer", "Nested", access)
+        }
         if (localClass) writer.visitOuterClass(outer, "create", "()V")
         writer.visitEnd()
         val location = SourceLocation(OriginKind.DIR_CLASS, "classes/" + internal + ".class")
