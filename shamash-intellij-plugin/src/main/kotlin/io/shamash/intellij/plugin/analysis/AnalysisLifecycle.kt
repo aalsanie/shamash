@@ -84,9 +84,15 @@ class AnalysisLifecycle<T : Any> {
         val result =
             when (normalized) {
                 is AnalysisOutcome.Complete ->
-                    AnalysisSnapshot(request, Completeness.COMPLETE, normalized.coverage, normalized.data, normalized.diagnostics.toList())
+                    AnalysisSnapshot(
+                        request, Completeness.COMPLETE, normalized.coverage, normalized.data,
+                        normalized.diagnostics.toList(),
+                    )
                 is AnalysisOutcome.Partial ->
-                    AnalysisSnapshot(request, Completeness.PARTIAL, normalized.coverage, normalized.data, normalized.diagnostics.toList())
+                    AnalysisSnapshot(
+                        request, Completeness.PARTIAL, normalized.coverage, normalized.data,
+                        normalized.diagnostics.toList(),
+                    )
                 is AnalysisOutcome.Unavailable ->
                     AnalysisSnapshot<T>(
                         request, Completeness.UNAVAILABLE, normalized.coverage,
@@ -159,7 +165,10 @@ class AnalysisLifecycle<T : Any> {
                 phase = AnalysisPhase.STALE,
                 resultRelation = current.visibleResult?.let { ResultRelation.STALE },
                 progress = null,
-                diagnostics = listOf(if (source) "Sources changed; analyze again" else "Source roots changed; analyze again"),
+                diagnostics =
+                    listOf(
+                        if (source) "Sources changed; analyze again" else "Source roots changed; analyze again",
+                    ),
             )
     }
 
