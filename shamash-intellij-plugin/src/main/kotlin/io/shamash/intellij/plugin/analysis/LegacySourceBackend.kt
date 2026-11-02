@@ -72,9 +72,14 @@ internal class LegacySourceBackend(
             result.configErrors.map { "${it.path}: ${it.message}" } +
                 result.engineErrors.map { "${it.fileId}: ${it.message}" }
         // Unknown counts stay unknown; this old runner cannot prove a source-graph absence.
-        val coverage = AnalysisCoverage(reason = "Legacy project-policy analysis; source relationship coverage unavailable")
+        val coverage =
+            AnalysisCoverage(reason = "Legacy project-policy analysis; source relationship coverage unavailable")
         return if (!result.isComplete || result.configErrors.any { it.severity == ValidationSeverity.ERROR }) {
-            AnalysisOutcome.Partial(presentation, coverage, diagnostics.ifEmpty { listOf("Incomplete source analysis") })
+            AnalysisOutcome.Partial(
+                presentation,
+                coverage,
+                diagnostics.ifEmpty { listOf("Incomplete source analysis") },
+            )
         } else {
             AnalysisOutcome.Complete(presentation, coverage)
         }
