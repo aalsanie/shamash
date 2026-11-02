@@ -150,8 +150,8 @@ class ShamashPsiEngine {
                 ProgressManager.checkCanceled()
 
                 if (role != null && ruleDef.scope?.excludeRoles?.contains(role) == true) continue
-                if (role != null && ruleDef.scope?.includeRoles != null &&
-                    role !in ruleDef.scope.includeRoles) continue
+                val authoredRoles = ruleDef.scope?.includeRoles
+                if (role != null && authoredRoles != null && role !in authoredRoles) continue
 
                 val effectiveRule =
                     if (role == null) {
