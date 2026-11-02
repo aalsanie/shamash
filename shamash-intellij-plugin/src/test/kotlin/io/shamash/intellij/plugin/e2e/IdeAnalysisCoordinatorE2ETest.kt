@@ -236,7 +236,9 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
             WriteCommandAction.runWriteCommandAction(project) { doc.insertString(doc.textLength, " // unsaved") }
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(doc))
             val extraDoc = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile))
-            WriteCommandAction.runWriteCommandAction(project) { extraDoc.insertString(extraDoc.textLength, " // unrelated unsaved") }
+            WriteCommandAction.runWriteCommandAction(project) {
+                extraDoc.insertString(extraDoc.textLength, " // unrelated unsaved")
+            }
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(extraDoc))
         }
         fire(RunPsiScanAction())
