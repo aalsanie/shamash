@@ -13,8 +13,8 @@ import io.shamash.asm.core.config.ValidationSeverity
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.RuleKey
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
-import io.shamash.asm.core.config.validation.v1.RuleSpec
 import io.shamash.asm.core.config.validation.v1.ApiPublicTypesParams
+import io.shamash.asm.core.config.validation.v1.RuleSpec
 
 class ApiMaxPublicTypesSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "api", name = "maxPublicTypes", role = null)

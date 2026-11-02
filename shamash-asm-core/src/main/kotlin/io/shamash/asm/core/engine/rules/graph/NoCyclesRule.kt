@@ -8,6 +8,7 @@
 package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
+import io.shamash.artifacts.params.ParamError
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.engine.rules.Rule
@@ -23,7 +24,9 @@ class NoCyclesRule : Rule {
         rule: RuleDef,
         config: ShamashAsmConfigV1,
     ): List<Finding> {
-        if (rule.params.isNotEmpty()) throw io.shamash.artifacts.params.ParamError("rules.${rule.type}.${rule.name}.params", "does not accept parameters")
+        if (rule.params.isNotEmpty()) {
+            throw ParamError("rules.${rule.type}.${rule.name}.params", "does not accept parameters")
+        }
         val scope = RuleUtil.compileScope(rule.scope)
 
         val g =
@@ -39,15 +42,13 @@ class NoCyclesRule : Rule {
         if (cyclic.isEmpty()) return emptyList()
 
         val limit = 10
-        if (limit <= 0) return emptyList()
 
         val anchorClass =
             facts.classes
                 .asSequence()
                 .sortedBy { it.fqName }
                 .firstOrNull { c ->
-                    val roleId = facts.classToRole[c.fqName]
-                    RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
+                    RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
                 }
 
         val anchorPath = anchorClass?.let { RuleUtil.filePathOf(it.location) } ?: ""
@@ -108,5 +109,4 @@ class NoCyclesRule : Rule {
 
         return out
     }
-
 }

@@ -38,8 +38,6 @@ class GraphNoCyclesSpec : RuleSpec {
             }
         }
 
-
-
         return errors
     }
 }

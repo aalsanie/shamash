@@ -46,8 +46,7 @@ class MaxEdgeCountRule : Rule {
                 .asSequence()
                 .sortedBy { it.fqName }
                 .first { c ->
-                    val roleId = facts.classToRole[c.fqName]
-                    RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
+                    RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
                 }
 
         return listOf(

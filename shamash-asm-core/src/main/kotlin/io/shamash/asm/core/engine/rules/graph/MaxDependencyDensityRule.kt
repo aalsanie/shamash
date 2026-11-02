@@ -47,8 +47,7 @@ class MaxDependencyDensityRule : Rule {
                 .asSequence()
                 .sortedBy { it.fqName }
                 .first { c ->
-                    val roleId = facts.classToRole[c.fqName]
-                    RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
+                    RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
                 }
 
         val densityPct = (density * 100.0 * 100.0).roundToInt() / 100.0
