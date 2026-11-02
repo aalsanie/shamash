@@ -35,9 +35,7 @@ class ForbiddenPackagesRule : Rule {
         val classes = facts.classes.sortedBy { it.fqName }
 
         for (c in classes) {
-            val roleId = facts.classToRole[c.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, roleId)) continue
-            if (!RuleUtil.classInScope(c, scope)) continue
+            if (!RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)) continue
 
             val pkg = c.packageName
             val matched = firstMatch(forbid, pkg) ?: continue

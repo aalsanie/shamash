@@ -39,10 +39,7 @@ class ForbiddenInternalNamePatternsRule : Rule {
         for (c in classes) {
             if (c.visibility != Visibility.PUBLIC) continue
 
-            val roleId = facts.classToRole[c.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, roleId)) continue
-
-            if (!RuleUtil.classInScope(c, scope)) continue
+            if (!RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)) continue
 
             val internalName = c.type.internalName
             val matched = firstMatchingPattern(patterns, internalName) ?: continue
