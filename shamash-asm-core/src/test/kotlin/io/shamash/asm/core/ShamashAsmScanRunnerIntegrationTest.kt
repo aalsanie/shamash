@@ -313,6 +313,70 @@ class ShamashAsmScanRunnerIntegrationTest {
         Files.write(path, writer.toByteArray())
     }
 
+    @Test
+    fun `configured graph thresholds enforce bytecode dependencies from YAML`() {
+        val compiler = ToolProvider.getSystemJavaCompiler()
+        Assume.assumeNotNull(compiler)
+        val project = Files.createTempDirectory("shamash-graph-yaml")
+        try {
+            val output = project.resolve("build/classes/java/main")
+            Files.createDirectories(output)
+            val a = project.resolve("srcgen/a/A.java")
+            val b = project.resolve("srcgen/b/B.java")
+            Files.createDirectories(a.parent)
+            Files.createDirectories(b.parent)
+            Files.writeString(a, "package a; public class A { private b.B dependency; }")
+            Files.writeString(b, "package b; public class B { private a.A dependency; }")
+            assertEquals(0, compiler.run(null, null, null, "-d", output.toString(), a.toString(), b.toString()))
+            val cases =
+                listOf(
+                    "maxCycles" to "{ maxCycles: 0 }",
+                    "maxEdgeCount" to "{ maxEdges: 0 }",
+                    "maxDependencyDensity" to "{ maxDensity: 0.0 }",
+                )
+            for ((name, params) in cases) {
+                val yaml =
+                    minimalConfigYaml().replace(
+                        "rules: []",
+                        "rules:\\n  - { type: graph, name: $name, enabled: true, severity: ERROR, params: $params }",
+                    ).replace("\\n", "\n")
+                val cfg = project.resolve("shamash/configs/asm.yml")
+                Files.createDirectories(cfg.parent)
+                Files.writeString(cfg, yaml)
+                val validation = Files.newBufferedReader(cfg).use { ConfigValidation.loadAndValidateV1(it) }
+                assertTrue(validation.ok, validation.errors.toString())
+                val scan = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = project, projectName = "graph-fixture"))
+                assertTrue(scan.scanErrors.isEmpty(), scan.scanErrors.toString())
+                val engine = assertNotNull(scan.engine)
+                assertTrue(engine.isSuccess, engine.errors.toString())
+                assertEquals(1, engine.findings.size, name)
+                assertTrue(engine.findings.single().ruleId.contains(name))
+            }
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `invalid graph parameter from YAML fails before scanning`() {
+        val project = Files.createTempDirectory("shamash-graph-config-invalid")
+        try {
+            val yaml =
+                minimalConfigYaml().replace(
+                    "rules: []",
+                    "rules:\\n  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { max: 0 } }",
+                ).replace("\\n", "\n")
+            val path = project.resolve("shamash/configs/asm.yml")
+            Files.createDirectories(path.parent)
+            Files.writeString(path, yaml)
+            val scan = ShamashAsmScanRunner().run(ScanOptions(projectBasePath = project, projectName = "invalid"))
+            assertTrue(scan.configErrors.any { it.path.contains(".params.max") }, scan.configErrors.toString())
+            assertNull(scan.engine)
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
     private fun minimalConfigYaml(): String =
         """
         version: 1
