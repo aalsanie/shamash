@@ -16,7 +16,6 @@ import io.shamash.artifacts.report.schema.v1.ExportedReport
 import io.shamash.export.pipeline.CoherentReportPublisher
 import io.shamash.export.pipeline.DefaultExportPipelineFactory
 import io.shamash.export.pipeline.FindingPreprocessor
-import java.nio.file.Files
 import java.nio.file.Path
 
 class ShamashReportExportService(
@@ -39,7 +38,6 @@ class ShamashReportExportService(
         generatedAtEpochMillis: Long = System.currentTimeMillis(),
     ): ExportResult {
         val outputDir = ExportOutputLayout.normalizeOutputDir(projectBasePath, null)
-        Files.createDirectories(outputDir)
 
         val baselineFingerprints =
             if (baseline.mode == BaselineMode.USE) {
