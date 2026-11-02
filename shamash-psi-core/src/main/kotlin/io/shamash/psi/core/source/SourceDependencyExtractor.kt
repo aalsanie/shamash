@@ -23,6 +23,8 @@ import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiReferenceList
 import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.PsiVariable
+import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
@@ -51,12 +53,24 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
         val entities = LinkedHashMap<SourceEntityId, SourceEntity>()
         val refs = ArrayList<SourceDependency>()
         val diagnostics = ArrayList<SourceDiagnostic>()
+        data class TypeUse(val owner: PsiElement, val type: PsiType, val evidence: PsiElement)
+        val typeUses = ArrayList<TypeUse>()
         val stamp = file.viewProvider.document?.modificationStamp ?: file.modificationStamp
 
         file.accept(object : PsiRecursiveElementWalkingVisitor() {
             override fun visitElement(element: PsiElement) {
                 ProgressManager.checkCanceled()
                 entity(element, location)?.let { entities[it.id] = it }
+                when (element) {
+                    is PsiVariable -> element.typeElement?.let { typeElement ->
+                        typeUses += TypeUse(element, element.type, typeElement)
+                    }
+                    is PsiMethod -> element.returnType?.let { type ->
+                        element.returnTypeElement?.let { typeElement ->
+                            typeUses += TypeUse(element, type, typeElement)
+                        }
+                    }
+                }
                 if (supportedReference(element) && !insideImport(element)) {
                     val owner = owningDeclaration(element) ?: return super.visitElement(element)
                     val from = entity(owner, location) ?: return super.visitElement(element)
@@ -94,6 +108,36 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                 super.visitElement(element)
             }
         })
+
+        // The generic walker covers wildcard/type-variable bounds which are easy to lose in a
+        // class-only UAST projection. Ordinary PSI references win because they carry exact token ranges.
+        for (use in typeUses) {
+            ProgressManager.checkCanceled()
+            val owner = (use.owner as? PsiField) ?: (use.owner as? PsiMethod) ?: owningDeclaration(use.owner) ?: continue
+            val source = entity(owner, location) ?: continue
+            val walked = PsiTypeClassReferences.collect(use.type)
+            if (walked.truncated) {
+                diagnostics += SourceDiagnostic(location.fileUrl, "type", "Generic type nesting exceeded supported depth")
+            }
+            for (resolvedClass in walked.classes) {
+                val target = resolveTarget(resolvedClass) ?: continue
+                if (target is SourceTarget.Internal && target.entity == source.id) continue
+                if (refs.any { it.from == source.id && it.target == target && it.kind == SourceDependencyKind.TYPE &&
+                        it.evidence.offset in use.evidence.textRange.startOffset..use.evidence.textRange.endOffset
+                    }) continue
+                val token = resolvedClass.name ?: continue
+                val index = use.evidence.text.indexOf(token)
+                if (index < 0) {
+                    diagnostics += SourceDiagnostic(location.fileUrl, "type", "Cannot locate generic type witness for $token")
+                    continue
+                }
+                refs +=
+                    SourceDependency(
+                        source.id, target, SourceDependencyKind.TYPE,
+                        SourceReference(location.fileUrl, use.evidence.textOffset + index, token.length, stamp),
+                    )
+            }
+        }
 
         return FileResult(
             entities.values.sortedWith(compareBy({ it.id.fileUrl }, { it.offset }, { it.id.signature })),
