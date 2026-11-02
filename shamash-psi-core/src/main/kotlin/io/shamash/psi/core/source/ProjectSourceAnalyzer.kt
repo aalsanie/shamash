@@ -41,6 +41,7 @@ class ProjectSourceAnalyzer(
             selection = ProjectSourceCollector(project).collect(profile.maxFiles)
         }
         val scope = requireNotNull(selection)
+        val allowedFiles = scope.files.mapTo(HashSet()) { it.file.url }
         val diagnostics = ArrayList<SourceDiagnostic>()
         val entities = ArrayList<SourceEntity>()
         val dependencies = ArrayList<SourceDependency>()
@@ -55,7 +56,10 @@ class ProjectSourceAnalyzer(
         val extractor =
             SourceDependencyExtractor { file ->
                 val v = file.virtualFile ?: return@SourceDependencyExtractor null
-                if (!projectIndex.isInSourceContent(v) || projectIndex.isInTestSourceContent(v)) {
+                if (v.url !in allowedFiles ||
+                    !projectIndex.isInSourceContent(v) ||
+                    projectIndex.isInTestSourceContent(v)
+                ) {
                     return@SourceDependencyExtractor null
                 }
                 val module = projectIndex.getModuleForFile(v) ?: return@SourceDependencyExtractor null
