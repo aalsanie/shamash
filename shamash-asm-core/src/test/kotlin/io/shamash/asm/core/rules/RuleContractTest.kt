@@ -326,6 +326,31 @@ class RuleContractTest {
             val actual = evaluator.evaluate(outside, def.copy(roles = listOf("core")), baseConfig, context)
             assertEquals(listOf("b.Active"), actual.map { it.classFqn })
 
+            val excludedInvalidOrigin =
+                outside.copy(
+                    classes =
+                        listOf(
+                            outside.classes.first().copy(location = location("\u0000")),
+                            outside.classes.last(),
+                        ),
+                )
+            val excludingPackage =
+                def.copy(
+                    scope =
+                        io.shamash.asm.core.config.schema.v1.model.RuleScope(
+                            includeRoles = null,
+                            excludeRoles = null,
+                            includePackages = null,
+                            excludePackages = listOf("^a$"),
+                            includeGlobs = null,
+                            excludeGlobs = null,
+                        ),
+                )
+            assertEquals(
+                listOf("b.Active"),
+                evaluator.evaluate(excludedInvalidOrigin, excludingPackage, baseConfig, context).map { it.classFqn },
+            )
+
             val invalid = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf("\u0000")))
             assertTrue(OriginAllowOnlyRootSpec().validate("rules[0]", invalid, baseConfig).isNotEmpty())
             assertFailsWith<ParamError> { evaluator.evaluate(FactIndex.empty(), invalid, baseConfig, context) }
