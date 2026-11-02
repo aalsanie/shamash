@@ -21,6 +21,8 @@ project:
 
 
 
+roles: {}
+
 analysis:
   graphs:
     enabled: true
