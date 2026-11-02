@@ -18,7 +18,7 @@ Detect dependency cycles, enforce package and role boundaries, and surface coupl
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
-[![License](https://img.shields.io/badge/license-Apache%202.0-4EB1BA.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](./LICENSE)
 
 ## First scan
 
@@ -113,3 +113,7 @@ Configure API and annotation restrictions, JAR-origin rules, dependency metrics,
 [CLI options and checksums](./QUICK_START.md) · [Configuration examples](./docs/asm/schema/) · [Custom registries](./REGISTRY_GUIDE.md) · [Benchmarks](./benchmarks/)
 
 [Changelog](./CHANGELOG.md) · [Security](./SECURITY.md) · [Contributing](./CONTRIBUTING.md) · [License](./LICENSE)
+
+## License
+
+Shamash CLI and the core libraries are licensed under [AGPL-3.0-only](LICENSE). The IntelliJ plugin module remains [Apache-2.0](shamash-intellij-plugin/LICENSE); its distribution includes AGPL-licensed core libraries. See [third-party notices](THIRD_PARTY_NOTICES.md). Releases before 1.0.0 retain their original Apache-2.0 terms.

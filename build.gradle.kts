@@ -34,6 +34,52 @@ allprojects {
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
 
+    val licenseFile = rootProject.file(if (project.name == "shamash-intellij-plugin") "shamash-intellij-plugin/LICENSE" else "LICENSE")
+    val sourcePointer = layout.buildDirectory.file("generated/license/SOURCE.txt")
+    val sourceRevision =
+        providers.provider {
+            runCatching {
+                ProcessBuilder("git", "rev-parse", "--verify", "HEAD")
+                    .directory(rootProject.projectDir)
+                    .redirectErrorStream(true)
+                    .start()
+                    .let { process ->
+                        val result = process.inputStream.bufferedReader().use { it.readText().trim() }
+                        result.takeIf { process.waitFor() == 0 && it.matches(Regex("[0-9a-f]{40}")) }
+                    }
+            }.getOrNull() ?: "v${project.version}"
+        }
+    val writeSourcePointer = tasks.register("writeSourcePointer") {
+        inputs.property("sourceRevision", sourceRevision)
+        outputs.file(sourcePointer)
+        doLast {
+            val file = sourcePointer.get().asFile
+            file.parentFile.mkdirs()
+            file.writeText("https://github.com/aalsanie/shamash/tree/${sourceRevision.get()}\n")
+        }
+    }
+    tasks.withType<org.gradle.api.tasks.bundling.Zip>()
+        .matching { it is Jar || it.name == "dokkaJavadocJar" }
+        .configureEach {
+            dependsOn(writeSourcePointer)
+            from(licenseFile) {
+                into("META-INF")
+                rename { "LICENSE" }
+            }
+            from(rootProject.file("THIRD_PARTY_NOTICES.md")) { into("META-INF") }
+            from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
+            from(sourcePointer) {
+                into("META-INF")
+                rename { "SOURCE" }
+            }
+            if (project.name == "shamash-intellij-plugin") {
+                from(rootProject.file("LICENSE")) {
+                    into("META-INF/LICENSES")
+                    rename { "AGPL-3.0-only.txt" }
+                }
+            }
+        }
+
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension>("kotlin") {
             jvmToolchain(17)
@@ -53,7 +99,7 @@ subprojects {
         extensions.configure<SpotlessExtension> {
             kotlin {
                 ktlint()
-                licenseHeaderFile(rootProject.file("spotless/HEADER.kt"), "package ")
+                licenseHeaderFile(rootProject.file(if (project.name == "shamash-intellij-plugin") "spotless/HEADER-apache.kt" else "spotless/HEADER.kt"), "package ")
             }
             kotlinGradle { ktlint() }
         }
@@ -71,8 +117,8 @@ subprojects {
                 url.set("https://github.com/aalsanie/shamash")
                 licenses {
                     license {
-                        name.set("Apache License, Version 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                        name.set("GNU Affero General Public License, Version 3")
+                        url.set("https://www.gnu.org/licenses/agpl-3.0.html")
                         distribution.set("repo")
                     }
                 }
@@ -115,7 +161,6 @@ subprojects {
             isPreserveFileTimestamps = false
             isReproducibleFileOrder = true
             manifest.attributes("Implementation-Version" to project.version, "Implementation-Title" to project.name)
-            from(rootProject.file("LICENSE")) { into("META-INF") }
         }
     }
 }

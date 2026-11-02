@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2025-2026 @aalsanie. SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 @aalsanie. SPDX-License-Identifier: AGPL-3.0-only
 
 import argparse
 import hashlib
@@ -15,6 +15,9 @@ MODULES = ("shamash-artifacts", "shamash-export", "shamash-asm-core")
 GROUP = "io.github.aalsanie"
 GROUP_PATH = "io/github/aalsanie"
 NS = {"m": "http://maven.apache.org/POM/4.0.0"}
+LICENSE_NAME = "GNU Affero General Public License, Version 3"
+LICENSE_URL = "https://www.gnu.org/licenses/agpl-3.0.html"
+SOURCE_BASE = "https://github.com/aalsanie/shamash/tree/v"
 
 
 def require(condition, message):
@@ -42,10 +45,40 @@ def verify_signature(artifact, fingerprint):
     require(fingerprint in signers, f"Unexpected signing key: {artifact}")
 
 
+def verify_license_pom(pom):
+    require(pom.findtext("m:licenses/m:license/m:name", namespaces=NS) == LICENSE_NAME, "Incorrect POM license name")
+    require(pom.findtext("m:licenses/m:license/m:url", namespaces=NS) == LICENSE_URL, "Incorrect POM license URL")
+
+
+def source_url(version):
+    root = Path(__file__).resolve().parents[1]
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            cwd=root, capture_output=True, text=True, check=False,
+        )
+    except OSError:
+        return SOURCE_BASE + version
+    revision = result.stdout.strip()
+    if result.returncode == 0 and re.fullmatch("[0-9a-f]{40}", revision):
+        return "https://github.com/aalsanie/shamash/tree/" + revision
+    return SOURCE_BASE + version
+
+
+def verify_license_payload(archive, version, expected_license):
+    names = set(archive.namelist())
+    for path in ("META-INF/LICENSE", "META-INF/SOURCE", "META-INF/THIRD_PARTY_NOTICES.md", "META-INF/LICENSES/ASM-BSD-3-Clause.txt", "META-INF/LICENSES/SLF4J-MIT.txt"):
+        require(path in names, f"Missing archive licensing metadata: {path}")
+    require(archive.read("META-INF/LICENSE") == expected_license, "Incorrect archive license bytes")
+    require(archive.read("META-INF/SOURCE").decode("utf-8").strip() == source_url(version), "Incorrect archive source URL")
+    require(bool(archive.read("META-INF/THIRD_PARTY_NOTICES.md").strip()), "Empty third-party notices")
+
+
 def verify(repository, version, signed=False, signer_fingerprint=None):
     if signed:
         require(signer_fingerprint is not None, "--signed requires --signer-fingerprint")
         signer_fingerprint = signer_fingerprint.replace(" ", "").upper()
+    expected_license = (Path(__file__).resolve().parents[1] / "LICENSE").read_bytes()
     group_dir = repository / GROUP_PATH
     require(group_dir.is_dir(), f"Publication directory not found: {group_dir}")
     require({p.name for p in group_dir.iterdir() if p.is_dir()} == set(MODULES), "Unexpected published modules")
@@ -63,6 +96,7 @@ def verify(repository, version, signed=False, signer_fingerprint=None):
                 verify_signature(artifact, signer_fingerprint)
 
         pom = ET.parse(primary[0]).getroot()
+        verify_license_pom(pom)
         require(pom.findtext("m:groupId", namespaces=NS) == GROUP, f"Wrong group: {module}")
         require(pom.findtext("m:version", namespaces=NS) == version, f"Wrong version: {module}")
         require(pom.findtext("m:artifactId", namespaces=NS) == module, f"Wrong artifact: {module}")
@@ -107,6 +141,7 @@ def verify(repository, version, signed=False, signer_fingerprint=None):
                 require("intellij" not in dependency["group"].lower(), f"IntelliJ Gradle dependency: {module}")
 
         with zipfile.ZipFile(primary[2]) as jar:
+            verify_license_payload(jar, version, expected_license)
             names = jar.namelist()
             manifest = jar.read("META-INF/MANIFEST.MF").decode()
             require(f"Implementation-Version: {version}" in manifest, f"Missing runtime version: {module}")
@@ -126,8 +161,10 @@ def verify(repository, version, signed=False, signer_fingerprint=None):
                 for resource in resources:
                     require(resource in names, f"Missing runtime resource: {resource}")
         with zipfile.ZipFile(primary[3]) as jar:
+            verify_license_payload(jar, version, expected_license)
             require(any(n.endswith(".kt") for n in jar.namelist()), f"Empty sources: {module}")
         with zipfile.ZipFile(primary[4]) as jar:
+            verify_license_payload(jar, version, expected_license)
             require("index.html" in jar.namelist() and len([n for n in jar.namelist() if n.endswith(".html")]) > 5, f"Missing generated API reference: {module}")
         print(f"Verified {GROUP}:{module}:{version}")
 

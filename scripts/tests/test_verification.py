@@ -1,4 +1,4 @@
-# Copyright 2025-2026 @aalsanie. SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 @aalsanie. SPDX-License-Identifier: AGPL-3.0-only
 
 import importlib.util
 from pathlib import Path
@@ -6,6 +6,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
+import zipfile
 from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parents[1]
@@ -111,6 +113,87 @@ class PluginDiscoveryVerificationTest(unittest.TestCase):
             self.report(status=status)
             with self.subTest(status=status), self.assertRaises(ValueError):
                 plugin_tests.verify(self.source, self.results)
+
+
+class PublicationLicensingTest(unittest.TestCase):
+    def test_source_url_uses_exact_commit_and_fallback(self):
+        commit = "a" * 40
+        complete = subprocess.CompletedProcess([], 0, stdout=commit + "\n", stderr="")
+        with patch.object(publications.subprocess, "run", return_value=complete):
+            self.assertEqual(
+                f"https://github.com/aalsanie/shamash/tree/{commit}",
+                publications.source_url("1.0.0"),
+            )
+        for result in (
+            subprocess.CompletedProcess([], 1, stdout=commit, stderr=""),
+            subprocess.CompletedProcess([], 0, stdout="not-a-commit", stderr=""),
+        ):
+            with patch.object(publications.subprocess, "run", return_value=result):
+                self.assertEqual(publications.SOURCE_BASE + "1.0.0", publications.source_url("1.0.0"))
+        with patch.object(publications.subprocess, "run", side_effect=OSError()):
+            self.assertEqual(publications.SOURCE_BASE + "1.0.0", publications.source_url("1.0.0"))
+
+    def test_pom_license(self):
+        def make(name, url):
+            return ET.fromstring(
+                '<project xmlns="http://maven.apache.org/POM/4.0.0"><licenses><license>'
+                f'<name>{name}</name><url>{url}</url></license></licenses></project>'
+            )
+        publications.verify_license_pom(make(publications.LICENSE_NAME, publications.LICENSE_URL))
+        for name, url in (("Apache-2.0", publications.LICENSE_URL), (publications.LICENSE_NAME, "wrong")):
+            with self.subTest(name=name, url=url), self.assertRaises(ValueError):
+                publications.verify_license_pom(make(name, url))
+
+    def test_archive_license_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sample.jar"
+            version, expected = "1.0.0", b"sample AGPL"
+            def check(license_bytes=expected, source=None, notices=b"copyright notice", missing=None):
+                entries = {
+                    "META-INF/LICENSE": license_bytes,
+                    "META-INF/SOURCE": (source or publications.source_url(version)).encode(),
+                    "META-INF/THIRD_PARTY_NOTICES.md": notices,
+                    "META-INF/LICENSES/ASM-BSD-3-Clause.txt": b"BSD license",
+                    "META-INF/LICENSES/SLF4J-MIT.txt": b"MIT license",
+                }
+                with zipfile.ZipFile(path, "w") as archive:
+                    for name, data in entries.items():
+                        if name != missing:
+                            archive.writestr(name, data)
+                with zipfile.ZipFile(path) as archive:
+                    publications.verify_license_payload(archive, version, expected)
+            check()
+            for scenario in (
+                {"missing": "META-INF/LICENSE"},
+                {"missing": "META-INF/SOURCE"},
+                {"missing": "META-INF/THIRD_PARTY_NOTICES.md"},
+                {"missing": "META-INF/LICENSES/ASM-BSD-3-Clause.txt"},
+                {"missing": "META-INF/LICENSES/SLF4J-MIT.txt"},
+                {"license_bytes": b"wrong"},
+                {"source": "https://example.invalid"},
+                {"notices": b""},
+            ):
+                with self.subTest(**scenario), self.assertRaises(ValueError):
+                    check(**scenario)
+
+
+class SourceLicenseTest(unittest.TestCase):
+    def test_module_source_headers(self):
+        root = SCRIPTS.parent
+        for module in ("shamash-artifacts", "shamash-export", "shamash-asm-core", "shamash-psi-core", "shamash-cli"):
+            for source in (root / module / "src").rglob("*"):
+                if source.suffix in (".kt", ".java"):
+                    self.assertIn(
+                        "SPDX-License-Identifier: AGPL-3.0-only",
+                        source.read_text(encoding="utf-8").split("*/", 1)[0],
+                        str(source),
+                    )
+        for source in (root / "shamash-intellij-plugin" / "src").rglob("*.kt"):
+            self.assertIn(
+                "Licensed under the Apache License",
+                source.read_text(encoding="utf-8").split("*/", 1)[0],
+                str(source),
+            )
 
 
 if __name__ == "__main__":

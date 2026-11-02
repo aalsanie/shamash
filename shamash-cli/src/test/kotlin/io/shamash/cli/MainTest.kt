@@ -3,17 +3,7 @@
  *
  * Author: @aalsanie
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 package io.shamash.cli
 
@@ -36,6 +26,50 @@ class MainTest {
         val stdout: String,
         val stderr: String,
     )
+
+    @Test
+    fun `license command exits successfully`() {
+        val result = runCli("license")
+        assertEquals(0, result.exitCode, diagnostics(result))
+        assertTrue(result.stdout.contains("AGPL-3.0-only"))
+        assertTrue(result.stdout.contains("Source: https://github.com/aalsanie/shamash"))
+    }
+
+    @Test
+    fun `license command implementation is covered in process`() {
+        val type = Class.forName("io.shamash.cli.LicenseCommand")
+        val command = type.getDeclaredConstructor().apply { isAccessible = true }.newInstance()
+        type.getMethod("execute").apply { isAccessible = true }.invoke(command)
+    }
+
+    @Test
+    fun `license information uses packaged source revision`() {
+        val expected = "https://github.com/aalsanie/shamash/tree/${"a".repeat(40)}"
+        assertEquals(
+            listOf(
+                "Shamash CLI: AGPL-3.0-only",
+                "License: https://www.gnu.org/licenses/agpl-3.0.html",
+                "Source: $expected",
+            ),
+            LicenseInfo.lines(expected),
+        )
+        assertEquals(
+            expected,
+            LicenseInfo.sourceUrl(java.io.ByteArrayInputStream("$expected\n".toByteArray(StandardCharsets.UTF_8))),
+        )
+    }
+
+    @Test
+    fun `license source falls back for missing or invalid metadata`() {
+        val repository = "https://github.com/aalsanie/shamash"
+        assertEquals(repository, LicenseInfo.sourceUrl(null))
+        for (value in listOf("", "https://example.invalid/source", "$repository/tree/")) {
+            assertEquals(
+                repository,
+                LicenseInfo.sourceUrl(java.io.ByteArrayInputStream(value.toByteArray(StandardCharsets.UTF_8))),
+            )
+        }
+    }
 
     @Test
     fun `version prints version and exits zero`() {

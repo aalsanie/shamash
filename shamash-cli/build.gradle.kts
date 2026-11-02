@@ -1,7 +1,7 @@
 /*
  * Shamash is a JVM architecture enforcement tool.
  * Copyright © 2025-2026 | Author: @aalsanie
- * Licensed under the Apache License, Version 2.0.
+ * SPDX-License-Identifier: AGPL-3.0-only.
  */
 plugins {
     application
@@ -26,5 +26,15 @@ tasks.jar {
             "Implementation-Title" to "shamash-cli",
             "Implementation-Version" to project.version.toString(),
         )
+    }
+}
+
+distributions {
+    main {
+        contents {
+            from(rootProject.file("LICENSE"))
+            from(rootProject.file("THIRD_PARTY_NOTICES.md"))
+            from(rootProject.file("LICENSES")) { into("LICENSES") }
+        }
     }
 }

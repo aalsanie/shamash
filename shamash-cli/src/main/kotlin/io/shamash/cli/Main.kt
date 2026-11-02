@@ -3,17 +3,7 @@
  *
  * Author: @aalsanie
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 package io.shamash.cli
 
@@ -68,6 +58,7 @@ fun main(args: Array<String>) {
             AnalysisCommand(),
             RegistryCommand(),
             VersionCommand(),
+            LicenseCommand(),
         )
     parser.subcommands(*commands.toTypedArray())
 
@@ -156,6 +147,32 @@ private abstract class CommandBase(
 private class VersionCommand : CommandBase("version", "Print Shamash CLI version") {
     override fun run(): ExitCode {
         Console.println("shamash-cli ${CliMeta.version}")
+        return ExitCode.OK
+    }
+}
+
+internal object LicenseInfo {
+    private const val REPOSITORY = "https://github.com/aalsanie/shamash"
+
+    fun sourceUrl(stream: java.io.InputStream?): String =
+        stream
+            ?.bufferedReader(StandardCharsets.UTF_8)
+            ?.use { it.readLine()?.trim() }
+            ?.takeIf { it.startsWith("$REPOSITORY/tree/") && it.length > "$REPOSITORY/tree/".length }
+            ?: REPOSITORY
+
+    fun lines(sourceUrl: String): List<String> =
+        listOf(
+            "Shamash CLI: AGPL-3.0-only",
+            "License: https://www.gnu.org/licenses/agpl-3.0.html",
+            "Source: $sourceUrl",
+        )
+}
+
+private class LicenseCommand : CommandBase("license", "Show license and source") {
+    override fun run(): ExitCode {
+        val source = LicenseInfo.sourceUrl(CliMeta::class.java.getResourceAsStream("/META-INF/SOURCE"))
+        LicenseInfo.lines(source).forEach(Console::println)
         return ExitCode.OK
     }
 }
