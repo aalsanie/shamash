@@ -5,11 +5,10 @@ project:
     # Strict: fail if a rule is not implemented/registered
     unknownRule: ERROR
 
-  # AUTO lets the tool infer root package (if your binder supports it),
-  # while the packages.rootPackage rule below can still enforce consistency.
+  # Declare the project root explicitly; AUTO never infers one.
   rootPackage:
-    mode: AUTO
-    value: ""
+    mode: EXPLICIT
+    value: "com.acme"
 
   sourceGlobs:
     include:
@@ -117,8 +116,8 @@ rules:
     enabled: true
     severity: ERROR
     params:
-      mode: "AUTO"
-      value: ""
+      mode: "EXPLICIT"
+      value: "com.acme"
 
   - type: "deadcode"
     name: "unusedPrivateMembers"
@@ -135,12 +134,11 @@ rules:
         - "org.springframework.web.bind.annotation."
         - "jakarta.persistence."
         - "lombok."
-      ignoreNameRegex: "^_.*$"
+      ignoreNameRegex: ["^_.*$"]
 
 exceptions:
   - id: "EX-legacy"
     reason: "Legacy module; cleanup scheduled"
-    expiresOn: "2026-06-01"
     match:
       packageRegex: "^com\\.acme\\.legacy\\..*$"
     suppress:
