@@ -43,15 +43,32 @@ class MainTest {
     }
 
     @Test
-    fun `license information references the exact version`() {
+    fun `license information uses packaged source revision`() {
+        val expected = "https://github.com/aalsanie/shamash/tree/${"a".repeat(40)}"
         assertEquals(
             listOf(
                 "Shamash CLI: AGPL-3.0-only",
                 "License: https://www.gnu.org/licenses/agpl-3.0.html",
-                "Source: https://github.com/aalsanie/shamash/tree/v1.0.0",
+                "Source: $expected",
             ),
-            LicenseInfo.lines("1.0.0"),
+            LicenseInfo.lines(expected),
         )
+        assertEquals(
+            expected,
+            LicenseInfo.sourceUrl(java.io.ByteArrayInputStream("$expected\n".toByteArray(StandardCharsets.UTF_8))),
+        )
+    }
+
+    @Test
+    fun `license source falls back for missing or invalid metadata`() {
+        val repository = "https://github.com/aalsanie/shamash"
+        assertEquals(repository, LicenseInfo.sourceUrl(null))
+        for (value in listOf("", "https://example.invalid/source", "$repository/tree/")) {
+            assertEquals(
+                repository,
+                LicenseInfo.sourceUrl(java.io.ByteArrayInputStream(value.toByteArray(StandardCharsets.UTF_8))),
+            )
+        }
     }
 
     @Test
