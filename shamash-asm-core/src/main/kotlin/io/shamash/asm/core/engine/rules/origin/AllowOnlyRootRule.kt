@@ -40,14 +40,13 @@ class AllowOnlyRootRule : ContextAwareRule {
         val scope = RuleUtil.compileScope(rule.scope)
         return facts.classes.sortedBy { it.fqName }.mapNotNull { clazz ->
             val role = facts.classToRole[clazz.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, role)) return@mapNotNull null
+            if (!RuleUtil.roleAllowed(rule, scope, role) || !RuleUtil.classInScope(clazz, scope)) return@mapNotNull null
 
             val location = clazz.location
             val origin =
                 if (location.originKind == OriginKind.JAR_ENTRY) location.containerPath ?: location.originPath else location.originPath
             if (origin.isBlank()) throw ParamError("$path.roots", "cannot evaluate class '${clazz.fqName}' with missing bytecode origin")
             val actual = resolve(origin, "$path.roots", context, config)
-            if (!RuleUtil.classInScope(clazz, scope)) return@mapNotNull null
             if (allowed.any { actual.startsWith(it) }) return@mapNotNull null
 
             Finding(
