@@ -17,8 +17,70 @@ env:
   TERM: dumb
 
 jobs:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    outputs:
+      expensive: ${{ steps.changes.outputs.expensive }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Classify changes
+        id: changes
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import subprocess
+
+          expensive = True
+          if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
+              base, head = os.environ["BASE_SHA"], os.environ["HEAD_SHA"]
+              changed = subprocess.check_output([
+                  "git", "diff", "--no-renames", "--name-only", "-z", f"{base}...{head}"
+              ])
+              paths = [p for p in changed.decode("utf-8", "surrogateescape").split("\0") if p]
+              trivial = all(
+                  p.endswith(".md") or
+                  (p.startswith("docs/") and p.endswith((".png", ".jpg", ".jpeg", ".svg", ".webp")))
+                  for p in paths
+              )
+              expensive = not (paths and trivial)
+              subprocess.run(["git", "diff", "--check", f"{base}...{head}"], check=True)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"expensive={str(expensive).lower()}\n")
+          PY
+      - name: Verify required CI approver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/environments/ci-approved" --jq \
+            '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == false and (.reviewers | length) == 1 and .reviewers[0].type == "User" and .reviewers[0].reviewer.id == 22101794)] | length' | grep -qx '1'
+
+  authorize:
+    name: Approve expensive CI
+    needs: preflight
+    if: needs.preflight.outputs.expensive == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ci-approved
+      deployment: false
+    steps:
+      - run: echo "CI approved"
+
   coverage:
     name: Kover coverage report
+    needs: authorize
+    if: needs.authorize.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -53,6 +115,8 @@ jobs:
 
   build-test:
     name: Build + Test (${{ matrix.os }})
+    needs: authorize
+    if: needs.authorize.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -152,6 +216,8 @@ jobs:
 
   library-verification:
     name: Published library verification
+    needs: authorize
+    if: needs.authorize.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -188,3 +254,61 @@ jobs:
             shamash-export/build/reports/abi/**
             shamash-asm-core/build/reports/abi/**
           if-no-files-found: ignore
+
+  qodana:
+    name: Qodana
+    needs: authorize
+    if: needs.authorize.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@3e8d76ff0e0241618abd808682f426afe84bab3f # v2026.2.2
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+        with:
+          pr-mode: ${{ github.event_name == 'pull_request' }}
+          use-caches: true
+          post-pr-comment: true
+          use-annotations: true
+          upload-result: false
+          push-fixes: none
+
+  required:
+    name: Required checks
+    if: always()
+    needs: [preflight, authorize, coverage, build-test, packaged-cli-smoke, plugin-verifier, library-verification, qodana]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          needs = json.loads(os.environ["NEEDS_JSON"])
+          results = {name: job["result"] for name, job in needs.items()}
+          if results["preflight"] != "success":
+              sys.exit("Preflight did not succeed")
+          expensive = needs["preflight"]["outputs"].get("expensive")
+          if expensive not in ("true", "false"):
+              sys.exit("Invalid change classification")
+          expected = "success" if expensive == "true" else "skipped"
+          for name in ("authorize", "coverage", "build-test", "packaged-cli-smoke",
+                       "plugin-verifier", "library-verification", "qodana"):
+              if results[name] != expected:
+                  sys.exit(f"{name}: expected {expected}, got {results[name]}")
+          print("All applicable checks passed")
+          PY
