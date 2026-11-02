@@ -13,16 +13,13 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.roots.ProjectRootManager
-import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 
-/**
- * Collects per-file immutable source facts under short smart read actions. Aggregation is
- * deliberately outside PSI locks. Source/root changes fail closed rather than mixing revisions.
- */
+/** A changed PSI or project-root revision cannot produce a coherent source snapshot. */
 class SourceRevisionChangedException : IllegalStateException("Source or root revision changed during analysis")
 
+/** Collects per-file facts under smart read actions and aggregates immutable evidence outside them. */
 class ProjectSourceAnalyzer(
     private val project: Project,
     private val profile: SourceAnalysisProfile = SourceAnalysisProfile(),
@@ -129,5 +126,4 @@ class ProjectSourceAnalyzer(
             complete = complete,
         )
     }
-
 }
