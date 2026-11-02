@@ -36,6 +36,7 @@ class ShippedConfigurationTest {
         val root = repositoryRoot()
         assertValid(root.resolve("shamash-psi-core/src/main/resources/shamash/psi/schema/v1/shamash-psi.reference.yml"))
         assertValid(root.resolve("docs/asm/pit-violation/src/main/resources/shamash/configs/psi.yml"))
+        assertValid(root.resolve("docs/psi/pit-violation/psi.yml"))
         val reference = SchemaResources.openReferenceYaml().bufferedReader().use {
             ConfigValidation.loadAndValidateV1(it)
         }
