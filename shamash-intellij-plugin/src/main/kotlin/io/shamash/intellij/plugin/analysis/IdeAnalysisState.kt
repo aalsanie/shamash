@@ -39,6 +39,8 @@ data class IdeAnalysisState<T : Any>(
     val resultRelation: ResultRelation? = null,
     val diagnostics: List<String> = emptyList(),
     val progress: Double? = null,
+    val attemptCoverage: AnalysisCoverage? = null,
+    val attemptCompleteness: Completeness? = null,
     val sourceRevision: Long = 0,
     val rootRevision: Long = 0,
 ) {
