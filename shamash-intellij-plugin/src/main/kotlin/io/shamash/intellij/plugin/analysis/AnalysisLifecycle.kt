@@ -31,6 +31,8 @@ class AnalysisLifecycle<T : Any> {
                 resultRelation = current.visibleResult?.let { ResultRelation.PREVIOUS },
                 diagnostics = emptyList(),
                 progress = null,
+                attemptCoverage = null,
+                attemptCompleteness = null,
             )
         return request
     }
@@ -76,6 +78,8 @@ class AnalysisLifecycle<T : Any> {
                     },
                 diagnostics = result.diagnostics,
                 progress = null,
+                attemptCoverage = result.coverage,
+                attemptCompleteness = result.completeness,
             )
         return true
     }
