@@ -211,25 +211,29 @@ class RuleContractTest {
 
     @Test
     fun `graph threshold findings select included source anchors`() {
-        val source = listOf(
-            "a.Ignored" to location("build/classes/a/Ignored.class"),
-            "b.Active" to location("build/classes/b/Active.class"),
-            "c.Active" to location("build/classes/c/Active.class"),
-        )
+        val source =
+            listOf(
+                "a.Ignored" to location("build/classes/a/Ignored.class"),
+                "b.Active" to location("build/classes/b/Active.class"),
+                "c.Active" to location("build/classes/c/Active.class"),
+            )
         val baseFacts = facts(source)
         val types = source.map { TypeRef.fromInternalName(it.first.replace('.', '/')) }
-        val edges = listOf(1 to 2, 2 to 1).map { (a, b) ->
-            DependencyEdge(types[a], types[b], DependencyKind.METHOD_CALL, source[a].second)
-        }
-        val selected = baseFacts.copy(
-            edges = edges,
-            classToRole = mapOf("a.Ignored" to "other", "b.Active" to "core", "c.Active" to "core"),
-        )
-        val cases = listOf(
-            MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
-            MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
-            MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
-        )
+        val edges =
+            listOf(1 to 2, 2 to 1).map { (a, b) ->
+                DependencyEdge(types[a], types[b], DependencyKind.METHOD_CALL, source[a].second)
+            }
+        val selected =
+            baseFacts.copy(
+                edges = edges,
+                classToRole = mapOf("a.Ignored" to "other", "b.Active" to "core", "c.Active" to "core"),
+            )
+        val cases =
+            listOf(
+                MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
+                MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
+                MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
+            )
         for ((evaluator, definition) in cases) {
             val findings = evaluator.evaluate(selected, definition.copy(roles = listOf("core")), baseConfig)
             assertEquals(1, findings.size)
@@ -239,17 +243,20 @@ class RuleContractTest {
 
     @Test
     fun `source anchor honors package scope and resolved bytecode locations`() {
-        val entries = listOf(
-            "a.Ignored" to location("build/classes/a/Ignored.class"),
-            "b.Active" to location("build/classes/b/Active.class"),
-            "c.Active" to location("build/classes/c/Active.class"),
-        )
+        val entries =
+            listOf(
+                "a.Ignored" to location("build/classes/a/Ignored.class"),
+                "b.Active" to location("build/classes/b/Active.class"),
+                "c.Active" to location("build/classes/c/Active.class"),
+            )
         val types = entries.map { TypeRef.fromInternalName(it.first.replace('.', '/')) }
-        val graph = facts(entries).copy(
-            edges = listOf(1 to 2, 2 to 1).map { (a, b) ->
-                DependencyEdge(types[a], types[b], DependencyKind.METHOD_CALL, entries[a].second)
-            },
-        )
+        val graph =
+            facts(entries).copy(
+                edges =
+                    listOf(1 to 2, 2 to 1).map { (a, b) ->
+                        DependencyEdge(types[a], types[b], DependencyKind.METHOD_CALL, entries[a].second)
+                    },
+            )
         val scope =
             io.shamash.asm.core.config.schema.v1.model.RuleScope(
                 includeRoles = null,
@@ -259,11 +266,12 @@ class RuleContractTest {
                 includeGlobs = null,
                 excludeGlobs = null,
             )
-        val cases = listOf(
-            MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
-            MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
-            MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
-        )
+        val cases =
+            listOf(
+                MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
+                MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
+                MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
+            )
         for ((evaluator, definition) in cases) {
             val actual = evaluator.evaluate(graph, definition.copy(scope = scope), baseConfig)
             assertEquals("b.Active", actual.single().classFqn)
@@ -280,16 +288,21 @@ class RuleContractTest {
             Files.write(cls, byteArrayOf())
             val jar = root.resolve("approved.jar")
             Files.write(jar, byteArrayOf())
-            val config = baseConfig.copy(
-                project = baseConfig.project.copy(
-                    scan = baseConfig.project.scan.copy(followSymlinks = true),
-                ),
-            )
+            val config =
+                baseConfig.copy(
+                    project =
+                        baseConfig.project.copy(
+                            scan = baseConfig.project.scan.copy(followSymlinks = true),
+                        ),
+                )
             val policy = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf(root.toString())))
-            val f = facts(listOf(
-                "a.A" to location(cls.toString()),
-                "b.B" to SourceLocation(OriginKind.JAR_ENTRY, jar.toString()),
-            ))
+            val f =
+                facts(
+                    listOf(
+                        "a.A" to location(cls.toString()),
+                        "b.B" to SourceLocation(OriginKind.JAR_ENTRY, jar.toString()),
+                    ),
+                )
             assertTrue(AllowOnlyRootRule().evaluate(f, policy, config, RuleExecutionContext(base)).isEmpty())
         } finally {
             base.toFile().deleteRecursively()
@@ -301,12 +314,13 @@ class RuleContractTest {
         val project = Files.createTempDirectory("shamash-origin-scope")
         try {
             val def = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf(project.resolve("allowed").toString())))
-            val outside = facts(
-                listOf(
-                    "a.Ignored" to location(project.resolve("outside/A.class").toString()),
-                    "b.Active" to location(project.resolve("outside/B.class").toString()),
-                ),
-            ).copy(classToRole = mapOf("a.Ignored" to "other", "b.Active" to "core"))
+            val outside =
+                facts(
+                    listOf(
+                        "a.Ignored" to location(project.resolve("outside/A.class").toString()),
+                        "b.Active" to location(project.resolve("outside/B.class").toString()),
+                    ),
+                ).copy(classToRole = mapOf("a.Ignored" to "other", "b.Active" to "core"))
             val evaluator = AllowOnlyRootRule()
             val context = RuleExecutionContext(project)
             val actual = evaluator.evaluate(outside, def.copy(roles = listOf("core")), baseConfig, context)
@@ -316,9 +330,15 @@ class RuleContractTest {
             assertTrue(OriginAllowOnlyRootSpec().validate("rules[0]", invalid, baseConfig).isNotEmpty())
             assertFailsWith<ParamError> { evaluator.evaluate(FactIndex.empty(), invalid, baseConfig, context) }
 
-            val invalidOrigin = outside.copy(classes = listOf(outside.classes.first().copy(
-                location = location("\\u0000"),
-            )))
+            val invalidOrigin =
+                outside.copy(
+                    classes =
+                        listOf(
+                            outside.classes.first().copy(
+                                location = location("\\u0000"),
+                            ),
+                        ),
+                )
             assertFailsWith<ParamError> { evaluator.evaluate(invalidOrigin, def, baseConfig, context) }
         } finally {
             project.toFile().deleteRecursively()
