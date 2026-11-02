@@ -48,16 +48,36 @@ class AnalysisLifecycle<T : Any> {
     @Synchronized
     fun publish(request: AnalysisRequest, outcome: AnalysisOutcome<T>): Boolean {
         if (!eligible(request) || !current.active) return false
+        val normalized =
+            if (outcome is AnalysisOutcome.Complete) {
+                val coverage = outcome.coverage
+                when {
+                    coverage.eligibleFiles == 0 ->
+                        AnalysisOutcome.Unavailable("No supported Java/Kotlin source files", coverage)
+                    (coverage.failedFiles ?: 0) > 0 ||
+                        (coverage.unresolvedOccurrences ?: 0) > 0 ||
+                        (coverage.eligibleFiles != null &&
+                            coverage.analyzedFiles != null &&
+                            coverage.analyzedFiles < coverage.eligibleFiles) ->
+                        AnalysisOutcome.Partial(
+                            outcome.data, coverage,
+                            outcome.diagnostics + "Analysis incomplete; conclusions may omit relationships",
+                        )
+                    else -> outcome
+                }
+            } else {
+                outcome
+            }
         val result =
-            when (outcome) {
+            when (normalized) {
                 is AnalysisOutcome.Complete ->
-                    AnalysisSnapshot(request, Completeness.COMPLETE, outcome.coverage, outcome.data, outcome.diagnostics.toList())
+                    AnalysisSnapshot(request, Completeness.COMPLETE, normalized.coverage, normalized.data, normalized.diagnostics.toList())
                 is AnalysisOutcome.Partial ->
-                    AnalysisSnapshot(request, Completeness.PARTIAL, outcome.coverage, outcome.data, outcome.diagnostics.toList())
+                    AnalysisSnapshot(request, Completeness.PARTIAL, normalized.coverage, normalized.data, normalized.diagnostics.toList())
                 is AnalysisOutcome.Unavailable ->
                     AnalysisSnapshot<T>(
-                        request, Completeness.UNAVAILABLE, outcome.coverage,
-                        null, listOf(outcome.reason),
+                        request, Completeness.UNAVAILABLE, normalized.coverage,
+                        null, listOf(normalized.reason),
                     )
             }
         val phase =
