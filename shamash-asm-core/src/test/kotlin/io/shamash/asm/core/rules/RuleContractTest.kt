@@ -312,6 +312,54 @@ class RuleContractTest {
     }
 
     @Test
+    fun `origin root symlinks follow the configured scan policy`() {
+        if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) return
+        val project = Files.createTempDirectory("shamash-origin-link")
+        try {
+            val real = Files.createDirectories(project.resolve("real"))
+            val alias = Files.createSymbolicLink(project.resolve("alias"), real)
+            val bytecode = real.resolve("A.class")
+            Files.write(bytecode, byteArrayOf())
+            val definition = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf(alias.toString())))
+            val f = facts(listOf("a.A" to location(bytecode.toString())))
+            val following =
+                baseConfig.copy(
+                    project = baseConfig.project.copy(scan = baseConfig.project.scan.copy(followSymlinks = true)),
+                )
+            val notFollowing =
+                baseConfig.copy(
+                    project = baseConfig.project.copy(scan = baseConfig.project.scan.copy(followSymlinks = false)),
+                )
+            val context = RuleExecutionContext(project)
+            assertTrue(AllowOnlyRootRule().evaluate(f, definition, following, context).isEmpty())
+            assertEquals(1, AllowOnlyRootRule().evaluate(f, definition, notFollowing, context).size)
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `origin native Windows path matching respects case and directory segments`() {
+        if (!System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) return
+        val project = Files.createTempDirectory("shamash-origin-windows")
+        try {
+            val root = project.resolve("allowed")
+            val definition = rule("origin", "allowOnlyRoot", mapOf("roots" to listOf(root.toString().uppercase())))
+            val f =
+                facts(
+                    listOf(
+                        "a.Inside" to location(root.resolve("nested/Inside.class").toString().lowercase()),
+                        "b.Sibling" to location(project.resolve("allowed-sibling/Sibling.class").toString().lowercase()),
+                    ),
+                )
+            val findings = AllowOnlyRootRule().evaluate(f, definition, baseConfig, RuleExecutionContext(project))
+            assertEquals(listOf("b.Sibling"), findings.map { it.classFqn })
+        } finally {
+            project.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `origin scope and unsupported filesystem paths are explicit`() {
         val project = Files.createTempDirectory("shamash-origin-scope")
         try {
