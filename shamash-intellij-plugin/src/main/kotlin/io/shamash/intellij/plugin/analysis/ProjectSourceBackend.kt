@@ -19,6 +19,7 @@ package io.shamash.intellij.plugin.analysis
 
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
+import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
 import io.shamash.psi.core.source.SourceRevisionChangedException
 
@@ -64,12 +65,14 @@ internal class ProjectSourceBackend(
                 unresolvedOccurrences = snapshot.coverage.unresolvedOccurrences,
                 reason = if (snapshot.coverage.truncated) "Internal limit or revision change" else null,
             )
-        val payload = IdeAnalysisCoordinator.SourcePresentation(sourceFacts = snapshot)
-        val diagnostics = snapshot.diagnostics.map { "${it.fileUrl ?: "project"}: ${it.message}" }
-        return if (snapshot.complete) {
+        val graph = SourceGraphAnalyzer().analyze(snapshot) { indicator.checkCanceled() }
+        indicator.checkCanceled()
+        val payload = IdeAnalysisCoordinator.SourcePresentation(sourceFacts = snapshot, sourceGraph = graph)
+        val diagnostics = graph.diagnostics.map { "${it.fileUrl ?: "project"}: ${it.message}" }
+        return if (graph.complete) {
             AnalysisOutcome.Complete(payload, coverage)
         } else {
-            AnalysisOutcome.Partial(payload, coverage, diagnostics.ifEmpty { listOf("Source resolution incomplete") })
+            AnalysisOutcome.Partial(payload, coverage, diagnostics.ifEmpty { listOf("Source graph incomplete") })
         }
     }
 }
