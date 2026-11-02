@@ -654,6 +654,13 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
             Console.errln("Use --force to replace it.")
             return ExitCode.CONFIG_ERROR
         }
+        val previousBaseline =
+            try {
+                if (baselinePath.exists()) Files.readAllBytes(baselinePath) else null
+            } catch (t: Throwable) {
+                Console.errln("Cannot safely snapshot existing baseline: ${t.message ?: t::class.java.simpleName}")
+                return ExitCode.RUNTIME_ERROR
+            }
 
         val runner = ShamashAsmScanRunner(selectedEngine)
         val res =
@@ -689,7 +696,12 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
         try {
             configEdit.apply()
         } catch (t: Throwable) {
-            Console.errln("Baseline was created, but the config could not be switched to VERIFY: ${t.message ?: t::class.java.simpleName}")
+            Console.errln("Failed to switch baseline config to VERIFY: ${t.message ?: t::class.java.simpleName}")
+            try {
+                restoreBaseline(baselinePath, previousBaseline)
+            } catch (restore: Throwable) {
+                Console.errln("Baseline restoration also failed: ${restore.message ?: restore::class.java.simpleName}")
+            }
             return ExitCode.RUNTIME_ERROR
         }
         val counts = engine.findings.groupingBy { it.severity }.eachCount()
@@ -707,6 +719,23 @@ private class BaselineCommand : CommandBase("baseline", "Manage accepted archite
         Console.println("Future scans will report only new violations relative to this baseline.")
         Console.println("Commit the config and baseline together.")
         return ExitCode.OK
+    }
+}
+
+private fun restoreBaseline(
+    path: Path,
+    previous: ByteArray?,
+) {
+    if (previous == null) {
+        Files.deleteIfExists(path)
+        return
+    }
+    val tmp = Files.createTempFile(path.parent, ".${path.fileName}.", ".tmp")
+    try {
+        Files.write(tmp, previous)
+        Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+    } finally {
+        Files.deleteIfExists(tmp)
     }
 }
 
