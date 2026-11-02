@@ -93,6 +93,56 @@ class CoherentReportPublisherTest {
         }
 
     @Test
+    fun `first successful publication creates a coherent directory`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            val published =
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "first")
+                    Files.writeString(stage.resolve(ExportOutputLayout.HTML_FILE_NAME), "html")
+                    2
+                }
+            assertEquals(2, published)
+            assertEquals("first", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("html", Files.readString(output.resolve(ExportOutputLayout.HTML_FILE_NAME)))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `failed initial directory move leaves the old generation unchanged`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.XML_FILE_NAME), "old")
+            val publisher =
+                CoherentReportPublisher { _, _ -> throw IOException("failed to move existing directory") }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.XML_FILE_NAME), "new")
+                }
+            }
+            assertEquals("old", Files.readString(output.resolve(ExportOutputLayout.XML_FILE_NAME)))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `symbolic link destinations are never replaced`() {
+        if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) return
+        withProject { root ->
+            val actual = Files.createDirectories(root.resolve("actual"))
+            Files.writeString(actual.resolve("notes.txt"), "user")
+            val destination = Files.createSymbolicLink(root.resolve("reports"), actual)
+            assertFailsWith<IllegalArgumentException> {
+                CoherentReportPublisher().publish(destination) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "new")
+                }
+            }
+            assertTrue(Files.isSymbolicLink(destination))
+            assertEquals("user", Files.readString(actual.resolve("notes.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+    }
+
+    @Test
     fun `invalid output destination never deletes existing content`() =
         withProject { root ->
             val output = root.resolve("reports")
