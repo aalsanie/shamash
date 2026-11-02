@@ -1,25 +1,46 @@
 # Shamash V1 — L00 licensing decision and rights packet
 
-> **Status: PROPOSED — NOT APPROVED.** L00 engineering inventory is in progress; the L00 approval/clearance gate is **OPEN**. This document is not an effective license grant, a legal opinion, a host-linking exception, or permission to execute L01. Current source, Maven metadata, and published releases remain Apache-2.0.
+> **Status: MODULE LICENSE CHOICE APPROVED BY SOLE-OWNER ATTESTATION (2026-11-02); L00 DISTRIBUTION CLEARANCE STILL OPEN.** The maintainer approved `AGPL-3.0-only` for five non-plugin modules and retained `Apache-2.0` for the IntelliJ plugin module. This is a prospective decision, **not** a new effective copyright grant, an approved linking permission, or an authorization to proceed with L01 while its distribution boundary is unresolved. Current source, Maven metadata and existing releases remain Apache-2.0.
 >
 > **Snapshot:** `aalsanie/shamash` `main` at `0af4caac359877f11612d03e4dfffb920de6b7a0` (version `0.92.0`). The authoritative V1 instructions are the maintainer-supplied private context, particularly `01-agpl-migration.md` and ticket L00 in `06-roadmap.md`. The ignored `.codex-context` folder is **not** source for release archives.
 
-## 1. Decision proposed, not granted
+## 1. Decision recorded: five AGPL modules, one Apache plugin
 
-| Decision field | Proposed V1 treatment | Approval status |
+On **2026-11-02**, the maintainer stated: **“I am the sole owner of shamash and I approve AGPL-3.0-only for all modules except the intellij plugin module, Lets keep that under Apache.”** Record this as a first-party ownership/authority **attestation**, not as independent confirmation of third-party rights or employment/contract assignments.
+
+| First-party module | **Approved prospective source license** | Current distribution concern |
 | --- | --- | --- |
-| SPDX for first-party work | **`AGPL-3.0-only`**, not `AGPL-3.0-or-later` | **Maintainer decision required** |
-| Scope | One policy for **all six first-party modules** (artifacts, export, ASM core, PSI core, CLI, IntelliJ plugin); accompanying first-party docs, scripts, examples, and owned artwork where rights permit | **Maintainer decision and rights clearance required** |
-| Exception / linking permission | **None approved.** Do not invent or insert an additional permission or `LicenseRef`. | **Independent qualified review of IntelliJ host distribution required** |
-| Commercial or permissive-library alternative | **None approved.** Would require a new explicit decision and corresponding document/build changes. | Not selected |
-| First affected release | Proposed **V1.0.0**, **only if** L01 is approved, merged, built, verified, and authorized for release | Pending |
-| Effective commit | **Not yet defined**. Record L01 merge/release commit here; do **not** backdate the grant to this L00 proposal, baseline, or historical tag. | Pending |
-| Historical published versions | All existing Apache-2.0 rights and release artifacts remain intact; no rewriting tags/changelogs or revoking prior grants | Required invariant |
-| Corresponding source | Release-tag/commit-specific GitHub source archive containing build inputs, wrapper files, schemas, scripts, relevant docs and notices, linked from all binary channels | Proposed; L01 implementation required |
-| Future contributions | Maintain attribution and record prospective contribution terms only after decision; sign-off/DCO is **not** copyright assignment | Pending, L01 |
-| Decision authority | Copyright owner(s)/authorized maintainer and a qualified licensing reviewer for unresolved host/rights cases | **Not signed off** |
+| `shamash-artifacts` | **`AGPL-3.0-only`** | Public Maven library and plugin dependency |
+| `shamash-export` | **`AGPL-3.0-only`** | Public Maven library and plugin dependency |
+| `shamash-asm-core` | **`AGPL-3.0-only`** | Public Maven library and plugin dependency |
+| `shamash-psi-core` | **`AGPL-3.0-only`** | Direct plugin dependency; uses IntelliJ Platform APIs |
+| `shamash-cli` | **`AGPL-3.0-only`** | Standalone CLI and GitHub Action runtime |
+| `shamash-intellij-plugin` | **`Apache-2.0`** | Plugin's *own source code*, **not yet the combined ZIP's cleared license** |
 
-**Meaning of the proposed grant.** `AGPL-3.0-only` is materially different from the `-or-later` choice. Do not copy the example “or any later version” notice into a `-only` header. If a further host permission is necessary, its wording, beneficiaries, precise host components, compatibility effect, and SPDX/notice treatment require separate review before any code/header changes. Preserve the unmodified approved full license text.
+**Unapproved boundary:** The IntelliJ plugin currently has direct Gradle `implementation(project(...))` dependencies on the other four library modules (`psi-core`, `asm-core`, `artifacts`, `export`). Apache-2.0 source is GPL/AGPL compatible in a combined work, but this does **not** automatically mean the **whole combined distributable ZIP is Apache-only**. The AGPL libraries can impose conditions on the combination. Distinguish the module's license from the distributed work's legal obligations.
+
+**Required separate design/licensing decision — neither choice has been granted:**
+
+1. **Precisely scoped licensing permission for the official Apache Shamash IntelliJ plugin** to include/use covered libraries under an approved distribution agreement, with no arbitrary third-party, proprietary embedding, hosted-service or external registry exemptions. A qualified licensing reviewer must choose a legally sound mechanism (possibly a separate dual-license grant or additional permission), exact affected modules and files, and packaging/notice language.
+2. **Explicitly approved module/architecture separation** so the Apache plugin distribution no longer incorporates AGPL-covered modules. This entails architecture work not authorized by L00 and must not be silently introduced in L01.
+
+Until that choice is approved, do not assume that making just the plugin module Apache settles the **actual plugin artifact**.
+
+| Decision field | Status |
+| --- | --- |
+| Sole owner of original Shamash work | **Attested by maintainer**, 2026-11-02; third-party and any contract rights review remains separate |
+| Source SPDX identifiers and module split | **APPROVED**: five `AGPL-3.0-only`, one `Apache-2.0` |
+| Global/root docs, CI scripts, artwork, examples, shared build files | **Not separately approved** by a modules-only instruction; must be mapped intentionally in L01 |
+| Binding plugin↔AGPL library permission or architectural split | **NOT APPROVED**; L00 blocker |
+| First affected version | **Planned V1.0.0**, conditional on L01, release gates and owner approval |
+| License effective commit | **Unset**; to be recorded at the reviewed L01 merge/release commit (never retroactive) |
+| Historical releases | Retain their original Apache-2.0 license and already granted rights |
+| Exact-version Corresponding Source | Plan release-tag source/archive, wrapper/build inputs, sources, third-party notices and binary links; L01/Q02 gate |
+| Future contributions | Prospective mixed-license contribution terms; no automatic assignment |
+| Published Maven metadata | Migrate all three library POMs to AGPL only during L01 |
+| Plugin Marketplace listing | Keep truthful Apache **module source** description while resolving combined ZIP licensing and host issues |
+
+**SPDX precision:** `AGPL-3.0-only` is not `AGPL-3.0-or-later`; never copy an “or later” boilerplate. Preserve full unmodified upstream texts and attribution. One root `LICENSE` cannot accurately describe a mixed-license tree without clearly marked per-module license boundaries and a separate Apache license for the plugin. No arbitrary additional permission or `LicenseRef` is currently approved.
 
 ## 2. First-party and vendored repository inventory
 
@@ -39,7 +60,7 @@ The tracked [path inventory](v1-path-inventory.csv) contains **every one of the 
 
 The three SVG paths have the same blob SHA. This is **deduplication evidence, not creation/ownership evidence**. Wrapper JAR binaries and the compressed sample are not proven by text-level inspection. Do not treat project code as owned merely because it is located within the maintainer's repository.
 
-**Authorship evidence and limits:** the latest accessible 100-commit listing contains author strings `aalsanie`, `Ahmad Al-Sanie`, and `dependabot[bot]`; Dependabot merge trailers were observed. Commit authorship may reflect automation, rebases or employee work. It is **not** proof of copyright ownership, employer assignment, third-party snippet provenance, artwork rights, or contributor consent. Before approval, review full history (including original import and co-authored commits), employer/contract assignments and any externally sourced code, then record the maintainer's rights attestation and any grants/required notices without publishing personal email addresses.
+**Ownership attestation and evidence limits:** the maintainer self-attested sole ownership of original Shamash work on 2026-11-02. This does not establish rights in imported third-party code, tooling, artwork or externally authored material. The latest accessible 100-commit listing contains author strings `aalsanie`, `Ahmad Al-Sanie`, and `dependabot[bot]`; Dependabot merge trailers were observed. Commit authorship may reflect automation, rebases or employee work. It is **not** proof of copyright ownership, employer assignment, third-party snippet provenance, artwork rights, or contributor consent. Before L00 clearance, review full history (including original import and co-authored commits), any relevant employer/contract assignments and externally sourced code; preserve grants/notices, without publishing personal email addresses.
 
 **Attribution separation:** first-party work may be offered under new approved terms where the licensor has authority; copyright/license notices from incorporated Apache, BSD, MIT and other third-party material must be retained as applicable. Historical Apache-licensed versions remain available under their original terms. Neither “everyone used Apache” nor “GPL-compatible permissive licensing” implies that mandatory attribution may be deleted.
 
@@ -53,20 +74,22 @@ See [dependency and packaging ledger](v1-dependency-inventory.md) for exact **de
 | --- | --- | --- |
 | Maven Central (`shamash-artifacts`, `shamash-export`, `shamash-asm-core`) | `com.vanniktech.maven.publish`; root POM says Apache 2.0; published-library `Jar` tasks include `META-INF/LICENSE` | Source reviewed; exact deployed artifact contents and dependencies must be inspected per artifact |
 | Standalone CLI | Application distribution `shamash-cli:distZip` containing CLI and runtime dependencies; GitHub release ZIP | Build logic reviewed; **ZIP bytes unavailable in this environment**; exact bundled JAR/notice inventory pending |
-| IntelliJ plugin | `buildPlugin` / `signPlugin`; includes PSI, ASM, artifacts/export and host-provided platform dependencies | Build/plugin.xml reviewed; **signed plugin ZIP not inspected**; distinguish bundled library JARs from host-provided APIs and Kotlin |
+| IntelliJ plugin | `buildPlugin` / `signPlugin`; **Apache-2.0 module source** directly uses proposed **AGPL** PSI, ASM, artifacts/export, plus host components | **Combined ZIP not cleared**. Signed ZIP not inspected; distinguish bundled JARs from host-provided APIs/Kotlin and resolve additional licensing permission or architecture change |
 | GitHub Action | `action.yml` downloads versioned standalone CLI through installer scripts | Uses CLI grant/distribution terms; invocation does not relicense scanned project |
 | GitHub release | Current `v0.92.0` includes CLI ZIP, signed plugin ZIP and `SHA256SUMS.txt` | Published asset names/digests identified, binary contents not audited; immutable historical grant |
 | Developer/source archive | Git tag source plus build tooling is intended source offer | Exact proposed source archive task, notices and reproducible rebuild remain L01/Q02 work |
 
 **Evidence restriction:** the connected GitHub content interface is text-oriented, and the execution container cannot resolve `github.com`; the actual ZIP/JAR binaries and dependency-resolution output were **not** retrieved. Thus **the no-unresolved-rights and packaging portion of L00 acceptance is not yet met**. Never label these as inspected or use historic CI success as substitution. Run the ledger commands against the candidate and attach the generated reports or hashes to L00 review.
 
-## 4. IntelliJ host and Marketplace decision gate
+## 4. IntelliJ plugin mixed-license and host decision gates
 
-- IntelliJ Platform's open-source core is under Apache-2.0, and Kotlin's open-source plugin code is generally Apache-2.0; nevertheless an actual plugin can interact with proprietary/unified IDE distribution components. A base-platform license is not a blanket license for every IntelliJ runtime module.
-- The current plugin compiles against IntelliJ IDEA Community 2024.2.1, depends on `com.intellij.java` and `org.jetbrains.kotlin`, and advertises build range `242.21829.142`–`262.*`. The PSI module also uses IntelliJ Platform APIs. Determine the **actual classpath** supplied by each host, versus JARs distributed with Shamash.
-- Assess **Community/open-source host**, **Ultimate/unified/proprietary IntelliJ hosts**, **bundled Java/Kotlin plugins**, **Marketplace transfer**, **offline/manual plugin ZIP**, and **custom registry extension linking** as distinct combinations. Do not assume the GPL/AGPL System Library exception covers all hosts or that all combinations are incompatible.
-- JetBrains Marketplace Developer Agreement **v3.2, effective 2026-08-24**, requires developer-provided license terms and addresses Marketplace rights and precedence (especially §§9–10). Listing guidance requires source link for open-source plugins; neither proves the plugin's exact AGPL interoperability.
-- **Required disposition:** obtain qualified open-source licensing review of a plugin covered by `AGPL-3.0-only` running/linking in each named IntelliJ distribution, of bundled/runtime libraries, and of Marketplace terms. Record **(a)** compatibility without a permission, **(b)** an approved *narrowly defined* additional host permission, **(c)** a differently licensed plugin module, or **(d)** retention of Apache. Option (b) is **not drafted or granted in L00**. No arbitrary hosted-service exemption.
+**Blocker A — AGPL library combination, even before considering the IDE host.** Current `shamash-intellij-plugin/build.gradle.kts` has direct `implementation(project(...))` dependencies on `shamash-psi-core`, `shamash-asm-core`, `shamash-artifacts`, and `shamash-export`, all approved prospectively as AGPL. The plugin's original code may be offered under Apache-2.0, while the combination still has AGPL requirements. This cannot be resolved merely by changing header SPDX strings. **No additional license permission has been approved.**
+
+**Blocker B — actual host + Marketplace distribution.** The platform core is open source under Apache-2.0, but assess bundled libraries and platform/plugin components for each supported IDE (including proprietary/unified hosts). Current compilation target is 2024.2.1, with declared build range through 2026.2; plugin depends on `com.intellij.java` and `org.jetbrains.kotlin`. Inspect the actual plugin ZIP and host classpath instead of assuming IntelliJ/Marketplace terms settle all AGPL host linkage questions.
+
+**Required disposition:** a qualified review with evidence and a specific maintainer-approved (1) narrow permission/dual grant for the official plugin combined distribution, (2) architecture separation, or another owner-approved concrete alternative. Record exact terms, scope, source/notices and whether modified forks are covered. No implicit permission for hosted SaaS, proprietary arbitrary consumers or custom registries. Do not update the Marketplace listing or commence L01 header churn until the decision is recorded.
+
+See [GNU GPL FAQ on linking](https://www.gnu.org/licenses/gpl-faq.en.html#IfLibraryIsGPL), [AGPL §5 combined-work terms](https://www.gnu.org/licenses/agpl-3.0.en.html), [JetBrains plugin dependencies](https://plugins.jetbrains.com/docs/intellij/plugin-dependencies.html), and [Marketplace developer agreement](https://www.jetbrains.com/legal/docs/plugins_site/developer-agreement/).
 
 Primary references: [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html), [AGPL-3.0-or-later](https://spdx.org/licenses/AGPL-3.0-or-later.html), [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0), [JetBrains Developer Agreement](https://www.jetbrains.com/legal/docs/plugins_site/developer-agreement/), [Marketplace approval guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html), [IntelliJ open-source platform](https://www.jetbrains.com/opensource/intellij-platform/), [Kotlin plugin source](https://github.com/JetBrains/intellij-community/tree/master/plugins/kotlin), [GNU System Libraries discussion](https://www.gnu.org/licenses/gpl-faq.en.html#SystemLibraryException).
 
@@ -76,51 +99,52 @@ Primary references: [AGPL-3.0-only](https://spdx.org/licenses/AGPL-3.0-only.html
 
 **Can I run the CLI in CI?** Running an unmodified standalone CLI is a distinct use from distributing a modified binary. CI logs/reports do not by themselves transfer Shamash's license to the scanned project. If a company redistributes Shamash or modifies it for network interaction, analyze distribution and AGPL §13 facts separately.
 
-**Can I embed an ASM/export/artifacts library into proprietary software?** This is materially different from invoking an external CLI. If the library becomes AGPL-covered, linking and redistribution may invoke reciprocal obligations; assess the complete integration before adoption. No permissive exception is promised.
+**Can I embed an ASM/export/artifacts library into proprietary software?** This is materially different from invoking an external CLI. The library modules are prospectively approved for AGPL-3.0-only. Linking and redistribution may invoke reciprocal obligations; no general permissive embedding exception has been approved.
 
 **Can I implement a custom rule-registry provider?** A provider loaded in the same process is not automatically equivalent to a separate CLI invocation. The exact loading/linking model and redistribution require review. Do not imply a blanket plugin exception.
 
-**Can I host a modified Shamash-backed analysis service?** AGPL §13 can require offering Corresponding Source to remote users interacting with a modified covered program; the actual architecture and interactions matter. An IntelliJ host exception, if later approved, must **not** silently exempt hosted SaaS derivatives.
+**Can I host a modified Shamash-backed analysis service?** AGPL §13 can require offering Corresponding Source to remote users interacting with a modified covered program; the actual architecture and interactions matter. No source-level or host-specific exception has been approved for hosted SaaS derivatives.
 
 **What happens to 0.92.0 and earlier versions?** They remain offered under their then-current Apache-2.0 grant. A later first-party license decision does not retroactively remove those rights. Preserve applicable contributor and third-party notices.
 
-## 6. Concrete L01 change list — review required, NOT executed here
+## 6. L01 implementation surfaces — review required, NOT executed
 
-1. `LICENSE` (full approved license) and new `THIRD_PARTY_NOTICES.md`, `LICENSES/` with necessary upstream texts; separately linked approved permission if any.
-2. `spotless/HEADER.kt`, `gradle.properties`, root `settings.gradle.kts` / `build.gradle.kts`, six module Gradle build files, and first-party source files **selected only after path-inventory rights approval**. Preserve external/vendor exceptions and contributor copyrights.
-3. Root `build.gradle.kts` POM license metadata for all three published libraries; `scripts/verify-publications.py`, signature/packaging/source verification.
-4. CLI/app distribution build and README/help license/source output, plugin build & About/help license/source entry, root `.github/workflows/release.yml` source/checksum packaging, GitHub Action/installer docs as necessary.
-5. `README.md`, quick start, translated READMEs/licensing statements in `docs/`, `CONTRIBUTING.md`, new version-specific migration and FAQ documents; preserve historical `CHANGELOG.md` entries.
-6. First-party examples, verification consumers, shell/PowerShell/Python scripts and header variants identified in `v1-path-inventory.csv`; **do not** mass-replace `cytoscape.min.js`, wrapper binaries/scripts or other upstream notices.
-7. Marketplace license/source/EULA fields only during the **authorized release**. Do not modify the already-published assets or issue a release during L00/L01 review.
+L01 remains a **separate PR**. Resolve the mixed-plugin licensing choice before editing headers or packaging.
 
-This is a **specific surface list** plus a per-path inventory, not an authorization to globally search-and-replace Apache boilerplate before clearance.
+1. Full approved AGPL-3.0-only text in the appropriate root/default `LICENSE`, **full Apache-2.0 text under `shamash-intellij-plugin/LICENSE`**, plus an unambiguous module-license matrix and retained third-party terms in `THIRD_PARTY_NOTICES.md` / `LICENSES/`. If a narrow permission is separately approved, package the actual approved terms distinctly with accurate SPDX metadata.
+2. Preserve Apache first-party headers inside `shamash-intellij-plugin`; convert first-party headers in exactly `shamash-artifacts`, `shamash-export`, `shamash-asm-core`, `shamash-psi-core` and `shamash-cli` under a reviewed tracked-file allowlist. Handle the **global** `spotless/HEADER.kt` convention without accidentally relicensing plugin source; retain third-party Cytoscape MIT and Gradle notices.
+3. Update the root `build.gradle.kts` Maven POM metadata to AGPL for three published libraries and extend `scripts/verify-publications.py` to validate exact POM/license/package bytes, binary/sources/docs artifacts and notices.
+4. Review root docs, scripts, examples, artwork, `gradle.properties`, GitHub Action and install scripts **individually**, because the maintainer approved a *module* split rather than automatically licensing all repository paths. Update README, `CONTRIBUTING.md`, versioned source links, license FAQ and truthful plugin listing.
+5. Package approved module-level and combined-artifact licensing statements into CLI and plugin ZIPs, generate exact-commit source archives including build inputs, and validate packaging/host compatibility and legal notices.
+6. Preserve historical Apache releases and `CHANGELOG.md` history; do not publish/re-tag in L01.
 
-## 7. Acceptance checklist and explicit blockers
+No architecture changes, general-purpose link exceptions, contributor assignments, historical changes, or release are approved by this L00 record.
 
-- [x] Baseline, six first-party modules and distribution channels identified from source.
-- [x] Every baseline tracked blob classified in a versioned path inventory (491 entries).
-- [x] Direct dependencies and external/vendor surfaces documented separately, with provenance references and non-inferred transitives.
-- [x] Proposed SPDX, six-module scope, history, source delivery, host alternatives, FAQ and L01 change list recorded.
-- [ ] Complete rights/assignment/source-material validation for first-party code, docs, graphics and samples; owner attestation.
-- [ ] Resolved **runtime** dependency trees for all shipped modules plus exact license/notice contents for every transitive component.
-- [ ] Inspect actual CLI ZIP and signed plugin ZIP (bundled JARs, MIT/Apache/BSD notices, Kotlin/host treatment).
-- [ ] Qualified host and Marketplace compatibility review and any required additional permission precisely approved.
-- [ ] Maintainer explicitly approves SPDX variant, module boundary, source offer and first effective release.
-- [ ] All unresolved intended-distribution rights/compatibility entries closed and recorded; no pending unknown terms.
+## 7. Acceptance and outstanding evidence (L00)
 
-**Gate state: OPEN.** No L01 code/license changes, publication, historic-release modifications, contributor license reassignment or legal outreach are authorized by this document.
+- [x] Baseline and six first-party modules inventoried; 491 tracked baseline blobs classified.
+- [x] Direct dependencies and distribution channels mapped without inventing resolved transitive versions.
+- [x] Maintainer **attested sole ownership of Shamash original work**, 2026-11-02.
+- [x] Maintainer **approved AGPL-3.0-only for five modules**, **Apache-2.0 for IntelliJ plugin module**.
+- [x] Historical Apache rights retained; L01 exact module-header/packaging surfaces specified.
+- [ ] **Maintainer selects and qualified reviewer clears** a mechanism by which the Apache plugin distribution may use AGPL modules, or explicitly authorizes architecture separation. Neither has been approved.
+- [ ] Any imported/vendor, artwork, contribution and relevant employment/contract rights concerns cleared as applicable; original notices preserved.
+- [ ] Resolve actual six-module runtime transitive dependency trees, original license/NOTICE content and packaging.
+- [ ] Inspect actual CLI ZIP and signed plugin ZIP (bundled JARs, license texts, Kotlin and host separation) and record evidence.
+- [ ] Complete host/Marketplace/license compatibility review against the actual distributable and selected permission/boundary.
+- [ ] Approve any still-unassigned root-level docs/scripts/artwork source-license scope and exact version-specific Corresponding Source delivery.
+- [ ] Resolve **all** rights/compatibility exceptions for the intended distributions and obtain final L00 clearance.
 
-### Required decision record (complete only after evidence and approval)
+**Gate status: OPEN — module license choice approved, distribution permission/architecture and evidence unresolved.** No first-party license files, source headers, POMs, ZIPs, signatures, tags, published assets or Marketplace fields have been changed. **Do not begin L01** until the outstanding distribution decision is approved.
 
-| Field | Decision / signoff |
+### Decision record
+
+| Item | Status |
 | --- | --- |
-| Copyright holder(s), authority and relevant employer/contributor evidence | **Pending** |
-| License: `AGPL-3.0-only`, `AGPL-3.0-or-later`, or keep Apache-2.0 | **Pending maintainer** |
-| Six modules together, or explicit exceptions | **Pending maintainer** |
-| IntelliJ host result and separate permission/alternative terms, if needed | **Pending qualified reviewer + maintainer** |
-| All external transitive licenses, notices and distribution matrix cleared | **Pending package/rights audit** |
-| Corresponding Source delivery method approved | **Pending maintainer** |
-| Earliest affected tag / L01 commit | **Unassigned; not retrospective** |
-| Reviewer, review date and evidence location | **Pending** |
-| Final L00 maintainer approval | **Pending** |
+| Sole owner attestation | **Confirmed by maintainer, 2026-11-02; independent provenance checks remain** |
+| `AGPL-3.0-only` | **Approved** for `artifacts`, `export`, `asm-core`, `psi-core`, `cli` |
+| `Apache-2.0` | **Approved** for `shamash-intellij-plugin` source |
+| Apache plugin + AGPL dependencies | **BLOCKED: permission or separation decision required** |
+| All dependency/license/host distributions cleared | **Pending evidence** |
+| Prospective version and effective commit | **V1.0.0 proposed; specific commit pending L01** |
+| Final release/legal compatibility signoff | **Pending** |
