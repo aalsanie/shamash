@@ -115,12 +115,68 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(before, delivered.get())
     }
 
+    fun testBackendFailureLeavesPriorResultAndDurableDiagnostic() {
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val good = CountDownLatch(1)
+        assertNotNull(coordinator.analyze { _, _ ->
+            good.countDown()
+            AnalysisOutcome.Complete(
+                IdeAnalysisCoordinator.SourcePresentation(),
+                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+            )
+        })
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(good.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        val prior = assertNotNull(coordinator.state().visibleResult)
+
+        val failed = CountDownLatch(1)
+        assertNotNull(coordinator.analyze { _, _ ->
+            failed.countDown()
+            error("injected extraction failure")
+        })
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(failed.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertEquals(AnalysisPhase.FAILED, coordinator.state().phase)
+        assertEquals(prior, coordinator.state().visibleResult)
+        assertEquals(ResultRelation.PREVIOUS, coordinator.state().resultRelation)
+        assertTrue(coordinator.state().diagnostics.any { it.contains("injected extraction failure") })
+    }
+
+    fun testModuleRootModificationMakesPreviousResultStale() {
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val done = CountDownLatch(1)
+        assertNotNull(coordinator.analyze { _, _ ->
+            done.countDown()
+            AnalysisOutcome.Complete(
+                IdeAnalysisCoordinator.SourcePresentation(),
+                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+            )
+        })
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        val prior = assertNotNull(coordinator.state().visibleResult)
+
+        runInEdtAndWait {
+            val newSourceRoot = myFixture.tempDirFixture.findOrCreateDir("additional/java")
+            PsiTestUtil.addSourceRoot(myModule, newSourceRoot)
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+        assertTrue(coordinator.state().rootRevision > prior.request.rootRevision)
+    }
+
     fun testSourceActionCommitsUnsavedPSIWithoutSavingUnrelatedFiles() {
         val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, sourceRoot)
         val unrelated = myFixture.addFileToProject("src/main/java/Unsaved.java", "class Unsaved {}")
+        val extra = myFixture.addFileToProject("notes.txt", "private working notes")
         val vf = unrelated.virtualFile
         val originalBytes = Files.readAllBytes(Path.of(vf.path)).toList()
+        val extraBytes = Files.readAllBytes(Path.of(extra.virtualFile.path)).toList()
         val config = SchemaResources.openReferenceYaml().bufferedReader().use { it.readText() }
         val configPath = Path.of(project.basePath!!).resolve("shamash/configs/psi.yml")
         writeFile(configPath, config)
@@ -129,11 +185,18 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
             val doc = assertNotNull(FileDocumentManager.getInstance().getDocument(vf))
             WriteCommandAction.runWriteCommandAction(project) { doc.insertString(doc.textLength, " // unsaved") }
             assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(doc))
+            val extraDoc = assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile))
+            WriteCommandAction.runWriteCommandAction(project) { extraDoc.insertString(extraDoc.textLength, " // unrelated unsaved") }
+            assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(extraDoc))
         }
         fire(RunPsiScanAction())
         assertEquals(originalBytes, Files.readAllBytes(Path.of(vf.path)).toList())
+        assertEquals(extraBytes, Files.readAllBytes(Path.of(extra.virtualFile.path)).toList())
         assertEquals(true, FileDocumentManager.getInstance().isDocumentUnsaved(
             assertNotNull(FileDocumentManager.getInstance().getDocument(vf)),
+        ))
+        assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(
+            assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile)),
         ))
         IdeAnalysisCoordinator.getInstance(project).cancel()
     }
