@@ -13,14 +13,14 @@ import io.shamash.artifacts.params.ParamError
 import io.shamash.artifacts.params.Params
 import io.shamash.psi.core.config.schema.v1.model.RuleDef
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
+import io.shamash.psi.core.config.validation.v1.MethodCountKinds
+import io.shamash.psi.core.config.validation.v1.MethodCountKinds.Kind
 import io.shamash.psi.core.engine.EngineRule
 import io.shamash.psi.core.facts.model.v1.FactsIndex
 import io.shamash.psi.core.facts.model.v1.Visibility
 
 class MetricsMaxMethodsByRoleRule : EngineRule {
     override val id: String = "metrics.maxMethodsByRole"
-
-    private enum class CountKind { DECLARED_METHODS, PUBLIC_METHODS, PRIVATE_METHODS }
 
     override fun evaluate(
         file: PsiFile,
@@ -34,14 +34,7 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
         val limits = p.requireMap("limits")
         if (limits.isEmpty()) return emptyList()
 
-        val countKinds =
-            (p.optionalStringList("countKinds") ?: listOf(CountKind.DECLARED_METHODS.name))
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .mapNotNull { raw ->
-                    runCatching { CountKind.valueOf(raw) }.getOrNull()
-                }.ifEmpty { listOf(CountKind.DECLARED_METHODS) }
-                .toSet()
+        val countKinds = MethodCountKinds.decode(rule.params, p.currentPath)
 
         val ignoreRegexes =
             (p.optionalStringList("ignoreMethodNameRegex") ?: emptyList())
@@ -72,10 +65,12 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
         val sev = RuleUtil.severity(rule)
         val filePath = normalizePath(file.virtualFile?.path ?: file.name)
 
+        val eligibleOwners = RuleUtil.scopedClasses(facts, rule).mapTo(HashSet()) { it.fqName }
         val methodsByClass = facts.methods.groupBy { it.containingClassFqn }
 
         val out = ArrayList<Finding>()
         for ((clsFqn, methods) in methodsByClass.entries.sortedBy { it.key }) {
+            if (clsFqn !in eligibleOwners) continue
             val role = facts.classToRole[clsFqn] ?: continue
             val max = roleToMax[role] ?: continue
 
@@ -85,6 +80,7 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
                     .filter { !it.isConstructor }
                     .filter { m -> ignoreRegexes.none { rx -> rx.containsMatchIn(m.name) } }
                     .filter { m -> shouldCount(m.visibility, countKinds) }
+                    .distinctBy { it.signature }
                     .count()
 
             if (counted > max) {
@@ -100,7 +96,7 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
                                 "role" to role,
                                 "max" to max.toString(),
                                 "actual" to counted.toString(),
-                                "countKinds" to countKinds.joinToString(","),
+                                "countKinds" to countKinds.map(MethodCountKinds::wireName).sorted().joinToString(","),
                             ),
                     )
             }
@@ -111,13 +107,11 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
 
     private fun shouldCount(
         visibility: Visibility,
-        kinds: Set<CountKind>,
-    ): Boolean {
-        if (CountKind.DECLARED_METHODS in kinds) return true
-        if (CountKind.PUBLIC_METHODS in kinds && visibility == Visibility.PUBLIC) return true
-        if (CountKind.PRIVATE_METHODS in kinds && visibility == Visibility.PRIVATE) return true
-        return false
-    }
+        kinds: Set<Kind>,
+    ): Boolean =
+        Kind.DECLARED in kinds ||
+            (Kind.PUBLIC in kinds && visibility == Visibility.PUBLIC) ||
+            (Kind.PRIVATE in kinds && visibility == Visibility.PRIVATE)
 
     private fun normalizePath(path: String): String = path.replace('\\', '/')
 }
