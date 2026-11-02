@@ -1,0 +1,67 @@
+/*
+ * Copyright © 2025-2026 | Shamash
+ *
+ * Author: @aalsanie
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+package io.shamash.asm.core
+
+import io.shamash.asm.core.config.ConfigValidation
+import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.io.path.isRegularFile
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class ShippedConfigurationTest {
+    @Test
+    fun `all complete ASM examples validate through schema binding semantics and registry`() {
+        val root = repositoryRoot()
+        val exampleDir = root.resolve("docs/asm/schema/v1/examples")
+        val files = Files.list(exampleDir).use { stream ->
+            stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
+        }
+        assertEquals((1..18).toList(), files.map { it.fileName.toString().substringBefore('_').toInt() })
+        val registry = DefaultRuleRegistry.create()
+        for (file in files) {
+            val result = Files.newBufferedReader(file).use { ConfigValidation.loadAndValidateV1(it, registry) }
+            assertTrue(result.ok, "$file: ${result.errors}")
+            val config = assertNotNull(result.config, file.toString())
+            assertTrue(config.rules.isNotEmpty(), "$file contains no rule")
+            assertTrue(config.rules.any { it.enabled }, "$file contains no enabled rule")
+            config.rules.filter { it.enabled }.forEach { rule ->
+                assertNotNull(registry.byId("${rule.type}.${rule.name}"), "$file: unimplemented rule ${rule.type}.${rule.name}")
+            }
+        }
+    }
+
+    @Test
+    fun `shipped ASM presets and application example validate`() {
+        val root = repositoryRoot()
+        val resourceDir = root.resolve("shamash-asm-core/src/main/resources/shamash/asm/schema/v1")
+        val files =
+            listOf(
+                resourceDir.resolve("shamash-asm.discovery.yml"),
+                resourceDir.resolve("shamash-asm.reference.yml"),
+                resourceDir.resolve("shamash-asm.spring.yml"),
+                resourceDir.resolve("shamash-asm.starter.yml"),
+                root.resolve("docs/asm/pit-violation/src/main/resources/shamash/configs/asm.yml"),
+            )
+        val registry = DefaultRuleRegistry.create()
+        for (file in files) {
+            assertTrue(file.isRegularFile(), "Missing shipped configuration: $file")
+            val result = Files.newBufferedReader(file).use { ConfigValidation.loadAndValidateV1(it, registry) }
+            assertTrue(result.ok, "$file: ${result.errors}")
+            assertNotNull(result.config, file.toString())
+        }
+    }
+
+    private fun repositoryRoot(): Path =
+        generateSequence(Path.of("").toAbsolutePath().normalize()) { it.parent }
+            .firstOrNull { Files.isRegularFile(it.resolve("settings.gradle.kts")) }
+            ?: error("Cannot locate project root for shipped configuration tests")
+}
