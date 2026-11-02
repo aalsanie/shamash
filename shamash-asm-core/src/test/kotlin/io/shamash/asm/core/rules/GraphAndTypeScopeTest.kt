@@ -43,17 +43,15 @@ class GraphAndTypeScopeTest {
     @Test
     fun `graph rules use configured granularity even when summaries are disabled`() {
         val facts = graph(listOf("a.A" to "a.B", "a.B" to "a.A"))
-        val cfg = config()
-        val classConfig = cfg.copy(analysis = cfg.analysis.copy(graphs =
-            cfg.analysis.graphs.copy(enabled = false, granularity = Granularity.CLASS)))
-        val packageConfig = cfg.copy(analysis = cfg.analysis.copy(graphs =
-            cfg.analysis.graphs.copy(enabled = false, granularity = Granularity.PACKAGE)))
-        val rules = listOf(
-            NoCyclesRule() to rule("graph", "noCycles", emptyMap()),
-            MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
-            MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
-            MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
-        )
+        val classConfig = configWithGraphs(Granularity.CLASS)
+        val packageConfig = configWithGraphs(Granularity.PACKAGE)
+        val rules =
+            listOf(
+                NoCyclesRule() to rule("graph", "noCycles", emptyMap()),
+                MaxCyclesRule() to rule("graph", "maxCycles", mapOf("maxCycles" to 0)),
+                MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
+                MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
+            )
         for ((evaluator, definition) in rules) {
             assertTrue(evaluator.evaluate(facts, definition, classConfig).isNotEmpty(), evaluator.id)
             assertTrue(evaluator.evaluate(facts, definition, packageConfig).isEmpty(), evaluator.id)
@@ -63,15 +61,14 @@ class GraphAndTypeScopeTest {
     @Test
     fun `external buckets are governed by graph settings`() {
         val facts = graph(listOf("a.A" to "external.B"))
-        val cfg = config()
-        val off = cfg.copy(analysis = cfg.analysis.copy(graphs =
-            cfg.analysis.graphs.copy(enabled = false, granularity = Granularity.CLASS, includeExternalBuckets = false)))
-        val on = cfg.copy(analysis = cfg.analysis.copy(graphs =
-            cfg.analysis.graphs.copy(enabled = false, granularity = Granularity.CLASS, includeExternalBuckets = true)))
-        for ((evaluator, definition) in listOf(
-            MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
-            MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
-        )) {
+        val off = configWithGraphs(Granularity.CLASS, includeExternalBuckets = false)
+        val on = configWithGraphs(Granularity.CLASS, includeExternalBuckets = true)
+        val rules =
+            listOf(
+                MaxEdgeCountRule() to rule("graph", "maxEdgeCount", mapOf("maxEdges" to 0)),
+                MaxDependencyDensityRule() to rule("graph", "maxDependencyDensity", mapOf("maxDensity" to 0.0)),
+            )
+        for ((evaluator, definition) in rules) {
             assertTrue(evaluator.evaluate(facts, definition, off).isEmpty(), evaluator.id)
             assertEquals(1, evaluator.evaluate(facts, definition, on).size, evaluator.id)
         }
@@ -80,16 +77,19 @@ class GraphAndTypeScopeTest {
     @Test
     fun `maximum cycles counts cyclic components and is order invariant`() {
         val facts = graph(listOf("a.A" to "b.B", "b.B" to "a.A", "c.C" to "d.D", "d.D" to "c.C"))
-        val cfg = config().let { it.copy(analysis = it.analysis.copy(graphs = it.analysis.graphs.copy(
-            enabled = false, granularity = Granularity.CLASS))) }
+        val config = configWithGraphs(Granularity.CLASS)
         val definition = rule("graph", "maxCycles", mapOf("maxCycles" to 1))
-        val actual = MaxCyclesRule().evaluate(facts, definition, cfg).single()
+        val actual = MaxCyclesRule().evaluate(facts, definition, config).single()
         assertEquals("2", actual.data["count"])
         assertEquals(
             actual,
-            MaxCyclesRule().evaluate(facts.copy(classes = facts.classes.reversed(), edges = facts.edges.reversed()), definition, cfg).single(),
+            MaxCyclesRule().evaluate(
+                facts.copy(classes = facts.classes.reversed(), edges = facts.edges.reversed()),
+                definition,
+                config,
+            ).single(),
         )
-        assertTrue(MaxCyclesRule().evaluate(facts, definition.copy(params = mapOf("maxCycles" to 2)), cfg).isEmpty())
+        assertTrue(MaxCyclesRule().evaluate(facts, definition.copy(params = mapOf("maxCycles" to 2)), config).isEmpty())
     }
 
     @Test
@@ -98,15 +98,16 @@ class GraphAndTypeScopeTest {
         val nested = outer + "$" + "Nested"
         val local = outer + "$" + "1Local"
         val dollar = "sample/Top" + "$" + "Dollar"
-        val units = listOf(
-            bytecode(outer, Opcodes.ACC_PUBLIC),
-            bytecode(nested, Opcodes.ACC_PUBLIC, outer, "Nested"),
-            bytecode(local, Opcodes.ACC_PUBLIC, outer, "Local", localClass = true),
-            bytecode(dollar, Opcodes.ACC_PUBLIC),
-            bytecode("sample/Contract", Opcodes.ACC_PUBLIC or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT),
-            bytecode("sample/Kind", Opcodes.ACC_PUBLIC or Opcodes.ACC_ENUM),
-            bytecode("sample/Tagged", Opcodes.ACC_PUBLIC or Opcodes.ACC_ANNOTATION or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT),
-        )
+        val units =
+            listOf(
+                bytecode(outer, Opcodes.ACC_PUBLIC),
+                bytecode(nested, Opcodes.ACC_PUBLIC, outer, "Nested"),
+                bytecode(local, Opcodes.ACC_PUBLIC, outer, "Local", localClass = true),
+                bytecode(dollar, Opcodes.ACC_PUBLIC),
+                bytecode("sample/Contract", Opcodes.ACC_PUBLIC or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT),
+                bytecode("sample/Kind", Opcodes.ACC_PUBLIC or Opcodes.ACC_ENUM),
+                bytecode("sample/Tagged", Opcodes.ACC_PUBLIC or Opcodes.ACC_ANNOTATION or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT),
+            )
         val extraction = FactExtractor.extractAll(units.asSequence())
         assertTrue(extraction.errors.isEmpty(), extraction.errors.toString())
         val facts = extraction.facts
@@ -114,41 +115,55 @@ class GraphAndTypeScopeTest {
         assertTrue(facts.classes.single { it.type.internalName == nested }.isNestedType)
         assertTrue(facts.classes.single { it.type.internalName == local }.isNestedType)
         assertFalse(facts.classes.single { it.type.internalName == dollar }.isNestedType)
-        val orphan = FactExtractor.extractResult(bytecode(
-            "sample/Orphan" + "$" + "Nested", Opcodes.ACC_PUBLIC, inner = "Nested",
-        ))
-        assertTrue(orphan.errors.isEmpty())
+
+        val orphan =
+            FactExtractor.extractResult(
+                bytecode("sample/Orphan" + "$" + "Nested", Opcodes.ACC_PUBLIC, inner = "Nested"),
+            )
+        assertTrue(orphan.errors.isEmpty(), orphan.errors.toString())
         assertTrue(orphan.facts.classes.single().isNestedType)
+
         val spec = ApiMaxPublicTypesSpec()
-        val checks = listOf(
-            emptyMap<String, Any?>() to 7,
-            mapOf("includeNested" to false) to 5,
-            mapOf("includeInterfaces" to false) to 6,
-            mapOf("includeEnums" to false) to 6,
-            mapOf("includeAnnotations" to false) to 6,
-            mapOf("includeNested" to false, "includeInterfaces" to false, "includeEnums" to false,
-                "includeAnnotations" to false) to 2,
-        )
+        val checks =
+            listOf(
+                emptyMap<String, Any?>() to 7,
+                mapOf("includeNested" to false) to 5,
+                mapOf("includeInterfaces" to false) to 6,
+                mapOf("includeEnums" to false) to 6,
+                mapOf("includeAnnotations" to false) to 6,
+                mapOf(
+                    "includeNested" to false,
+                    "includeInterfaces" to false,
+                    "includeEnums" to false,
+                    "includeAnnotations" to false,
+                ) to 2,
+            )
         for ((options, count) in checks) {
             val definition = rule("api", "maxPublicTypes", options + ("max" to 0))
             assertTrue(spec.validate("rules[0]", definition, config()).isEmpty(), options.toString())
             val finding = MaxPublicTypesRule().evaluate(facts, definition, config()).single()
             assertEquals(count.toString(), finding.data["count"], options.toString())
             assertTrue(
-                MaxPublicTypesRule().evaluate(facts, definition.copy(params = options + ("max" to count)), config()).isEmpty(),
+                MaxPublicTypesRule().evaluate(
+                    facts,
+                    definition.copy(params = options + ("max" to count)),
+                    config(),
+                ).isEmpty(),
                 options.toString(),
             )
         }
-        val invalidOptions = listOf(
-            mapOf("max" to 0, "includeNested" to "maybe"),
-            mapOf("max" to 0, "includeInterfaces" to "maybe"),
-            mapOf("max" to 0, "includeEnums" to "maybe"),
-            mapOf("max" to 0, "includeAnnotations" to "maybe"),
-            mapOf("max" to 0, "extra" to true),
-            mapOf("max" to -1),
-            mapOf("max" to "not-a-number"),
-            emptyMap(),
-        )
+
+        val invalidOptions =
+            listOf(
+                mapOf("max" to 0, "includeNested" to "maybe"),
+                mapOf("max" to 0, "includeInterfaces" to "maybe"),
+                mapOf("max" to 0, "includeEnums" to "maybe"),
+                mapOf("max" to 0, "includeAnnotations" to "maybe"),
+                mapOf("max" to 0, "extra" to true),
+                mapOf("max" to -1),
+                mapOf("max" to "not-a-number"),
+                emptyMap(),
+            )
         for (invalid in invalidOptions) {
             val definition = rule("api", "maxPublicTypes", invalid)
             assertTrue(spec.validate("rules[0]", definition, config()).isNotEmpty())
@@ -179,14 +194,27 @@ class GraphAndTypeScopeTest {
 
     private fun graph(edges: List<Pair<String, String>>): FactIndex {
         val sourceNames = edges.map { it.first }.distinct()
-        val classes = sourceNames.map { name ->
-            ClassFact(type(name), Opcodes.ACC_PUBLIC, null, emptySet(), emptySet(), false,
-                SourceLocation(OriginKind.DIR_CLASS, "classes/" + name.replace('.', '/') + ".class"))
-        }
-        val dependencies = edges.map { (from, to) ->
-            DependencyEdge(type(from), type(to), DependencyKind.METHOD_CALL,
-                classes.first { it.fqName == from }.location)
-        }
+        val classes =
+            sourceNames.map { name ->
+                ClassFact(
+                    type(name),
+                    Opcodes.ACC_PUBLIC,
+                    null,
+                    emptySet(),
+                    emptySet(),
+                    false,
+                    SourceLocation(OriginKind.DIR_CLASS, "classes/" + name.replace('.', '/') + ".class"),
+                )
+            }
+        val dependencies =
+            edges.map { (from, to) ->
+                DependencyEdge(
+                    type(from),
+                    type(to),
+                    DependencyKind.METHOD_CALL,
+                    classes.first { it.fqName == from }.location,
+                )
+            }
         return FactIndex(classes, emptyList(), emptyList(), dependencies, emptyMap(), emptyMap())
     }
 
@@ -194,6 +222,24 @@ class GraphAndTypeScopeTest {
 
     private fun rule(type: String, name: String, params: Map<String, Any?>): RuleDef =
         RuleDef(type, name, null, true, FindingSeverity.ERROR, null, params)
+
+    private fun configWithGraphs(
+        granularity: Granularity,
+        includeExternalBuckets: Boolean = false,
+    ): ShamashAsmConfigV1 {
+        val config = config()
+        return config.copy(
+            analysis =
+                config.analysis.copy(
+                    graphs =
+                        config.analysis.graphs.copy(
+                            enabled = false,
+                            granularity = granularity,
+                            includeExternalBuckets = includeExternalBuckets,
+                        ),
+                ),
+        )
+    }
 
     private fun config(): ShamashAsmConfigV1 {
         val yaml = SchemaResources.openReferenceYaml().reader().use { it.readText() }
