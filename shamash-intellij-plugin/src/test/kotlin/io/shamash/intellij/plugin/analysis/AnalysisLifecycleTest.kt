@@ -164,6 +164,49 @@ class AnalysisLifecycleTest {
     }
 
     @Test
+    fun `zero eligible sources cannot be marked complete by a backend`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val request = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(request, AnalysisOutcome.Complete("claimed clean", AnalysisCoverage(eligibleFiles = 0))))
+        val state = lifecycle.snapshot()
+        assertEquals(AnalysisPhase.UNAVAILABLE, state.phase)
+        assertEquals(Completeness.UNAVAILABLE, state.attemptCompleteness)
+        assertNull(state.visibleResult)
+    }
+
+    @Test
+    fun `failed files unresolved edges and missing analyses force partial completeness`() {
+        val coverages =
+            listOf(
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2, failedFiles = 1),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2, unresolvedOccurrences = 1),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 1, failedFiles = 0),
+            )
+        for (coverage in coverages) {
+            val lifecycle = AnalysisLifecycle<String>()
+            val request = requireNotNull(lifecycle.begin())
+            assertTrue(lifecycle.publish(request, AnalysisOutcome.Complete("partial", coverage)))
+            assertEquals(AnalysisPhase.PARTIAL, lifecycle.snapshot().phase)
+            assertEquals(Completeness.PARTIAL, lifecycle.snapshot().attemptCompleteness)
+            assertTrue(lifecycle.snapshot().diagnostics.any { it.contains("incomplete") })
+        }
+    }
+
+    @Test
+    fun `unavailable attempt retains its own zero-file coverage alongside previous evidence`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val a = requireNotNull(lifecycle.begin())
+        lifecycle.publish(a, complete("previous"))
+        val b = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(b, AnalysisOutcome.Unavailable(
+            "NO_SOURCE", AnalysisCoverage(eligibleFiles = 0, analyzedFiles = 0),
+        )))
+        assertEquals("previous", lifecycle.snapshot().visibleResult?.payload)
+        assertEquals(ResultRelation.PREVIOUS, lifecycle.snapshot().resultRelation)
+        assertEquals(0, lifecycle.snapshot().attemptCoverage?.eligibleFiles)
+    }
+
+    @Test
     fun `cancelled refresh preserves visibly previous evidence`() {
         val lifecycle = AnalysisLifecycle<String>()
         val a = requireNotNull(lifecycle.begin())
