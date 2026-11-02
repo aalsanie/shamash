@@ -19,6 +19,7 @@ import io.shamash.psi.core.config.schema.v1.model.Severity
 import io.shamash.psi.core.config.schema.v1.model.UnknownRulePolicyV1
 import java.io.StringReader
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -63,6 +64,7 @@ class RuleInstanceScopeTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuild
         val result = ShamashPsiEngine().analyzeFileResult(file, config)
         assertTrue(result.errors.any { it.phase == "rule:unknown" && it.ruleId == "missing.rule" })
         assertTrue(result.findings.isEmpty())
+        assertFailsWith<IllegalStateException> { ShamashPsiEngine().analyzeFile(file, config) }
     }
 
     private fun config() =
