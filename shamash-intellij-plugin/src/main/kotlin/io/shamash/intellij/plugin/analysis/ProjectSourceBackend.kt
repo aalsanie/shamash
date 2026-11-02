@@ -20,6 +20,7 @@ package io.shamash.intellij.plugin.analysis
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
+import io.shamash.psi.core.source.SourceRevisionChangedException
 
 /** No config, build invocation, disk write, policy rules or precomputed ASM facts. */
 internal class ProjectSourceBackend(
@@ -30,7 +31,15 @@ internal class ProjectSourceBackend(
         request: AnalysisRequest,
         indicator: ProgressIndicator,
     ): AnalysisOutcome<IdeAnalysisCoordinator.SourcePresentation> {
-        val snapshot = ProjectSourceAnalyzer(project).analyze(indicator)
+        val snapshot =
+            try {
+                ProjectSourceAnalyzer(project).analyze(indicator)
+            } catch (_: SourceRevisionChangedException) {
+                return AnalysisOutcome.Unavailable(
+                    "Sources changed during analysis; analyze again",
+                    AnalysisCoverage(reason = "REVISION_CHANGED"),
+                )
+            }
         indicator.checkCanceled()
         if (snapshot.coverage.eligibleFiles == 0 && !snapshot.coverage.truncated) {
             return AnalysisOutcome.Unavailable(
