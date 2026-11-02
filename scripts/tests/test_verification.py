@@ -116,6 +116,23 @@ class PluginDiscoveryVerificationTest(unittest.TestCase):
 
 
 class PublicationLicensingTest(unittest.TestCase):
+    def test_source_url_uses_exact_commit_and_fallback(self):
+        commit = "a" * 40
+        complete = subprocess.CompletedProcess([], 0, stdout=commit + "\n", stderr="")
+        with patch.object(publications.subprocess, "run", return_value=complete):
+            self.assertEqual(
+                f"https://github.com/aalsanie/shamash/tree/{commit}",
+                publications.source_url("1.0.0"),
+            )
+        for result in (
+            subprocess.CompletedProcess([], 1, stdout=commit, stderr=""),
+            subprocess.CompletedProcess([], 0, stdout="not-a-commit", stderr=""),
+        ):
+            with patch.object(publications.subprocess, "run", return_value=result):
+                self.assertEqual(publications.SOURCE_BASE + "1.0.0", publications.source_url("1.0.0"))
+        with patch.object(publications.subprocess, "run", side_effect=OSError()):
+            self.assertEqual(publications.SOURCE_BASE + "1.0.0", publications.source_url("1.0.0"))
+
     def test_pom_license(self):
         def make(name, url):
             return ET.fromstring(
@@ -134,7 +151,7 @@ class PublicationLicensingTest(unittest.TestCase):
             def check(license_bytes=expected, source=None, notices=b"copyright notice", missing=None):
                 entries = {
                     "META-INF/LICENSE": license_bytes,
-                    "META-INF/SOURCE": (source or publications.SOURCE_BASE + version).encode(),
+                    "META-INF/SOURCE": (source or publications.source_url(version)).encode(),
                     "META-INF/THIRD_PARTY_NOTICES.md": notices,
                     "META-INF/LICENSES/ASM-BSD-3-Clause.txt": b"BSD license",
                     "META-INF/LICENSES/SLF4J-MIT.txt": b"MIT license",
