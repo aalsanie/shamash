@@ -199,6 +199,81 @@ class SourceGraphAnalyzerTest {
     }
 
     @Test
+    fun `extra direct cycle changes witness without changing group identity`() {
+        val base = fixture(listOf("a", "b", "c"), listOf(Arc(0, 1), Arc(1, 2), Arc(2, 0)))
+        val extra =
+            base.copy(
+                relationships = base.relationships + relationship(base.entities[1].id, base.entities[0].id),
+                references = base.references + reference(base.entities[1].id, base.entities[0].id),
+            )
+        val original = analyzer.analyze(base).cycles.single()
+        val updated = analyzer.analyze(extra).cycles.single()
+        assertEquals(original.id, updated.id)
+        assertEquals(original.members, updated.members)
+        assertNotEquals(original.witness, updated.witness)
+        assertCycleEvidence(updated)
+    }
+
+    @Test
+    fun `length prefixed membership cannot collide across module and package boundaries`() {
+        val first =
+            analyzer.analyze(fixture(
+                listOf("b|c", "z"), listOf(Arc(0, 1), Arc(1, 0)),
+                modules = listOf("a", "module"),
+            ))
+        val second =
+            analyzer.analyze(fixture(
+                listOf("c", "z"), listOf(Arc(0, 1), Arc(1, 0)),
+                modules = listOf("a|b", "module"),
+            ))
+        assertNotEquals(first.cycles.single().id, second.cycles.single().id)
+    }
+
+    @Test
+    fun `package prefixes are not inferred as graph nodes or relationships`() {
+        val graph = analyzer.analyze(fixture(
+            listOf("com.acme.api", "com.acme.core"), listOf(Arc(0, 1)),
+        ))
+        assertEquals(2, graph.packages.size)
+        assertFalse(graph.packages.containsKey(pkg("com")))
+        assertFalse(graph.packages.containsKey(pkg("com.acme")))
+        assertEquals(listOf(pkg("com.acme.core")), graph.packageUses.getValue(pkg("com.acme.api")))
+    }
+
+    @Test
+    fun `two distinct entity dependencies can share a package edge with additive occurrences`() {
+        val graph =
+            analyzer.analyze(fixture(
+                listOf("a", "a", "b", "b"), listOf(Arc(0, 2, 4), Arc(1, 3, 7)),
+            ))
+        val edge = graph.packageDependencies.single()
+        assertEquals(2, edge.distinctEntityRelationships)
+        assertEquals(11L, edge.occurrences)
+        assertEquals(SourceDependencySummary(1, 11), graph.packageCounts.getValue(pkg("a")))
+        assertEquals(SourceDependencySummary(1, 11), graph.packageIncomingCounts.getValue(pkg("b")))
+        assertEquals(SourceDependencySummary(1, 4), graph.entityIncomingCounts.getValue(
+            graph.entities[2].id,
+        ))
+        assertTrue(edge.witnesses.all { it.from.fileUrl == it.reference.fileUrl })
+    }
+
+    @Test
+    fun `limited or diagnostic-bearing source coverage cannot establish no-cycle conclusion`() {
+        val source = fixture(listOf("a", "b"), listOf(Arc(0, 1)))
+        val limited = analyzer.analyze(source.copy(
+            coverage = source.coverage.copy(truncated = true),
+        ))
+        assertFalse(limited.complete)
+        assertFalse(limited.cycleAbsenceEstablished)
+
+        val diagnostic = analyzer.analyze(source.copy(
+            diagnostics = listOf(SourceDiagnostic(null, "resolve", "incomplete resolution")),
+        ))
+        assertFalse(diagnostic.complete)
+        assertFalse(diagnostic.cycleAbsenceEstablished)
+    }
+
+    @Test
     fun `five thousand package cycle uses no recursive DFS and retains real witness for every edge`() {
         val count = 5_000
         val source =
