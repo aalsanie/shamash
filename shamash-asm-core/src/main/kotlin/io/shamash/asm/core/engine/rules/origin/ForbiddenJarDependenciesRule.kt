@@ -67,9 +67,7 @@ class ForbiddenJarDependenciesRule : Rule {
             val fromClass = classByFqn[e.from.fqName] ?: continue
             val toClass = classByFqn[e.to.fqName] ?: continue
 
-            val fromRole = facts.classToRole[fromClass.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, fromRole)) continue
-            if (!RuleUtil.classInScope(fromClass, scope)) continue
+            if (!RuleUtil.ownerAllowed(fromClass, rule, scope, facts.classToRole)) continue
 
             val fromOrigin = originId(fromClass.location)
             val toOrigin = originId(toClass.location)

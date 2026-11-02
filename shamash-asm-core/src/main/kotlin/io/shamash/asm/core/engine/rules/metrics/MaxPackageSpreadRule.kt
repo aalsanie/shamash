@@ -45,8 +45,7 @@ class MaxPackageSpreadRule : Rule {
         val classPkg = facts.classes.associate { it.fqName to it.packageName }
         val inScopeFromClass =
             facts.classes.associate { c ->
-                val roleId = facts.classToRole[c.fqName]
-                c.fqName to (RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope))
+                c.fqName to RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
             }
 
         val spread = LinkedHashMap<String, LinkedHashSet<String>>()
@@ -85,8 +84,7 @@ class MaxPackageSpreadRule : Rule {
                 .asSequence()
                 .sortedBy { it.fqName }
                 .firstOrNull { c ->
-                    val roleId = facts.classToRole[c.fqName]
-                    RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
+                    RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
                 }
 
         return listOf(

@@ -39,8 +39,7 @@ class AllowOnlyRootRule : ContextAwareRule {
         val allowed = OriginRootsParams.roots(rule.params, path).map { resolve(it, "$path.roots", context, config) }
         val scope = RuleUtil.compileScope(rule.scope)
         return facts.classes.sortedBy { it.fqName }.mapNotNull { clazz ->
-            val role = facts.classToRole[clazz.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, role) || !RuleUtil.classInScope(clazz, scope)) return@mapNotNull null
+            if (!RuleUtil.ownerAllowed(clazz, rule, scope, facts.classToRole)) return@mapNotNull null
 
             val location = clazz.location
             val origin =
