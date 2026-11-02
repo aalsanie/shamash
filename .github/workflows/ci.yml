@@ -72,6 +72,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Inspect formatted Kotlin test
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ./gradlew :shamash-asm-core:spotlessApply
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("shamash-asm-core/src/test/kotlin/io/shamash/asm/core/rules/RuleContractTest.kt")
+          print("FORMAT_CONTENT " + json.dumps({"path": str(path), "content": path.read_text(encoding="utf-8")}, ensure_ascii=True))
+          PY
+          exit 1
       - name: Spotless + tests (Unix)
         if: runner.os != 'Windows'
         run: ./gradlew --stacktrace spotlessCheck test
