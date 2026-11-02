@@ -1,5 +1,5 @@
 # Snapshot: aalsanie/shamash main @ 0af4caac359877f11612d03e4dfffb920de6b7a0
-# Git-tracked blobs only. Excludes ignored .codex-context, build output, external dependencies and release archives.
+# Git-tracked blobs only. Excludes untracked build output, external dependencies and release archives.
 # This is classification and review input, NOT an ownership attestation or an approved license allowlist. Maintainer 2026-11-02: five AGPL modules, IntelliJ plugin source Apache; grant not effective; combined plugin artifact not cleared.
 "path","git_blob_sha1","bytes","provisional_classification","required_review","approved_prospective_first_party_module_license_or_review"
 ".github/dependabot.yml","0068402687a3443468388c7c4c973848b32b9730","209","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
@@ -10,7 +10,7 @@
 "CHANGELOG.md","cf324869d90bdb07da4e358961fbc8f979986c56","13479","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
 "CODE_OF_CONDUCT.md","6a19d7eb55b03b554ea2bce77fd21899bc627091","2861","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
 "CONTRIBUTING.md","0171c0c9b7146a726ae53d5dee4c09985b8a2f3a","1233","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
-"LICENSE","d645695673349e3947e8e5ae42332d0ac3164cd7","11358","EXISTING_APACHE_LICENSE","retained historical grant; do not edit in L00","CURRENT_ROOT_APACHE_2_0_KEEP_UNTIL_L01"
+"LICENSE","d645695673349e3947e8e5ae42332d0ac3164cd7","11358","EXISTING_APACHE_LICENSE","retained historical grant; do not change during inventory","CURRENT_ROOT_APACHE_2_0_NOT_YET_CHANGED"
 "QUICK_START.md","def768cb6debf77ee3541c92e087f46876f1658f","2595","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
 "README.md","688fb79765c8ae73843370d6a511873e165670ff","4100","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
 "REGISTRY_GUIDE.md","ad8e27ad60f59639b54a8d87d8143d87c4303acb","3480","FIRST_PARTY_CANDIDATE","copyright/assignment/contributor provenance not legally attested","ROOT_SHARED_OR_EXAMPLE_POLICY_UNDECIDED"
