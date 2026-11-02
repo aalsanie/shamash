@@ -416,6 +416,117 @@ class ShamashAsmEngineTest {
         }
     }
 
+    @Test
+    fun `incomplete extraction keeps partial findings but never exports or replaces baseline`() {
+        withBaselineProject { project ->
+            val exportDir = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            val report = exportDir.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            val sarif = exportDir.resolve(ExportOutputLayout.SARIF_FILE_NAME)
+            Files.writeString(report, "previous-json")
+            Files.writeString(sarif, "previous-sarif")
+            Files.writeString(exportDir.resolve("notes.txt"), "user-data")
+            val baseline = project.resolve(".shamash/baseline.json")
+            Files.writeString(baseline, "previous-baseline")
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    projectBasePath = project,
+                    projectName = "demo",
+                    config = baselineConfig(exportEnabled = true),
+                    facts = FactIndex.empty(),
+                    inputErrors = listOf(EngineError.factsExtractionFailed("invalid class in input")),
+                )
+
+            assertFalse(result.isSuccess)
+            assertEquals(1, result.findings.size)
+            assertTrue(result.errors.any { it.code == EngineError.Code.FACTS_EXTRACTION_FAILED })
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED })
+            assertEquals(null, result.export)
+            assertEquals("previous-json", Files.readString(report))
+            assertEquals("previous-sarif", Files.readString(sarif))
+            assertEquals("user-data", Files.readString(exportDir.resolve("notes.txt")))
+            assertEquals("previous-baseline", Files.readString(baseline))
+        }
+    }
+
+    @Test
+    fun `rule failure cannot replace previously completed reports`() {
+        withBaselineProject { project ->
+            val output = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(report, "old-report")
+            val broken =
+                object : Rule {
+                    override val id: String = "test.alwaysFinding"
+
+                    override fun evaluate(
+                        facts: FactIndex,
+                        rule: RuleDef,
+                        config: ShamashAsmConfigV1,
+                    ): List<Finding> = error("custom rule failure")
+                }
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(broken)).analyze(
+                    projectBasePath = project,
+                    projectName = "demo",
+                    config = baselineConfig(exportEnabled = true),
+                    facts = FactIndex.empty(),
+                )
+            assertFalse(result.isSuccess)
+            assertEquals(null, result.export)
+            assertTrue(result.errors.any { it.code == EngineError.Code.RULE_EXECUTION_FAILED })
+            assertEquals("old-report", Files.readString(report))
+            assertFalse(Files.exists(project.resolve(".shamash/baseline.json")))
+        }
+    }
+
+    @Test
+    fun `returned facts include the same classified roles used in exports`() {
+        withBaselineProject { project ->
+            val cls =
+                io.shamash.asm.core.facts.model.ClassFact(
+                    type = io.shamash.asm.core.facts.model.TypeRef.fromInternalName("example/Foo"),
+                    access = org.objectweb.asm.Opcodes.ACC_PUBLIC,
+                    superType = null,
+                    interfaces = emptySet(),
+                    annotationsFqns = emptySet(),
+                    hasMainMethod = false,
+                    location =
+                        io.shamash.asm.core.facts.model.SourceLocation(
+                            io.shamash.asm.core.facts.model.OriginKind.DIR_CLASS,
+                            project.resolve("Foo.class").toString(),
+                        ),
+                )
+            val config =
+                minimalConfig("demo", emptyList(), BaselineMode.NONE, true).copy(
+                    roles =
+                        mapOf(
+                            "service" to io.shamash.asm.core.config.schema.v1.model.RoleDef(
+                                priority = 1,
+                                description = null,
+                                match = io.shamash.asm.core.config.schema.v1.model.Matcher.ClassNameEndsWith("Foo"),
+                            ),
+                        ),
+                    export =
+                        minimalConfig("demo", emptyList(), BaselineMode.NONE, true).export.copy(
+                            artifacts = ExportArtifactsConfig(roles = ExportToggleArtifactConfig(enabled = true)),
+                        ),
+                )
+            val result =
+                ShamashAsmEngine().analyze(
+                    projectBasePath = project,
+                    projectName = "demo",
+                    config = config,
+                    facts = FactIndex.empty().copy(classes = listOf(cls)),
+                    includeFactsInResult = true,
+                )
+            assertTrue(result.isSuccess, result.errors.toString())
+            assertEquals("service", assertNotNull(result.facts).classToRole["example.Foo"])
+            val roles = Files.readString(assertNotNull(assertNotNull(result.export).rolesPath))
+            assertTrue(roles.contains("service"), roles)
+            assertTrue(roles.contains("example.Foo"), roles)
+        }
+    }
+
     private fun baselineConfig(exportEnabled: Boolean): ShamashAsmConfigV1 =
         minimalConfig(
             projectName = "demo",
