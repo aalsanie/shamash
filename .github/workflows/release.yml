@@ -6,6 +6,7 @@ on:
       - "v*.*.*"
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -38,9 +39,27 @@ jobs:
           grep -Fqx "## [$VERSION]" CHANGELOG.md || { echo "::error::CHANGELOG.md has no $VERSION release"; exit 1; }
           git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor HEAD refs/remotes/origin/main || { echo "::error::Release tag is not on main"; exit 1; }
+      - name: Verify required CI approver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/environments/ci-approved" --jq \
+            '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == false and (.reviewers | length) == 1 and .reviewers[0].type == "User" and .reviewers[0].reviewer.id == 22101794)] | length' | grep -qx '1'
+
+  authorize:
+    name: Approve release CI
+    needs: release-contract
+    runs-on: ubuntu-latest
+    environment:
+      name: ci-approved
+      deployment: false
+    steps:
+      - run: echo "Release CI approved"
 
   preflight:
-    needs: release-contract
+    needs: authorize
     name: Release preflight
     runs-on: ubuntu-latest
     steps:
