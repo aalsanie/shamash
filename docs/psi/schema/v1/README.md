@@ -172,9 +172,9 @@ A set of allowed params for each role specification:
 
 
 - **metrics.maxMethodsByRole**: Enforce method count limits per role
-  - limits (required list of { role, max })
-  - countKinds (optional)
-  - ignoreMethodNameRegex (optional)
+  - limits: required map of role IDs to maximum method counts
+  - countKinds: optional list of declaredMethods, publicMethods, privateMethods
+  - ignoreMethodNameRegex: optional list of regular expressions
 
 
 - **packages.rolePlacement**: Enforce where roles must live package-wise
@@ -182,8 +182,8 @@ A set of allowed params for each role specification:
 
 
 - **packages.rootPackage**: Enforce project root package consistency
-  - mode: required::AUTO | EXPLICIT 
-  - value: required when EXPLICIT
+  - mode: AUTO | EXPLICIT
+  - EXPLICIT requires a non-empty value; AUTO requires an already configured project root package and omits the rule-level value. AUTO never infers a package.
 
 
 - **deadcode.unusedPrivateMembers**: Detect unused private fields/methods/classes
@@ -193,7 +193,7 @@ A set of allowed params for each role specification:
   - ignoreIfContainingClassAnnotatedWithExact
   - ignoreIfContainingClassAnnotatedWithPrefix
   - ignoreRoles
-  - ignoreNameRegex
+  - ignoreNameRegex: optional list of regular expressions
 
 ## Exceptions
 A list*of exception definitions to supress rules where each exception:
@@ -206,7 +206,6 @@ A list*of exception definitions to supress rules where each exception:
 exceptions:
   - id: "EX-001"
     reason: "Legacy module; cleanup scheduled"
-    expiresOn: "2026-06-01"
     match:
       fileGlob: "**/legacy/**"
     suppress:
