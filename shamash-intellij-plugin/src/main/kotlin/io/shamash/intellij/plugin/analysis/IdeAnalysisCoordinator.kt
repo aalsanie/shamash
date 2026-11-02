@@ -78,7 +78,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
                 override fun rootsChanged(event: ModuleRootEvent) = rootsChanged()
             },
         )
-        connection.subscribe(
+        ApplicationManager.getApplication().messageBus.connect(this).subscribe(
             VirtualFileManager.VFS_CHANGES,
             object : BulkFileListener {
                 override fun after(events: List<VFileEvent>) {
