@@ -65,8 +65,10 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
         val sev = RuleUtil.severity(rule)
         val filePath = normalizePath(file.virtualFile?.path ?: file.name)
 
+        val includedOwners = RuleUtil.scopedClasses(facts, rule).mapTo(HashSet()) { it.fqName }
         val out = ArrayList<Finding>()
         for (d in facts.dependencies) {
+            if (d.fromClassFqn !in includedOwners) continue
             if (allowedKinds != null && d.kind !in allowedKinds) continue
 
             val fromRole = facts.classToRole[d.fromClassFqn] ?: continue
