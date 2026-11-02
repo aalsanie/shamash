@@ -32,7 +32,7 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
         val p = Params.of(rule.params, "rules.${rule.type}.${rule.name}.params")
 
         val kindsRaw = p.optionalStringList("kinds") ?: emptyList()
-        val allowedKinds = parseKinds(kindsRaw)
+        val allowedKinds = parseKinds(kindsRaw, p.currentPath)
 
         val forbiddenRaw = rule.params["forbidden"] ?: throw ParamError("${p.currentPath}.forbidden", "is required")
         if (forbiddenRaw !is List<*>) throw ParamError("${p.currentPath}.forbidden", "must be a list")
@@ -116,15 +116,13 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
      * Spec uses camelCase names (methodCall, fieldType, ...).
      * Facts use enum names (METHOD_CALL, FIELD_TYPE, ...).
      */
-    private fun parseKinds(kindsRaw: List<String>): Set<DependencyKind>? {
+    private fun parseKinds(kindsRaw: List<String>, path: String): Set<DependencyKind>? {
         if (kindsRaw.isEmpty()) return null
 
         val allowed = LinkedHashSet<DependencyKind>()
-        for (raw in kindsRaw) {
-            val k = raw.trim()
-            if (k.isEmpty()) continue
+        for ((index, raw) in kindsRaw.withIndex()) {
             val kind =
-                when (k) {
+                when (raw.trim()) {
                     "methodCall" -> DependencyKind.METHOD_CALL
                     "fieldType" -> DependencyKind.FIELD_TYPE
                     "parameterType" -> DependencyKind.PARAMETER_TYPE
@@ -132,11 +130,11 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
                     "extends" -> DependencyKind.EXTENDS
                     "implements" -> DependencyKind.IMPLEMENTS
                     "annotationType" -> DependencyKind.ANNOTATION_TYPE
-                    else -> null
+                    else -> throw ParamError("$path.kinds[$index]", "Unknown dependency kind '$raw'")
                 }
-            if (kind != null) allowed += kind
+            allowed += kind
         }
-        return if (allowed.isEmpty()) null else allowed
+        return allowed
     }
 
     private fun normalizePath(path: String): String = path.replace('\\', '/')
