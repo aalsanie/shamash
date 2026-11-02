@@ -58,7 +58,6 @@ rules:
     roles: ["core"]
     enabled: true
     severity: ERROR
-    scope: null
     params:
       forbidPackages:
         - "^com\\.acme\\.legacy(\\..*)?$"
