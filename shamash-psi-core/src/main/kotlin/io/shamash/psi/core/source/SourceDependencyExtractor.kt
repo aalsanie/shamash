@@ -18,26 +18,26 @@ import com.intellij.psi.PsiImportStatementBase
 import com.intellij.psi.PsiJavaCodeReferenceElement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReferenceExpression
-import com.intellij.psi.PsiNewExpression
 import com.intellij.psi.PsiReferenceList
-import com.intellij.psi.PsiMethodCallExpression
-import com.intellij.psi.PsiVariable
 import com.intellij.psi.PsiType
+import com.intellij.psi.PsiVariable
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtAnnotationEntry
-import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
-import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
 import org.jetbrains.kotlin.psi.KtTypeAlias
+import org.jetbrains.kotlin.psi.KtTypeReference
 
 /** Resolves actual Java/Kotlin PSI references; never infers dependencies from package/import text. */
 class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLocation?) {
@@ -79,7 +79,11 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                         val candidates = element.references
                         if (candidates.isEmpty()) {
                             if (element is KtNameReferenceExpression) {
-                                diagnostics += SourceDiagnostic(location.fileUrl, "resolve", "No reference for '${element.text}' at ${element.textOffset}")
+                                diagnostics += SourceDiagnostic(
+                                    location.fileUrl,
+                                    "resolve",
+                                    "No reference for '${element.text}' at ${element.textOffset}",
+                                )
                                 refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
                             }
                         } else {
@@ -89,7 +93,11 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                                 if (resolved != null && declarationOf(resolved) == null) continue
                                 val target = resolveTarget(resolved)
                                 if (target == null) {
-                                    diagnostics += SourceDiagnostic(location.fileUrl, "resolve", "Cannot resolve '${element.text}' at ${element.textOffset}")
+                                    diagnostics += SourceDiagnostic(
+                                        location.fileUrl,
+                                        "resolve",
+                                        "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                    )
                                     refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
                                     continue
                                 }
@@ -102,7 +110,11 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                     } catch (c: ProcessCanceledException) {
                         throw c
                     } catch (t: Throwable) {
-                        diagnostics += SourceDiagnostic(location.fileUrl, "resolve", "${t.javaClass.simpleName}: ${t.message ?: "resolution failed"}")
+                        diagnostics += SourceDiagnostic(
+                            location.fileUrl,
+                            "resolve",
+                            "${t.javaClass.simpleName}: ${t.message ?: "resolution failed"}",
+                        )
                         refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
                     }
                 }
@@ -114,11 +126,17 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
         // class-only UAST projection. Ordinary PSI references win because they carry exact token ranges.
         for (use in typeUses) {
             ProgressManager.checkCanceled()
-            val owner = (use.owner as? PsiField) ?: (use.owner as? PsiMethod) ?: owningDeclaration(use.owner) ?: continue
+            val owner =
+                (use.owner as? PsiField)
+                    ?: (use.owner as? PsiMethod)
+                    ?: owningDeclaration(use.owner)
+                    ?: continue
             val source = entity(owner, location) ?: continue
             val walked = PsiTypeClassReferences.collect(use.type)
             if (walked.truncated) {
-                diagnostics += SourceDiagnostic(location.fileUrl, "type", "Generic type nesting exceeded supported depth")
+                diagnostics += SourceDiagnostic(
+                    location.fileUrl, "type", "Generic type nesting exceeded supported depth",
+                )
             }
             for (resolvedClass in walked.classes) {
                 val target = resolveTarget(resolvedClass) ?: continue
@@ -129,7 +147,9 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                 val token = resolvedClass.name ?: continue
                 val index = use.evidence.text.indexOf(token)
                 if (index < 0) {
-                    diagnostics += SourceDiagnostic(location.fileUrl, "type", "Cannot locate generic type witness for $token")
+                    diagnostics += SourceDiagnostic(
+                        location.fileUrl, "type", "Cannot locate generic type witness for $token",
+                    )
                     continue
                 }
                 refs +=
@@ -142,7 +162,9 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
 
         return FileResult(
             entities.values.sortedWith(compareBy({ it.id.fileUrl }, { it.offset }, { it.id.signature })),
-            refs.distinct().sortedWith(compareBy({ it.evidence.fileUrl }, { it.evidence.offset }, { it.kind.name }, { it.target.toString() })),
+            refs.distinct().sortedWith(
+                compareBy({ it.evidence.fileUrl }, { it.evidence.offset }, { it.kind.name }, { it.target.toString() }),
+            ),
             diagnostics.distinct(),
         )
     }
@@ -225,7 +247,9 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
             is PsiMethod -> {
                 name = element.name
                 kind = SourceEntityKind.METHOD
-                signature = "${element.containingClass?.qualifiedName ?: return null}#${element.name}(${element.parameterList.parameters.joinToString(",") { it.type.canonicalText }})"
+                val ownerName = element.containingClass?.qualifiedName ?: return null
+                val parameters = element.parameterList.parameters.joinToString(",") { it.type.canonicalText }
+                signature = "$ownerName#${element.name}($parameters)"
             }
             is PsiField -> {
                 name = element.name
