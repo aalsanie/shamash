@@ -46,6 +46,7 @@ class ForbiddenRoleDependenciesRule : Rule {
                 facts = facts,
                 includeExternal = false,
                 scope = scope,
+                rule = rule,
             )
 
         val findings = ArrayList<Finding>()
@@ -64,6 +65,7 @@ class ForbiddenRoleDependenciesRule : Rule {
                             facts = facts,
                             classByFqn = classByFqn,
                             scope = scope,
+                            rule = rule,
                             fromRole = fromRole,
                             toRole = toRole,
                             limit = EXAMPLE_LIMIT,
@@ -99,6 +101,7 @@ class ForbiddenRoleDependenciesRule : Rule {
                             facts = facts,
                             classByFqn = classByFqn,
                             scope = scope,
+                            rule = rule,
                             fromRole = fromRole,
                             toRole = firstHop,
                             limit = EXAMPLE_LIMIT,
@@ -294,6 +297,7 @@ class ForbiddenRoleDependenciesRule : Rule {
         facts: FactIndex,
         classByFqn: Map<String, ClassFact>,
         scope: RuleUtil.CompiledScope,
+        rule: RuleDef,
         fromRole: String,
         toRole: String,
         limit: Int,
@@ -322,7 +326,7 @@ class ForbiddenRoleDependenciesRule : Rule {
             }
 
             val fromClass = classByFqn[fromFqn] ?: continue
-            if (!RuleUtil.classInScope(fromClass, scope)) continue
+            if (!RuleUtil.ownerAllowed(fromClass, rule, scope, facts.classToRole)) continue
 
             if (examples.add(fromFqn to toFqn) && examples.size >= limit) {
                 break
