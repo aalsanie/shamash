@@ -55,6 +55,16 @@ internal object GraphThresholdParams {
         if (params.has("max")) throw ParamError("$path.max", "is not supported; use '$key'")
         val unknown = params.unknownKeys(setOf(key)).sorted().firstOrNull()
         if (unknown != null) throw ParamError("$path.$unknown", "is not supported; allowed parameter: '$key'")
+        val value = raw[key] ?: throw ParamError("$path.$key", "is required")
+        val validType =
+            if (key == "maxDensity") {
+                value is Number
+            } else {
+                value is Int || value is Long || value is Short || value is Byte
+            }
+        if (!validType) {
+            throw ParamError("$path.$key", if (key == "maxDensity") "must be a number" else "must be an integer")
+        }
         return parse(params)
     }
 }
