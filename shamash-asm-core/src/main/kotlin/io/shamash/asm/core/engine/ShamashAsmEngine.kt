@@ -322,10 +322,12 @@ class ShamashAsmEngine
                 try {
                     val outputDir = resolveExportDir(projectBasePath, config)
                     if (!config.export.overwrite && anyManagedReportExists(outputDir)) {
-                        errors += EngineError.exportFailed(
-                            message = "Reports already exist and overwrite is disabled",
-                            details = mapOf("outputDir" to outputDir.toString()),
-                        )
+                        if (config.baseline.mode == BaselineMode.GENERATE) {
+                            errors += EngineError.exportFailed(
+                                message = "Baseline generation requires completed report publication",
+                                details = mapOf("outputDir" to outputDir.toString()),
+                            )
+                        }
                     } else {
                         exportResult = publishReports(
                             projectBasePath = projectBasePath,
