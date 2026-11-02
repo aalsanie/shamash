@@ -750,17 +750,20 @@ class ShamashAsmEngine
             outputDir: Path,
             formats: List<ExportFormat>,
         ): Boolean {
-            for (f in formats.toSet()) {
-                val p =
-                    when (f) {
-                        ExportFormat.JSON -> outputDir.resolve(ExportOutputLayout.JSON_FILE_NAME)
-                        ExportFormat.SARIF -> outputDir.resolve(ExportOutputLayout.SARIF_FILE_NAME)
-                        ExportFormat.XML -> outputDir.resolve(ExportOutputLayout.XML_FILE_NAME)
-                        ExportFormat.HTML -> outputDir.resolve(ExportOutputLayout.HTML_FILE_NAME)
-                    }
-                if (Files.exists(p)) return true
-            }
-            return false
+            if (formats.isEmpty()) return false
+            return listOf(
+                ExportOutputLayout.JSON_FILE_NAME,
+                ExportOutputLayout.SARIF_FILE_NAME,
+                ExportOutputLayout.XML_FILE_NAME,
+                ExportOutputLayout.HTML_FILE_NAME,
+                ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME,
+                ExportOutputLayout.FACTS_JSON_FILE_NAME,
+                ExportOutputLayout.ROLES_JSON_FILE_NAME,
+                ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME,
+                ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME,
+                ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME,
+                ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME,
+            ).any { Files.exists(outputDir.resolve(it)) }
         }
 
         private data class ExportSidecarPaths(
@@ -834,7 +837,12 @@ class ShamashAsmEngine
                 } else {
                     resolvePath(projectBasePath, raw)
                 }
-            return ExportOutputLayout.normalizeOutputDir(projectBasePath, chosen)
+            val destination = ExportOutputLayout.normalizeOutputDir(projectBasePath, chosen).toAbsolutePath().normalize()
+            val project = projectBasePath.toAbsolutePath().normalize()
+            require(!project.startsWith(destination)) {
+                "Report output cannot replace the project directory or an ancestor"
+            }
+            return destination
         }
 
         private fun ExportFormat.toExporterFormat(): Exporters.Format? =
