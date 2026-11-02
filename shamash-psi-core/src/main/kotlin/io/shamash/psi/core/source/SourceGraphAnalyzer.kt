@@ -56,7 +56,9 @@ class SourceGraphAnalyzer {
                 relationship.target !in entityById
             ) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(relationship.from.fileUrl, "graph", "Missing declaration or invalid relationship count")
+                diagnostics += SourceDiagnostic(
+                    relationship.from.fileUrl, "graph", "Missing declaration or invalid relationship count",
+                )
                 continue
             }
             val pair = relationship.from to relationship.target
@@ -73,7 +75,9 @@ class SourceGraphAnalyzer {
                     .take(profile.maxWitnesses)
             if (witnesses.isEmpty()) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(relationship.from.fileUrl, "graph", "No verified source occurrence for relationship")
+                diagnostics += SourceDiagnostic(
+                    relationship.from.fileUrl, "graph", "No verified source occurrence for relationship",
+                )
                 continue
             }
             valid += ValidatedRelationship(relationship, witnesses)
@@ -244,12 +248,24 @@ class SourceGraphAnalyzer {
 
     private companion object {
         val ENTITY_ID_ORDER =
-            compareBy<SourceEntityId>({ it.moduleId }, { it.sourceRoot }, { it.fileUrl }, { it.declarationKind.name }, { it.signature })
+            compareBy<SourceEntityId>(
+                { it.moduleId },
+                { it.sourceRoot },
+                { it.fileUrl },
+                { it.declarationKind.name },
+                { it.signature },
+            )
         val ENTITY_ORDER = compareBy<SourceEntity, SourceEntityId>(ENTITY_ID_ORDER) { it.id }
         val RELATIONSHIP_ORDER = compareBy<SourceRelationship, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
             .thenBy(ENTITY_ID_ORDER) { it.target }
         val REFERENCE_ORDER =
-            compareBy<SourceDependency>({ it.evidence.fileUrl }, { it.evidence.offset }, { it.evidence.length }, { it.evidence.documentStamp }, { it.kind.name })
+            compareBy<SourceDependency>(
+                { it.evidence.fileUrl },
+                { it.evidence.offset },
+                { it.evidence.length },
+                { it.evidence.documentStamp },
+                { it.kind.name },
+            )
         val PACKAGE_WITNESS_ORDER =
             compareBy<SourcePackageWitness, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
                 .thenBy(ENTITY_ID_ORDER) { it.target }
