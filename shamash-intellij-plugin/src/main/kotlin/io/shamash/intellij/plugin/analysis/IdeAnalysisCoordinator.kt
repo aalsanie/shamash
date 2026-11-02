@@ -16,6 +16,10 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ProjectFileIndex
@@ -67,10 +71,27 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
             },
             this,
         )
-        project.messageBus.connect(this).subscribe(
+        val connection = project.messageBus.connect(this)
+        connection.subscribe(
             ProjectTopics.PROJECT_ROOTS,
             object : ModuleRootListener {
                 override fun rootsChanged(event: ModuleRootEvent) = rootsChanged()
+            },
+        )
+        connection.subscribe(
+            VirtualFileManager.VFS_CHANGES,
+            object : BulkFileListener {
+                override fun after(events: List<VFileEvent>) {
+                    if (disposed || project.isDisposed) return
+                    val contentRoots = ProjectRootManager.getInstance(project).contentRoots.map { it.path.trimEnd('/') + "/" }
+                    if (events.any { change ->
+                            val path = change.path.replace('\\', '/')
+                            (path.endsWith(".java") || path.endsWith(".kt")) &&
+                                contentRoots.any { root -> path.startsWith(root) }
+                        }) {
+                        sourceChanged()
+                    }
+                }
             },
         )
     }
@@ -182,8 +203,8 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
             if (disposed || project.isDisposed || lifecycle.snapshot().visibleResult?.request != state.visibleResult.request) return@invokeLater
             val ui = io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService.getInstance(project)
             ui.updateFromScan(data.findings, data.validationErrors, null, null)
-            io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController.getInstance(project).refreshAll()
-            // Intentionally never activate or select the tool window upon completion.
+            // Views subscribe with their own Disposable. Never contact a possibly disposed
+            // tool-window content or activate it as a side effect of completion.
         }
     }
 
@@ -192,6 +213,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val current = lifecycle.snapshot()
         ApplicationManager.getApplication().invokeLater {
             if (disposed || project.isDisposed) return@invokeLater
+            if (lifecycle.snapshot().requestGeneration != current.requestGeneration) return@invokeLater
             for (listener in callbacks) listener(current)
         }
     }
