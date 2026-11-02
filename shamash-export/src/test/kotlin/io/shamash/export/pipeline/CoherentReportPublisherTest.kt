@@ -1,0 +1,128 @@
+/*
+ * Copyright © 2025-2026 | Shamash
+ *
+ * Author: @aalsanie
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+package io.shamash.export.pipeline
+
+import io.shamash.artifacts.report.layout.ExportOutputLayout
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class CoherentReportPublisherTest {
+    @Test
+    fun `complete generation replaces managed files and preserves unrelated content`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "old")
+            Files.writeString(output.resolve(ExportOutputLayout.SARIF_FILE_NAME), "old-sarif")
+            Files.writeString(output.resolve("baseline.json"), "baseline")
+            Files.writeString(output.resolve("user-notes.txt"), "untouched")
+            Files.createDirectories(output.resolve("user-data"))
+            Files.writeString(output.resolve("user-data/keep.txt"), "nested")
+            val result =
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "new")
+                    Files.writeString(stage.resolve(ExportOutputLayout.XML_FILE_NAME), "xml")
+                    "complete"
+                }
+
+            assertEquals("complete", result)
+            assertEquals("new", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("xml", Files.readString(output.resolve(ExportOutputLayout.XML_FILE_NAME)))
+            assertFalse(Files.exists(output.resolve(ExportOutputLayout.SARIF_FILE_NAME)))
+            assertEquals("baseline", Files.readString(output.resolve("baseline.json")))
+            assertEquals("untouched", Files.readString(output.resolve("user-notes.txt")))
+            assertEquals("nested", Files.readString(output.resolve("user-data/keep.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `failed report writer cannot replace an existing generation`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "old")
+            Files.writeString(output.resolve(ExportOutputLayout.SARIF_FILE_NAME), "old-sarif")
+            Files.writeString(output.resolve("keep.txt"), "sentinel")
+            assertFailsWith<IOException> {
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "partial")
+                    Files.writeString(stage.resolve(ExportOutputLayout.HTML_FILE_NAME), "partial-html")
+                    throw IOException("injected second exporter failure")
+                }
+            }
+            assertEquals("old", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("old-sarif", Files.readString(output.resolve(ExportOutputLayout.SARIF_FILE_NAME)))
+            assertFalse(Files.exists(output.resolve(ExportOutputLayout.HTML_FILE_NAME)))
+            assertEquals("sentinel", Files.readString(output.resolve("keep.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `failed activation rolls back the previous coherent generation`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
+            Files.writeString(output.resolve("keep.txt"), "sentinel")
+            var moves = 0
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    moves++
+                    if (moves == 2) throw IOException("injected activation failure")
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    Unit
+                }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                }
+            }
+            assertEquals(3, moves)
+            assertEquals("previous", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("sentinel", Files.readString(output.resolve("keep.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `invalid output destination never deletes existing content`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            Files.writeString(output, "user file")
+            assertFailsWith<IllegalArgumentException> {
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "new")
+                }
+            }
+            assertEquals("user file", Files.readString(output))
+            assertNoTemporaryDirectories(root)
+        }
+
+    private fun withProject(action: (Path) -> Unit) {
+        val root = Files.createTempDirectory("shamash-publisher-test")
+        try {
+            action(root)
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    private fun assertNoTemporaryDirectories(root: Path) {
+        Files.list(root).use { entries ->
+            assertTrue(
+                entries.noneMatch {
+                    it.fileName.toString().startsWith(".shamash-stage-") ||
+                        it.fileName.toString().startsWith(".shamash-previous-")
+                },
+            )
+        }
+    }
+}
