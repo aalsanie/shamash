@@ -38,6 +38,35 @@ class BaselineStoreTest {
     }
 
     @Test
+    fun write_preservesPreviousBaselineAndUnrelatedTemporaryFileOnFailure() {
+        val store = BaselineStore()
+        val dir = Files.createTempDirectory("shamash-baseline-atomic")
+        try {
+            val previous = "a".repeat(64)
+            store.write(dir, setOf(previous))
+            val path = store.baselinePath(dir)
+            val old = Files.readAllBytes(path)
+            val unrelated = dir.resolve("baseline.json.tmp")
+            Files.writeString(unrelated, "keep this file")
+
+            assertFailsWith<IllegalArgumentException> {
+                store.write(dir, setOf("invalid"))
+            }
+            assertEquals(old.toList(), Files.readAllBytes(path).toList())
+            assertEquals("keep this file", Files.readString(unrelated))
+
+            store.write(dir, setOf("b".repeat(64)))
+            assertEquals(setOf("b".repeat(64)), store.load(dir)?.fingerprints)
+            assertEquals("keep this file", Files.readString(unrelated))
+            Files.list(dir).use { paths ->
+                assertEquals(2, paths.count())
+            }
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun load_throwsOnUnsupportedVersion() {
         val store = BaselineStore()
         val dir = Files.createTempDirectory("shamash-baseline-ver")
