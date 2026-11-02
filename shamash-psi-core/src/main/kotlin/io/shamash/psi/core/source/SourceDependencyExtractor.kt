@@ -26,6 +26,7 @@ import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.psi.PsiVariable
 import com.intellij.psi.PsiType
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtCallExpression
@@ -232,22 +233,29 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                 signature = "${element.containingClass?.qualifiedName ?: return null}#${element.name}"
             }
             is KtClassOrObject -> {
+                if (element.name == null) return null // Anonymous objects are not named declarations.
                 name = qualifiedKotlinName(element)
-                kind = if (element is org.jetbrains.kotlin.psi.KtObjectDeclaration) SourceEntityKind.OBJECT else SourceEntityKind.CLASS
+                kind =
+                    when {
+                        element is org.jetbrains.kotlin.psi.KtObjectDeclaration -> SourceEntityKind.OBJECT
+                        element is KtClass && element.isInterface() -> SourceEntityKind.INTERFACE
+                        else -> SourceEntityKind.CLASS
+                    }
                 signature = name
             }
             is KtNamedFunction -> {
                 if (PsiTreeUtil.getParentOfType(element, KtNamedFunction::class.java) != null) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.FUNCTION
-                signature = qualifiedKotlinName(element) + "(" +
+                val receiver = element.receiverTypeReference?.text?.let { "$it." }.orEmpty()
+                signature = receiver + qualifiedKotlinName(element) + "(" +
                     element.valueParameters.joinToString(",") { it.typeReference?.text.orEmpty() } + ")"
             }
             is KtProperty -> {
                 if (PsiTreeUtil.getParentOfType(element, KtNamedFunction::class.java) != null) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.PROPERTY
-                signature = qualifiedKotlinName(element)
+                signature = element.receiverTypeReference?.text?.let { "$it." }.orEmpty() + qualifiedKotlinName(element)
             }
             is KtTypeAlias -> {
                 name = element.name ?: return null
