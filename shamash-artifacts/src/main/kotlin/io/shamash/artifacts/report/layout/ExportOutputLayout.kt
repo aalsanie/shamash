@@ -26,6 +26,21 @@ object ExportOutputLayout {
     const val ANALYSIS_HOTSPOTS_JSON_FILE_NAME: String = "analysis-hotspots.json"
     const val ANALYSIS_SCORES_JSON_FILE_NAME: String = "analysis-scores.json"
 
+    val MANAGED_REPORT_FILE_NAMES: Set<String> =
+        setOf(
+            JSON_FILE_NAME,
+            SARIF_FILE_NAME,
+            XML_FILE_NAME,
+            HTML_FILE_NAME,
+            FACTS_JSONL_GZ_FILE_NAME,
+            FACTS_JSON_FILE_NAME,
+            ROLES_JSON_FILE_NAME,
+            RULE_PLAN_JSON_FILE_NAME,
+            ANALYSIS_GRAPHS_JSON_FILE_NAME,
+            ANALYSIS_HOTSPOTS_JSON_FILE_NAME,
+            ANALYSIS_SCORES_JSON_FILE_NAME,
+        )
+
     fun normalizeOutputDir(
         projectBasePath: Path,
         outputDir: Path?,
