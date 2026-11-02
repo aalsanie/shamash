@@ -38,6 +38,9 @@ import io.shamash.psi.core.facts.model.v1.Visibility
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UElement
@@ -251,23 +254,28 @@ object FactExtractor {
                         val retDepType = node.returnType?.let { normalizeDepType(it) }
 
                         val psiMethod: PsiMethod? = node.javaPsi
+                        val source = node.sourcePsi
+                        val sourceMethod = source is PsiMethod || source is KtNamedFunction
+                        val generatedAccessor = source is KtProperty || source is KtParameter
                         val range = safeRangeU(node)
 
-                        methods +=
-                            MethodFact(
-                                containingClassFqn = fromClassFqn,
-                                name = node.name,
-                                signature = buildSignature(node),
-                                visibility = visibilityOf(psiMethod as PsiElement?),
-                                isStatic = psiMethod?.hasModifierProperty(PsiModifier.STATIC) ?: false,
-                                isAbstract = psiMethod?.hasModifierProperty(PsiModifier.ABSTRACT) ?: false,
-                                isConstructor = node.isConstructor,
-                                returnTypeFqn = retDepType,
-                                parameterTypeFqns = paramDepTypes,
-                                annotationsFqns = anns,
-                                filePath = filePath,
-                                textRange = range,
-                            )
+                        if (sourceMethod && !generatedAccessor) {
+                            methods +=
+                                MethodFact(
+                                    containingClassFqn = fromClassFqn,
+                                    name = node.name,
+                                    signature = buildSignature(node),
+                                    visibility = visibilityOf(psiMethod as PsiElement?),
+                                    isStatic = psiMethod?.hasModifierProperty(PsiModifier.STATIC) ?: false,
+                                    isAbstract = psiMethod?.hasModifierProperty(PsiModifier.ABSTRACT) ?: false,
+                                    isConstructor = node.isConstructor,
+                                    returnTypeFqn = retDepType,
+                                    parameterTypeFqns = paramDepTypes,
+                                    annotationsFqns = anns,
+                                    filePath = filePath,
+                                    textRange = range,
+                                )
+                        }
 
                         for (p in paramDepTypes) {
                             addDep(
