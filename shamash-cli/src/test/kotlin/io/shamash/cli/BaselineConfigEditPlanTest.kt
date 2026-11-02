@@ -32,6 +32,26 @@ class BaselineConfigEditPlanTest {
     }
 
     @Test
+    fun `restoration replaces a generated baseline and can remove a new one`() {
+        val dir = Files.createTempDirectory("shamash-baseline-restore")
+        try {
+            val path = dir.resolve("baseline.json")
+            val previous = "previous".toByteArray()
+            Files.writeString(path, "generated")
+            Files.writeString(dir.resolve("baseline.json.tmp"), "unrelated")
+            restoreBaseline(path, previous)
+            assertEquals("previous", Files.readString(path))
+            assertEquals("unrelated", Files.readString(dir.resolve("baseline.json.tmp")))
+
+            restoreBaseline(path, null)
+            assertEquals(false, Files.exists(path))
+            assertEquals("unrelated", Files.readString(dir.resolve("baseline.json.tmp")))
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `invalid input does not replace existing config`() {
         val dir = Files.createTempDirectory("shamash-config-plan-invalid")
         try {
