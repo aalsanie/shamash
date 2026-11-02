@@ -32,7 +32,7 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
         val p = Params.of(rule.params, "rules.${rule.type}.${rule.name}.params")
 
         val limits = p.requireMap("limits")
-        if (limits.isEmpty()) return emptyList()
+        if (limits.isEmpty()) throw ParamError("${p.currentPath}.limits", "must not be empty")
 
         val countKinds = MethodCountKinds.decode(rule.params, p.currentPath)
 
@@ -54,13 +54,13 @@ class MetricsMaxMethodsByRoleRule : EngineRule {
         val roleToMax = LinkedHashMap<String, Int>(limits.size)
         for ((rawRole, rawMax) in limits) {
             val roleId = rawRole.trim()
-            if (roleId.isEmpty()) continue
+            if (roleId.isEmpty()) throw ParamError("${p.currentPath}.limits", "role name must be non-empty")
 
             val entryPath = "${p.currentPath}.limits.$rawRole"
             val v = Params.of(mapOf("v" to rawMax), entryPath).requireInt("v", min = 0)
             roleToMax[roleId] = v
         }
-        if (roleToMax.isEmpty()) return emptyList()
+        if (roleToMax.isEmpty()) throw ParamError("${p.currentPath}.limits", "must contain a role")
 
         val sev = RuleUtil.severity(rule)
         val filePath = normalizePath(file.virtualFile?.path ?: file.name)
