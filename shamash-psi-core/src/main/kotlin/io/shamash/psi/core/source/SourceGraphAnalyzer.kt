@@ -95,8 +95,11 @@ class SourceGraphAnalyzer {
             acc.distinctPairs += relation.from to relation.target
             acc.occurrences = addCounts(acc.occurrences, relation.occurrences)
             acc.kinds += relation.kinds
-            acc.witnesses += witnesses.map {
-                SourcePackageWitness(relation.from, relation.target, it.kind, it.evidence)
+            witnesses.forEach {
+                acc.retainWitness(
+                    SourcePackageWitness(relation.from, relation.target, it.kind, it.evidence),
+                    profile.maxWitnesses,
+                )
             }
         }
         val entityUses = entityOut.mapValues { (_, values) -> values.sortedWith(ENTITY_ID_ORDER) }
@@ -159,6 +162,7 @@ class SourceGraphAnalyzer {
                 snapshot.coverage.failedFiles == 0 &&
                 snapshot.coverage.unresolvedOccurrences == 0L &&
                 snapshot.coverage.analyzedFiles == snapshot.coverage.eligibleFiles &&
+                snapshot.coverage.eligibleFiles > 0 &&
                 !invalidEvidence
         return SourceGraphSnapshot(
             profileId = profile.id,
@@ -187,6 +191,13 @@ class SourceGraphAnalyzer {
         val kinds = LinkedHashSet<SourceDependencyKind>()
         val witnesses = ArrayList<SourcePackageWitness>()
         var occurrences: Long = 0
+
+        fun retainWitness(candidate: SourcePackageWitness, limit: Int) {
+            val location = witnesses.binarySearch(candidate, PACKAGE_WITNESS_ORDER)
+            if (location >= 0) return
+            witnesses.add(-location - 1, candidate)
+            if (witnesses.size > limit) witnesses.removeAt(witnesses.lastIndex)
+        }
     }
 
     private data class ValidatedRelationship(
