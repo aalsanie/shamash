@@ -109,18 +109,6 @@ class CoherentReportPublisher(
     }
 
     private companion object {
-        val REPORT_FILES = setOf(
-            ExportOutputLayout.JSON_FILE_NAME,
-            ExportOutputLayout.SARIF_FILE_NAME,
-            ExportOutputLayout.XML_FILE_NAME,
-            ExportOutputLayout.HTML_FILE_NAME,
-            ExportOutputLayout.FACTS_JSONL_GZ_FILE_NAME,
-            ExportOutputLayout.FACTS_JSON_FILE_NAME,
-            ExportOutputLayout.ROLES_JSON_FILE_NAME,
-            ExportOutputLayout.RULE_PLAN_JSON_FILE_NAME,
-            ExportOutputLayout.ANALYSIS_GRAPHS_JSON_FILE_NAME,
-            ExportOutputLayout.ANALYSIS_HOTSPOTS_JSON_FILE_NAME,
-            ExportOutputLayout.ANALYSIS_SCORES_JSON_FILE_NAME,
-        )
+        val REPORT_FILES = ExportOutputLayout.MANAGED_REPORT_FILE_NAMES
     }
 }
