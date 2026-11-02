@@ -20,9 +20,16 @@ import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReferenceExpression
+import com.intellij.psi.PsiNewExpression
+import com.intellij.psi.PsiReferenceList
+import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
+import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
@@ -64,14 +71,17 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                             for (reference in candidates) {
                                 ProgressManager.checkCanceled()
                                 val resolved = reference.resolve()
+                                if (resolved != null && declarationOf(resolved) == null) continue
                                 val target = resolveTarget(resolved)
                                 if (target == null) {
                                     diagnostics += SourceDiagnostic(location.fileUrl, "resolve", "Cannot resolve '${element.text}' at ${element.textOffset}")
                                     refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
                                     continue
                                 }
-                                if (target == from.id) continue
-                                refs += dependency(from.id, target, element, stamp)
+                                if (target is SourceTarget.Internal && target.entity == from.id) continue
+                                val offset = element.textRange.startOffset + reference.rangeInElement.startOffset
+                                val length = reference.rangeInElement.length
+                                refs += dependency(from.id, target, element, stamp, resolved, offset, length)
                             }
                         }
                     } catch (c: ProcessCanceledException) {
@@ -92,9 +102,17 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
         )
     }
 
-    private fun resolveTarget(resolved: PsiElement?): SourceTarget? {
-        if (resolved == null) return null
-        val declaration = declarationOf(resolved) ?: return null // local variables are not entity relationships
+    private fun resolveTarget(resolved: PsiElement?, visited: MutableSet<PsiElement> = HashSet()): SourceTarget? {
+        if (resolved == null || !visited.add(resolved)) return null
+        val declaration = declarationOf(resolved) ?: return null
+        if (declaration is KtTypeAlias) {
+            val underlying = declaration.getTypeReference()
+                ?.let { PsiTreeUtil.findChildOfType(it, KtNameReferenceExpression::class.java) }
+                ?.references?.firstOrNull()?.resolve()
+            if (underlying != null && underlying != declaration) {
+                return resolveTarget(underlying, visited)
+            }
+        }
         val targetFile = declaration.containingFile ?: return null
         val location = sourceScope(targetFile)
         if (location == null) {
@@ -222,18 +240,36 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
             else -> qualifiedKotlinName(e)
         }
 
-    private fun dependency(from: SourceEntityId, target: SourceTarget, element: PsiElement, stamp: Long): SourceDependency {
+    private fun dependency(
+        from: SourceEntityId,
+        target: SourceTarget,
+        element: PsiElement,
+        stamp: Long,
+        resolved: PsiElement? = null,
+        offset: Int = element.textRange.startOffset,
+        length: Int = element.textLength,
+    ): SourceDependency {
         val kind =
             when {
-                element is PsiJavaCodeReferenceElement && PsiTreeUtil.getParentOfType(element, PsiAnnotation::class.java) != null ->
+                PsiTreeUtil.getParentOfType(element, PsiAnnotation::class.java) != null ||
+                    PsiTreeUtil.getParentOfType(element, KtAnnotationEntry::class.java) != null ->
                     SourceDependencyKind.ANNOTATION
-                element is PsiJavaCodeReferenceElement -> SourceDependencyKind.TYPE
-                element is PsiReferenceExpression -> SourceDependencyKind.ACCESS
-                else -> SourceDependencyKind.CALL
+                PsiTreeUtil.getParentOfType(element, PsiNewExpression::class.java) != null ||
+                    (PsiTreeUtil.getParentOfType(element, KtCallExpression::class.java) != null &&
+                        (resolved is PsiClass || resolved is KtClassOrObject)) ->
+                    SourceDependencyKind.CONSTRUCTOR
+                PsiTreeUtil.getParentOfType(element, PsiReferenceList::class.java) != null ||
+                    PsiTreeUtil.getParentOfType(element, KtSuperTypeListEntry::class.java) != null ->
+                    SourceDependencyKind.INHERITANCE
+                element is PsiJavaCodeReferenceElement ||
+                    PsiTreeUtil.getParentOfType(element, KtTypeReference::class.java) != null ->
+                    SourceDependencyKind.TYPE
+                resolved is PsiField || resolved is KtProperty -> SourceDependencyKind.ACCESS
+                resolved is PsiMethod || resolved is KtNamedFunction ||
+                    PsiTreeUtil.getParentOfType(element, PsiMethodCallExpression::class.java) != null ->
+                    SourceDependencyKind.CALL
+                else -> SourceDependencyKind.ACCESS
             }
-        return SourceDependency(
-            from, target, kind,
-            SourceReference(from.fileUrl, element.textRange.startOffset, element.textLength, stamp),
-        )
+        return SourceDependency(from, target, kind, SourceReference(from.fileUrl, offset, length, stamp))
     }
 }
