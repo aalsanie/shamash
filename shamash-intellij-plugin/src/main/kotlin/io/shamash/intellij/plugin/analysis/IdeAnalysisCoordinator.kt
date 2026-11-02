@@ -75,7 +75,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         connection.subscribe(
             ProjectTopics.PROJECT_ROOTS,
             object : ModuleRootListener {
-                override fun rootsChanged(event: ModuleRootEvent) = rootsChanged()
+                override fun rootsChanged(event: ModuleRootEvent) = this@IdeAnalysisCoordinator.rootsChanged()
             },
         )
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(
