@@ -91,8 +91,8 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                                 ProgressManager.checkCanceled()
                                 val resolved = reference.resolve()
                                 if (resolved != null && declarationOf(resolved) == null) continue
-                                val target = resolveTarget(resolved)
-                                if (target == null) {
+                                val targets = resolveTargets(resolved)
+                                if (targets.isEmpty()) {
                                     diagnostics += SourceDiagnostic(
                                         location.fileUrl,
                                         "resolve",
@@ -101,10 +101,12 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                                     refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
                                     continue
                                 }
-                                if (target is SourceTarget.Internal && target.entity == from.id) continue
                                 val offset = element.textRange.startOffset + reference.rangeInElement.startOffset
                                 val length = reference.rangeInElement.length
-                                refs += dependency(from.id, target, element, stamp, resolved, offset, length)
+                                for (target in targets) {
+                                    if (target is SourceTarget.Internal && target.entity == from.id) continue
+                                    refs += dependency(from.id, target, element, stamp, resolved, offset, length)
+                                }
                             }
                         }
                     } catch (c: ProcessCanceledException) {
@@ -139,7 +141,7 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                 )
             }
             for (resolvedClass in walked.classes) {
-                val target = resolveTarget(resolvedClass) ?: continue
+                val target = resolveTargets(resolvedClass).firstOrNull() ?: continue
                 if (target is SourceTarget.Internal && target.entity == source.id) continue
                 if (refs.any { it.from == source.id && it.target == target && it.kind == SourceDependencyKind.TYPE &&
                         it.evidence.offset in use.evidence.textRange.startOffset..use.evidence.textRange.endOffset
@@ -169,23 +171,32 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
         )
     }
 
-    private fun resolveTarget(resolved: PsiElement?, visited: MutableSet<PsiElement> = HashSet()): SourceTarget? {
-        if (resolved == null || !visited.add(resolved)) return null
-        val declaration = declarationOf(resolved) ?: return null
+    private fun resolveTargets(
+        resolved: PsiElement?,
+        visited: MutableSet<PsiElement> = HashSet(),
+    ): List<SourceTarget> {
+        if (resolved == null || !visited.add(resolved)) return emptyList()
+        val declaration = declarationOf(resolved) ?: return emptyList()
         if (declaration is KtTypeAlias) {
-            val underlying = declaration.getTypeReference()
-                ?.let { PsiTreeUtil.findChildOfType(it, KtNameReferenceExpression::class.java) }
-                ?.references?.firstOrNull()?.resolve()
-            if (underlying != null && underlying != declaration) {
-                return resolveTarget(underlying, visited)
-            }
+            val ref = declaration.getTypeReference() ?: return listOf(SourceTarget.Unresolved(declaration.name.orEmpty()))
+            val names = PsiTreeUtil.findChildrenOfType(ref, KtNameReferenceExpression::class.java)
+            if (names.isEmpty()) return listOf(SourceTarget.Unresolved(declaration.name.orEmpty()))
+            return names.flatMap { name ->
+                val expanded = name.references.firstOrNull()?.resolve()
+                if (expanded == null) {
+                    listOf(SourceTarget.Unresolved(name.text))
+                } else {
+                    resolveTargets(expanded, visited)
+                }
+            }.distinct()
         }
-        val targetFile = declaration.containingFile ?: return null
+        val targetFile = declaration.containingFile ?: return emptyList()
         val location = sourceScope(targetFile)
-        if (location == null) {
-            return SourceTarget.External(declarationName(declaration))
+        return if (location == null) {
+            listOf(SourceTarget.External(declarationName(declaration)))
+        } else {
+            listOfNotNull(entity(declaration, location)?.let { SourceTarget.Internal(it.id) })
         }
-        return entity(declaration, location)?.let { SourceTarget.Internal(it.id) }
     }
 
     private fun declarationOf(element: PsiElement): PsiElement? {
