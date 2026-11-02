@@ -44,7 +44,8 @@ class DirectedGraphAlgorithmsTest {
         val edges = mapOf(1 to listOf(3, 2), 2 to listOf(4), 3 to listOf(4), 4 to listOf(1))
         val members = listOf(4, 2, 1, 3)
         val first = DirectedGraphAlgorithms.representativeCycle(members, edges)
-        val second = DirectedGraphAlgorithms.representativeCycle(members.reversed(), edges.mapValues { it.value.reversed() })
+        val second =
+            DirectedGraphAlgorithms.representativeCycle(members.reversed(), edges.mapValues { it.value.reversed() })
         assertEquals(first, second)
         assertEquals(1, first.first())
         assertEquals(1, first.last())
