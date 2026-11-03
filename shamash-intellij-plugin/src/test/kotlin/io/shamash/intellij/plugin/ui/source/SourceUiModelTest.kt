@@ -183,6 +183,56 @@ class SourceUiModelTest {
         assertFalse(SourceGuidance.OFFLINE_HELP.contains("http://"))
     }
 
+    @Test
+    fun explorationTreeContainsExactModulePackageAndDeclarationHierarchy() {
+        val source = SourceUiModel(graph(listOf("alpha", "beta"), listOf(0 to 1)))
+        val tree = SourceExploreTreeModel(source, "")
+        val root = tree.root
+        assertFalse(tree.isEmpty())
+        assertEquals(1, tree.getChildCount(root))
+        val module = tree.getChild(root, 0)
+        assertEquals(SourceSelection.Module("module"), module)
+        assertEquals(2, tree.getChildCount(module))
+        val pkg = tree.getChild(module, 0)
+        assertEquals(SourceSelection.Package(a), pkg)
+        assertEquals(1, tree.getChildCount(pkg))
+        val declaration = tree.getChild(pkg, 0)
+        assertTrue(tree.isLeaf(declaration))
+        assertEquals(0, tree.getChildCount(declaration))
+        assertEquals(0, tree.getIndexOfChild(root, module))
+        assertEquals(0, tree.getIndexOfChild(module, pkg))
+        assertEquals(0, tree.getIndexOfChild(pkg, declaration))
+        assertEquals(2, tree.pathFor(SourceSelection.Module("module"))?.pathCount)
+        assertEquals(3, tree.pathFor(SourceSelection.Package(a))?.pathCount)
+        assertEquals(4, tree.pathFor(declaration)?.pathCount)
+        assertEquals(null, tree.pathFor(SourceSelection.Module("missing")))
+        assertEquals(null, tree.pathFor(SourceSelection.Package(SourcePackageId("module", "missing"))))
+    }
+
+    @Test
+    fun explorationTreeFiltersDeclarationsWithoutShowingUnrelatedPackages() {
+        val source = SourceUiModel(graph(listOf("alpha", "beta"), listOf(0 to 1)))
+        val tree = SourceExploreTreeModel(source, "T1")
+        assertFalse(tree.isEmpty())
+        val module = tree.getChild(tree.root, 0)
+        assertEquals(1, tree.getChildCount(module))
+        assertEquals(SourceSelection.Package(b), tree.getChild(module, 0))
+        assertEquals(null, tree.pathFor(SourceSelection.Package(a)))
+        assertEquals(-1, tree.getIndexOfChild(module, SourceSelection.Package(a)))
+
+        val empty = SourceExploreTreeModel(source, "no_such_name")
+        assertTrue(empty.isEmpty())
+        assertEquals(0, empty.getChildCount(empty.root))
+        assertEquals(-1, empty.getIndexOfChild(empty.root, module))
+        assertEquals(null, empty.pathFor(SourceSelection.Module("module")))
+
+        val noSource = SourceExploreTreeModel(null, "")
+        assertTrue(noSource.isEmpty())
+        assertFalse(noSource.isLeaf(noSource.root))
+        assertEquals(0, noSource.getChildCount(noSource.root))
+        assertEquals(0, noSource.getChildCount("unknown"))
+    }
+
     private fun graph(
         packages: List<String>,
         arcs: List<Pair<Int, Int>>,

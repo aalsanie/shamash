@@ -31,6 +31,8 @@ import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
 import io.shamash.intellij.plugin.ui.source.PageControls
+import io.shamash.intellij.plugin.ui.source.SourceEvidence
+import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel
 import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.source.ProjectSourceSnapshot
@@ -240,6 +242,85 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     panel.findings, java.awt.event.ComponentEvent.COMPONENT_RESIZED,
                 ))
                 assertEquals(JSplitPane.HORIZONTAL_SPLIT, split.orientation)
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testEvidencePanelNeverOpensMissingOrStaleLocations() {
+        runInEdtAndWait {
+            val panel = SourceEvidencePanel(project)
+            val id = SourceEntityId(
+                "missing-module", "file:///missing", "file:///missing.kt", SourceEntityKind.CLASS, "Missing",
+            )
+            val witness = SourceEvidence(
+                SourceReference(id.fileUrl, 10, 2, 1), id, "Missing evidence",
+            )
+            panel.showEvidence(listOf(witness), 35L)
+            val count = descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().first {
+                it.text.startsWith("Showing ")
+            }
+            assertEquals("Showing 1 of 35 reference occurrences (up to 20 locations)", count.text)
+            val open = descendants(panel).filterIsInstance<JButton>().single { it.text == "Open source" }
+            assertFalse(open.isEnabled)
+            panel.list.selectedIndex = 0
+            assertTrue(open.isEnabled)
+            open.doClick()
+            assertTrue(descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
+                it.text.contains("Analyze again")
+            })
+            panel.showEvidence(emptyList(), 0L)
+            assertFalse(open.isEnabled)
+            assertEquals(0, panel.list.model.size)
+        }
+    }
+
+    fun testPageControlsPreventOverflowAndDisableAtBoundaries() {
+        runInEdtAndWait {
+            val controls = PageControls()
+            controls.update(0)
+            assertFalse(controls.previous.isEnabled)
+            assertFalse(controls.next.isEnabled)
+            assertEquals(0, controls.page)
+
+            controls.selectPage(105, 111)
+            assertEquals(2, controls.page)
+            assertTrue(controls.previous.isEnabled)
+            assertFalse(controls.next.isEnabled)
+            controls.change(-1, 111)
+            assertEquals(1, controls.page)
+            assertTrue(controls.next.isEnabled)
+            controls.change(-99, 111)
+            assertEquals(0, controls.page)
+            assertFalse(controls.previous.isEnabled)
+            controls.reset()
+            assertEquals(0, controls.page)
+        }
+    }
+
+    fun testExploreUsedByIsDirectionalAndSelectsObservedEvidenceOnly() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(sampleGraph(1)))
+                panel.tabs.selectedIndex = 1
+                val sourceTree = panel.explore.tree
+                val tree = sourceTree.model
+                val module = tree.getChild(tree.root, 0)
+                val packageB = tree.getChild(module, 1)
+                sourceTree.selectionPath = TreePath(arrayOf(tree.root, module, packageB))
+                assertEquals(0, panel.explore.relationList.model.size)
+                val direction = descendants(panel.explore)
+                    .filterIsInstance<com.intellij.ui.components.JBComboBox<*>>()
+                    .single { it.accessibleContext?.accessibleName == "Dependency direction" }
+                direction.selectedIndex = 1
+                assertEquals(1, panel.explore.relationList.model.size)
+                panel.explore.relationList.selectedIndex = 0
+                val evidence = descendants(panel.explore).filterIsInstance<SourceEvidencePanel>().single()
+                assertEquals(1, evidence.list.model.size)
+                direction.selectedIndex = 2
+                assertEquals(0, panel.explore.relationList.model.size)
             } finally {
                 Disposer.dispose(panel)
             }
