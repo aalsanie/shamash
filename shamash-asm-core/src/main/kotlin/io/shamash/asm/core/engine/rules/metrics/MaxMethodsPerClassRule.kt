@@ -40,9 +40,8 @@ class MaxMethodsPerClassRule : Rule {
 
         val classes = facts.classes.sortedBy { it.fqName }
         for (c in classes) {
+            if (!RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)) continue
             val roleId = facts.classToRole[c.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, roleId)) continue
-            if (!RuleUtil.classInScope(c, scope)) continue
 
             val methods = methodsByOwner[c.fqName].orEmpty()
             val count = methods.size

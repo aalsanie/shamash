@@ -30,6 +30,8 @@ data class ClassFact(
             else -> Visibility.PACKAGE_PRIVATE
         }
 
+    internal var isNestedType: Boolean = false
+
     val isInterface: Boolean get() = (access and Opcodes.ACC_INTERFACE) != 0
     val isAbstract: Boolean get() = (access and Opcodes.ACC_ABSTRACT) != 0
     val isEnum: Boolean get() = (access and Opcodes.ACC_ENUM) != 0

@@ -46,7 +46,7 @@ class GraphRoleScopeTest {
             )
         val cases: List<Pair<Rule, Map<String, Any?>>> =
             listOf(
-                NoCyclesRule() to mapOf("granularity" to "class"),
+                NoCyclesRule() to emptyMap(),
                 MaxCyclesRule() to mapOf("maxCycles" to 0),
                 MaxEdgeCountRule() to mapOf("maxEdges" to 0),
                 MaxDependencyDensityRule() to mapOf("maxDensity" to 0.0),
@@ -99,7 +99,7 @@ class GraphRoleScopeTest {
                         "alpha.Api" to "beta.Core",
                     ),
             )
-        val unrestricted = dependencyGraph(facts, rule("graph", "noCycles", mapOf("granularity" to "package")))
+        val unrestricted = dependencyGraph(facts, rule("graph", "noCycles", emptyMap()))
         val scoped =
             dependencyGraph(
                 facts,

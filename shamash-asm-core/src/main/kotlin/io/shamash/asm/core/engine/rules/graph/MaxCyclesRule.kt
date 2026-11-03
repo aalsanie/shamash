@@ -8,7 +8,6 @@
 package io.shamash.asm.core.engine.rules.graph
 
 import io.shamash.artifacts.contract.Finding
-import io.shamash.asm.core.config.schema.v1.model.Granularity
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
 import io.shamash.asm.core.config.validation.v1.GraphThresholdParams
@@ -26,8 +25,8 @@ class MaxCyclesRule : Rule {
         config: ShamashAsmConfigV1,
     ): List<Finding> {
         val max = GraphThresholdParams.cycles(rule.params, "rules.${rule.type}.${rule.name}.params")
-        val granularity = Granularity.PACKAGE
-        val includeExternal = false
+        val granularity = config.analysis.graphs.granularity
+        val includeExternal = config.analysis.graphs.includeExternalBuckets
 
         val scope = RuleUtil.compileScope(rule.scope)
 
@@ -49,14 +48,13 @@ class MaxCyclesRule : Rule {
                 .asSequence()
                 .sortedBy { it.fqName }
                 .first { c ->
-                    val roleId = facts.classToRole[c.fqName]
-                    RuleUtil.roleAllowed(rule, scope, roleId) && RuleUtil.classInScope(c, scope)
+                    RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
                 }
 
         return listOf(
             Finding(
                 ruleId = RuleUtil.canonicalRuleId(rule),
-                message = "Cycle count ($count) exceeds max ($max) at granularity '${granularity.name.lowercase()}'.",
+                message = "Cyclic group count ($count) exceeds max ($max) at granularity '${granularity.name.lowercase()}'.",
                 filePath = RuleUtil.filePathOf(anchor.location),
                 severity = rule.severity,
                 classFqn = anchor.fqName,

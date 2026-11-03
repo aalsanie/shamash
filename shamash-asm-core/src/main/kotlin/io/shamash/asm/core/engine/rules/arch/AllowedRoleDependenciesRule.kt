@@ -37,7 +37,7 @@ class AllowedRoleDependenciesRule : Rule {
 
         val classByFqn: Map<String, ClassFact> = facts.classes.associateBy { it.fqName }
 
-        val roleAdj = buildObservedRoleAdjacency(facts, classByFqn, scope)
+        val roleAdj = buildObservedRoleAdjacency(facts, classByFqn, scope, rule)
 
         val allowedAdj: Map<String, Set<String>> =
             allowEdges
@@ -67,6 +67,7 @@ class AllowedRoleDependenciesRule : Rule {
                     facts = facts,
                     classByFqn = classByFqn,
                     scope = scope,
+                    rule = rule,
                     fromRole = v.fromRole,
                     toRole = v.toRole,
                     limit = 10,
@@ -128,6 +129,7 @@ class AllowedRoleDependenciesRule : Rule {
         facts: FactIndex,
         classByFqn: Map<String, ClassFact>,
         scope: RuleUtil.CompiledScope,
+        rule: RuleDef,
     ): Map<String, Set<String>> {
         val adj = LinkedHashMap<String, LinkedHashSet<String>>()
 
@@ -144,7 +146,7 @@ class AllowedRoleDependenciesRule : Rule {
             val toRole = facts.classToRole[toFqn] ?: continue
 
             val fromClass = classByFqn[fromFqn] ?: continue
-            if (!RuleUtil.classInScope(fromClass, scope)) continue
+            if (!RuleUtil.ownerAllowed(fromClass, rule, scope, facts.classToRole)) continue
 
             adj.getOrPut(fromRole) { LinkedHashSet() }.add(toRole)
         }
@@ -156,6 +158,7 @@ class AllowedRoleDependenciesRule : Rule {
         facts: FactIndex,
         classByFqn: Map<String, ClassFact>,
         scope: RuleUtil.CompiledScope,
+        rule: RuleDef,
         fromRole: String,
         toRole: String,
         limit: Int,
@@ -176,7 +179,7 @@ class AllowedRoleDependenciesRule : Rule {
             if (ra != fromRole || rb != toRole) continue
 
             val fromClass = classByFqn[a] ?: continue
-            if (!RuleUtil.classInScope(fromClass, scope)) continue
+            if (!RuleUtil.ownerAllowed(fromClass, rule, scope, facts.classToRole)) continue
 
             if (examples.add(a to b) && examples.size >= limit) break
         }

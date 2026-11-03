@@ -94,6 +94,13 @@ internal object RuleUtil {
         return true
     }
 
+    fun ownerAllowed(
+        owner: ClassFact,
+        rule: RuleDef,
+        scope: CompiledScope,
+        classToRole: Map<String, String>,
+    ): Boolean = classInScope(owner, scope) && roleAllowed(rule, scope, classToRole[owner.fqName])
+
     /** Checks package regexes and path globs. Call [roleAllowed] separately for role filtering. */
     fun classInScope(
         c: ClassFact,
@@ -163,8 +170,7 @@ internal object RuleUtil {
         val selectedClasses =
             if (filterSources) {
                 facts.classes.filter { c ->
-                    classInScope(c, effectiveScope) &&
-                        (rule == null || roleAllowed(rule, effectiveScope, facts.classToRole[c.fqName]))
+                    if (rule == null) classInScope(c, effectiveScope) else ownerAllowed(c, rule, effectiveScope, facts.classToRole)
                 }
             } else {
                 facts.classes
@@ -470,6 +476,20 @@ internal object RuleUtil {
         facts: FactIndex,
         includeExternal: Boolean,
         scope: CompiledScope? = null,
+    ): DirectedGraph = buildRoleGraphInternal(facts, includeExternal, scope, null)
+
+    fun buildRoleGraph(
+        facts: FactIndex,
+        includeExternal: Boolean,
+        scope: CompiledScope?,
+        rule: RuleDef,
+    ): DirectedGraph = buildRoleGraphInternal(facts, includeExternal, scope, rule)
+
+    private fun buildRoleGraphInternal(
+        facts: FactIndex,
+        includeExternal: Boolean,
+        scope: CompiledScope?,
+        rule: RuleDef?,
     ): DirectedGraph {
         val classByFqn = facts.classes.associateBy { it.fqName }
 
@@ -488,7 +508,9 @@ internal object RuleUtil {
         for (e in facts.edges) {
             if (scope != null) {
                 val fromClass = classByFqn[e.from.fqName]
-                if (fromClass == null || !classInScope(fromClass, scope)) continue
+                if (fromClass == null) continue
+                if (rule == null && !classInScope(fromClass, scope)) continue
+                if (rule != null && !ownerAllowed(fromClass, rule, scope, facts.classToRole)) continue
             }
 
             val fromRole = facts.classToRole[e.from.fqName]
