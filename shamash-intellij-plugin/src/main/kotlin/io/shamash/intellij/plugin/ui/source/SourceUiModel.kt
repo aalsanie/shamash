@@ -17,8 +17,8 @@
  */
 package io.shamash.intellij.plugin.ui.source
 
-import io.shamash.psi.core.source.SourceEntity
 import io.shamash.psi.core.source.SourceDependencyKind
+import io.shamash.psi.core.source.SourceEntity
 import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceExternalReference
 import io.shamash.psi.core.source.SourceGraphSnapshot

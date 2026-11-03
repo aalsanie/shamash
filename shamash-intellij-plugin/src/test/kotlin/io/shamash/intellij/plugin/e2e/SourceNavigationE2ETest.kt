@@ -24,12 +24,12 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.testFramework.PsiTestUtil
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
-import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
+import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceEntityKind
-import io.shamash.psi.core.source.SourceTarget
 import io.shamash.psi.core.source.SourceReference
+import io.shamash.psi.core.source.SourceTarget
 
 class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
     private fun evidence(): SourceEvidence {

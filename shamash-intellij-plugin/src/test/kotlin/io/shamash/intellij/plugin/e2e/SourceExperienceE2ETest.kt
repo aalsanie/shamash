@@ -30,9 +30,9 @@ import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
 import io.shamash.intellij.plugin.ui.source.PageControls
+import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
-import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel
 import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.source.ProjectSourceSnapshot
 import io.shamash.psi.core.source.SourceAnalysisProfile
