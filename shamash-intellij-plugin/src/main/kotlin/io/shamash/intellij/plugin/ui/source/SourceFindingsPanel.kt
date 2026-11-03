@@ -26,17 +26,17 @@ import io.shamash.psi.core.source.SourcePackageDependency
 import io.shamash.psi.core.source.SourcePackageId
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.FlowLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
+import java.awt.FlowLayout
 import javax.swing.BoxLayout
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JSplitPane
-import javax.swing.event.DocumentEvent
-import javax.swing.event.DocumentListener
 
 internal class SourceFindingsPanel(project: Project, private val showExplore: () -> Unit) : JPanel(BorderLayout()) {
     private data class Choice<T>(val key: T?, val label: String) {

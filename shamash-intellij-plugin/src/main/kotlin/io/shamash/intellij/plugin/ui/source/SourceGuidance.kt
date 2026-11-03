@@ -19,8 +19,8 @@ package io.shamash.intellij.plugin.ui.source
 
 import io.shamash.intellij.plugin.analysis.AnalysisPhase
 import io.shamash.intellij.plugin.analysis.Completeness
-import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
+import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 
 internal object SourceGuidance {
     const val REPOSITORY_URL = "https://github.com/aalsanie/shamash"

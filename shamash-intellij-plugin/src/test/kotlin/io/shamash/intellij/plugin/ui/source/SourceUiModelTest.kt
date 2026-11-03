@@ -32,10 +32,10 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceRelationship
 import io.shamash.psi.core.source.SourceTarget
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.Test
 
 class SourceUiModelTest {
     private val a = SourcePackageId("module", "alpha")

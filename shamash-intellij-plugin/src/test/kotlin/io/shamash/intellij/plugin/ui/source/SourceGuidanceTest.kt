@@ -25,9 +25,9 @@ import io.shamash.intellij.plugin.analysis.Completeness
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
-import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.junit.Test
 
 class SourceGuidanceTest {
     private fun state(phase: AnalysisPhase) =

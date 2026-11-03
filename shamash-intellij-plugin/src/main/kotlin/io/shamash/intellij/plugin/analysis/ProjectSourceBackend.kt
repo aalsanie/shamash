@@ -17,11 +17,11 @@
  */
 package io.shamash.intellij.plugin.analysis
 
-import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
-import io.shamash.psi.core.source.SourceGraphAnalyzer
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
+import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceRevisionChangedException
 
 /** No config, build invocation, disk write, policy rules or precomputed ASM facts. */
