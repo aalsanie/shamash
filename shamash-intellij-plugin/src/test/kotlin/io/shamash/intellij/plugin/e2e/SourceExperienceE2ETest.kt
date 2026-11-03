@@ -20,6 +20,7 @@ package io.shamash.intellij.plugin.e2e
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.JBLabel
+import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import io.shamash.intellij.plugin.analysis.AnalysisCoverage
 import io.shamash.intellij.plugin.analysis.AnalysisPhase
@@ -41,6 +42,7 @@ import io.shamash.psi.core.source.SourceEntity
 import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceGraphAnalyzer
+import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceRelationship
 import io.shamash.psi.core.source.SourceTarget
@@ -191,6 +193,32 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 search.text = "module:p1"
                 assertEquals(1, panel.explore.relationList.model.size)
                 assertNotNull(panel.explore.relationList.actionMap.get("backToTree"))
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testLargeCycleMembershipIsPagedWithoutTruncatingUnderlyingGroup() {
+        val base = sampleGraph(2)
+        val members = (0 until 125).map { SourcePackageId("module", "package" + it) }
+        val cycle = base.cycles.first().copy(members = members)
+        val graph = base.copy(cycles = listOf(cycle))
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(graph))
+                val text = descendants(panel.findings).filterIsInstance<JBTextArea>().first {
+                    it.text.startsWith("Packages 1–50 of 125")
+                }
+                assertFalse(text.text.contains("package99"))
+                val membersPager = descendants(panel.findings).filterIsInstance<PageControls>()
+                    .first { it.next.isEnabled }
+                membersPager.next.doClick()
+                assertTrue(text.text.startsWith("Packages 51–100 of 125"))
+                assertTrue(text.text.contains("package99"))
+                membersPager.next.doClick()
+                assertTrue(text.text.startsWith("Packages 101–125 of 125"))
             } finally {
                 Disposer.dispose(panel)
             }
