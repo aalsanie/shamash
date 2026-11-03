@@ -17,11 +17,15 @@
  */
 package io.shamash.intellij.plugin.ui.source
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiManager
+import io.shamash.psi.core.source.SourceDependencyExtractor
 
 internal class SourceNavigationService(private val project: Project) {
     fun open(evidence: SourceEvidence): Boolean {
@@ -50,6 +54,17 @@ internal class SourceNavigationService(private val project: Project) {
         ) {
             return false
         }
+
+        val validOwner = ReadAction.compute<Boolean, RuntimeException> {
+            if (DumbService.isDumb(project)) return@compute false
+            val psi = PsiManager.getInstance(project).findFile(file) ?: return@compute false
+            val location = SourceDependencyExtractor.SourceLocation(
+                owner.moduleId, owner.sourceRoot, owner.fileUrl,
+            )
+            val declarations = SourceDependencyExtractor { null }.extract(psi, location).entities
+            declarations.any { it.id == owner }
+        }
+        if (!validOwner || document.modificationStamp != reference.documentStamp) return false
 
         OpenFileDescriptor(project, file, reference.offset).navigate(true)
         return true

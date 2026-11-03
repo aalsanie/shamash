@@ -62,6 +62,13 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         assertFalse(SourceNavigationService(project).open(witness))
     }
 
+    fun testMissingDeclarationIdentityCannotNavigateEvenWhenDocumentIsUnchanged() {
+        val witness = evidence()
+        val altered = witness.copy(owner = witness.owner.copy(signature = "demo.NotThisClass"))
+        assertFalse(SourceNavigationService(project).open(altered))
+        assertTrue(SourceNavigationService(project).open(witness))
+    }
+
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
         val witness = evidence()
         val navigation = SourceNavigationService(project)
