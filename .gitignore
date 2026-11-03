@@ -45,3 +45,4 @@ bin/
 
 ## Internal ###
 .dev
+/.codex-context/
