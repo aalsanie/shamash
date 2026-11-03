@@ -232,12 +232,17 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         empty.text =
             when {
                 source == null -> "Understand your project's dependencies"
-                source?.findings?.isEmpty() == true -> "No package cycles observed. Explore dependencies."
+                source?.findings?.isEmpty() == true ->
+                    if (source?.graph?.complete == true)
+                        "No package cycles found in the analyzed source. Explore dependencies."
+                    else "No cycles observed in the available evidence; analysis is incomplete."
                 filtered.isEmpty() -> "No results match these filters"
                 else -> filtered.size.toString() + " observed cyclic groups · sorted by size, not risk"
             }
         if (current.isEmpty() && selectedId == null) clearDetails(
-            if (source?.findings?.isEmpty() == true) "No package cycles observed. Explore dependencies."
+            if (source?.findings?.isEmpty() == true)
+                if (source?.graph?.complete == true) "No package cycles found in the analyzed source."
+                else "No cycles observed; analysis is incomplete."
             else if (source == null) "" else "No results match these filters",
         )
         val index = current.indexOfFirst { it.id == selectedId }
