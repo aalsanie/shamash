@@ -74,16 +74,18 @@ internal class SourceEvidencePanel(project: com.intellij.openapi.project.Project
     private val navigation = SourceNavigationService(project)
     private val model = DefaultListModel<SourceEvidence>()
     val list = sourceList<SourceEvidence>("Verified source references") { it.label }
-    private val count = JBLabel("Select a dependency to inspect source evidence")
-    private val outcome = JBLabel("")
+    private val count = wrappedText("Select a dependency to inspect source evidence")
+    private val outcome = wrappedText("")
     private val open = JButton("Open source")
 
     init {
         list.model = model
-        val controls = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 2))
-        controls.add(open)
-        controls.add(outcome)
+        val controls = JPanel(BorderLayout(6, 0))
+        controls.add(open, BorderLayout.WEST)
+        controls.add(outcome, BorderLayout.CENTER)
         val header = JPanel(BorderLayout())
+        count.rows = 2
+        outcome.rows = 2
         header.add(count, BorderLayout.CENTER)
         add(header, BorderLayout.NORTH)
         add(JBScrollPane(list), BorderLayout.CENTER)

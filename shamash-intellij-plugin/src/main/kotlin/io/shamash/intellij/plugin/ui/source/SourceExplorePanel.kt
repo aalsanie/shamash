@@ -284,9 +284,9 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         related.text =
             if (cycles.isEmpty()) "No observed related package cycles"
             else "Related cyclic groups: " + cycles.size +
-                "\n" + cycles.take(10).joinToString("\n") { cycle ->
+                "\n" + cycles.take(3).joinToString("\n") { cycle ->
                     cycle.members.joinToString(" → ") { SourceUiModel.qualified(it) }
-                } + if (cycles.size > 10) "\nShowing 10 of " + cycles.size else ""
+                } + if (cycles.size > 3) "\nShowing 3 of " + cycles.size else ""
         renderRelationships()
     }
 

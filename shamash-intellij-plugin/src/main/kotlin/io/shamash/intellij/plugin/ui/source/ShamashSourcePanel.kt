@@ -20,7 +20,6 @@ package io.shamash.intellij.plugin.ui.source
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTabbedPane
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
@@ -44,7 +43,7 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
     val cancel = JButton("Cancel")
     val help = JButton("Help")
     val status = JBLabel("Understand your project's dependencies")
-    val scope = JBLabel(SourceGuidance.SCOPE_LINE)
+    val scope = wrappedText(SourceGuidance.SCOPE_LINE)
     private val firstRun = JPanel(FlowLayout(FlowLayout.LEFT, 6, 2))
     private val about = JButton("About these checks")
     private val advanced = JButton("Architecture enforcement and CLI — GitHub")
@@ -58,6 +57,8 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
         toolbar.add(cancel)
         toolbar.add(help)
         val statusPanel = JPanel(BorderLayout(0, 3))
+        status.rows = 1
+        scope.rows = 1
         statusPanel.add(status, BorderLayout.NORTH)
         details.rows = 3
         details.accessibleContext.accessibleName = "Analysis scope and diagnostics"
