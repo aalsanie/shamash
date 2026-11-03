@@ -52,6 +52,9 @@ internal class SourceExploreTreeModel(
     private val modulePackages = source?.moduleIds.orEmpty().associateWith {
         source?.filteredPackages(it, query).orEmpty()
     }
+    private val packageEntities = modulePackages.values.flatten().associateWith { pkg ->
+        source?.filteredEntities(pkg, query).orEmpty()
+    }
     private val modules: List<SourceSelection.Module> =
         modulePackages.filterValues { it.isNotEmpty() }.keys.sorted().map(SourceSelection::Module)
 
@@ -63,7 +66,7 @@ internal class SourceExploreTreeModel(
             is SourceSelection.Module ->
                 SourceSelection.Package(modulePackages.getValue(parent.moduleId)[index])
             is SourceSelection.Package ->
-                SourceSelection.Declaration(source!!.filteredEntities(parent.id, query)[index].id)
+                SourceSelection.Declaration(packageEntities.getValue(parent.id)[index].id)
             else -> throw IndexOutOfBoundsException("Not a tree branch")
         }
 
@@ -71,7 +74,7 @@ internal class SourceExploreTreeModel(
         when (parent) {
             root -> modules.size
             is SourceSelection.Module -> modulePackages[parent.moduleId]?.size ?: 0
-            is SourceSelection.Package -> source?.filteredEntities(parent.id, query)?.size ?: 0
+            is SourceSelection.Package -> packageEntities[parent.id]?.size ?: 0
             else -> 0
         }
 
@@ -85,7 +88,7 @@ internal class SourceExploreTreeModel(
                 if (id == null) -1 else modulePackages[parent.moduleId]?.indexOf(id) ?: -1
             }
             is SourceSelection.Package ->
-                source?.filteredEntities(parent.id, query)?.indexOfFirst {
+                packageEntities[parent.id]?.indexOfFirst {
                     it.id == (child as? SourceSelection.Declaration)?.id
                 } ?: -1
             else -> -1
@@ -117,7 +120,7 @@ internal class SourceExploreTreeModel(
         val packageNode = SourceSelection.Package(pkg)
         if (selection is SourceSelection.Package) return TreePath(arrayOf(root, moduleNode, packageNode))
         val declaration = selection as SourceSelection.Declaration
-        if (sourceModel.filteredEntities(pkg, query).none { it.id == declaration.id }) return null
+        if (packageEntities[pkg].orEmpty().none { it.id == declaration.id }) return null
         return TreePath(arrayOf(root, moduleNode, packageNode, declaration))
     }
 
@@ -317,7 +320,9 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
             if (cycles.isEmpty()) "No observed related package cycles"
             else "Related cyclic groups: " + cycles.size +
                 "\n" + cycles.take(3).joinToString("\n") { cycle ->
-                    cycle.members.joinToString(" → ") { SourceUiModel.qualified(it) }
+                    val sample = cycle.members.take(5).joinToString(", ") { SourceUiModel.qualified(it) }
+                    sample + if (cycle.members.size > 5) " · +" + (cycle.members.size - 5) +
+                        " other packages in group" else ""
                 } + if (cycles.size > 3) "\nShowing 3 of " + cycles.size else ""
         renderRelationships()
     }
