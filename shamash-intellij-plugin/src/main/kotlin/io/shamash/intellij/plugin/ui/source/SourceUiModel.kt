@@ -74,6 +74,11 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
     val moduleIds: List<String> = packagesByModule.keys.sorted()
     val packageIds: List<SourcePackageId> = graph.packages.keys.sorted()
 
+    private val outgoingEntities: Map<SourceEntityId, List<io.shamash.psi.core.source.SourceRelationship>> =
+        graph.entityRelationships.groupBy { it.from }
+    private val incomingEntities: Map<SourceEntityId, List<io.shamash.psi.core.source.SourceRelationship>> =
+        graph.entityRelationships.groupBy { it.target }
+
     private val outgoingPackages: Map<SourcePackageId, List<SourcePackageDependency>> =
         graph.packageDependencies.groupBy { it.from }
     private val incomingPackages: Map<SourcePackageId, List<SourcePackageDependency>> =
@@ -133,8 +138,8 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                 }.sortedBy { it.label }
             }
             is SourceSelection.Declaration -> {
-                graph.entityRelationships.asSequence()
-                    .filter { if (incoming) it.target == selection.id else it.from == selection.id }
+                (if (incoming) incomingEntities[selection.id] else outgoingEntities[selection.id])
+                    .orEmpty().asSequence()
                     .map { edge ->
                         val target = if (incoming) edge.from else edge.target
                         SourceRelationRow(

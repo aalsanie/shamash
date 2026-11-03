@@ -64,8 +64,10 @@ internal class SourceExploreTreeModel(
     override fun getIndexOfChild(parent: Any?, child: Any?): Int =
         when (parent) {
             root -> modules.indexOf(child)
-            is SourceSelection.Module ->
-                source?.filteredPackages(parent.moduleId, query)?.indexOf((child as? SourceSelection.Package)?.id) ?: -1
+            is SourceSelection.Module -> {
+                val id = (child as? SourceSelection.Package)?.id
+                if (id == null) -1 else source?.filteredPackages(parent.moduleId, query)?.indexOf(id) ?: -1
+            }
             is SourceSelection.Package ->
                 source?.filteredEntities(parent.id, query)?.indexOfFirst {
                     it.id == (child as? SourceSelection.Declaration)?.id

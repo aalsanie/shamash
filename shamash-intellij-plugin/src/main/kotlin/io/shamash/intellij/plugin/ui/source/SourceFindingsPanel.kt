@@ -155,10 +155,10 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
                 )
             }
         }
-        explore.addActionListener(showExplore)
+        explore.addActionListener { showExplore() }
         back.addActionListener {
             findingList.requestFocusInWindow()
-            if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.dividerLocation = 0.65
+            if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
         }
         accessibleContext.accessibleName = "Findings"
         resetFilters()

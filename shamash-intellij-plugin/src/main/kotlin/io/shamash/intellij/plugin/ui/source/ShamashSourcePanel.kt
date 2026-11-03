@@ -26,8 +26,8 @@ import javax.swing.JPopupMenu
 class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()), Disposable {
     private val coordinator = IdeAnalysisCoordinator.getInstance(project)
     val tabs = JBTabbedPane()
-    val findings = SourceFindingsPanel(project) { tabs.selectedIndex = 1 }
-    val explore = SourceExplorePanel(project)
+    internal val findings = SourceFindingsPanel(project) { tabs.selectedIndex = 1 }
+    internal val explore = SourceExplorePanel(project)
     val analyze = JButton("Analyze project")
     val cancel = JButton("Cancel")
     val help = JButton("Help")
