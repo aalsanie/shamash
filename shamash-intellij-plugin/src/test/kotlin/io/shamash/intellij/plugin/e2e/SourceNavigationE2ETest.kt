@@ -17,13 +17,18 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.testFramework.PsiTestUtil
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.psi.core.source.SourceEntityId
+import io.shamash.psi.core.source.SourceDependencyExtractor
+import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityKind
+import io.shamash.psi.core.source.SourceTarget
 import io.shamash.psi.core.source.SourceReference
 
 class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
@@ -67,6 +72,47 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         val altered = witness.copy(owner = witness.owner.copy(signature = "demo.NotThisClass"))
         assertFalse(SourceNavigationService(project).open(altered))
         assertTrue(SourceNavigationService(project).open(witness))
+    }
+
+    fun testResolvedDependencyMustMatchExactTargetAndKind() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject("src/main/java/demo/Target.java",
+            "package demo; public class Target {}")
+        val source = myFixture.addFileToProject("src/main/java/demo/Owner.java",
+            "package demo; public class Owner { Target value; }")
+        val index = ProjectFileIndex.getInstance(project)
+        val location = SourceDependencyExtractor.SourceLocation(
+            myModule.name, root.url, source.virtualFile.url,
+        )
+        val dependency = ReadAction.compute<io.shamash.psi.core.source.SourceDependency, RuntimeException> {
+            val extractor = SourceDependencyExtractor { psi ->
+                val file = psi.virtualFile ?: return@SourceDependencyExtractor null
+                val module = index.getModuleForFile(file) ?: return@SourceDependencyExtractor null
+                val sourceRoot = index.getSourceRootForFile(file) ?: return@SourceDependencyExtractor null
+                SourceDependencyExtractor.SourceLocation(module.name, sourceRoot.url, file.url)
+            }
+            extractor.extract(source, location).references.first { it.target is SourceTarget.Internal &&
+                (it.target as SourceTarget.Internal).entity.signature == "demo.Target"
+            }
+        }
+        val evidence = SourceEvidence(
+            dependency.evidence,
+            dependency.from,
+            "Owner → Target",
+            dependency.target,
+            dependency.kind,
+        )
+        val navigation = SourceNavigationService(project)
+        assertTrue(navigation.open(evidence))
+        val wrongTarget = evidence.copy(
+            target = SourceTarget.Internal((dependency.target as SourceTarget.Internal)
+                .entity.copy(signature = "demo.Unrelated")),
+        )
+        assertFalse(navigation.open(wrongTarget))
+        assertFalse(navigation.open(evidence.copy(kind =
+            if (dependency.kind == SourceDependencyKind.ANNOTATION) SourceDependencyKind.CALL
+            else SourceDependencyKind.ANNOTATION)))
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
