@@ -68,7 +68,11 @@ internal class ProjectSourceBackend(
             )
         val graph = SourceGraphAnalyzer().analyze(snapshot) { indicator.checkCanceled() }
         indicator.checkCanceled()
-        val payload = IdeAnalysisCoordinator.SourcePresentation(sourceFacts = snapshot, sourceGraph = graph, uiModel = SourceUiModel(graph))
+        val payload = IdeAnalysisCoordinator.SourcePresentation(
+            sourceFacts = snapshot,
+            sourceGraph = graph,
+            uiModel = SourceUiModel(graph),
+        )
         val diagnostics = graph.diagnostics.map { "${it.fileUrl ?: "project"}: ${it.message}" }
         return if (graph.complete) {
             AnalysisOutcome.Complete(payload, coverage)

@@ -36,15 +36,24 @@ class SourceGuidanceTest {
     @Test
     fun allLifecyclePhasesHaveTruthfulProductCopy() {
         assertEquals("Understand your project's dependencies", SourceGuidance.status(state(AnalysisPhase.IDLE)))
-        assertEquals("Waiting for IntelliJ to finish indexing", SourceGuidance.status(state(AnalysisPhase.WAITING_FOR_INDEX)))
+        assertEquals(
+            "Waiting for IntelliJ to finish indexing",
+            SourceGuidance.status(state(AnalysisPhase.WAITING_FOR_INDEX)),
+        )
         assertEquals("Analyzing source dependencies…", SourceGuidance.status(state(AnalysisPhase.EXTRACTING)))
         assertEquals("Analyzing source dependencies…", SourceGuidance.status(state(AnalysisPhase.BUILDING_GRAPH)))
         assertEquals("Source analysis complete", SourceGuidance.status(state(AnalysisPhase.COMPLETED)))
-        assertEquals("Some source dependencies could not be analyzed", SourceGuidance.status(state(AnalysisPhase.PARTIAL)))
+        assertEquals(
+            "Some source dependencies could not be analyzed",
+            SourceGuidance.status(state(AnalysisPhase.PARTIAL)),
+        )
         assertEquals("Source analysis couldn't finish", SourceGuidance.status(state(AnalysisPhase.FAILED)))
         assertEquals("Analysis cancelled", SourceGuidance.status(state(AnalysisPhase.CANCELLED)))
         assertEquals("Code changed since this analysis", SourceGuidance.status(state(AnalysisPhase.STALE)))
-        assertEquals("Source analysis is unavailable for this project", SourceGuidance.status(state(AnalysisPhase.UNAVAILABLE)))
+        assertEquals(
+            "Source analysis is unavailable for this project",
+            SourceGuidance.status(state(AnalysisPhase.UNAVAILABLE)),
+        )
     }
 
     @Test

@@ -175,7 +175,11 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
                 if (edge == null) evidence.showEvidence(emptyList(), 0)
                 else evidence.showEvidence(
                     edge.witnesses.map { witness ->
-                        SourceEvidence(witness.reference, witness.from, witness.from.signature + " → " + witness.target.signature)
+                        SourceEvidence(
+                            witness.reference,
+                            witness.from,
+                            witness.from.signature + " → " + witness.target.signature,
+                        )
                     },
                     edge.occurrences,
                 )

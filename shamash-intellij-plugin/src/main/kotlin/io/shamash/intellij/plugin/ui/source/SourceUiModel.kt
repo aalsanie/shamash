@@ -98,7 +98,9 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
     val entitiesByPackage: Map<SourcePackageId, List<SourceEntity>> =
         graph.entities.groupBy { SourcePackageId(it.id.moduleId, it.packageName) }
             .mapValues { (_, values) ->
-                values.sortedWith(compareBy({ it.displayName.lowercase(Locale.ROOT) }, { it.id.fileUrl }, { it.id.signature }))
+                values.sortedWith(
+                    compareBy({ it.displayName.lowercase(Locale.ROOT) }, { it.id.fileUrl }, { it.id.signature }),
+                )
             }
 
     val moduleIds: List<String> = packagesByModule.keys.sorted()
@@ -200,7 +202,9 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                 name + " (external sample)",
                 0,
                 evidence.size.toLong(),
-                evidence.take(MAX_WITNESSES).map { SourceEvidence(it.evidence, it.from, it.from.signature + " → " + name) },
+                evidence.take(MAX_WITNESSES).map {
+                    SourceEvidence(it.evidence, it.from, it.from.signature + " → " + name)
+                },
                 sampled = true,
             )
         }

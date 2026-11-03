@@ -49,10 +49,12 @@ internal object SourceGuidance {
             "Investigate package cycles in Findings and browse Uses / Used by in Explore."
     const val CYCLE_EXPLANATION =
         "Why it may matter\n" +
-            "Changes in one package may require changes in another, which can make independent testing or reuse harder. " +
+            "Changes in one package may require changes in another, " +
+            "which can make independent testing or reuse harder. " +
             "The dependency may be intentional.\n\n" +
             "What to try next\n" +
-            "Inspect the references below. Check whether one dependency represents a shared concept that belongs in a " +
+            "Inspect the references below. Check whether one dependency represents " +
+            "a shared concept that belongs in a " +
             "common API, or whether these packages represent one responsibility that should stay together. " +
             "Introducing an interface alone may not remove a package dependency.\n\n" +
             "Limits\n" +
