@@ -83,11 +83,12 @@ class GraphAndTypeScopeTest {
         assertEquals("2", actual.data["count"])
         assertEquals(
             actual,
-            MaxCyclesRule().evaluate(
-                facts.copy(classes = facts.classes.reversed(), edges = facts.edges.reversed()),
-                definition,
-                config,
-            ).single(),
+            MaxCyclesRule()
+                .evaluate(
+                    facts.copy(classes = facts.classes.reversed(), edges = facts.edges.reversed()),
+                    definition,
+                    config,
+                ).single(),
         )
         assertTrue(MaxCyclesRule().evaluate(facts, definition.copy(params = mapOf("maxCycles" to 2)), config).isEmpty())
     }
@@ -106,7 +107,10 @@ class GraphAndTypeScopeTest {
                 bytecode(dollar, Opcodes.ACC_PUBLIC),
                 bytecode("sample/Contract", Opcodes.ACC_PUBLIC or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT),
                 bytecode("sample/Kind", Opcodes.ACC_PUBLIC or Opcodes.ACC_ENUM),
-                bytecode("sample/Tagged", Opcodes.ACC_PUBLIC or Opcodes.ACC_ANNOTATION or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT),
+                bytecode(
+                    "sample/Tagged",
+                    Opcodes.ACC_PUBLIC or Opcodes.ACC_ANNOTATION or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT,
+                ),
             )
         val extraction = FactExtractor.extractAll(units.asSequence())
         assertTrue(extraction.errors.isEmpty(), extraction.errors.toString())
@@ -144,11 +148,12 @@ class GraphAndTypeScopeTest {
             val finding = MaxPublicTypesRule().evaluate(facts, definition, config()).single()
             assertEquals(count.toString(), finding.data["count"], options.toString())
             assertTrue(
-                MaxPublicTypesRule().evaluate(
-                    facts,
-                    definition.copy(params = options + ("max" to count)),
-                    config(),
-                ).isEmpty(),
+                MaxPublicTypesRule()
+                    .evaluate(
+                        facts,
+                        definition.copy(params = options + ("max" to count)),
+                        config(),
+                    ).isEmpty(),
                 options.toString(),
             )
         }

@@ -34,7 +34,13 @@ class NoCyclesRuleTest {
     fun `unrelated cycle does not invalidate an existing baseline`() {
         val yaml = SchemaResources.openReferenceYaml().use { it.reader(Charsets.UTF_8).readText() }
         val reference = assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(yaml)).config)
-        val config = reference.copy(analysis = reference.analysis.copy(graphs = reference.analysis.graphs.copy(granularity = Granularity.CLASS)))
+        val config =
+            reference.copy(
+                analysis =
+                    reference.analysis.copy(
+                        graphs = reference.analysis.graphs.copy(granularity = Granularity.CLASS),
+                    ),
+            )
         val rule =
             RuleDef(
                 type = "graph",
