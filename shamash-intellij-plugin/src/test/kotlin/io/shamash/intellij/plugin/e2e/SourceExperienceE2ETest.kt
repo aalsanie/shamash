@@ -48,6 +48,7 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.JSplitPane
+import javax.swing.tree.TreePath
 
 class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     fun testFirstUseShowsExactlyTwoDestinationsWithoutStartingAnalysis() {
@@ -159,6 +160,37 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     attemptCoverage = AnalysisCoverage(eligibleFiles = 0, reason = "NO_SOURCE"),
                 ))
                 assertEquals("No supported production source found", panel.status.text)
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testExploreSearchesAllRelationshipsAndCanReturnFromEvidence() {
+        val graph = sampleGraph(1)
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(graph))
+                panel.tabs.selectedIndex = 1
+                val tree = panel.explore.tree
+                val model = tree.model
+                val module = model.getChild(model.root, 0)
+                val pkg = model.getChild(module, 0)
+                tree.selectionPath = TreePath(arrayOf(model.root, module, pkg))
+                assertEquals(1, panel.explore.relationList.model.size)
+
+                val search = descendants(panel.explore).filterIsInstance<JBTextField>().first {
+                    it.accessibleContext?.accessibleName == "Search all relationships for selected source"
+                }
+                search.text = "not present"
+                assertEquals(0, panel.explore.relationList.model.size)
+                assertTrue(descendants(panel.explore).filterIsInstance<JBLabel>().any {
+                    it.text == "No results match these filters"
+                })
+                search.text = "module:p1"
+                assertEquals(1, panel.explore.relationList.model.size)
+                assertNotNull(panel.explore.relationList.actionMap.get("backToTree"))
             } finally {
                 Disposer.dispose(panel)
             }
