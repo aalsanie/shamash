@@ -204,7 +204,7 @@ class SourceUiModelTest {
         assertEquals(0, tree.getIndexOfChild(pkg, declaration))
         assertEquals(2, tree.pathFor(SourceSelection.Module("module"))?.pathCount)
         assertEquals(3, tree.pathFor(SourceSelection.Package(a))?.pathCount)
-        assertEquals(4, tree.pathFor(declaration)?.pathCount)
+        assertEquals(4, tree.pathFor(declaration as SourceSelection)?.pathCount)
         assertEquals(null, tree.pathFor(SourceSelection.Module("missing")))
         assertEquals(null, tree.pathFor(SourceSelection.Package(SourcePackageId("module", "missing"))))
     }
