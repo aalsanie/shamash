@@ -19,7 +19,6 @@ package io.shamash.intellij.plugin.e2e
 
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.runInEdtAndWait
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import io.shamash.intellij.plugin.analysis.AnalysisCoverage
@@ -117,7 +116,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 }
                 search.text = "not a real package"
                 assertEquals(0, panel.findings.findingList.model.size)
-                assertTrue(descendants(panel.findings).filterIsInstance<JBLabel>().any {
+                assertTrue(descendants(panel.findings).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
                     it.text == "No results match these filters"
                 })
                 descendants(panel.findings).filterIsInstance<JButton>().first {

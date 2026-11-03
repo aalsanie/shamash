@@ -94,6 +94,7 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         val left = JPanel(BorderLayout(0, 4))
         val leftTop = JPanel(BorderLayout())
         leftTop.add(filters, BorderLayout.NORTH)
+        empty.rows = 2
         leftTop.add(empty, BorderLayout.SOUTH)
         left.add(leftTop, BorderLayout.NORTH)
         findingList.model = listModel

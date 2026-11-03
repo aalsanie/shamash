@@ -19,7 +19,6 @@ package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBComboBox
-import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.treeStructure.Tree
@@ -136,7 +135,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
     val tree = Tree()
     private val summary = wrappedText()
     private val related = wrappedText()
-    private val empty = JBLabel("Analyze project to explore dependencies")
+    private val empty = wrappedText("Analyze project to explore dependencies")
     private val direction = JBComboBox(arrayOf("Uses", "Used by", "External dependencies"))
     private val sort = JButton("Sort: name")
     private var mostDependencies = false
@@ -146,7 +145,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         else " · " + it.distinctTargets + " distinct source relationships · " + it.occurrences + " occurrences"
     }
     private val pager = PageControls()
-    private val relationEmpty = JBLabel("")
+    private val relationEmpty = wrappedText("")
     private val evidence = SourceEvidencePanel(project)
     private val clear = JButton("Clear search")
     private val back = JButton("Back to source tree")
@@ -183,6 +182,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                 }
             }
         left.add(JBScrollPane(tree), BorderLayout.CENTER)
+        empty.rows = 2
         left.add(empty, BorderLayout.SOUTH)
 
         val detail = JPanel(BorderLayout(0, 5))
@@ -204,6 +204,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         val center = JPanel(BorderLayout(0, 4))
         center.add(JBScrollPane(relationList), BorderLayout.CENTER)
         val footer = JPanel(BorderLayout())
+        relationEmpty.rows = 2
         footer.add(relationEmpty, BorderLayout.NORTH)
         footer.add(pager, BorderLayout.SOUTH)
         center.add(footer, BorderLayout.SOUTH)
