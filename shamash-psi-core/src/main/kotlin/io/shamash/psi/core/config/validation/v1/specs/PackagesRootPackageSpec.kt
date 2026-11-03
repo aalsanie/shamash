@@ -66,7 +66,11 @@ class PackagesRootPackageSpec : RuleSpec {
                 if (value != null) {
                     err("$rulePath.params.value", "must be omitted when mode=AUTO")
                 }
-                val projectRoot = config.project.rootPackage?.value?.trim().orEmpty()
+                val projectRoot =
+                    config.project.rootPackage
+                        ?.value
+                        ?.trim()
+                        .orEmpty()
                 if (!pkgRegex.matches(projectRoot)) {
                     err("$rulePath.params.mode", "AUTO requires a configured project root package")
                 }

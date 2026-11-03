@@ -350,7 +350,7 @@ class DeadcodeUnusedPrivateMembersRule : EngineRule {
                     if (ReferencesSearch.search(inner, scope).findFirst() != null) continue
 
                     val innerFqn = inner.qualifiedName ?: continue
-                            if (innerFqn !in eligibleOwners) continue
+                    if (innerFqn !in eligibleOwners) continue
                     out +=
                         Finding(
                             ruleId = ruleInstanceId,

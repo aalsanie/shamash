@@ -54,9 +54,14 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
                         ),
                     ),
             )
-        val base = rule("arch", "forbiddenRoleDependencies", mapOf(
-            "forbidden" to listOf(mapOf("from" to "controller", "to" to listOf("repository"))),
-        ))
+        val base =
+            rule(
+                "arch",
+                "forbiddenRoleDependencies",
+                mapOf(
+                    "forbidden" to listOf(mapOf("from" to "controller", "to" to listOf("repository"))),
+                ),
+            )
         val evaluator = ArchForbiddenRoleDependenciesRule()
         val valid =
             RuleScope(
@@ -68,18 +73,62 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
                 excludeGlobs = null,
             )
         assertEquals(1, evaluator.evaluate(file, facts, base.copy(scope = valid), config()).size)
-        assertTrue(evaluator.evaluate(file, facts, base.copy(scope = valid.copy(
-            includeRoles = listOf("repository"),
-        )), config()).isEmpty())
-        assertTrue(evaluator.evaluate(file, facts, base.copy(scope = valid.copy(
-            excludeRoles = listOf("controller"),
-        )), config()).isEmpty())
-        assertTrue(evaluator.evaluate(file, facts, base.copy(scope = valid.copy(
-            excludePackages = listOf("^example$"),
-        )), config()).isEmpty())
-        assertTrue(evaluator.evaluate(file, facts, base.copy(scope = valid.copy(
-            excludeGlobs = listOf("**/Controller.java"),
-        )), config()).isEmpty())
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    base.copy(
+                        scope =
+                            valid.copy(
+                                includeRoles = listOf("repository"),
+                            ),
+                    ),
+                    config(),
+                ).isEmpty(),
+        )
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    base.copy(
+                        scope =
+                            valid.copy(
+                                excludeRoles = listOf("controller"),
+                            ),
+                    ),
+                    config(),
+                ).isEmpty(),
+        )
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    base.copy(
+                        scope =
+                            valid.copy(
+                                excludePackages = listOf("^example$"),
+                            ),
+                    ),
+                    config(),
+                ).isEmpty(),
+        )
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    base.copy(
+                        scope =
+                            valid.copy(
+                                excludeGlobs = listOf("**/Controller.java"),
+                            ),
+                    ),
+                    config(),
+                ).isEmpty(),
+        )
         assertTrue(evaluator.evaluate(file, facts, base.copy(roles = listOf("repository")), config()).isEmpty())
         assertTrue(evaluator.evaluate(file, facts.copy(classToRole = emptyMap()), base.copy(scope = valid), config()).isEmpty())
         assertFailsWith<ParamError> {
@@ -100,14 +149,24 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
         assertFailsWith<ParamError> { evaluator.evaluate(file, facts, auto, config) }
 
         val configured =
-            config.copy(project = config.project.copy(
-                rootPackage = RootPackageConfigV1(RootPackageModeV1.EXPLICIT, "example"),
-            ))
+            config.copy(
+                project =
+                    config.project.copy(
+                        rootPackage = RootPackageConfigV1(RootPackageModeV1.EXPLICIT, "example"),
+                    ),
+            )
         assertTrue(PackagesRootPackageSpec().validate("rules[0]", auto, configured).isEmpty())
         assertEquals(1, evaluator.evaluate(file, facts, auto, configured).size)
-        assertEquals(1, evaluator.evaluate(
-            file, facts, rule("packages", "rootPackage", mapOf("mode" to "EXPLICIT", "value" to "example")), configured,
-        ).size)
+        assertEquals(
+            1,
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    rule("packages", "rootPackage", mapOf("mode" to "EXPLICIT", "value" to "example")),
+                    configured,
+                ).size,
+        )
         val scope =
             RuleScope(
                 includeRoles = listOf("service"),
@@ -118,16 +177,43 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
                 excludeGlobs = null,
             )
         assertEquals(1, evaluator.evaluate(file, facts, auto.copy(scope = scope), configured).size)
-        assertTrue(evaluator.evaluate(file, facts, auto.copy(scope = scope.copy(
-            excludeRoles = listOf("service"),
-        )), configured).isEmpty())
-        assertTrue(evaluator.evaluate(file, facts, auto.copy(scope = scope.copy(
-            excludePackages = listOf("^examplex$"),
-        )), configured).isEmpty())
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    auto.copy(
+                        scope =
+                            scope.copy(
+                                excludeRoles = listOf("service"),
+                            ),
+                    ),
+                    configured,
+                ).isEmpty(),
+        )
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    auto.copy(
+                        scope =
+                            scope.copy(
+                                excludePackages = listOf("^examplex$"),
+                            ),
+                    ),
+                    configured,
+                ).isEmpty(),
+        )
         assertTrue(evaluator.evaluate(file, facts.copy(classToRole = emptyMap()), auto.copy(scope = scope), configured).isEmpty())
-        assertTrue(PackagesRootPackageSpec().validate(
-            "rules[0]", auto.copy(params = mapOf("mode" to "AUTO", "value" to "example")), configured,
-        ).isNotEmpty())
+        assertTrue(
+            PackagesRootPackageSpec()
+                .validate(
+                    "rules[0]",
+                    auto.copy(params = mapOf("mode" to "AUTO", "value" to "example")),
+                    configured,
+                ).isNotEmpty(),
+        )
 
         val defaultFile = myFixture.configureByText("Default.java", "class Default {}")
         val defaultFacts = FactExtractor.extractResult(defaultFile).facts
@@ -135,15 +221,21 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
     }
 
     fun testDeadCodeRuleSkipsExcludedJavaOwners() {
-        val file = myFixture.configureByText(
-            "Unused.java",
-            "package example; class Unused { private void orphan() {} }",
-        )
+        val file =
+            myFixture.configureByText(
+                "Unused.java",
+                "package example; class Unused { private void orphan() {} }",
+            )
         val facts = FactExtractor.extractResult(file).facts.withRole("example.Unused", "service")
         val evaluator = DeadcodeUnusedPrivateMembersRule()
-        val base = rule("deadcode", "unusedPrivateMembers", mapOf(
-            "check" to mapOf("fields" to false, "methods" to true, "classes" to false),
-        ))
+        val base =
+            rule(
+                "deadcode",
+                "unusedPrivateMembers",
+                mapOf(
+                    "check" to mapOf("fields" to false, "methods" to true, "classes" to false),
+                ),
+            )
         val selected =
             RuleScope(
                 includeRoles = listOf("service"),
@@ -154,48 +246,91 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
                 excludeGlobs = null,
             )
         assertTrue(evaluator.evaluate(file, facts, base.copy(scope = selected), config()).isNotEmpty())
-        assertTrue(evaluator.evaluate(file, facts, base.copy(scope = selected.copy(
-            excludeRoles = listOf("service"),
-        )), config()).isEmpty())
-        assertTrue(evaluator.evaluate(file, facts, base.copy(scope = selected.copy(
-            excludeGlobs = listOf("**/Unused.java"),
-        )), config()).isEmpty())
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    base.copy(
+                        scope =
+                            selected.copy(
+                                excludeRoles = listOf("service"),
+                            ),
+                    ),
+                    config(),
+                ).isEmpty(),
+        )
+        assertTrue(
+            evaluator
+                .evaluate(
+                    file,
+                    facts,
+                    base.copy(
+                        scope =
+                            selected.copy(
+                                excludeGlobs = listOf("**/Unused.java"),
+                            ),
+                    ),
+                    config(),
+                ).isEmpty(),
+        )
     }
 
     fun testNestedKotlinClassesFollowTheirOwnRoles() {
-        val file = myFixture.configureByText(
-            "Nested.kt",
-            "package example\nclass Parent { class Nested }",
-        )
+        val file =
+            myFixture.configureByText(
+                "Nested.kt",
+                "package example\nclass Parent { class Nested }",
+            )
         val extracted = FactExtractor.extractResult(file)
         assertTrue(extracted.errors.isEmpty(), extracted.errors.toString())
-        val facts = extracted.facts.copy(
-            classToRole = mapOf("example.Parent" to "parent", "example.Parent.Nested" to "nested"),
-        )
-        val scope = RuleScope(
-            includeRoles = listOf("parent"),
-            excludeRoles = null,
-            includePackages = listOf("^example$"),
-            excludePackages = null,
-            includeGlobs = listOf("**/Nested.kt"),
-            excludeGlobs = null,
-        )
-        val definition = rule("naming", "bannedSuffixes", mapOf("banned" to listOf("Parent", "Nested")))
-            .copy(scope = scope)
+        val facts =
+            extracted.facts.copy(
+                classToRole = mapOf("example.Parent" to "parent", "example.Parent.Nested" to "nested"),
+            )
+        val scope =
+            RuleScope(
+                includeRoles = listOf("parent"),
+                excludeRoles = null,
+                includePackages = listOf("^example$"),
+                excludePackages = null,
+                includeGlobs = listOf("**/Nested.kt"),
+                excludeGlobs = null,
+            )
+        val definition =
+            rule("naming", "bannedSuffixes", mapOf("banned" to listOf("Parent", "Nested")))
+                .copy(scope = scope)
         assertEquals(listOf("example.Parent"), RuleUtil.scopedClasses(facts, definition).map { it.fqName })
-        assertTrue(RuleUtil.scopedClasses(facts, definition.copy(
-            scope = scope.copy(excludeRoles = listOf("parent")),
-        )).isEmpty())
-        assertTrue(RuleUtil.scopedClasses(facts, definition.copy(
-            scope = scope.copy(excludeGlobs = listOf("**/Nested.kt")),
-        )).isEmpty())
+        assertTrue(
+            RuleUtil
+                .scopedClasses(
+                    facts,
+                    definition.copy(
+                        scope = scope.copy(excludeRoles = listOf("parent")),
+                    ),
+                ).isEmpty(),
+        )
+        assertTrue(
+            RuleUtil
+                .scopedClasses(
+                    facts,
+                    definition.copy(
+                        scope = scope.copy(excludeGlobs = listOf("**/Nested.kt")),
+                    ),
+                ).isEmpty(),
+        )
     }
 
-    private fun FactsIndex.withRole(classFqn: String, role: String): FactsIndex =
-        copy(classToRole = mapOf(classFqn to role), roles = mapOf(role to setOf(classFqn)))
+    private fun FactsIndex.withRole(
+        classFqn: String,
+        role: String,
+    ): FactsIndex = copy(classToRole = mapOf(classFqn to role), roles = mapOf(role to setOf(classFqn)))
 
-    private fun rule(type: String, name: String, params: Map<String, Any?>): RuleDef =
-        RuleDef(type, name, null, true, Severity.ERROR, null, params)
+    private fun rule(
+        type: String,
+        name: String,
+        params: Map<String, Any?>,
+    ): RuleDef = RuleDef(type, name, null, true, Severity.ERROR, null, params)
 
     private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {

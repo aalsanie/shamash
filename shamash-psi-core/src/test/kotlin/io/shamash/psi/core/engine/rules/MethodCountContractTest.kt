@@ -143,12 +143,13 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         assertEquals("example.Sample", findings.single().classFqn)
         assertEquals(count.toString(), findings.single().data["actual"])
         assertTrue(
-            MetricsMaxMethodsByRoleRule().evaluate(
-                file,
-                facts,
-                definition.copy(params = definition.params + ("limits" to mapOf(role to count))),
-                config,
-            ).isEmpty(),
+            MetricsMaxMethodsByRoleRule()
+                .evaluate(
+                    file,
+                    facts,
+                    definition.copy(params = definition.params + ("limits" to mapOf(role to count))),
+                    config,
+                ).isEmpty(),
         )
     }
 
@@ -166,8 +167,11 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         return RuleDef("metrics", "maxMethodsByRole", null, true, Severity.ERROR, null, parameters)
     }
 
-    private fun withRole(facts: FactsIndex, className: String, role: String): FactsIndex =
-        facts.copy(roles = mapOf(role to setOf(className)), classToRole = mapOf(className to role))
+    private fun withRole(
+        facts: FactsIndex,
+        className: String,
+        role: String,
+    ): FactsIndex = facts.copy(roles = mapOf(role to setOf(className)), classToRole = mapOf(className to role))
 
     private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {
