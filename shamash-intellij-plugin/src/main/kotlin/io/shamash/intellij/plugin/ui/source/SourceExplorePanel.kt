@@ -35,10 +35,10 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.event.TreeModelListener
 import javax.swing.JButton
-import javax.swing.KeyStroke
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTree
+import javax.swing.KeyStroke
 import javax.swing.tree.DefaultTreeCellRenderer
 import javax.swing.tree.TreeModel
 import javax.swing.tree.TreePath

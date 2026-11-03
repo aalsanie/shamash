@@ -31,7 +31,6 @@ import java.awt.event.ComponentEvent
 import java.awt.FlowLayout
 import javax.swing.AbstractAction
 import javax.swing.BoxLayout
-import javax.swing.KeyStroke
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
 import javax.swing.event.DocumentEvent
@@ -39,6 +38,7 @@ import javax.swing.event.DocumentListener
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JSplitPane
+import javax.swing.KeyStroke
 
 internal class SourceFindingsPanel(project: Project, private val showExplore: () -> Unit) : JPanel(BorderLayout()) {
     private data class Choice<T>(val key: T?, val label: String) {
