@@ -45,6 +45,9 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
     val help = JButton("Help")
     val status = JBLabel("Understand your project's dependencies")
     val scope = JBLabel(SourceGuidance.SCOPE_LINE)
+    private val firstRun = JPanel(FlowLayout(FlowLayout.LEFT, 6, 2))
+    private val about = JButton("About these checks")
+    private val advanced = JButton("Architecture enforcement and CLI — GitHub")
     private val details = wrappedText()
     private var currentModel: SourceUiModel? = null
     private var disposed = false
@@ -65,6 +68,9 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
         val header = JPanel(BorderLayout(0, 4))
         header.add(toolbar, BorderLayout.NORTH)
         header.add(statusPanel, BorderLayout.CENTER)
+        firstRun.add(about)
+        firstRun.add(advanced)
+        header.add(firstRun, BorderLayout.SOUTH)
         add(header, BorderLayout.NORTH)
 
         tabs.addTab("Findings", findings)
@@ -77,6 +83,8 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
         analyze.addActionListener { SourceAnalysisActions.analyze(project) }
         cancel.addActionListener { coordinator.cancel() }
         help.addActionListener { showHelp() }
+        about.addActionListener { showAbout() }
+        advanced.addActionListener { BrowserUtil.browse(SourceGuidance.REPOSITORY_URL) }
         analyze.accessibleContext.accessibleName = "Analyze project source"
         cancel.accessibleContext.accessibleName = "Cancel source analysis"
         help.accessibleContext.accessibleName = "Help and advanced architecture enforcement"
@@ -92,6 +100,7 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
         analyze.isEnabled = !state.active
         analyze.text = if (state.requestGeneration == 0L) "Analyze project" else "Analyze again"
         cancel.isEnabled = state.active
+        firstRun.isVisible = state.phase == io.shamash.intellij.plugin.analysis.AnalysisPhase.IDLE
         status.text = SourceGuidance.status(state)
         status.accessibleContext.accessibleDescription = SourceGuidance.status(state)
         val relation =
@@ -123,20 +132,22 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
             entry.addActionListener { action() }
             menu.add(entry)
         }
-        item("About these checks") {
-            val text = wrappedText(SourceGuidance.OFFLINE_HELP)
-            text.columns = 55
-            text.rows = 18
-            JOptionPane.showMessageDialog(
-                this, JBScrollPane(text), "Shamash · About these checks", JOptionPane.INFORMATION_MESSAGE,
-            )
-        }
+        item("About these checks") { showAbout() }
         item("Architecture enforcement and CLI — GitHub") {
             BrowserUtil.browse(SourceGuidance.REPOSITORY_URL)
         }
         item("License") { BrowserUtil.browse(SourceGuidance.LICENSE_URL) }
         item("Plugin source") { BrowserUtil.browse(SourceGuidance.SOURCE_URL) }
         menu.show(help, 0, help.height)
+    }
+
+    private fun showAbout() {
+        val text = wrappedText(SourceGuidance.OFFLINE_HELP)
+        text.columns = 55
+        text.rows = 18
+        JOptionPane.showMessageDialog(
+            this, JBScrollPane(text), "Shamash · About these checks", JOptionPane.INFORMATION_MESSAGE,
+        )
     }
 
     override fun dispose() {
