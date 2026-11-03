@@ -30,7 +30,7 @@
         <notificationGroup id="Shamash ASM" displayType="BALLOON" isLogByDefault="true"/>
 
         <toolWindow id="Shamash"
-                    anchor="right"
+                    anchor="bottom"
                     icon="/icons/pluginIcon.svg"
                     factoryClass="io.shamash.intellij.plugin.ui.ShamashToolWindowFactory"/>
 
@@ -45,10 +45,15 @@
         <action id="io.shamash.open"
                 class="io.shamash.intellij.plugin.ui.actions.OpenShamashToolWindowAction"
                 text="Shamash"
-                description="Open Shamash architecture analysis"
+                description="Explore Java and Kotlin source dependencies"
                 icon="/icons/pluginIcon.svg">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
+
+        <action id="io.shamash.analyze"
+                class="io.shamash.intellij.plugin.ui.source.AnalyzeProjectAction"
+                text="Shamash: Analyze Project"
+                description="Analyze Java/Kotlin production source dependencies"/>
 
         <!-- Internal actions remain registered because dashboards/toolbars invoke them by id.
              They are intentionally not added to the top-level Tools menu. -->

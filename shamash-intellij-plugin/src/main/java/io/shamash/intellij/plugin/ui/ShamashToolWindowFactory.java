@@ -21,39 +21,18 @@ import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
-import com.intellij.ui.components.JBTabbedPane;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
-import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController;
-import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController;
+import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel;
 import org.jetbrains.annotations.NotNull;
 
 public final class ShamashToolWindowFactory implements ToolWindowFactory, DumbAware {
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         toolWindow.getContentManager().removeAllContents(true);
-
-        JBTabbedPane productTabs = new JBTabbedPane();
-
-        JBTabbedPane buildTabs = new JBTabbedPane();
-        ShamashAsmToolWindowController asm = ShamashAsmToolWindowController.getInstance(project);
-        asm.init(buildTabs);
-        asm.refreshAll();
-        asm.select(ShamashAsmToolWindowController.Tab.DASHBOARD);
-        productTabs.addTab("Build Analysis", buildTabs);
-
-        JBTabbedPane sourceTabs = new JBTabbedPane();
-        ShamashPsiToolWindowController psi = ShamashPsiToolWindowController.getInstance(project);
-        psi.init(sourceTabs);
-        psi.refreshAll();
-        psi.select(ShamashPsiToolWindowController.Tab.DASHBOARD);
-        productTabs.addTab("Source Analysis", sourceTabs);
-
-        ShamashToolWindowNavigator navigator = ShamashToolWindowNavigator.getInstance(project);
-        navigator.attach(productTabs);
-        navigator.select(ShamashToolWindowNavigator.Surface.BUILD);
-
-        Content content = ContentFactory.getInstance().createContent(productTabs, "", false);
+        ShamashSourcePanel panel = new ShamashSourcePanel(project);
+        Content content = ContentFactory.getInstance().createContent(panel, "", false);
+        content.setDisposer(panel);
         toolWindow.getContentManager().addContent(content);
     }
 }

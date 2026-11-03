@@ -17,10 +17,9 @@
  */
 package io.shamash.intellij.plugin.analysis
 
-import com.intellij.ProjectTopics
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
@@ -36,12 +35,14 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.ProjectTopics
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.source.ProjectSourceSnapshot
@@ -61,6 +62,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val engineErrors: List<EngineError> = emptyList(),
         val sourceFacts: ProjectSourceSnapshot? = null,
         val sourceGraph: io.shamash.psi.core.source.SourceGraphSnapshot? = null,
+        val uiModel: SourceUiModel? = null,
     )
 
     fun interface Backend {

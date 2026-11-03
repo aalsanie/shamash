@@ -19,8 +19,9 @@ package io.shamash.intellij.plugin.analysis
 
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
-import io.shamash.psi.core.source.SourceGraphAnalyzer
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
+import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceRevisionChangedException
 
 /** No config, build invocation, disk write, policy rules or precomputed ASM facts. */
@@ -67,7 +68,11 @@ internal class ProjectSourceBackend(
             )
         val graph = SourceGraphAnalyzer().analyze(snapshot) { indicator.checkCanceled() }
         indicator.checkCanceled()
-        val payload = IdeAnalysisCoordinator.SourcePresentation(sourceFacts = snapshot, sourceGraph = graph)
+        val payload = IdeAnalysisCoordinator.SourcePresentation(
+            sourceFacts = snapshot,
+            sourceGraph = graph,
+            uiModel = SourceUiModel(graph),
+        )
         val diagnostics = graph.diagnostics.map { "${it.fileUrl ?: "project"}: ${it.message}" }
         return if (graph.complete) {
             AnalysisOutcome.Complete(payload, coverage)
