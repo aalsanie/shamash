@@ -1,7 +1,19 @@
 /*
  * Copyright © 2025-2026 | Shamash
+ *
  * Author: @aalsanie
- * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.shamash.intellij.plugin.ui.source
 
@@ -39,7 +51,28 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
     data class FindingRow(val cycle: SourcePackageCycle, val searchText: String) {
         val id: String get() = cycle.id
         val title: String get() = "Packages depend on each other"
-        val summary: String get() = cycle.members.joinToString(", ") { qualified(it) }
+        val summary: String get() =
+            cycle.members.take(3).joinToString(", ") { qualified(it) } +
+                if (cycle.members.size > 3) " · +" + (cycle.members.size - 3) + " more packages" else ""
+    }
+
+    private val cycleSearchTerms: Map<String, String> = run {
+        val owner = graph.cycles.flatMap { cycle -> cycle.members.map { it to cycle.id } }.toMap()
+        val indexed = HashMap<String, StringBuilder>()
+        fun append(id: String, text: String) {
+            indexed.getOrPut(id) { StringBuilder() }.append(' ').append(text)
+        }
+        graph.entities.forEach { entity ->
+            val id = owner[SourcePackageId(entity.id.moduleId, entity.packageName)]
+            if (id != null) append(id, entity.displayName + " " + entity.id.signature)
+        }
+        graph.packageDependencies.forEach { edge ->
+            val id = owner[edge.from]
+            if (id != null && owner[edge.target] == id) {
+                edge.witnesses.forEach { append(id, it.from.signature + " " + it.target.signature) }
+            }
+        }
+        indexed.mapValues { (_, value) -> value.toString() }
     }
 
     val findings: List<FindingRow> =
@@ -47,14 +80,11 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
             .sortedWith(compareByDescending<SourcePackageCycle> { it.members.size }
                 .thenBy { cycle -> cycle.members.joinToString("\u0000") { qualified(it) } })
             .map { cycle ->
-                val evidenceTerms =
-                    cycle.witness.flatMap { edge ->
-                        edge.witnesses.map { it.from.signature + " " + it.target.signature }
-                    }
                 FindingRow(
                     cycle,
                     (listOf("Packages depend on each other", cycle.title) +
-                        cycle.members.map(::qualified) + evidenceTerms).joinToString(" ").lowercase(Locale.ROOT),
+                        cycle.members.map(::qualified) + cycleSearchTerms[cycle.id].orEmpty())
+                        .joinToString(" ").lowercase(Locale.ROOT),
                 )
             }
 
@@ -95,8 +125,8 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
 
     fun filteredPackages(module: String, query: String): List<SourcePackageId> {
         val text = query.trim().lowercase(Locale.ROOT)
+        if (text.isEmpty()) return packagesByModule[module].orEmpty()
         return packagesByModule[module].orEmpty().filter { pkg ->
-            text.isEmpty() ||
                 qualified(pkg).lowercase(Locale.ROOT).contains(text) ||
                 entitiesByPackage[pkg].orEmpty().any {
                     it.displayName.lowercase(Locale.ROOT).contains(text) ||

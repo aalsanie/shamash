@@ -1,7 +1,19 @@
 /*
  * Copyright © 2025-2026 | Shamash
+ *
  * Author: @aalsanie
- * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.shamash.intellij.plugin.ui.source
 
@@ -16,7 +28,6 @@ import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
-import java.util.Locale
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JPanel
@@ -34,10 +45,11 @@ internal class SourceExploreTreeModel(
     private val query: String,
 ) : TreeModel {
     private val root = "Production source"
+    private val modulePackages = source?.moduleIds.orEmpty().associateWith {
+        source?.filteredPackages(it, query).orEmpty()
+    }
     private val modules: List<SourceSelection.Module> =
-        source?.moduleIds.orEmpty()
-            .filter { source?.filteredPackages(it, query)?.isNotEmpty() == true }
-            .map(SourceSelection::Module)
+        modulePackages.filterValues { it.isNotEmpty() }.keys.sorted().map(SourceSelection::Module)
 
     override fun getRoot(): Any = root
 
@@ -45,7 +57,7 @@ internal class SourceExploreTreeModel(
         when (parent) {
             root -> modules[index]
             is SourceSelection.Module ->
-                SourceSelection.Package(source!!.filteredPackages(parent.moduleId, query)[index])
+                SourceSelection.Package(modulePackages.getValue(parent.moduleId)[index])
             is SourceSelection.Package ->
                 SourceSelection.Declaration(source!!.filteredEntities(parent.id, query)[index].id)
             else -> throw IndexOutOfBoundsException("Not a tree branch")
@@ -54,7 +66,7 @@ internal class SourceExploreTreeModel(
     override fun getChildCount(parent: Any?): Int =
         when (parent) {
             root -> modules.size
-            is SourceSelection.Module -> source?.filteredPackages(parent.moduleId, query)?.size ?: 0
+            is SourceSelection.Module -> modulePackages[parent.moduleId]?.size ?: 0
             is SourceSelection.Package -> source?.filteredEntities(parent.id, query)?.size ?: 0
             else -> 0
         }
@@ -66,7 +78,7 @@ internal class SourceExploreTreeModel(
             root -> modules.indexOf(child)
             is SourceSelection.Module -> {
                 val id = (child as? SourceSelection.Package)?.id
-                if (id == null) -1 else source?.filteredPackages(parent.moduleId, query)?.indexOf(id) ?: -1
+                if (id == null) -1 else modulePackages[parent.moduleId]?.indexOf(id) ?: -1
             }
             is SourceSelection.Package ->
                 source?.filteredEntities(parent.id, query)?.indexOfFirst {
@@ -96,7 +108,7 @@ internal class SourceExploreTreeModel(
             }
             else -> return null
         }
-        if (pkg !in source!!.filteredPackages(module, query)) return null
+        if (pkg !in modulePackages[module].orEmpty()) return null
         val packageNode = SourceSelection.Package(pkg)
         if (selection is SourceSelection.Package) return TreePath(arrayOf(root, moduleNode, packageNode))
         val declaration = selection as SourceSelection.Declaration
@@ -121,8 +133,8 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
     private var mostDependencies = false
     private val relationModel = DefaultListModel<SourceRelationRow>()
     val relationList = sourceList<SourceRelationRow>("Source relationships") {
-        it.label + " · " + it.distinctTargets + " distinct targets · " +
-            it.occurrences + " occurrences" + if (it.sampled) " · sampled" else ""
+        it.label + if (it.sampled) " · " + it.occurrences + " sampled references"
+        else " · " + it.distinctTargets + " distinct source relationships · " + it.occurrences + " occurrences"
     }
     private val pager = PageControls()
     private val evidence = SourceEvidencePanel(project)
@@ -147,7 +159,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                     tree: JTree?, value: Any?, sel: Boolean, expanded: Boolean,
                     leaf: Boolean, row: Int, hasFocus: Boolean,
                 ): java.awt.Component {
-                    val cell = super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus)
+                    super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus)
                     val text =
                         when (value) {
                             is SourceSelection.Module -> value.moduleId
@@ -251,10 +263,16 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                 next.isEmpty() -> "No supported declarations in this result"
                 else -> source?.moduleIds?.size.toString() + " IDE modules · expand a module to inspect packages"
             }
+        if (!next.isEmpty()) tree.expandRow(0)
         val path = selection?.let(next::pathFor)
         if (path != null) {
             tree.selectionPath = path
             tree.scrollPathToVisible(path)
+        } else if (selection != null) {
+            summary.text = "This package or declaration is not in the current view."
+            related.text = ""
+            relations = emptyList()
+            renderPage()
         }
     }
 
@@ -280,7 +298,10 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
             2 -> source.external(selected)
             else -> source.uses(selected)
         }.let { rows ->
-            if (mostDependencies) rows.sortedWith(compareByDescending<SourceRelationRow> { it.occurrences }.thenBy { it.label })
+            if (mostDependencies) rows.sortedWith(
+                compareByDescending<SourceRelationRow> { it.distinctTargets }
+                    .thenByDescending { it.occurrences }.thenBy { it.label },
+            )
             else rows.sortedBy { it.label }
         }
         pager.reset()

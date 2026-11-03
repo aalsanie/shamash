@@ -1,7 +1,19 @@
 /*
  * Copyright © 2025-2026 | Shamash
+ *
  * Author: @aalsanie
- * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.shamash.intellij.plugin.ui.source
 
@@ -16,7 +28,6 @@ import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceExternalReference
 import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceGraphSnapshot
-import io.shamash.psi.core.source.SourcePackageCycle
 import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceRelationship
@@ -134,7 +145,7 @@ class SourceUiModelTest {
         val model = SourceUiModel(graph(listOf("alpha", "beta"), listOf(0 to 1), occurrences = 35))
         val row = model.uses(SourceSelection.Package(a)).single()
         assertEquals(20, row.evidence.size)
-        assertEquals(35, row.occurrences)
+        assertEquals(35L, row.occurrences)
         val declaration = model.uses(SourceSelection.Declaration(model.graph.entities[0].id)).single()
         assertEquals(20, declaration.evidence.size)
         assertEquals(35L, declaration.occurrences)

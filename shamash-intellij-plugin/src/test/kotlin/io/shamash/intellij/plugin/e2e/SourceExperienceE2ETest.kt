@@ -1,7 +1,19 @@
 /*
  * Copyright © 2025-2026 | Shamash
+ *
  * Author: @aalsanie
- * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.shamash.intellij.plugin.e2e
 
@@ -66,7 +78,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             try {
                 panel.render(presentation(cyclic))
                 assertEquals("Source analysis complete", panel.status.text)
-                assertEquals(1, panel.findings.findingList.model.size)
+                assertEquals(2, panel.findings.findingList.model.size)
                 assertEquals(2, panel.tabs.tabCount)
                 panel.tabs.selectedIndex = 1
                 assertTrue(panel.explore.tree.model.getChildCount(panel.explore.tree.model.root) > 0)

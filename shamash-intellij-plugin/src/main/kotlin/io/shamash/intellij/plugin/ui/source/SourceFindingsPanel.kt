@@ -1,7 +1,19 @@
 /*
  * Copyright © 2025-2026 | Shamash
+ *
  * Author: @aalsanie
- * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.shamash.intellij.plugin.ui.source
 
@@ -10,7 +22,6 @@ import com.intellij.ui.components.JBComboBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.components.JBTextArea
 import io.shamash.psi.core.source.SourcePackageDependency
 import io.shamash.psi.core.source.SourcePackageId
 import java.awt.BorderLayout
@@ -225,13 +236,17 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
                 filtered.isEmpty() -> "No results match these filters"
                 else -> filtered.size.toString() + " observed cyclic groups · sorted by size, not risk"
             }
+        if (current.isEmpty() && selectedId == null) clearDetails(
+            if (source?.findings?.isEmpty() == true) "No package cycles observed. Explore dependencies."
+            else if (source == null) "" else "No results match these filters",
+        )
         val index = current.indexOfFirst { it.id == selectedId }
         if (index >= 0) {
             findingList.selectedIndex = index
         } else {
             findingList.clearSelection()
             if (selectedId == null && current.isNotEmpty()) findingList.selectedIndex = 0
-            else if (selectedId == null) clearDetails("")
+            else if (selectedId != null) clearDetails("Selected cycle is not on this page or is hidden by filters")
         }
     }
 
