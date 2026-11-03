@@ -28,11 +28,14 @@ import java.awt.Dimension
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.FlowLayout
+import java.util.Locale
+import javax.swing.AbstractAction
 import javax.swing.DefaultListModel
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.event.TreeModelListener
 import javax.swing.JButton
+import javax.swing.KeyStroke
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTree
@@ -92,6 +95,7 @@ internal class SourceExploreTreeModel(
     override fun removeTreeModelListener(l: TreeModelListener?) = Unit
 
     fun pathFor(selection: SourceSelection): TreePath? {
+        val sourceModel = source ?: return null
         val module = when (selection) {
             is SourceSelection.Module -> selection.moduleId
             is SourceSelection.Package -> selection.id.moduleId
@@ -103,7 +107,7 @@ internal class SourceExploreTreeModel(
         val pkg = when (selection) {
             is SourceSelection.Package -> selection.id
             is SourceSelection.Declaration -> {
-                val entity = source?.declarations?.get(selection.id) ?: return null
+                val entity = sourceModel.declarations[selection.id] ?: return null
                 io.shamash.psi.core.source.SourcePackageId(module, entity.packageName)
             }
             else -> return null
@@ -112,7 +116,7 @@ internal class SourceExploreTreeModel(
         val packageNode = SourceSelection.Package(pkg)
         if (selection is SourceSelection.Package) return TreePath(arrayOf(root, moduleNode, packageNode))
         val declaration = selection as SourceSelection.Declaration
-        if (source.filteredEntities(pkg, query).none { it.id == declaration.id }) return null
+        if (sourceModel.filteredEntities(pkg, query).none { it.id == declaration.id }) return null
         return TreePath(arrayOf(root, moduleNode, packageNode, declaration))
     }
 
@@ -124,6 +128,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
     private var selection: SourceSelection? = null
     private var relations: List<SourceRelationRow> = emptyList()
     private val search = JBTextField()
+    private val relationSearch = JBTextField()
     val tree = Tree()
     private val summary = wrappedText()
     private val related = wrappedText()
@@ -137,6 +142,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         else " · " + it.distinctTargets + " distinct source relationships · " + it.occurrences + " occurrences"
     }
     private val pager = PageControls()
+    private val relationEmpty = JBLabel("")
     private val evidence = SourceEvidencePanel(project)
     private val clear = JButton("Clear search")
     private val back = JButton("Back to source tree")
@@ -186,11 +192,17 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         switches.add(direction)
         switches.add(sort)
         top.add(switches)
+        relationSearch.emptyText.text = "Search the selected relationship list"
+        relationSearch.accessibleContext.accessibleName = "Search all relationships for selected source"
+        top.add(relationSearch)
         detail.add(top, BorderLayout.NORTH)
         relationList.model = relationModel
         val center = JPanel(BorderLayout(0, 4))
         center.add(JBScrollPane(relationList), BorderLayout.CENTER)
-        center.add(pager, BorderLayout.SOUTH)
+        val footer = JPanel(BorderLayout())
+        footer.add(relationEmpty, BorderLayout.NORTH)
+        footer.add(pager, BorderLayout.SOUTH)
+        center.add(footer, BorderLayout.SOUTH)
         detail.add(center, BorderLayout.CENTER)
         detail.add(evidence, BorderLayout.SOUTH)
         evidence.preferredSize = Dimension(200, 145)
@@ -219,6 +231,11 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
             override fun changedUpdate(e: DocumentEvent?) = refreshTree()
         })
         clear.addActionListener { search.text = "" }
+        relationSearch.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent?) = renderRelationships()
+            override fun removeUpdate(e: DocumentEvent?) = renderRelationships()
+            override fun changedUpdate(e: DocumentEvent?) = renderRelationships()
+        })
         direction.addActionListener { renderRelationships() }
         sort.addActionListener {
             mostDependencies = !mostDependencies
@@ -234,12 +251,21 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                 else evidence.showEvidence(row.evidence, row.occurrences)
             }
         }
-        back.addActionListener {
-            tree.requestFocusInWindow()
-            if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
+        back.addActionListener { returnToTree() }
+        val escape = KeyStroke.getKeyStroke("ESCAPE")
+        for (component in listOf(relationList, evidence.list)) {
+            component.inputMap.put(escape, "backToTree")
+            component.actionMap.put("backToTree", object : AbstractAction() {
+                override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
+            })
         }
         accessibleContext.accessibleName = "Explore"
         refreshTree()
+    }
+
+    private fun returnToTree() {
+        tree.requestFocusInWindow()
+        if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
     }
 
     fun setGraph(next: SourceUiModel?) {
@@ -298,11 +324,18 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
             2 -> source.external(selected)
             else -> source.uses(selected)
         }.let { rows ->
-            if (mostDependencies) rows.sortedWith(
+            val term = relationSearch.text.trim().lowercase(Locale.ROOT)
+            val matching = if (term.isEmpty()) rows else rows.filter { row ->
+                row.label.lowercase(Locale.ROOT).contains(term) ||
+                    row.evidence.any { evidence ->
+                        evidence.label.lowercase(Locale.ROOT).contains(term)
+                    }
+            }
+            if (mostDependencies) matching.sortedWith(
                 compareByDescending<SourceRelationRow> { it.distinctTargets }
                     .thenByDescending { it.occurrences }.thenBy { it.label },
             )
-            else rows.sortedBy { it.label }
+            else matching.sortedBy { it.label }
         }
         pager.reset()
         renderPage()
@@ -310,6 +343,12 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
 
     private fun renderPage() {
         pager.update(relations.size)
+        relationEmpty.text = when {
+            source == null || selection == null -> ""
+            relations.isNotEmpty() -> ""
+            relationSearch.text.isNotBlank() -> "No results match these filters"
+            else -> "No observed relationships in this direction"
+        }
         relationModel.clear()
         SourceUiModel.page(relations, pager.page).forEach(relationModel::addElement)
         if (relationModel.isEmpty) evidence.showEvidence(emptyList(), 0)

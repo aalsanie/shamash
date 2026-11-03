@@ -29,7 +29,9 @@ import java.awt.Dimension
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.FlowLayout
+import javax.swing.AbstractAction
 import javax.swing.BoxLayout
+import javax.swing.KeyStroke
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
 import javax.swing.event.DocumentEvent
@@ -167,13 +169,22 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
             }
         }
         explore.addActionListener { showExplore() }
-        back.addActionListener {
-            findingList.requestFocusInWindow()
-            if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
+        back.addActionListener { returnToFindings() }
+        val escape = KeyStroke.getKeyStroke("ESCAPE")
+        for (component in listOf(edgeList, evidence.list)) {
+            component.inputMap.put(escape, "backToFindings")
+            component.actionMap.put("backToFindings", object : AbstractAction() {
+                override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
+            })
         }
         accessibleContext.accessibleName = "Findings"
         resetFilters()
         renderPage()
+    }
+
+    private fun returnToFindings() {
+        findingList.requestFocusInWindow()
+        if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
     }
 
     fun setGraph(next: SourceUiModel?) {
