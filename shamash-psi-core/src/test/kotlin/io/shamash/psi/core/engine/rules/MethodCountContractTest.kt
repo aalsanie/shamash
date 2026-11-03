@@ -142,14 +142,13 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         assertEquals(1, findings.size, "Expected a finding for $kinds; got $findings")
         assertEquals("example.Sample", findings.single().classFqn)
         assertEquals(count.toString(), findings.single().data["actual"])
-        assertEquals(
-            emptyList(),
+        assertTrue(
             MetricsMaxMethodsByRoleRule().evaluate(
                 file,
                 facts,
                 definition.copy(params = definition.params + ("limits" to mapOf(role to count))),
                 config,
-            ),
+            ).isEmpty(),
         )
     }
 
@@ -172,6 +171,6 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
 
     private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {
-            assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
+            checkNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
         }
 }

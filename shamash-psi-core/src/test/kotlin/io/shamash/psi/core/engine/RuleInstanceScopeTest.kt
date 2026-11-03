@@ -16,6 +16,7 @@ import io.shamash.psi.core.config.schema.v1.model.Role
 import io.shamash.psi.core.config.schema.v1.model.RuleDef
 import io.shamash.psi.core.config.schema.v1.model.RuleScope
 import io.shamash.psi.core.config.schema.v1.model.Severity
+import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.schema.v1.model.UnknownRulePolicyV1
 import java.io.StringReader
 import kotlin.test.assertEquals
@@ -67,8 +68,8 @@ class RuleInstanceScopeTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuild
         assertFailsWith<IllegalStateException> { ShamashPsiEngine().analyzeFile(file, config) }
     }
 
-    private fun config() =
+    private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {
-            assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
+            checkNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
         }
 }

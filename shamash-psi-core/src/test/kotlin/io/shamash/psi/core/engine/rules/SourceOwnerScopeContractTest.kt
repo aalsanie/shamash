@@ -199,6 +199,6 @@ class SourceOwnerScopeContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtu
 
     private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {
-            assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
+            checkNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
         }
 }
