@@ -125,7 +125,11 @@ class GraphAndTypeScopeTest {
                 bytecode("sample/Orphan" + "$" + "Nested", Opcodes.ACC_PUBLIC, inner = "Nested"),
             )
         assertTrue(orphan.errors.isEmpty(), orphan.errors.toString())
-        assertTrue(orphan.facts.classes.single().isNestedType)
+        assertTrue(
+            orphan.facts.classes
+                .single()
+                .isNestedType,
+        )
 
         val spec = ApiMaxPublicTypesSpec()
         val checks =
@@ -225,8 +229,11 @@ class GraphAndTypeScopeTest {
 
     private fun type(name: String): TypeRef = TypeRef.fromInternalName(name.replace('.', '/'))
 
-    private fun rule(type: String, name: String, params: Map<String, Any?>): RuleDef =
-        RuleDef(type, name, null, true, FindingSeverity.ERROR, null, params)
+    private fun rule(
+        type: String,
+        name: String,
+        params: Map<String, Any?>,
+    ): RuleDef = RuleDef(type, name, null, true, FindingSeverity.ERROR, null, params)
 
     private fun configWithGraphs(
         granularity: Granularity,
