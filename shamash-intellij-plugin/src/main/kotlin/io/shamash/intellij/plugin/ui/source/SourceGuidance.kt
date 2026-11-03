@@ -24,9 +24,20 @@ import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 
 internal object SourceGuidance {
     const val REPOSITORY_URL = "https://github.com/aalsanie/shamash"
-    const val LICENSE_URL = "https://github.com/aalsanie/shamash/blob/main/shamash-intellij-plugin/LICENSE"
-    const val CORE_LICENSE_URL = "https://github.com/aalsanie/shamash/blob/main/LICENSE"
-    const val SOURCE_URL = "https://github.com/aalsanie/shamash/tree/main/shamash-intellij-plugin"
+    private val publishedSource = sourceRoot(
+        SourceGuidance::class.java.getResourceAsStream("/META-INF/SOURCE")?.bufferedReader()?.use { it.readText() },
+    )
+    val SOURCE_URL: String = publishedSource + "/shamash-intellij-plugin"
+    val LICENSE_URL: String = publishedSource.replace("/tree/", "/blob/") + "/shamash-intellij-plugin/LICENSE"
+    val CORE_LICENSE_URL: String = publishedSource.replace("/tree/", "/blob/") + "/LICENSE"
+
+    internal fun sourceRoot(metadata: String?): String {
+        val source = metadata?.trim().orEmpty()
+        val ref = source.removePrefix(REPOSITORY_URL + "/tree/")
+        return if (source.startsWith(REPOSITORY_URL + "/tree/") &&
+            (ref.matches(Regex("[0-9a-f]{40}")) || ref.matches(Regex("v[0-9]+\\.[0-9]+\\.[0-9]+")))
+        ) source else REPOSITORY_URL + "/tree/main"
+    }
     const val SCOPE_LINE = "Production source · Project rules not evaluated."
     const val SCOPE_DETAILS =
         "Analyzes Java and Kotlin JVM production source roots in the imported IntelliJ project. " +

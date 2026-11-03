@@ -108,4 +108,18 @@ class SourceGuidanceTest {
         assertTrue(SourceGuidance.LICENSE_URL.endsWith("/shamash-intellij-plugin/LICENSE"))
         assertTrue(SourceGuidance.CORE_LICENSE_URL.endsWith("/LICENSE"))
     }
+
+    @Test
+    fun installedSourceLinksArePinnedToTheirMatchingCommitAndCannotBeRedirected() {
+        val commit = "0123456789abcdef0123456789abcdef01234567"
+        val exact = SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/" + commit + "\n")
+        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/" + commit, exact)
+        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/v0.92.0",
+            SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/v0.92.0"))
+        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/main", SourceGuidance.sourceRoot(null))
+        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/main",
+            SourceGuidance.sourceRoot("https://evil.invalid/tree/" + commit))
+        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/main",
+            SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/" + commit + "/other"))
+    }
 }
