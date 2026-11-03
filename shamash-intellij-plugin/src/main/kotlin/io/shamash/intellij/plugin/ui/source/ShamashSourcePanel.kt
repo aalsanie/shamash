@@ -42,7 +42,7 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
     val analyze = JButton("Analyze project")
     val cancel = JButton("Cancel")
     val help = JButton("Help")
-    val status = JBLabel("Understand your project's dependencies")
+    val status = wrappedText("Understand your project's dependencies")
     val scope = wrappedText(SourceGuidance.SCOPE_LINE)
     private val firstRun = JPanel(FlowLayout(FlowLayout.LEFT, 6, 2))
     private val about = JButton("About these checks")
