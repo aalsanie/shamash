@@ -48,6 +48,7 @@ class SourceUiModelTest {
         assertEquals(1, model.filteredFindings("PACKAGES DEPEND", null, null).size)
         assertEquals(1, model.filteredFindings("module:alpha", null, null).size)
         assertEquals(1, model.filteredFindings("T0", null, null).size)
+        assertEquals(1, model.filteredFindings("file:///src/module/T0.kt", null, null).size)
         assertEquals(1, model.filteredFindings("", "module", b).size)
         assertTrue(model.filteredFindings("", "other", null).isEmpty())
         assertTrue(model.filteredFindings("", "module", SourcePackageId("module", "other")).isEmpty())

@@ -68,12 +68,8 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
         }
         graph.entities.forEach { entity ->
             val id = owner[SourcePackageId(entity.id.moduleId, entity.packageName)]
-            if (id != null) append(id, entity.displayName + " " + entity.id.signature)
-        }
-        graph.packageDependencies.forEach { edge ->
-            val id = owner[edge.from]
-            if (id != null && owner[edge.target] == id) {
-                edge.witnesses.forEach { append(id, it.from.signature + " " + it.target.signature) }
+            if (id != null) {
+                append(id, entity.displayName + " " + entity.id.signature + " " + entity.id.fileUrl)
             }
         }
         indexed.mapValues { (_, value) -> value.toString() }
