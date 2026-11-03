@@ -9,98 +9,84 @@ package io.shamash.asm.core.engine.rules.origin
 
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.params.ParamError
-import io.shamash.artifacts.params.Params
 import io.shamash.asm.core.config.schema.v1.model.RuleDef
 import io.shamash.asm.core.config.schema.v1.model.ShamashAsmConfigV1
-import io.shamash.asm.core.engine.rules.Rule
+import io.shamash.asm.core.config.validation.v1.OriginRootsParams
+import io.shamash.asm.core.engine.rules.ContextAwareRule
+import io.shamash.asm.core.engine.rules.RuleExecutionContext
 import io.shamash.asm.core.engine.rules.RuleUtil
+import io.shamash.asm.core.facts.model.OriginKind
 import io.shamash.asm.core.facts.query.FactIndex
+import java.nio.file.Files
+import java.nio.file.Path
 
-class AllowOnlyRootRule : Rule {
-    override val id: String = "origin.allowOnlyRoot"
+class AllowOnlyRootRule : ContextAwareRule {
+    override val id = "origin.allowOnlyRoot"
 
     override fun evaluate(
         facts: FactIndex,
         rule: RuleDef,
         config: ShamashAsmConfigV1,
+    ): List<Finding> = evaluate(facts, rule, config, RuleExecutionContext(null))
+
+    override fun evaluate(
+        facts: FactIndex,
+        rule: RuleDef,
+        config: ShamashAsmConfigV1,
+        context: RuleExecutionContext,
     ): List<Finding> {
-        val params = readParams(rule) ?: return emptyList()
+        val path = "rules.${rule.type}.${rule.name}.params"
+        val allowed = OriginRootsParams.roots(rule.params, path).map { resolve(it, "$path.roots", context, config) }
         val scope = RuleUtil.compileScope(rule.scope)
+        return facts.classes.sortedBy { it.fqName }.mapNotNull { clazz ->
+            val role = facts.classToRole[clazz.fqName]
+            if (!RuleUtil.roleAllowed(rule, scope, role) || !RuleUtil.classInScope(clazz, scope)) return@mapNotNull null
 
-        val root = params.root
-        val rootPrefix = "$root."
+            val location = clazz.location
+            val origin =
+                if (location.originKind == OriginKind.JAR_ENTRY) location.containerPath ?: location.originPath else location.originPath
+            if (origin.isBlank()) throw ParamError("$path.roots", "cannot evaluate class '${clazz.fqName}' with missing bytecode origin")
+            val actual = resolve(origin, "$path.roots", context, config)
+            if (allowed.any { actual.startsWith(it) }) return@mapNotNull null
 
-        val out = ArrayList<Finding>()
-
-        val classes = facts.classes.sortedBy { it.fqName }
-        for (c in classes) {
-            val roleId = facts.classToRole[c.fqName]
-            if (!RuleUtil.roleAllowed(rule, scope, roleId)) continue
-            if (!RuleUtil.classInScope(c, scope)) continue
-
-            val pkg = c.packageName
-            val ok =
-                when {
-                    pkg.isEmpty() -> params.allowDefaultPackage
-                    pkg == root -> true
-                    pkg.startsWith(rootPrefix) -> true
-                    else -> false
-                }
-
-            if (ok) continue
-
-            out +=
-                Finding(
-                    ruleId = RuleUtil.canonicalRuleId(rule),
-                    message =
-                        buildString {
-                            append("Class '")
-                            append(c.fqName)
-                            append("' is outside allowed root '")
-                            append(root)
-                            append("'. Found package '")
-                            append(if (pkg.isEmpty()) "<default>" else pkg)
-                            append("'.")
-                        },
-                    filePath = RuleUtil.filePathOf(c.location),
-                    severity = rule.severity,
-                    classFqn = c.fqName,
-                    memberName = null,
-                    data =
-                        mapOf(
-                            "root" to root,
-                            "packageName" to pkg,
-                            "allowDefaultPackage" to params.allowDefaultPackage.toString(),
-                            "roleId" to (roleId ?: ""),
-                            "classInternalName" to c.type.internalName,
-                        ),
-                )
+            Finding(
+                ruleId = RuleUtil.canonicalRuleId(rule),
+                message = "Class '${clazz.fqName}' has bytecode origin outside allowed roots: $actual",
+                filePath = RuleUtil.filePathOf(location),
+                severity = rule.severity,
+                classFqn = clazz.fqName,
+                memberName = null,
+                data = mapOf("originPath" to actual.toString(), "roots" to allowed.joinToString(",") { it.toString() }),
+            )
         }
-
-        return out
     }
 
-    private data class ReadParams(
-        val root: String,
-        val allowDefaultPackage: Boolean,
-    )
-
-    private fun readParams(rule: RuleDef): ReadParams? {
-        val p = Params.of(rule.params, path = "rules.${rule.type}.${rule.name}.params")
-
-        val root =
+    private fun resolve(
+        raw: String,
+        at: String,
+        context: RuleExecutionContext,
+        config: ShamashAsmConfigV1,
+    ): Path {
+        val path =
             try {
-                p.requireString("root").trim()
-            } catch (_: ParamError) {
-                return null
+                Path.of(raw).normalize()
+            } catch (e: java.nio.file.InvalidPathException) {
+                throw ParamError(at, "invalid filesystem path: '$raw'")
             }
-        if (root.isEmpty()) return null
-
-        val allowDefaultPackage = runCatching { p.optionalBoolean("allowDefaultPackage") }.getOrNull() ?: false
-
-        return ReadParams(
-            root = root,
-            allowDefaultPackage = allowDefaultPackage,
-        )
+        val absolute =
+            if (path.isAbsolute) {
+                path
+            } else {
+                val base =
+                    context.projectBasePath
+                        ?: throw ParamError(at, "relative origin paths require explicit projectBasePath")
+                base.toAbsolutePath().normalize().resolve(path)
+            }
+        val normalized = absolute.normalize()
+        return if (config.project.scan.followSymlinks && Files.exists(normalized)) {
+            normalized.toRealPath()
+        } else {
+            normalized
+        }
     }
 }

@@ -167,6 +167,46 @@ class MainTest {
     }
 
     @Test
+    fun `graph threshold policy has truthful CLI exit codes`(
+        @TempDir tmp: Path,
+    ) {
+        val output = tmp.resolve("build/classes/java/main")
+        Files.createDirectories(output)
+        val a = tmp.resolve("srcgen/a/A.java")
+        val b = tmp.resolve("srcgen/b/B.java")
+        Files.createDirectories(a.parent)
+        Files.createDirectories(b.parent)
+        Files.writeString(a, "package a; public class A { private b.B dependency; }")
+        Files.writeString(b, "package b; public class B { private a.A dependency; }")
+        val compiler = javax.tools.ToolProvider.getSystemJavaCompiler() ?: error("JDK compiler unavailable")
+        assertEquals(0, compiler.run(null, null, null, "-d", output.toString(), a.toString(), b.toString()))
+
+        val base = discoveryLikeConfig(maxMethods = 10)
+        val ruleLine = Regex("(?m)^  - \\{ type: metrics,.*$")
+        for ((name, key) in listOf("maxCycles" to "maxCycles", "maxEdgeCount" to "maxEdges", "maxDependencyDensity" to "maxDensity")) {
+            val max = if (name == "maxDependencyDensity") "0.0" else "0"
+            writeConfig(
+                tmp,
+                base.replace(ruleLine, "  - { type: graph, name: $name, enabled: true, severity: ERROR, params: { $key: $max } }"),
+            )
+            val violating = runCli("scan", "--project", tmp.toString(), "--fail-on", "ERROR")
+            assertEquals(4, violating.exitCode, diagnostics(violating))
+            assertTrue(violating.stdout.contains(name), diagnostics(violating))
+        }
+        writeConfig(
+            tmp,
+            base.replace(ruleLine, "  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { maxCycles: 2 } }"),
+        )
+        val allowed = runCli("scan", "--project", tmp.toString(), "--fail-on", "ERROR")
+        assertEquals(0, allowed.exitCode, diagnostics(allowed))
+
+        writeConfig(tmp, base.replace(ruleLine, "  - { type: graph, name: maxCycles, enabled: true, severity: ERROR, params: { max: 0 } }"))
+        val invalid = runCli("scan", "--project", tmp.toString(), "--fail-on", "ERROR")
+        assertEquals(2, invalid.exitCode, diagnostics(invalid))
+        assertTrue(invalid.stderr.contains("max") || invalid.stdout.contains("max"), diagnostics(invalid))
+    }
+
+    @Test
     fun `configured scan prints findings without print-findings flag`(
         @TempDir tmp: Path,
     ) {
