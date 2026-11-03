@@ -35,7 +35,7 @@ internal data class SourceRelationRow(
     val sampled: Boolean = false,
 )
 
-internal class SourceUiModel(val graph: SourceGraphSnapshot) {
+class SourceUiModel(val graph: SourceGraphSnapshot) {
     data class FindingRow(val cycle: SourcePackageCycle, val searchText: String) {
         val id: String get() = cycle.id
         val title: String get() = "Packages depend on each other"
@@ -111,9 +111,9 @@ internal class SourceUiModel(val graph: SourceGraphSnapshot) {
         }
     }
 
-    fun uses(selection: SourceSelection): List<SourceRelationRow> = relationships(selection, incoming = false)
+    internal fun uses(selection: SourceSelection): List<SourceRelationRow> = relationships(selection, incoming = false)
 
-    fun usedBy(selection: SourceSelection): List<SourceRelationRow> = relationships(selection, incoming = true)
+    internal fun usedBy(selection: SourceSelection): List<SourceRelationRow> = relationships(selection, incoming = true)
 
     private fun relationships(selection: SourceSelection, incoming: Boolean): List<SourceRelationRow> =
         when (selection) {
@@ -150,7 +150,7 @@ internal class SourceUiModel(val graph: SourceGraphSnapshot) {
             }
         }
 
-    fun external(selection: SourceSelection): List<SourceRelationRow> {
+    internal fun external(selection: SourceSelection): List<SourceRelationRow> {
         val refs = graph.externalEvidence.filter {
             when (selection) {
                 is SourceSelection.Module -> it.from.moduleId == selection.moduleId
@@ -171,7 +171,7 @@ internal class SourceUiModel(val graph: SourceGraphSnapshot) {
         }
     }
 
-    fun relatedCycles(selection: SourceSelection): List<SourcePackageCycle> =
+    internal fun relatedCycles(selection: SourceSelection): List<SourcePackageCycle> =
         when (selection) {
             is SourceSelection.Module -> graph.cycles.filter { cycle ->
                 cycle.members.any { it.moduleId == selection.moduleId }
@@ -185,7 +185,7 @@ internal class SourceUiModel(val graph: SourceGraphSnapshot) {
             }
         }
 
-    fun scopeLabel(selection: SourceSelection): String =
+    internal fun scopeLabel(selection: SourceSelection): String =
         when (selection) {
             is SourceSelection.Module -> selection.moduleId + " · IDE module"
             is SourceSelection.Package -> qualified(selection.id) + " · package"
@@ -194,7 +194,7 @@ internal class SourceUiModel(val graph: SourceGraphSnapshot) {
                     " · " + selection.id.declarationKind.name.lowercase(Locale.ROOT)
         }
 
-    fun summary(selection: SourceSelection): String =
+    internal fun summary(selection: SourceSelection): String =
         when (selection) {
             is SourceSelection.Module -> {
                 val packages = packagesByModule[selection.moduleId].orEmpty()

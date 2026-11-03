@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.analysis
 
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import com.intellij.ProjectTopics
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -61,6 +62,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val engineErrors: List<EngineError> = emptyList(),
         val sourceFacts: ProjectSourceSnapshot? = null,
         val sourceGraph: io.shamash.psi.core.source.SourceGraphSnapshot? = null,
+        val uiModel: SourceUiModel? = null,
     )
 
     fun interface Backend {
