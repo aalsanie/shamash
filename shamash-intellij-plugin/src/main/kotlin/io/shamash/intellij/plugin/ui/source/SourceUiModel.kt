@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.ui.source
 
 import io.shamash.psi.core.source.SourceEntity
+import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceExternalReference
 import io.shamash.psi.core.source.SourceGraphSnapshot
@@ -25,6 +26,7 @@ import io.shamash.psi.core.source.SourcePackageCycle
 import io.shamash.psi.core.source.SourcePackageDependency
 import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceReference
+import io.shamash.psi.core.source.SourceTarget
 import java.util.Locale
 
 internal sealed interface SourceSelection {
@@ -37,6 +39,8 @@ internal data class SourceEvidence(
     val reference: SourceReference,
     val owner: SourceEntityId,
     val label: String,
+    val target: SourceTarget? = null,
+    val kind: SourceDependencyKind? = null,
 )
 
 internal data class SourceRelationRow(
@@ -164,7 +168,10 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                         edge.distinctEntityRelationships,
                         edge.occurrences,
                         edge.witnesses.take(MAX_WITNESSES).map {
-                            SourceEvidence(it.reference, it.from, it.from.signature + " → " + it.target.signature)
+                            SourceEvidence(
+                                it.reference, it.from, it.from.signature + " → " + it.target.signature,
+                                SourceTarget.Internal(it.target), it.kind,
+                            )
                         },
                     )
                 }.sortedBy { it.label }
@@ -180,7 +187,10 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                             1,
                             edge.occurrences,
                             edge.witnesses.take(MAX_WITNESSES).map { ref ->
-                                SourceEvidence(ref, edge.from, edge.from.signature + " → " + edge.target.signature)
+                                SourceEvidence(
+                                    ref, edge.from, edge.from.signature + " → " + edge.target.signature,
+                                    SourceTarget.Internal(edge.target),
+                                )
                             },
                         )
                     }.sortedBy { it.label }.toList()
@@ -203,7 +213,10 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                 0,
                 evidence.size.toLong(),
                 evidence.take(MAX_WITNESSES).map {
-                    SourceEvidence(it.evidence, it.from, it.from.signature + " → " + name)
+                    SourceEvidence(
+                        it.evidence, it.from, it.from.signature + " → " + name,
+                        SourceTarget.External(name), it.kind,
+                    )
                 },
                 sampled = true,
             )

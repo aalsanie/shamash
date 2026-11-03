@@ -37,34 +37,47 @@ internal class SourceNavigationService(private val project: Project) {
         val file = VirtualFileManager.getInstance().findFileByUrl(reference.fileUrl) ?: return false
         if (!file.isValid || file.isDirectory) return false
 
-        val index = ProjectFileIndex.getInstance(project)
-        if (!index.isInSourceContent(file) ||
-            index.isInTestSourceContent(file) ||
-            index.getModuleForFile(file)?.name != owner.moduleId ||
-            index.getSourceRootForFile(file)?.url != owner.sourceRoot
-        ) {
-            return false
-        }
+        val valid = ReadAction.compute<Boolean, RuntimeException> {
+            if (project.isDisposed || DumbService.isDumb(project) || !file.isValid) return@compute false
+            val index = ProjectFileIndex.getInstance(project)
+            if (!index.isInSourceContent(file) ||
+                index.isInTestSourceContent(file) ||
+                index.getModuleForFile(file)?.name != owner.moduleId ||
+                index.getSourceRootForFile(file)?.url != owner.sourceRoot
+            ) return@compute false
 
-        val document = FileDocumentManager.getInstance().getDocument(file) ?: return false
-        val end = reference.offset.toLong() + reference.length.toLong()
-        if (document.modificationStamp != reference.documentStamp ||
-            end > document.textLength ||
-            end <= reference.offset
-        ) {
-            return false
-        }
+            val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute false
+            val end = reference.offset.toLong() + reference.length.toLong()
+            if (doc.modificationStamp != reference.documentStamp ||
+                end > doc.textLength || end <= reference.offset
+            ) return@compute false
 
-        val validOwner = ReadAction.compute<Boolean, RuntimeException> {
-            if (DumbService.isDumb(project)) return@compute false
             val psi = PsiManager.getInstance(project).findFile(file) ?: return@compute false
             val location = SourceDependencyExtractor.SourceLocation(
                 owner.moduleId, owner.sourceRoot, owner.fileUrl,
             )
-            val declarations = SourceDependencyExtractor { null }.extract(psi, location).entities
-            declarations.any { it.id == owner }
+            val extractor = SourceDependencyExtractor { targetFile ->
+                val v = targetFile.virtualFile ?: return@SourceDependencyExtractor null
+                if (!index.isInSourceContent(v) || index.isInTestSourceContent(v)) {
+                    return@SourceDependencyExtractor null
+                }
+                val module = index.getModuleForFile(v) ?: return@SourceDependencyExtractor null
+                val root = index.getSourceRootForFile(v) ?: return@SourceDependencyExtractor null
+                SourceDependencyExtractor.SourceLocation(module.name, root.url, v.url)
+            }
+            val extracted = extractor.extract(psi, location)
+            if (extracted.entities.none { it.id == owner }) return@compute false
+            if (evidence.target != null || evidence.kind != null) {
+                extracted.references.any {
+                    it.from == owner && it.evidence == reference &&
+                        (evidence.target == null || it.target == evidence.target) &&
+                        (evidence.kind == null || it.kind == evidence.kind)
+                }
+            } else true
         }
-        if (!validOwner || document.modificationStamp != reference.documentStamp) return false
+        if (!valid ||
+            FileDocumentManager.getInstance().getDocument(file)?.modificationStamp != reference.documentStamp
+        ) return false
 
         OpenFileDescriptor(project, file, reference.offset).navigate(true)
         return true

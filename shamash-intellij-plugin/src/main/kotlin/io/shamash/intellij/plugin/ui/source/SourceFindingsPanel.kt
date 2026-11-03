@@ -24,6 +24,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import io.shamash.psi.core.source.SourcePackageDependency
 import io.shamash.psi.core.source.SourcePackageId
+import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.ComponentAdapter
@@ -180,6 +181,8 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
                             witness.reference,
                             witness.from,
                             witness.from.signature + " → " + witness.target.signature,
+                            SourceTarget.Internal(witness.target),
+                            witness.kind,
                         )
                     },
                     edge.occurrences,
