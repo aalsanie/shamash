@@ -17,6 +17,7 @@ import com.intellij.psi.JavaRecursiveElementVisitor
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
+import com.intellij.psi.PsiJavaFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
@@ -147,6 +148,10 @@ object FactExtractor {
 
         val filePath = normalizeFilePath(file)
         val errors = mutableListOf<FactsError>()
+
+        if (file is PsiJavaFile) {
+            return FactsResult(facts = extractFromJavaPsi(file, filePath, fileId, errors), errors = errors)
+        }
 
         val uFile =
             try {
