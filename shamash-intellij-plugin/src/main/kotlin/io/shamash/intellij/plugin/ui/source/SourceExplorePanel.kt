@@ -35,6 +35,7 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.event.TreeModelListener
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTree
@@ -259,6 +260,11 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                 override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
             })
         }
+        detail.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            .put(escape, "backToTree")
+        detail.actionMap.put("backToTree", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
+        })
         accessibleContext.accessibleName = "Explore"
         refreshTree()
     }

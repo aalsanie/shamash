@@ -36,6 +36,7 @@ import javax.swing.DefaultListModel
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.KeyStroke
@@ -189,6 +190,11 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
                 override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
             })
         }
+        right.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+            .put(escape, "backToFindings")
+        right.actionMap.put("backToFindings", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
+        })
         accessibleContext.accessibleName = "Findings"
         resetFilters()
         renderPage()
