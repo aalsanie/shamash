@@ -105,5 +105,7 @@ class SourceGuidanceTest {
         assertTrue(SourceGuidance.CYCLE_EXPLANATION.contains("removing a displayed edge"))
         assertTrue(SourceGuidance.REPOSITORY_URL.startsWith("https://github.com/aalsanie/shamash"))
         assertTrue(SourceGuidance.SOURCE_URL.startsWith(SourceGuidance.REPOSITORY_URL))
+        assertTrue(SourceGuidance.LICENSE_URL.endsWith("/shamash-intellij-plugin/LICENSE"))
+        assertTrue(SourceGuidance.CORE_LICENSE_URL.endsWith("/LICENSE"))
     }
 }

@@ -137,7 +137,8 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
         item("Architecture enforcement and CLI — GitHub") {
             BrowserUtil.browse(SourceGuidance.REPOSITORY_URL)
         }
-        item("License") { BrowserUtil.browse(SourceGuidance.LICENSE_URL) }
+        item("Plugin license (Apache-2.0)") { BrowserUtil.browse(SourceGuidance.LICENSE_URL) }
+        item("Core dependencies license (AGPL-3.0)") { BrowserUtil.browse(SourceGuidance.CORE_LICENSE_URL) }
         item("Plugin source") { BrowserUtil.browse(SourceGuidance.SOURCE_URL) }
         menu.show(help, 0, help.height)
     }

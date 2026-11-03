@@ -24,7 +24,8 @@ import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 
 internal object SourceGuidance {
     const val REPOSITORY_URL = "https://github.com/aalsanie/shamash"
-    const val LICENSE_URL = "https://github.com/aalsanie/shamash/blob/main/LICENSE"
+    const val LICENSE_URL = "https://github.com/aalsanie/shamash/blob/main/shamash-intellij-plugin/LICENSE"
+    const val CORE_LICENSE_URL = "https://github.com/aalsanie/shamash/blob/main/LICENSE"
     const val SOURCE_URL = "https://github.com/aalsanie/shamash/tree/main/shamash-intellij-plugin"
     const val SCOPE_LINE = "Production source · Project rules not evaluated."
     const val SCOPE_DETAILS =
