@@ -23,7 +23,7 @@ class PackagesRootPackageRule : EngineRule {
 
     private enum class Mode { AUTO, EXPLICIT }
 
-    private val ROOT_PACKAGE = Regex("^[A-Za-z_]\\w*(\\.[A-Za-z_]\\w*)*$")
+    private val rootPackagePattern = Regex("^[A-Za-z_]\\w*(\\.[A-Za-z_]\\w*)*$")
 
     override fun evaluate(
         file: PsiFile,
@@ -54,7 +54,7 @@ class PackagesRootPackageRule : EngineRule {
         if (expectedRoot.isBlank()) {
             throw ParamError("${p.currentPath}.mode", "Root package is not configured for ${mode.name}")
         }
-        if (!ROOT_PACKAGE.matches(expectedRoot)) {
+        if (!rootPackagePattern.matches(expectedRoot)) {
             throw ParamError("${p.currentPath}.value", "must be a valid Java/Kotlin package name")
         }
         if (mode == Mode.AUTO && value != null) {
