@@ -62,6 +62,8 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
     private val detailsTitle = JBLabel("Select a cycle to investigate")
     private val observation = wrappedText()
     private val members = wrappedText()
+    private val memberPager = PageControls()
+    private var memberIds: List<SourcePackageId> = emptyList()
     private val guidance = wrappedText()
     private var edges: List<SourcePackageDependency> = emptyList()
     private val edgePager = PageControls()
@@ -106,8 +108,10 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         right.add(JBLabel("What we found"))
         right.add(detailsTitle)
         right.add(observation)
-        right.add(JBLabel("Evidence · representative directed cycle"))
+        right.add(JBLabel("Complete cyclic group membership"))
         right.add(members)
+        right.add(memberPager)
+        right.add(JBLabel("Evidence · representative directed cycle"))
         edgeList.model = edgeModel
         edgeList.visibleRowCount = 5
         val edgesScroll = JBScrollPane(edgeList)
@@ -153,6 +157,14 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         }
         pager.previous.addActionListener { pager.change(-1, filtered.size); renderPage() }
         pager.next.addActionListener { pager.change(1, filtered.size); renderPage() }
+        memberPager.previous.addActionListener {
+            memberPager.change(-1, memberIds.size)
+            renderMembers()
+        }
+        memberPager.next.addActionListener {
+            memberPager.change(1, memberIds.size)
+            renderMembers()
+        }
         edgePager.previous.addActionListener { edgePager.change(-1, edges.size); renderEdges() }
         edgePager.next.addActionListener { edgePager.change(1, edges.size); renderEdges() }
         findingList.addListSelectionListener { if (!it.valueIsAdjusting) selectFinding() }
@@ -270,18 +282,27 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         val finding = findingList.selectedValue ?: return
         selectedId = finding.id
         detailsTitle.text = "Cyclic group of " + finding.cycle.members.size + " packages"
+        val cycle = finding.cycle
         observation.text =
-            "Observed: " + finding.cycle.members.joinToString(", ") { SourceUiModel.qualified(it) } +
-                " participate in one strongly connected package group."
-        members.text =
-            "Complete group: " + finding.cycle.members.joinToString(", ") { SourceUiModel.qualified(it) } +
-                "\nRepresentative cycle: " +
-                finding.cycle.witness.joinToString(" → ") { SourceUiModel.qualified(it.from) } +
-                (finding.cycle.witness.firstOrNull()?.let { " → " + SourceUiModel.qualified(it.from) } ?: "")
+            "Observed: " + SourceUiModel.qualified(cycle.members.first()) + " and " +
+                (cycle.members.size - 1) + " other package(s) are mutually reachable through " +
+                "resolved source dependencies. This is one advisory cyclic group."
+        memberIds = cycle.members
+        memberPager.reset()
+        renderMembers()
         guidance.text = SourceGuidance.CYCLE_EXPLANATION
         edges = finding.cycle.witness
         edgePager.reset()
         renderEdges()
+    }
+
+    private fun renderMembers() {
+        memberPager.update(memberIds.size)
+        val page = SourceUiModel.page(memberIds, memberPager.page)
+        val first = memberPager.page * SourceUiModel.PAGE_SIZE + 1
+        members.text = if (page.isEmpty()) "" else
+            "Packages " + first + "–" + (first + page.size - 1) + " of " + memberIds.size +
+                ":\n" + page.joinToString("\n", transform = SourceUiModel::qualified)
     }
 
     private fun renderEdges() {
@@ -296,6 +317,9 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         detailsTitle.text = message.ifEmpty { "Select a cycle to investigate" }
         observation.text = ""
         members.text = ""
+        memberIds = emptyList()
+        memberPager.reset()
+        memberPager.update(0)
         guidance.text = ""
         edges = emptyList()
         edgeModel.clear()
