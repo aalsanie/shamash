@@ -171,7 +171,7 @@ class ShamashAsmScanRunner(
 
         val engineResult =
             try {
-                engine.analyze(
+                engine.analyzeWithInputErrors(
                     projectBasePath = options.projectBasePath,
                     projectName = options.projectName,
                     config = effectiveConfig,

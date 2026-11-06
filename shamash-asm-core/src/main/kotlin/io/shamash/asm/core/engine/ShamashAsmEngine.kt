@@ -78,7 +78,25 @@ class ShamashAsmEngine
             facts: FactIndex,
             generatedAtEpochMillis: Long = System.currentTimeMillis(),
             includeFactsInResult: Boolean = false,
-            inputErrors: List<EngineError> = emptyList(),
+        ): EngineResult =
+            analyzeWithInputErrors(
+                projectBasePath = projectBasePath,
+                projectName = projectName,
+                config = config,
+                facts = facts,
+                generatedAtEpochMillis = generatedAtEpochMillis,
+                includeFactsInResult = includeFactsInResult,
+                inputErrors = emptyList(),
+            )
+
+        internal fun analyzeWithInputErrors(
+            projectBasePath: Path,
+            projectName: String,
+            config: ShamashAsmConfigV1,
+            facts: FactIndex,
+            generatedAtEpochMillis: Long = System.currentTimeMillis(),
+            includeFactsInResult: Boolean = false,
+            inputErrors: List<EngineError>,
         ): EngineResult {
             val startedAt = System.currentTimeMillis()
 
