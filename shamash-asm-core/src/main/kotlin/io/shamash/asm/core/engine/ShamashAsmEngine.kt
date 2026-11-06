@@ -323,30 +323,33 @@ class ShamashAsmEngine
                     val outputDir = resolveExportDir(projectBasePath, config)
                     if (!config.export.overwrite && anyManagedReportExists(outputDir)) {
                         if (config.baseline.mode == BaselineMode.GENERATE) {
-                            errors += EngineError.exportFailed(
-                                message = "Baseline generation requires completed report publication",
-                                details = mapOf("outputDir" to outputDir.toString()),
-                            )
+                            errors +=
+                                EngineError.exportFailed(
+                                    message = "Baseline generation requires completed report publication",
+                                    details = mapOf("outputDir" to outputDir.toString()),
+                                )
                         }
                     } else {
-                        exportResult = publishReports(
-                            projectBasePath = projectBasePath,
-                            projectName = projectName,
-                            config = config,
-                            findings = findings,
-                            facts = factsWithRoles,
-                            rulePlan = rulePlan,
-                            analysis = analysisResult,
-                            outputDir = outputDir,
-                            generatedAtEpochMillis = generatedAtEpochMillis,
-                        )
+                        exportResult =
+                            publishReports(
+                                projectBasePath = projectBasePath,
+                                projectName = projectName,
+                                config = config,
+                                findings = findings,
+                                facts = factsWithRoles,
+                                rulePlan = rulePlan,
+                                analysis = analysisResult,
+                                outputDir = outputDir,
+                                generatedAtEpochMillis = generatedAtEpochMillis,
+                            )
                     }
                 } catch (t: Throwable) {
-                    errors += EngineError.exportFailed(
-                        message = "Export failed",
-                        details = mapOf("outputDir" to config.export.outputDir),
-                        t = t,
-                    )
+                    errors +=
+                        EngineError.exportFailed(
+                            message = "Export failed",
+                            details = mapOf("outputDir" to config.export.outputDir),
+                            t = t,
+                        )
                 }
             }
 
@@ -640,20 +643,24 @@ class ShamashAsmEngine
             generatedAtEpochMillis: Long,
         ): EngineExportResult =
             CoherentReportPublisher().publish(outputDir) { staging ->
-                val report = exportReport(
-                    projectBasePath = projectBasePath,
-                    projectName = projectName,
-                    outputDir = staging,
-                    formats = config.export.formats,
-                    findings = findings,
-                    generatedAtEpochMillis = generatedAtEpochMillis,
-                )
+                val report =
+                    exportReport(
+                        projectBasePath = projectBasePath,
+                        projectName = projectName,
+                        outputDir = staging,
+                        formats = config.export.formats,
+                        findings = findings,
+                        generatedAtEpochMillis = generatedAtEpochMillis,
+                    )
                 val files = resolveExportSidecarPaths(staging, config)
                 files.factsPath?.let {
                     FactsExporter.export(
                         facts = facts,
                         outputPath = it,
-                        format = config.export.artifacts?.facts?.format ?: ExportFactsFormat.JSONL_GZ,
+                        format =
+                            config.export.artifacts
+                                ?.facts
+                                ?.format ?: ExportFactsFormat.JSONL_GZ,
                         toolName = toolName,
                         toolVersion = toolVersion,
                         projectName = projectName,
@@ -711,6 +718,7 @@ class ShamashAsmEngine
                         generatedAtEpochMillis = generatedAtEpochMillis,
                     )
                 }
+
                 fun published(path: Path?): Path? = path?.let { outputDir.resolve(it.fileName) }
                 EngineExportResult(
                     report = report,
