@@ -63,8 +63,16 @@ class PackagesRootPackageSpec : RuleSpec {
 
         when (mode) {
             Mode.AUTO -> {
-                if (value != null && value.isEmpty()) {
-                    err("$rulePath.params.value", "must be non-empty if present")
+                if (value != null) {
+                    err("$rulePath.params.value", "must be omitted when mode=AUTO")
+                }
+                val projectRoot =
+                    config.project.rootPackage
+                        ?.value
+                        ?.trim()
+                        .orEmpty()
+                if (!pkgRegex.matches(projectRoot)) {
+                    err("$rulePath.params.mode", "AUTO requires a configured project root package")
                 }
             }
 

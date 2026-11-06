@@ -14,19 +14,13 @@ import io.shamash.psi.core.config.ValidationSeverity
 import io.shamash.psi.core.config.schema.v1.model.RuleDef
 import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
+import io.shamash.psi.core.config.validation.v1.MethodCountKinds
 import io.shamash.psi.core.config.validation.v1.RuleSpec
 
 class MetricsMaxMethodsByRoleSpec : RuleSpec {
     override val key: RuleKey = RuleKey(type = "metrics", name = "maxMethodsByRole", role = null)
 
     private val allowedParamKeys: Set<String> = setOf("limits", "countKinds", "ignoreMethodNameRegex")
-
-    private val allowedCountKinds: Set<String> =
-        setOf(
-            "declaredMethods",
-            "publicMethods",
-            "privateMethods",
-        )
 
     override fun validate(
         rulePath: String,
@@ -80,24 +74,10 @@ class MetricsMaxMethodsByRoleSpec : RuleSpec {
             }
         }
 
-        val countKinds =
-            try {
-                p.optionalStringList("countKinds")
-            } catch (e: ParamError) {
-                err(e.at, e.message)
-                null
-            }
-
-        countKinds?.forEachIndexed { i, raw ->
-            val k = raw.trim()
-            if (k.isEmpty()) {
-                err("$rulePath.params.countKinds[$i]", "must be non-empty")
-            } else if (k !in allowedCountKinds) {
-                err(
-                    "$rulePath.params.countKinds[$i]",
-                    "Unknown countKind '$k'. Allowed: ${allowedCountKinds.sorted().joinToString(", ")}",
-                )
-            }
+        try {
+            MethodCountKinds.decode(rule.params, "$rulePath.params")
+        } catch (e: ParamError) {
+            err(e.at, e.message)
         }
 
         val ignoreRegexes =

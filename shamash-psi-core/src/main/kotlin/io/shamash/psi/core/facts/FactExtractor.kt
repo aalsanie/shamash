@@ -36,8 +36,12 @@ import io.shamash.psi.core.facts.model.v1.FieldFact
 import io.shamash.psi.core.facts.model.v1.MethodFact
 import io.shamash.psi.core.facts.model.v1.Visibility
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstructor
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.uast.UCallExpression
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UElement
@@ -45,6 +49,7 @@ import org.jetbrains.uast.UField
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.UastCallKind
+import org.jetbrains.uast.UastVisibility
 import org.jetbrains.uast.toUElementOfType
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
@@ -251,23 +256,37 @@ object FactExtractor {
                         val retDepType = node.returnType?.let { normalizeDepType(it) }
 
                         val psiMethod: PsiMethod? = node.javaPsi
+                        val source = node.sourcePsi
+                        val sourceMethod = source is PsiMethod || source is KtNamedFunction || source is KtConstructor<*>
+                        val generatedAccessor =
+                            source is KtProperty ||
+                                source is KtParameter ||
+                                (source is PsiMethod && (source.navigationElement is KtProperty || source.navigationElement is KtParameter))
                         val range = safeRangeU(node)
 
-                        methods +=
-                            MethodFact(
-                                containingClassFqn = fromClassFqn,
-                                name = node.name,
-                                signature = buildSignature(node),
-                                visibility = visibilityOf(psiMethod as PsiElement?),
-                                isStatic = psiMethod?.hasModifierProperty(PsiModifier.STATIC) ?: false,
-                                isAbstract = psiMethod?.hasModifierProperty(PsiModifier.ABSTRACT) ?: false,
-                                isConstructor = node.isConstructor,
-                                returnTypeFqn = retDepType,
-                                parameterTypeFqns = paramDepTypes,
-                                annotationsFqns = anns,
-                                filePath = filePath,
-                                textRange = range,
-                            )
+                        if (sourceMethod && !generatedAccessor) {
+                            methods +=
+                                MethodFact(
+                                    containingClassFqn = fromClassFqn,
+                                    name = node.name,
+                                    signature = buildSignature(node),
+                                    visibility =
+                                        when (node.visibility) {
+                                            UastVisibility.PUBLIC -> Visibility.PUBLIC
+                                            UastVisibility.PROTECTED -> Visibility.PROTECTED
+                                            UastVisibility.PRIVATE -> Visibility.PRIVATE
+                                            else -> visibilityOf(psiMethod as PsiElement?)
+                                        },
+                                    isStatic = psiMethod?.hasModifierProperty(PsiModifier.STATIC) ?: false,
+                                    isAbstract = psiMethod?.hasModifierProperty(PsiModifier.ABSTRACT) ?: false,
+                                    isConstructor = node.isConstructor,
+                                    returnTypeFqn = retDepType,
+                                    parameterTypeFqns = paramDepTypes,
+                                    annotationsFqns = anns,
+                                    filePath = filePath,
+                                    textRange = range,
+                                )
+                        }
 
                         for (p in paramDepTypes) {
                             addDep(

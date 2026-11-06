@@ -10,6 +10,7 @@ package io.shamash.psi.core.engine.rules
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiFile
 import io.shamash.artifacts.contract.Finding
+import io.shamash.artifacts.params.ParamError
 import io.shamash.artifacts.params.Params
 import io.shamash.psi.core.config.schema.v1.model.RuleDef
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
@@ -21,6 +22,8 @@ class PackagesRootPackageRule : EngineRule {
     override val id: String = "packages.rootPackage"
 
     private enum class Mode { AUTO, EXPLICIT }
+
+    private val rootPackagePattern = Regex("^[A-Za-z_]\\w*(\\.[A-Za-z_]\\w*)*$")
 
     override fun evaluate(
         file: PsiFile,
@@ -46,9 +49,19 @@ class PackagesRootPackageRule : EngineRule {
                 Mode.EXPLICIT -> {
                     value.orEmpty()
                 }
-            }.trim().trimEnd('.')
+            }.trim()
 
-        if (expectedRoot.isBlank()) return emptyList()
+        if (expectedRoot.isBlank()) {
+            throw ParamError("${p.currentPath}.mode", "Root package is not configured for ${mode.name}")
+        }
+        if (!rootPackagePattern.matches(expectedRoot)) {
+            throw ParamError("${p.currentPath}.value", "must be a valid Java/Kotlin package name")
+        }
+        if (mode == Mode.AUTO && value != null) {
+            throw ParamError("${p.currentPath}.value", "must be omitted when mode=AUTO")
+        }
+
+        if (RuleUtil.scopedClasses(facts, rule).isEmpty()) return emptyList()
 
         val pkg = extractPackageName(file) ?: return emptyList()
 

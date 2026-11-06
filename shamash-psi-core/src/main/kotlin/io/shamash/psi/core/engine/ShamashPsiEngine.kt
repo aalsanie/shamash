@@ -18,6 +18,7 @@ import io.shamash.artifacts.util.glob.GlobMatcher
 import io.shamash.psi.core.config.schema.v1.model.RuleKey
 import io.shamash.psi.core.config.schema.v1.model.RuleScope
 import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
+import io.shamash.psi.core.config.schema.v1.model.UnknownRulePolicyV1
 import io.shamash.psi.core.engine.index.ProjectRoleIndex
 import io.shamash.psi.core.engine.index.ProjectRoleIndexSnapshot
 import io.shamash.psi.core.engine.registry.RuleRegistry
@@ -28,11 +29,14 @@ import io.shamash.psi.core.facts.model.v1.FactsIndex
 class ShamashPsiEngine {
     private val log: Logger = Logger.getInstance(ShamashPsiEngine::class.java)
 
-    /** Compatibility API that drops structured errors; use [analyzeFileResult] to retain them. */
     fun analyzeFile(
         file: PsiFile,
         config: ShamashPsiConfigV1,
-    ): List<Finding> = analyzeFileResult(file, config).findings
+    ): List<Finding> {
+        val result = analyzeFileResult(file, config)
+        check(!result.hasErrors) { "PSI analysis is incomplete; use analyzeFileResult for diagnostics" }
+        return result.findings
+    }
 
     fun analyzeFileResult(
         file: PsiFile,
@@ -134,7 +138,20 @@ class ShamashPsiEngine {
             val baseId = "${ruleDef.type}.${ruleDef.name}"
             val rule = RuleRegistry.find(baseId)
             if (rule == null) {
-                log.debug("Unknown rule '$baseId' (enabled=${ruleDef.enabled})")
+                val message = "Unknown enabled rule '$baseId' (not implemented)"
+                when (config.project.validation.unknownRule) {
+                    UnknownRulePolicyV1.ERROR -> {
+                        errors += EngineError(fileId, "rule:unknown", message, ruleId = baseId)
+                    }
+
+                    UnknownRulePolicyV1.WARN -> {
+                        log.warn(message)
+                    }
+
+                    UnknownRulePolicyV1.IGNORE -> {
+                        Unit
+                    }
+                }
                 continue
             }
 
@@ -142,6 +159,8 @@ class ShamashPsiEngine {
                 ProgressManager.checkCanceled()
 
                 if (role != null && ruleDef.scope?.excludeRoles?.contains(role) == true) continue
+                val authoredRoles = ruleDef.scope?.includeRoles
+                if (role != null && authoredRoles != null && role !in authoredRoles) continue
 
                 val effectiveRule =
                     if (role == null) {
