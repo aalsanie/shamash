@@ -16,6 +16,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -555,6 +556,75 @@ class MainTest {
         assertEquals(3, result.exitCode, diagnostics(result))
         assertTrue(result.stderr.contains("Facts errors"), diagnostics(result))
         assertFalse(result.stdout.contains("No architecture issues found."), diagnostics(result))
+    }
+
+    @Test
+    fun `incomplete scans preserve reports while complete violations publish and exit four`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App { public void invoke() {} }")
+        val config =
+            discoveryLikeConfig(0).replace(
+                "enabled: false, outputDir: \".shamash/out/asm\", formats: [JSON], overwrite: true",
+                "enabled: true, outputDir: \".shamash/out/asm\", formats: [JSON, SARIF, HTML, XML], overwrite: true",
+            )
+        writeConfig(tmp, config)
+        val output = tmp.resolve(".shamash/out/asm")
+        Files.createDirectories(output)
+        val json = output.resolve("shamash-report.json")
+        Files.writeString(json, "existing report")
+        Files.writeString(output.resolve("notes.txt"), "sentinel")
+        val baseline = tmp.resolve(".shamash/baseline/asm-baseline.json")
+        Files.createDirectories(baseline.parent)
+        Files.writeString(baseline, "unchanged baseline")
+
+        val malformed = tmp.resolve("build/classes/java/main/Corrupt.class")
+        Files.write(malformed, byteArrayOf(1, 2, 3))
+        val incomplete = runCli("scan", "--project", tmp.toString(), "--fail-on", "WARNING")
+        assertEquals(3, incomplete.exitCode, diagnostics(incomplete))
+        assertTrue(incomplete.stderr.contains("Facts errors"), diagnostics(incomplete))
+        assertEquals("existing report", Files.readString(json))
+        assertFalse(Files.exists(output.resolve("shamash-report.sarif.json")))
+        assertEquals("unchanged baseline", Files.readString(baseline))
+
+        Files.delete(malformed)
+        val violating = runCli("scan", "--project", tmp.toString(), "--fail-on", "WARNING")
+        assertEquals(4, violating.exitCode, diagnostics(violating))
+        assertTrue(Files.readString(json).contains("invoke") || Files.readString(json).contains("maxMethodsPerClass"))
+        for (file in listOf("shamash-report.sarif.json", "shamash-report.html", "shamash-report.xml")) {
+            assertTrue(Files.isRegularFile(output.resolve(file)), file)
+        }
+        assertEquals("sentinel", Files.readString(output.resolve("notes.txt")))
+        assertEquals("unchanged baseline", Files.readString(baseline))
+
+        compileJava(tmp, "Other", "public class Other {}")
+        val saved = Files.readAllBytes(json)
+        val truncated =
+            runCli("scan", "--project", tmp.toString(), "--max-classes", "1", "--fail-on", "NONE")
+        assertEquals(3, truncated.exitCode, diagnostics(truncated))
+        assertContentEquals(saved, Files.readAllBytes(json))
+        assertEquals("unchanged baseline", Files.readString(baseline))
+    }
+
+    @Test
+    fun `report publication failures return runtime error without changing user files`(
+        @TempDir tmp: Path,
+    ) {
+        compileJava(tmp, "App", "public class App { public void invoke() {} }")
+        val yaml =
+            discoveryLikeConfig(0).replace(
+                "enabled: false, outputDir: \".shamash/out/asm\", formats: [JSON], overwrite: true",
+                "enabled: true, outputDir: \".shamash/out/asm\", formats: [JSON, SARIF], overwrite: true",
+            )
+        writeConfig(tmp, yaml)
+        val blocked = tmp.resolve(".shamash/out/asm")
+        Files.createDirectories(blocked.parent)
+        Files.writeString(blocked, "unrelated file")
+        val result = runCli("scan", "--project", tmp.toString(), "--fail-on", "NONE")
+        assertEquals(3, result.exitCode, diagnostics(result))
+        assertTrue(result.stderr.contains("Export failed"), diagnostics(result))
+        assertEquals("unrelated file", Files.readString(blocked))
+        assertFalse(Files.exists(tmp.resolve(".shamash/out/asm/shamash-report.json")))
     }
 
     @Test

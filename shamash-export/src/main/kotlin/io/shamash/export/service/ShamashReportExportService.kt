@@ -13,9 +13,9 @@ import io.shamash.artifacts.baseline.BaselineMode
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.artifacts.report.schema.v1.ExportedReport
+import io.shamash.export.pipeline.CoherentReportPublisher
 import io.shamash.export.pipeline.DefaultExportPipelineFactory
 import io.shamash.export.pipeline.FindingPreprocessor
-import java.nio.file.Files
 import java.nio.file.Path
 
 class ShamashReportExportService(
@@ -38,7 +38,6 @@ class ShamashReportExportService(
         generatedAtEpochMillis: Long = System.currentTimeMillis(),
     ): ExportResult {
         val outputDir = ExportOutputLayout.normalizeOutputDir(projectBasePath, null)
-        Files.createDirectories(outputDir)
 
         val baselineFingerprints =
             if (baseline.mode == BaselineMode.USE) {
@@ -66,15 +65,17 @@ class ShamashReportExportService(
             )
 
         val report =
-            orchestrator.export(
-                projectBasePath = projectBasePath,
-                projectName = projectName,
-                toolName = toolName,
-                toolVersion = toolVersion,
-                findings = findings,
-                outputDir = outputDir,
-                generatedAtEpochMillis = generatedAtEpochMillis,
-            )
+            CoherentReportPublisher().publish(outputDir) { staging ->
+                orchestrator.export(
+                    projectBasePath = projectBasePath,
+                    projectName = projectName,
+                    toolName = toolName,
+                    toolVersion = toolVersion,
+                    findings = findings,
+                    outputDir = staging,
+                    generatedAtEpochMillis = generatedAtEpochMillis,
+                )
+            }
 
         val baselineWritten =
             if (baseline.mode == BaselineMode.GENERATE) {

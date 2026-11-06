@@ -68,13 +68,12 @@ class BaselineStore {
 
         val json = serialize(fingerprints)
 
-        val tmp = path.resolveSibling("${path.name}.tmp")
-        Files.writeString(tmp, json, StandardCharsets.UTF_8)
-
+        val tmp = Files.createTempFile(path.parent, ".${path.name}.", ".tmp")
         try {
+            Files.writeString(tmp, json, StandardCharsets.UTF_8)
             Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        } catch (_: Exception) {
-            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(tmp)
         }
     }
 

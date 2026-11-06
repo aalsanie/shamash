@@ -19,12 +19,10 @@ internal data class BaselineConfigEditPlan(
 ) {
     fun apply() {
         val content = updated ?: return
-        val tmp = path.resolveSibling("${path.fileName}.tmp")
-        Files.writeString(tmp, content, StandardCharsets.UTF_8)
+        val tmp = Files.createTempFile(path.parent, ".${path.fileName}.", ".tmp")
         try {
+            Files.writeString(tmp, content, StandardCharsets.UTF_8)
             Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        } catch (_: Exception) {
-            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
         } finally {
             Files.deleteIfExists(tmp)
         }
