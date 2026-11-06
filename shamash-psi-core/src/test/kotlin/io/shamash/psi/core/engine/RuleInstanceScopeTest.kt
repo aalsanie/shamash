@@ -16,6 +16,7 @@ import io.shamash.psi.core.config.schema.v1.model.Role
 import io.shamash.psi.core.config.schema.v1.model.RuleDef
 import io.shamash.psi.core.config.schema.v1.model.RuleScope
 import io.shamash.psi.core.config.schema.v1.model.Severity
+import io.shamash.psi.core.config.schema.v1.model.ShamashPsiConfigV1
 import io.shamash.psi.core.config.schema.v1.model.UnknownRulePolicyV1
 import java.io.StringReader
 import kotlin.test.assertEquals
@@ -29,14 +30,25 @@ class RuleInstanceScopeTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuild
         val config = config()
         val service = Role(null, 50, Matcher.ClassNameEndsWith("Sample"))
         val never = Role(null, 50, Matcher.ClassNameEndsWith("Missing"))
-        val matching = RuleScope(
-            includeRoles = listOf("service"), excludeRoles = null, includePackages = null,
-            excludePackages = null, includeGlobs = null, excludeGlobs = null,
-        )
-        val definition = RuleDef(
-            "naming", "bannedSuffixes", listOf("service"), true, Severity.ERROR,
-            matching, mapOf("banned" to listOf("Sample")),
-        )
+        val matching =
+            RuleScope(
+                includeRoles = listOf("service"),
+                excludeRoles = null,
+                includePackages = null,
+                excludePackages = null,
+                includeGlobs = null,
+                excludeGlobs = null,
+            )
+        val definition =
+            RuleDef(
+                "naming",
+                "bannedSuffixes",
+                listOf("service"),
+                true,
+                Severity.ERROR,
+                matching,
+                mapOf("banned" to listOf("Sample")),
+            )
         val withRoles = config.copy(roles = mapOf("service" to service, "never" to never))
         val engine = ShamashPsiEngine()
         val positive = engine.analyzeFileResult(file, withRoles.copy(rules = listOf(definition)))
@@ -55,20 +67,22 @@ class RuleInstanceScopeTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuild
     fun testUnknownRequiredRuleProducesRuntimeError() {
         val file = myFixture.configureByText("Sample.java", "package example; class Sample {}")
         val definition = RuleDef("missing", "rule", null, true, Severity.ERROR, null, emptyMap())
-        val config = config().copy(
-            rules = listOf(definition),
-            project = config().project.copy(
-                validation = config().project.validation.copy(unknownRule = UnknownRulePolicyV1.ERROR),
-            ),
-        )
+        val config =
+            config().copy(
+                rules = listOf(definition),
+                project =
+                    config().project.copy(
+                        validation = config().project.validation.copy(unknownRule = UnknownRulePolicyV1.ERROR),
+                    ),
+            )
         val result = ShamashPsiEngine().analyzeFileResult(file, config)
         assertTrue(result.errors.any { it.phase == "rule:unknown" && it.ruleId == "missing.rule" })
         assertTrue(result.findings.isEmpty())
         assertFailsWith<IllegalStateException> { ShamashPsiEngine().analyzeFile(file, config) }
     }
 
-    private fun config() =
+    private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {
-            assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
+            checkNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
         }
 }
