@@ -428,7 +428,7 @@ class ShamashAsmEngineTest {
             val baseline = project.resolve(".shamash/baseline.json")
             Files.writeString(baseline, "previous-baseline")
             val result =
-                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyzeWithInputErrors(
                     projectBasePath = project,
                     projectName = "demo",
                     config = baselineConfig(exportEnabled = true),
