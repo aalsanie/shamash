@@ -9,9 +9,9 @@ package io.shamash.asm.core
 
 import io.shamash.asm.core.config.ConfigValidation
 import io.shamash.asm.core.engine.rules.DefaultRuleRegistry
+import java.io.StringReader
 import java.nio.file.Files
 import java.nio.file.Path
-import java.io.StringReader
 import kotlin.io.path.isRegularFile
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,10 +23,19 @@ class ShippedConfigurationTest {
     fun `all complete ASM examples validate through schema binding semantics and registry`() {
         val root = repositoryRoot()
         val exampleDir = root.resolve("docs/asm/schema/v1/examples")
-        val files = Files.list(exampleDir).use { stream ->
-            stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
-        }
-        assertEquals((1..18).toList(), files.map { it.fileName.toString().substringBefore('_').toInt() })
+        val files =
+            Files.list(exampleDir).use { stream ->
+                stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
+            }
+        assertEquals(
+            (1..18).toList(),
+            files.map {
+                it.fileName
+                    .toString()
+                    .substringBefore('_')
+                    .toInt()
+            },
+        )
         val registry = DefaultRuleRegistry.create()
         for (file in files) {
             val result = Files.newBufferedReader(file).use { ConfigValidation.loadAndValidateV1(it, registry) }
@@ -78,9 +87,10 @@ class ShippedConfigurationTest {
     @Test
     fun `disabled baseline and export permit omitted optional fields`() {
         val file = repositoryRoot().resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml")
-        val result = Files.newBufferedReader(file).use {
-            ConfigValidation.loadAndValidateV1(it, DefaultRuleRegistry.create())
-        }
+        val result =
+            Files.newBufferedReader(file).use {
+                ConfigValidation.loadAndValidateV1(it, DefaultRuleRegistry.create())
+            }
         assertTrue(result.ok, "Disabled features should not require paths or export formats")
         val config = assertNotNull(result.config)
         assertEquals("", config.baseline.path)
@@ -92,10 +102,11 @@ class ShippedConfigurationTest {
     fun `enabled baseline and export still require their configuration`() {
         val file = repositoryRoot().resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml")
         val yaml = Files.readString(file)
-        val invalid = listOf(
-            yaml.replace("mode: NONE", "mode: GENERATE"),
-            yaml.replace("enabled: false", "enabled: true"),
-        )
+        val invalid =
+            listOf(
+                yaml.replace("mode: NONE", "mode: GENERATE"),
+                yaml.replace("enabled: false", "enabled: true"),
+            )
         assertTrue(invalid.all { it != yaml })
         for (candidate in invalid) {
             val result = ConfigValidation.loadAndValidateV1(StringReader(candidate), DefaultRuleRegistry.create())

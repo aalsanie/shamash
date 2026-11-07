@@ -35,11 +35,16 @@ class ShippedRuleBehaviorTest {
     fun `every shipped ASM rule example produces a finding on violating facts and none on clean facts`() {
         val root = repositoryRoot()
         val dir = root.resolve("docs/asm/schema/v1/examples")
-        val files = Files.list(dir).use { stream ->
-            stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
-        }
+        val files =
+            Files.list(dir).use { stream ->
+                stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
+            }
         for (file in files) {
-            val number = file.fileName.toString().substringBefore('_').toInt()
+            val number =
+                file.fileName
+                    .toString()
+                    .substringBefore('_')
+                    .toInt()
             val validation = Files.newBufferedReader(file).use { ConfigValidation.loadAndValidateV1(it, registry) }
             assertTrue(validation.ok, "$file: ${validation.errors}")
             val config = assertNotNull(validation.config, file.toString())
@@ -67,68 +72,120 @@ class ShippedRuleBehaviorTest {
 
     private fun violatingFacts(number: Int): FactIndex =
         when (number) {
-            1 -> withEdges(
-                listOf("demo.api.Entry", "demo.domain.Model"),
-                listOf(0 to 1),
-                mapOf(0 to "api", 1 to "domain"),
-            )
-            2 -> withEdges(
-                listOf("demo.api.Entry", "demo.persistence.Store"),
-                listOf(0 to 1),
-                mapOf(0 to "api", 1 to "persistence"),
-            )
-            3 -> withEdges(listOf("com.acme.legacy.Legacy"), emptyList(), mapOf(0 to "legacy"))
-            4 -> withEdges(listOf("com.acme.unknown.Unsafe"), emptyList(), emptyMap())
-            5, 6, 18 -> withEdges(listOf("example.left.A", "example.right.B"), listOf(0 to 1, 1 to 0), emptyMap())
+            1 -> {
+                withEdges(
+                    listOf("demo.api.Entry", "demo.domain.Model"),
+                    listOf(0 to 1),
+                    mapOf(0 to "api", 1 to "domain"),
+                )
+            }
+
+            2 -> {
+                withEdges(
+                    listOf("demo.api.Entry", "demo.persistence.Store"),
+                    listOf(0 to 1),
+                    mapOf(0 to "api", 1 to "persistence"),
+                )
+            }
+
+            3 -> {
+                withEdges(listOf("com.acme.legacy.Legacy"), emptyList(), mapOf(0 to "legacy"))
+            }
+
+            4 -> {
+                withEdges(listOf("com.acme.unknown.Unsafe"), emptyList(), emptyMap())
+            }
+
+            5, 6, 18 -> {
+                withEdges(listOf("example.left.A", "example.right.B"), listOf(0 to 1, 1 to 0), emptyMap())
+            }
+
             7 -> {
                 val names = listOf("example.source.Root") + (0 until 501).map { "example.target$it.Node" }
                 withEdges(names, (1 until names.size).map { 0 to it }, emptyMap())
             }
+
             8 -> {
                 val facts = withEdges(listOf("com.acme.core.Busy"), emptyList(), emptyMap())
                 val owner = facts.classes.single()
-                facts.copy(methods = (0..80).map { i ->
-                    MethodRef(
-                        owner.type, "method$i", "()V", null, Opcodes.ACC_PUBLIC, false,
-                        null, emptyList(), emptyList(), emptySet(), owner.location,
-                    )
-                })
+                facts.copy(
+                    methods =
+                        (0..80).map { i ->
+                            MethodRef(
+                                owner.type,
+                                "method$i",
+                                "()V",
+                                null,
+                                Opcodes.ACC_PUBLIC,
+                                false,
+                                null,
+                                emptyList(),
+                                emptyList(),
+                                emptySet(),
+                                owner.location,
+                            )
+                        },
+                )
             }
+
             9 -> {
                 val facts = withEdges(listOf("com.example.app.Large"), emptyList(), emptyMap())
                 val owner = facts.classes.single()
-                facts.copy(fields = (0..30).map { i ->
-                    FieldRef(owner.type, "field$i", "I", null, Opcodes.ACC_PUBLIC, null, emptySet(), owner.location)
-                })
+                facts.copy(
+                    fields =
+                        (0..30).map { i ->
+                            FieldRef(owner.type, "field$i", "I", null, Opcodes.ACC_PUBLIC, null, emptySet(), owner.location)
+                        },
+                )
             }
+
             10, 12 -> {
                 val names = listOf("com.acme.core.Hub") + (0 until 31).map { "example.target$it.Node" }
                 withEdges(names, (1 until names.size).map { 0 to it }, mapOf(0 to "core"))
             }
+
             11 -> {
                 val names = listOf("com.acme.core.Hub") + (0 until 41).map { "example.source$it.Node" }
                 withEdges(names, (1 until names.size).map { it to 0 }, names.indices.associateWith { "core" })
             }
-            13 -> withEdges((0..50).map { "com.acme.api.Type$it" }, emptyList(), (0..50).associateWith { "api" })
-            14 -> withEdges(listOf("com.acme.api.Outer" + '$' + "Companion"), emptyList(), mapOf(0 to "api"))
+
+            13 -> {
+                withEdges((0..50).map { "com.acme.api.Type$it" }, emptyList(), (0..50).associateWith { "api" })
+            }
+
+            14 -> {
+                withEdges(listOf("com.acme.api.Outer" + '$' + "Companion"), emptyList(), mapOf(0 to "api"))
+            }
+
             15 -> {
                 val facts = withEdges(listOf("example.Annotated"), emptyList(), emptyMap())
                 facts.copy(classes = facts.classes.map { it.copy(annotationsFqns = setOf("javax.annotation.Generated")) })
             }
+
             16 -> {
                 val facts = withEdges(listOf("example.Source", "example.Target"), listOf(0 to 1), emptyMap())
-                facts.copy(classes = facts.classes.mapIndexed { i, klass ->
-                    val jar = if (i == 0) "lib/my-app-1.jar" else "lib/guava-1.jar"
-                    klass.copy(location = SourceLocation(OriginKind.JAR_ENTRY, jar, jar))
-                })
+                facts.copy(
+                    classes =
+                        facts.classes.mapIndexed { i, klass ->
+                            val jar = if (i == 0) "lib/my-app-1.jar" else "lib/guava-1.jar"
+                            klass.copy(location = SourceLocation(OriginKind.JAR_ENTRY, jar, jar))
+                        },
+                )
             }
+
             17 -> {
                 val facts = withEdges(listOf("example.Outside"), emptyList(), emptyMap())
-                facts.copy(classes = facts.classes.map {
-                    it.copy(location = SourceLocation(OriginKind.DIR_CLASS, "unexpected/Outside.class"))
-                })
+                facts.copy(
+                    classes =
+                        facts.classes.map {
+                            it.copy(location = SourceLocation(OriginKind.DIR_CLASS, "unexpected/Outside.class"))
+                        },
+                )
             }
-            else -> error("Missing example behavior fixture $number")
+
+            else -> {
+                error("Missing example behavior fixture $number")
+            }
         }
 
     private fun withEdges(
@@ -148,9 +205,10 @@ class ShippedRuleBehaviorTest {
                     SourceLocation(OriginKind.DIR_CLASS, "build/classes/" + fqName.replace('.', '/') + ".class"),
                 )
             }
-        val edges = connections.map { (from, to) ->
-            DependencyEdge(classes[from].type, classes[to].type, DependencyKind.METHOD_CALL, classes[from].location)
-        }
+        val edges =
+            connections.map { (from, to) ->
+                DependencyEdge(classes[from].type, classes[to].type, DependencyKind.METHOD_CALL, classes[from].location)
+            }
         val classToRole = rolesByIndex.mapKeys { (idx, _) -> classes[idx].fqName }
         return FactIndex(
             classes,
