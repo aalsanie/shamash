@@ -67,15 +67,6 @@ rules:
         - "api->domain"
         - "persistence->domain"
 
-  # Optional: if both exist, forbidden wins at runtime.
-  - type: "arch"
-    name: "forbiddenRoleDependencies"
-    roles: null
-    enabled: true
-    severity: "ERROR"
-    params:
-      forbidden:
-        api: ["persistence"]
 
 exceptions: []
 

@@ -116,7 +116,10 @@ class ArchForbiddenRoleDependenciesRule : EngineRule {
      * Spec uses camelCase names (methodCall, fieldType, ...).
      * Facts use enum names (METHOD_CALL, FIELD_TYPE, ...).
      */
-    private fun parseKinds(kindsRaw: List<String>, path: String): Set<DependencyKind>? {
+    private fun parseKinds(
+        kindsRaw: List<String>,
+        path: String,
+    ): Set<DependencyKind>? {
         if (kindsRaw.isEmpty()) return null
 
         val allowed = LinkedHashSet<DependencyKind>()

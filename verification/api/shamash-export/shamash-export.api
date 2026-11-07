@@ -18,6 +18,13 @@ public final class io/shamash/export/api/Exporters$Format : java/lang/Enum {
 	public static fun values ()[Lio/shamash/export/api/Exporters$Format;
 }
 
+public final class io/shamash/export/pipeline/CoherentReportPublisher {
+	public fun <init> ()V
+	public fun <init> (Lkotlin/jvm/functions/Function2;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function2;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun publish (Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
+}
+
 public final class io/shamash/export/pipeline/DefaultExportPipelineFactory {
 	public static final field INSTANCE Lio/shamash/export/pipeline/DefaultExportPipelineFactory;
 	public final fun create (Lio/shamash/export/pipeline/FindingPreprocessor;Lio/shamash/export/pipeline/FindingPreprocessor;)Lio/shamash/export/pipeline/ExportOrchestrator;

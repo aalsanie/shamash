@@ -169,11 +169,12 @@ class AsmRuleScopeMatrixTest {
                     "Missing roles must not match " + evaluator.id,
                 )
                 assertTrue(
-                    evaluator.evaluate(
-                        facts,
-                        definition.copy(scope = included.copy(excludeRoles = listOf("core", "api"))),
-                        config,
-                    ).isEmpty(),
+                    evaluator
+                        .evaluate(
+                            facts,
+                            definition.copy(scope = included.copy(excludeRoles = listOf("core", "api"))),
+                            config,
+                        ).isEmpty(),
                     "Excluded owners must not match " + evaluator.id,
                 )
             }
