@@ -45,18 +45,24 @@ runs:
       if: runner.os != 'Windows'
       id: install-unix
       shell: bash
+      env:
+        SHAMASH_VERSION: ${{ inputs.version }}
+        SHAMASH_ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
-        chmod +x "${{ github.action_path }}/scripts/install-shamash.sh"
-        BIN=$("${{ github.action_path }}/scripts/install-shamash.sh" "${{ inputs.version }}" "$RUNNER_TEMP/shamash-${{ inputs.version }}")
+        chmod +x "$SHAMASH_ACTION_PATH/scripts/install-shamash.sh"
+        BIN=$("$SHAMASH_ACTION_PATH/scripts/install-shamash.sh" "$SHAMASH_VERSION" "$RUNNER_TEMP/shamash-$SHAMASH_VERSION")
         echo "bin=$BIN" >> "$GITHUB_OUTPUT"
 
     - name: Install Shamash (Windows)
       if: runner.os == 'Windows'
       id: install-windows
       shell: pwsh
+      env:
+        SHAMASH_VERSION: ${{ inputs.version }}
+        SHAMASH_ACTION_PATH: ${{ github.action_path }}
       run: |
-        $bin = & "${{ github.action_path }}\scripts\install-shamash.ps1" -Version "${{ inputs.version }}" -Destination "$env:RUNNER_TEMP\shamash-${{ inputs.version }}"
+        $bin = & "$env:SHAMASH_ACTION_PATH\scripts\install-shamash.ps1" -Version $env:SHAMASH_VERSION -Destination "$env:RUNNER_TEMP\shamash-$env:SHAMASH_VERSION"
         "bin=$bin" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
     - name: Run Shamash (Unix)
