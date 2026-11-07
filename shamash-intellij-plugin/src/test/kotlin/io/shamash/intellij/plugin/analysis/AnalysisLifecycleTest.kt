@@ -164,7 +164,7 @@ class AnalysisLifecycleTest {
     }
 
     @Test
-    fun \`unknown or inconsistent coverage cannot claim complete analysis\`() {
+    fun `unknown or inconsistent coverage cannot claim complete analysis`() {
         val coverages = listOf(
             AnalysisCoverage(),
             AnalysisCoverage(eligibleFiles = 3),
@@ -182,7 +182,7 @@ class AnalysisLifecycleTest {
     }
 
     @Test
-    fun \`partial attempt without evidence retains previous result and reports partial status\`() {
+    fun `partial attempt without evidence retains previous result and reports partial status`() {
         val lifecycle = AnalysisLifecycle<String>()
         val first = requireNotNull(lifecycle.begin())
         assertTrue(lifecycle.publish(first, complete("previous")))
