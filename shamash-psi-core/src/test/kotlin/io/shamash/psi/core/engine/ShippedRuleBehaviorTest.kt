@@ -126,6 +126,12 @@ class ShippedRuleBehaviorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         )
     }
 
+    private fun addJavaSource(fileName: String, source: String) =
+        myFixture.addFileToProject(
+            "src/main/java/" + source.substringAfter("package ").substringBefore(';').trim().replace('.', '/') + "/$fileName",
+            source,
+        )
+
     private fun assertExample(
         yamlName: String,
         violatingFile: String,
@@ -142,12 +148,12 @@ class ShippedRuleBehaviorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         assertTrue(validation.ok, "$path: ${validation.errors}")
         val config = kotlin.test.assertNotNull(validation.config)
 
-        val violating = myFixture.configureByText(violatingFile, violatingSource)
+        val violating = addJavaSource(violatingFile, violatingSource)
         val detected = ShamashPsiEngine().analyzeFileResult(violating, config)
         assertTrue(detected.errors.isEmpty(), "$yamlName violating: ${detected.errors}")
         assertTrue(detected.findings.any { it.ruleId.startsWith(ruleId) }, "$yamlName did not detect: ${detected.findings}")
 
-        val clean = myFixture.configureByText(cleanFile, cleanSource)
+        val clean = addJavaSource(cleanFile, cleanSource)
         val passed = ShamashPsiEngine().analyzeFileResult(clean, config)
         assertTrue(passed.errors.isEmpty(), "$yamlName clean: ${passed.errors}")
         assertTrue(passed.findings.none { it.ruleId.startsWith(ruleId) }, "$yamlName false positive: ${passed.findings}")
