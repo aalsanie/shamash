@@ -88,7 +88,7 @@ class ShippedConfigurationTest {
     fun `disabled baseline and export permit omitted optional fields`() {
         val file = repositoryRoot().resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml")
         val yaml = Files.readString(file)
-        val withoutFormats = yaml.replace("  formats: [JSON]\\n", "")
+        val withoutFormats = yaml.replace("  formats: [JSON]\n", "")
         assertTrue(withoutFormats != yaml)
         val result = ConfigValidation.loadAndValidateV1(StringReader(withoutFormats), DefaultRuleRegistry.create())
         assertTrue(result.ok, "Disabled features should not require paths or export formats")
