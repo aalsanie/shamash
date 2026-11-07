@@ -166,6 +166,7 @@ public final class io/shamash/artifacts/report/layout/ExportOutputLayout {
 	public static final field RULE_PLAN_JSON_FILE_NAME Ljava/lang/String;
 	public static final field SARIF_FILE_NAME Ljava/lang/String;
 	public static final field XML_FILE_NAME Ljava/lang/String;
+	public final fun getMANAGED_REPORT_FILE_NAMES ()Ljava/util/Set;
 	public final fun normalizeOutputDir (Ljava/nio/file/Path;Ljava/nio/file/Path;)Ljava/nio/file/Path;
 	public final fun resolve (Ljava/nio/file/Path;Ljava/lang/String;)Ljava/nio/file/Path;
 }

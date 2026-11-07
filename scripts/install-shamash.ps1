@@ -40,7 +40,7 @@ if (Test-Path -LiteralPath $destinationPath) {
     throw "Refusing to trust a linked installation marker: $destinationPath"
   }
   $markerValue = Get-Content -LiteralPath $marker -Raw
-  if ($markerValue.Trim() -cnotmatch '^shamash-cli:(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+  if ($markerValue.Trim() -cne "shamash-cli:$Version") {
     throw "Refusing to replace an unrecognized Shamash installation: $destinationPath"
   }
 }
@@ -49,7 +49,6 @@ $parentDir = [IO.Path]::GetDirectoryName($destinationPath)
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('shamash-download-' + [Guid]::NewGuid().ToString('N'))
 $stage = Join-Path $parentDir ('.shamash-stage-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($tmp) | Out-Null
-[IO.Directory]::CreateDirectory($stage) | Out-Null
 $backup = $null
 $published = $false
 function Get-ReleaseFile {
@@ -65,6 +64,7 @@ function Get-ReleaseFile {
   throw "Unable to download $Name for Shamash $Version. $lastError"
 }
 try {
+  [IO.Directory]::CreateDirectory($stage) | Out-Null
   Get-ReleaseFile -Name $zipName -OutFile (Join-Path $tmp $zipName)
   Get-ReleaseFile -Name 'SHA256SUMS.txt' -OutFile (Join-Path $tmp 'SHA256SUMS.txt')
   $checksumLines = @(Get-Content -LiteralPath (Join-Path $tmp 'SHA256SUMS.txt') |

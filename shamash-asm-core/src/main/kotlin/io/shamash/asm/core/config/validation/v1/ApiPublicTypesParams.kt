@@ -18,7 +18,10 @@ internal data class ApiPublicTypesParams(
     val includeAnnotations: Boolean,
 ) {
     companion object {
-        fun decode(raw: Map<String, Any?>, path: String): ApiPublicTypesParams {
+        fun decode(
+            raw: Map<String, Any?>,
+            path: String,
+        ): ApiPublicTypesParams {
             val p = Params.of(raw, path)
             val allowed = setOf("max", "includeNested", "includeInterfaces", "includeEnums", "includeAnnotations")
             val unknown = p.unknownKeys(allowed).sorted().firstOrNull()

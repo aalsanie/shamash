@@ -16,6 +16,62 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ShippedRuleBehaviorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder<*>>() {
+    fun testQuickstartRootPackageUsesDeclaredBoundary() {
+        assertExample(
+            "01_quickstart_spring.yml",
+            "Outside.java",
+            "package example.wrong; class Outside {}",
+            "Inside.java",
+            "package com.acme.app; class Inside {}",
+            "packages.rootPackage",
+        )
+    }
+
+    fun testMatcherExampleDetectsBannedSuffix() {
+        assertExample(
+            "02_matchers_all_leaves.yml",
+            "BadAction.java",
+            "package example; class BadAction {}",
+            "GoodFacade.java",
+            "package example; class GoodFacade {}",
+            "naming.bannedSuffixes",
+        )
+    }
+
+    fun testScopedRepositoryRuleExcludesLegacyPackages() {
+        assertExample(
+            "03_scope_filters.yml",
+            "UnusedRepository.java",
+            "package com.acme.repository; class UnusedRepository { private void orphan() {} }",
+            "LegacyRepository.java",
+            "package com.acme.legacy.repository; class LegacyRepository { private void orphan() {} }",
+            "deadcode.unusedPrivateMembers",
+        )
+    }
+
+    fun testMethodCountExampleRespectsLimit() {
+        assertExample(
+            "05_metrics_max_methods.yml",
+            "BusyController.java",
+            "package example; class BusyController { " +
+                "void a() {} void b() {} void c() {} void d() {} void e() {} void f() {} }",
+            "SmallController.java",
+            "package example; class SmallController { void one() {} }",
+            "metrics.maxMethodsByRole",
+        )
+    }
+
+    fun testExceptionExampleSuppressesRepositoryDeadcode() {
+        assertExample(
+            "09_exceptions_all_match_fields.yml",
+            "Unused.java",
+            "package com.acme.controller; class Unused { private void orphan() {} }",
+            "Repository.java",
+            "package com.acme.repository; class Repository { private void orphan() {} }",
+            "deadcode.unusedPrivateMembers",
+        )
+    }
+
     fun testNamingExampleFindsActionSuffixOnlyForApplicableRole() {
         assertExample(
             "04_naming_banned_suffixes.yml",
