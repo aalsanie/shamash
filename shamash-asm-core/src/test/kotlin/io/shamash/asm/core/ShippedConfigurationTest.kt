@@ -75,6 +75,34 @@ class ShippedConfigurationTest {
         }
     }
 
+    @Test
+    fun `disabled baseline and export permit omitted optional fields`() {
+        val file = repositoryRoot().resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml")
+        val result = Files.newBufferedReader(file).use {
+            ConfigValidation.loadAndValidateV1(it, DefaultRuleRegistry.create())
+        }
+        assertTrue(result.ok, "Disabled features should not require paths or export formats")
+        val config = assertNotNull(result.config)
+        assertEquals("", config.baseline.path)
+        assertEquals("", config.export.outputDir)
+        assertTrue(config.export.formats.isEmpty())
+    }
+
+    @Test
+    fun `enabled baseline and export still require their configuration`() {
+        val file = repositoryRoot().resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml")
+        val yaml = Files.readString(file)
+        val invalid = listOf(
+            yaml.replace("mode: NONE", "mode: GENERATE"),
+            yaml.replace("enabled: false", "enabled: true"),
+        )
+        assertTrue(invalid.all { it != yaml })
+        for (candidate in invalid) {
+            val result = ConfigValidation.loadAndValidateV1(StringReader(candidate), DefaultRuleRegistry.create())
+            assertTrue(!result.ok, "Enabled feature accepted an incomplete configuration")
+        }
+    }
+
     private fun repositoryRoot(): Path =
         generateSequence(Path.of("").toAbsolutePath().normalize()) { it.parent }
             .firstOrNull { Files.isRegularFile(it.resolve("settings.gradle.kts")) }

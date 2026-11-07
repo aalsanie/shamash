@@ -1,0 +1,39 @@
+name: PR 118 format snapshot (temporary)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  formatter:
+    if: github.event.pull_request.number == 118 && github.event.pull_request.head.repo.full_name == 'aalsanie/shamash'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: true
+      - name: Apply actual repository formatter
+        run: |
+          chmod +x gradlew
+          ./gradlew --stacktrace spotlessApply spotlessCheck
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: pr118-formatted-sources
+          path: |
+            shamash-asm-core/src/main/kotlin/io/shamash/asm/core/config/ConfigLoader.kt
+            shamash-asm-core/src/test/kotlin/io/shamash/asm/core/ShippedConfigurationTest.kt
+            shamash-asm-core/src/test/kotlin/io/shamash/asm/core/ShippedRuleBehaviorTest.kt
+            shamash-cli/src/test/kotlin/io/shamash/cli/MainTest.kt
+            shamash-psi-core/src/test/kotlin/io/shamash/psi/core/ShippedConfigurationTest.kt
+            shamash-psi-core/src/test/kotlin/io/shamash/psi/core/engine/ShippedRuleBehaviorTest.kt
+          if-no-files-found: error
