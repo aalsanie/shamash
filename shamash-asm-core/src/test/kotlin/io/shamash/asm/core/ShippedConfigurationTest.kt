@@ -92,7 +92,7 @@ class ShippedConfigurationTest {
     @Test
     fun `disabled baseline and export permit omitted optional fields`() {
         val file = repositoryRoot().resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml")
-        val yaml = Files.readString(file)
+        val yaml = Files.readString(file).replace("\r\n", "\n")
         val withoutFormats = yaml.replace("  formats: [JSON]\n", "")
         assertTrue(withoutFormats != yaml)
         val result = ConfigValidation.loadAndValidateV1(StringReader(withoutFormats), DefaultRuleRegistry.create())
@@ -122,7 +122,7 @@ class ShippedConfigurationTest {
     @Test
     fun `jar-only scans are valid but scans without any input patterns are rejected`() {
         val file = repositoryRoot().resolve("docs/asm/pit-violation/src/main/resources/shamash/configs/asm.yml")
-        val yaml = Files.readString(file)
+        val yaml = Files.readString(file).replace("\r\n", "\n")
         val registry = DefaultRuleRegistry.create()
         val jarOnly = ConfigValidation.loadAndValidateV1(StringReader(yaml), registry)
         assertTrue(jarOnly.ok, "JAR-only scans must be accepted")
