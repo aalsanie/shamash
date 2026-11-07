@@ -77,8 +77,16 @@ class NoCyclesRule : Rule {
                     memberName = null,
                     data =
                         buildMap {
-                            put("granularity", config.analysis.graphs.granularity.name.lowercase())
-                            put("includeExternal", config.analysis.graphs.includeExternalBuckets.toString())
+                            put(
+                                "granularity",
+                                config.analysis.graphs.granularity.name
+                                    .lowercase(),
+                            )
+                            put(
+                                "includeExternal",
+                                config.analysis.graphs.includeExternalBuckets
+                                    .toString(),
+                            )
                             put("cycleIndex", (idx + 1).toString())
                             put("cycleCount", cycleCount.toString()) // SCC count, from full sweep
                             put("cycle", cycleStr)
@@ -92,15 +100,26 @@ class NoCyclesRule : Rule {
             out +=
                 Finding(
                     ruleId = RuleUtil.canonicalRuleId(rule),
-                    message = "Cycle detected at granularity '${config.analysis.graphs.granularity.name.lowercase()}', but cycle details were truncated.",
+                    message =
+                        "Cycle detected at granularity " +
+                            "'${config.analysis.graphs.granularity.name.lowercase()}', " +
+                            "but cycle details were truncated.",
                     filePath = anchorPath,
                     severity = rule.severity,
                     classFqn = anchorClass?.fqName,
                     memberName = null,
                     data =
                         buildMap {
-                            put("granularity", config.analysis.graphs.granularity.name.lowercase())
-                            put("includeExternal", config.analysis.graphs.includeExternalBuckets.toString())
+                            put(
+                                "granularity",
+                                config.analysis.graphs.granularity.name
+                                    .lowercase(),
+                            )
+                            put(
+                                "includeExternal",
+                                config.analysis.graphs.includeExternalBuckets
+                                    .toString(),
+                            )
                             put("cycleCount", cycleCount.toString())
                             put("cyclesTruncated", "true")
                         },

@@ -191,7 +191,7 @@ class FactExtractorCacheTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuil
     private fun javaFile(
         name: String,
         source: String,
-    ): PsiFile = myFixture.addFileToProject("src/main/java/example/$name", source)
+    ): PsiFile = myFixture.addFileToProject("example/$name", source)
 
     private fun kotlinFile(
         name: String,

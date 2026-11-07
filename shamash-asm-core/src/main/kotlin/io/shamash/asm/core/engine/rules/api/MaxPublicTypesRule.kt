@@ -39,8 +39,7 @@ class MaxPublicTypesRule : Rule {
                         (params.includeAnnotations || (c.access and Opcodes.ACC_ANNOTATION) == 0) &&
                         (params.includeEnums || !c.isEnum) &&
                         (params.includeInterfaces || !c.isInterface || (c.access and Opcodes.ACC_ANNOTATION) != 0)
-                }
-                .filter { c ->
+                }.filter { c ->
                     RuleUtil.ownerAllowed(c, rule, scope, facts.classToRole)
                 }.toList()
 

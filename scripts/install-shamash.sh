@@ -28,7 +28,7 @@ if [[ -e "$DEST" || -L "$DEST" ]]; then
     exit 1
   }
   IFS= read -r marker < "$DEST/.shamash-install" || true
-  [[ "$marker" =~ ^shamash-cli:(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+  [[ "$marker" == "shamash-cli:$VERSION" ]] || {
     echo "Refusing to replace an unrecognized Shamash installation: $DEST" >&2
     exit 1
   }
@@ -36,16 +36,18 @@ fi
 
 mkdir -p "$(dirname "$DEST")"
 TMP=$(mktemp -d)
-STAGE=$(mktemp -d "$(dirname "$DEST")/.shamash-stage-XXXXXXXX")
+STAGE=""
 BACKUP=""
 cleanup() {
   local status=$?
-  if (( status != 0 )) && [[ -n "$BACKUP" && -d "$BACKUP" && ! -e "$DEST" ]]; then
+  if (( status != 0 )) && [[ -n "$BACKUP" && -d "$BACKUP" && ! -e "$DEST" && ! -L "$DEST" ]]; then
     mv -- "$BACKUP" "$DEST" || echo "Restore installation manually from $BACKUP" >&2
   fi
-  rm -rf -- "$TMP" "$STAGE"
+  [[ -z "$STAGE" ]] || rm -rf -- "$STAGE"
+  rm -rf -- "$TMP"
 }
 trap cleanup EXIT
+STAGE=$(mktemp -d "$(dirname "$DEST")/.shamash-stage-XXXXXXXX")
 
 fetch_release_file() {
   local name=$1 out=$2 tag
