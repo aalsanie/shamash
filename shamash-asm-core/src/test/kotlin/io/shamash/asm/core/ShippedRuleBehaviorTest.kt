@@ -140,8 +140,8 @@ class ShippedRuleBehaviorTest {
             }
 
             10, 12 -> {
-                val names = listOf("com.acme.core.Hub") + (0 until 31).map { "example.target$it.Node" }
-                withEdges(names, (1 until names.size).map { 0 to it }, mapOf(0 to "core"))
+                val names = listOf("com.acme.core.Hub") + (0 until 31).map { "com.acme.core.target$it.Node" }
+                withEdges(names, (1 until names.size).map { 0 to it }, names.indices.associateWith { "core" })
             }
 
             11 -> {
