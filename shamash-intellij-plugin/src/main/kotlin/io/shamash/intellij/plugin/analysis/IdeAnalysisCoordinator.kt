@@ -120,10 +120,12 @@ class IdeAnalysisCoordinator(
                             val sourceFile = path.endsWith(".java") || path.endsWith(".kt") || previousNameWasSource
                             val insideProject =
                                 contentRoots.any { root -> path.startsWith(root) } ||
-                                    (change is VFileMoveEvent &&
-                                        contentRoots.any { root ->
-                                            (change.oldParent.path.trimEnd('/') + "/").startsWith(root)
-                                        })
+                                    (
+                                        change is VFileMoveEvent &&
+                                            contentRoots.any { root ->
+                                                (change.oldParent.path.trimEnd('/') + "/").startsWith(root)
+                                            }
+                                    )
                             sourceFile && insideProject
                         }
                     ) {

@@ -150,8 +150,10 @@ class AnalysisLifecycle<T : Any> {
                 phase = phase,
                 visibleResult =
                     if (result.completeness == Completeness.UNAVAILABLE ||
-                        (result.completeness == Completeness.PARTIAL &&
-                            result.payload == null && current.visibleResult != null)
+                        (
+                            result.completeness == Completeness.PARTIAL &&
+                                result.payload == null && current.visibleResult != null
+                        )
                     ) {
                         current.visibleResult
                     } else {

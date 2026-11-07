@@ -229,30 +229,33 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val firstStarted = CountDownLatch(1)
         val releaseOld = CountDownLatch(1)
-        val first = kotlin.test.assertNotNull(
-            coordinator.analyze { _, _ ->
-                firstStarted.countDown()
-                try {
-                    releaseOld.await(10, TimeUnit.SECONDS)
-                } catch (_: InterruptedException) {
-                    releaseOld.await(10, TimeUnit.SECONDS)
-                }
-                throw com.intellij.openapi.progress.ProcessCanceledException()
-            },
-        )
+        val first =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { _, _ ->
+                    firstStarted.countDown()
+                    try {
+                        releaseOld.await(10, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        releaseOld.await(10, TimeUnit.SECONDS)
+                    }
+                    throw com.intellij.openapi.progress
+                        .ProcessCanceledException()
+                },
+            )
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(firstStarted.await(10, TimeUnit.SECONDS))
 
         val secondFinished = CountDownLatch(1)
-        val second = kotlin.test.assertNotNull(
-            coordinator.analyze { _, _ ->
-                secondFinished.countDown()
-                AnalysisOutcome.Complete(
-                    IdeAnalysisCoordinator.SourcePresentation(),
-                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
-                )
-            },
-        )
+        val second =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { _, _ ->
+                    secondFinished.countDown()
+                    AnalysisOutcome.Complete(
+                        IdeAnalysisCoordinator.SourcePresentation(),
+                        AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                    )
+                },
+            )
         releaseOld.countDown()
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(secondFinished.await(10, TimeUnit.SECONDS))

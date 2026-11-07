@@ -165,13 +165,14 @@ class AnalysisLifecycleTest {
 
     @Test
     fun `unknown or inconsistent coverage cannot claim complete analysis`() {
-        val coverages = listOf(
-            AnalysisCoverage(),
-            AnalysisCoverage(eligibleFiles = 3),
-            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 3),
-            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = -1),
-            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2, failedFiles = -1),
-        )
+        val coverages =
+            listOf(
+                AnalysisCoverage(),
+                AnalysisCoverage(eligibleFiles = 3),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 3),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = -1),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2, failedFiles = -1),
+            )
         for (coverage in coverages) {
             val lifecycle = AnalysisLifecycle<String>()
             val request = requireNotNull(lifecycle.begin())
