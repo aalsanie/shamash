@@ -26,6 +26,21 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --stacktrace spotlessApply spotlessCheck
+      - name: Export formatted Kotlin blobs for exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            shamash-asm-core/src/main/kotlin/io/shamash/asm/core/config/ConfigLoader.kt \
+            shamash-asm-core/src/test/kotlin/io/shamash/asm/core/ShippedConfigurationTest.kt \
+            shamash-asm-core/src/test/kotlin/io/shamash/asm/core/ShippedRuleBehaviorTest.kt \
+            shamash-psi-core/src/test/kotlin/io/shamash/psi/core/ShippedConfigurationTest.kt; do
+            printf 'SHAMASH_FORMAT_BEGIN:%s\n' "$file"
+            base64 -w 76 "$file"
+            printf 'SHAMASH_FORMAT_END:%s\n' "$file"
+          done
+      - name: Verify shipped configurations and runtime behavior
+        run: ./gradlew --stacktrace :shamash-asm-core:test :shamash-psi-core:test :shamash-cli:test
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: pr118-formatted-sources
