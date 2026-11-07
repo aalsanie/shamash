@@ -58,6 +58,8 @@ class AnalysisLifecycle<T : Any> {
     ): Boolean {
         require(phase == AnalysisPhase.EXTRACTING || phase == AnalysisPhase.BUILDING_GRAPH)
         if (!eligible(request) || !current.active) return false
+        if (phase == AnalysisPhase.EXTRACTING && current.phase == AnalysisPhase.BUILDING_GRAPH) return false
+        if (progress != null && !progress.isFinite()) return false
         current = current.copy(phase = phase, progress = progress?.coerceIn(0.0, 1.0))
         return true
     }

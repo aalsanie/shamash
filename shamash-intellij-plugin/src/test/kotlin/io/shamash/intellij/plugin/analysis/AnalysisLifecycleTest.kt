@@ -198,6 +198,20 @@ class AnalysisLifecycleTest {
     }
 
     @Test
+    fun `analysis stages do not regress and invalid progress is rejected`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val request = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.advance(request, AnalysisPhase.EXTRACTING, 0.2))
+        assertFalse(lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, Double.NaN))
+        assertEquals(AnalysisPhase.EXTRACTING, lifecycle.snapshot().phase)
+        assertTrue(lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, 0.5))
+        assertFalse(lifecycle.advance(request, AnalysisPhase.EXTRACTING))
+        assertFalse(lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, Double.POSITIVE_INFINITY))
+        assertEquals(AnalysisPhase.BUILDING_GRAPH, lifecycle.snapshot().phase)
+        assertEquals(0.5, lifecycle.snapshot().progress)
+    }
+
+    @Test
     fun `closing a project blocks future work and callbacks`() {
         val lifecycle = AnalysisLifecycle<String>()
         val request = requireNotNull(lifecycle.begin())
