@@ -20,6 +20,7 @@ package io.shamash.intellij.plugin.e2e
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
@@ -39,6 +40,9 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testInjectedBackendCompletesAndDoesNotActivateToolWindow() {
+        val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash")
+        val wasVisible = window?.isVisible
+        val wasActive = window?.isActive
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val completed = CountDownLatch(1)
         val request =
@@ -55,6 +59,8 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         awaitTerminal()
         assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
         assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
+        assertEquals(wasVisible, window?.isVisible)
+        assertEquals(wasActive, window?.isActive)
         coordinator.cancel()
     }
 
