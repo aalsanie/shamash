@@ -36,9 +36,12 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
@@ -108,8 +111,20 @@ class IdeAnalysisCoordinator(
                         ProjectRootManager.getInstance(project).contentRoots.map { it.path.trimEnd('/') + "/" }
                     if (events.any { change ->
                             val path = change.path.replace('\\', '/')
-                            (path.endsWith(".java") || path.endsWith(".kt")) &&
-                                contentRoots.any { root -> path.startsWith(root) }
+                            val previousNameWasSource =
+                                change is VFilePropertyChangeEvent &&
+                                    change.propertyName == VirtualFile.PROP_NAME &&
+                                    (change.oldValue as? String)?.let {
+                                        it.endsWith(".java") || it.endsWith(".kt")
+                                    } == true
+                            val sourceFile = path.endsWith(".java") || path.endsWith(".kt") || previousNameWasSource
+                            val insideProject =
+                                contentRoots.any { root -> path.startsWith(root) } ||
+                                    (change is VFileMoveEvent &&
+                                        contentRoots.any { root ->
+                                            (change.oldParent.path.trimEnd('/') + "/").startsWith(root)
+                                        })
+                            sourceFile && insideProject
                         }
                     ) {
                         sourceChanged()

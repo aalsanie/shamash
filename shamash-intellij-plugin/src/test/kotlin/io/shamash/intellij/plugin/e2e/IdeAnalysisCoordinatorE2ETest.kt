@@ -126,6 +126,37 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
+    fun testRenamingSourceToNonSourceExtensionMarksPreviousResultStale() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val source = myFixture.addFileToProject("src/main/java/Original.java", "class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val done = CountDownLatch(1)
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                done.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        val previous = kotlin.test.assertNotNull(coordinator.state().visibleResult)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                source.virtualFile.rename(this, "Renamed.txt")
+            }
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
     fun testDisposedContentSubscriptionCannotReceiveLateCallback() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val owner = Disposer.newDisposable()
