@@ -121,7 +121,7 @@ class PackagesRootPackageRule : EngineRule {
                 val after = t.removePrefix("package ").trim()
                 val token =
                     after
-                        .trimEnd(';')
+                        .substringBefore(';')
                         .split(' ', '\t')
                         .firstOrNull()
                         .orEmpty()

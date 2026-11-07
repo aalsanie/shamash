@@ -50,10 +50,9 @@ analysis:
 rules:
   - type: "arch"
     name: "allowedPackages"
-    roles: ["core"]
+    roles: null
     enabled: true
     severity: ERROR
-    scope: null
     params:
       allowPackages:
         - "^com\\.acme\\.app(\\..*)?$"

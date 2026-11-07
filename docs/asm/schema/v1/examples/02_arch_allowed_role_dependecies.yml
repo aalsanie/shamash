@@ -62,22 +62,11 @@ rules:
     roles: null
     enabled: true
     severity: "ERROR"
-    scope: null
     params:
       allow:
-        api: ["domain"]
-        persistence: ["domain"]
+        - "api->domain"
+        - "persistence->domain"
 
-  # Optional: if both exist, forbidden wins at runtime.
-  - type: "arch"
-    name: "forbiddenRoleDependencies"
-    roles: null
-    enabled: true
-    severity: "ERROR"
-    scope: null
-    params:
-      forbid:
-        api: ["persistence"]
 
 exceptions: []
 
@@ -86,3 +75,4 @@ baseline:
 
 export:
   enabled: false
+  overwrite: false

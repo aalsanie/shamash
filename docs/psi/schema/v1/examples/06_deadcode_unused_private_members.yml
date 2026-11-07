@@ -48,10 +48,9 @@ rules:
       ignoreIfContainingClassAnnotatedWithPrefix:
         - "org.springframework.stereotype."
 
-      # Optional: ignore for these roles (role ids)
-      ignoreRoles: ["anyClass"]
+      # Optional: ignoreRoles can exclude specific role ids when needed.
 
       # Optional: ignore members whose names match this regex
-      ignoreNameRegex: "^_.*$"
+      ignoreNameRegex: ["^_.*$"]
 
 exceptions: []

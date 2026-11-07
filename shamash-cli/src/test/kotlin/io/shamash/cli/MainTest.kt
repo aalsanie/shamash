@@ -646,6 +646,36 @@ class MainTest {
         assertEquals(yaml, tmp.resolve("shamash/configs/asm.yml").readText())
     }
 
+    @Test
+    fun `shipped method-count example has matching CLI success violation and config exits`(
+        @TempDir tmp: Path,
+    ) {
+        val root =
+            generateSequence(Path.of("").toAbsolutePath().normalize()) { it.parent }
+                .first { Files.isRegularFile(it.resolve("settings.gradle.kts")) }
+        val config = Files.readString(root.resolve("docs/asm/schema/v1/examples/08_metrics_max_methods_per_class.yml"))
+        writeConfig(tmp, config)
+
+        val invalid = config.replace("maxMethods: 80", "max: 80")
+        writeConfig(tmp, invalid)
+        val rejected = runCli("validate", "--project", tmp.toString())
+        assertEquals(2, rejected.exitCode, diagnostics(rejected))
+        writeConfig(tmp, config)
+
+        compileJava(tmp, "demo.Busy", "package demo; public class Busy { void ok() {} }")
+        val clean = runCli("scan", "--project", tmp.toString(), "--fail-on", "WARNING")
+        assertEquals(0, clean.exitCode, diagnostics(clean))
+
+        val methods = (0..80).joinToString(" ") { "public void m$it() {}" }
+        compileJava(tmp, "demo.Busy", "package demo; public class Busy { $methods }")
+        val violating = runCli("scan", "--project", tmp.toString(), "--fail-on", "WARNING")
+        assertEquals(4, violating.exitCode, diagnostics(violating))
+        assertTrue(
+            violating.stdout.contains("maxMethodsPerClass") || violating.stderr.contains("maxMethodsPerClass"),
+            diagnostics(violating),
+        )
+    }
+
     private fun customRegistryConfig(): String =
         discoveryLikeConfig(1)
             .replace("type: metrics, name: maxMethodsPerClass", "type: test, name: requiredParam")

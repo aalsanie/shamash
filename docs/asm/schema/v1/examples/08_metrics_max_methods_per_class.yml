@@ -53,6 +53,15 @@ rules:
     enabled: true
     severity: WARNING
     roles: null
-    scope: null
     params:
       maxMethods: 80
+
+exceptions: []
+
+baseline:
+  mode: NONE
+
+export:
+  enabled: false
+  formats: [JSON]
+  overwrite: false
