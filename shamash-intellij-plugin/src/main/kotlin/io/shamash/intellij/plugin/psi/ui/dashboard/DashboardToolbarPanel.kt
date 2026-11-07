@@ -37,6 +37,7 @@ class DashboardToolbarPanel(
         add(JButton("Refresh").apply { addActionListener { onRefresh() } })
 
         add(actionButton("Run Scan", ACTION_RUN_SCAN))
+        add(actionButton("Cancel", ACTION_CANCEL_SCAN))
         add(actionButton("Export", ACTION_EXPORT))
         add(actionButton("Validate Config", ACTION_VALIDATE))
     }
@@ -66,6 +67,7 @@ class DashboardToolbarPanel(
 
     companion object {
         private const val ACTION_RUN_SCAN = "io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
+        private const val ACTION_CANCEL_SCAN = "io.shamash.intellij.plugin.psi.ui.actions.CancelSourceAnalysisAction"
         private const val ACTION_EXPORT = "io.shamash.intellij.plugin.psi.ui.actions.ExportPsiReportsAction"
         private const val ACTION_VALIDATE = "io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
     }
