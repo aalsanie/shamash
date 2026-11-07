@@ -12,7 +12,6 @@ import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
 import io.shamash.psi.core.config.ConfigValidation
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ShippedRuleBehaviorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder<*>>() {
@@ -141,7 +140,7 @@ class ShippedRuleBehaviorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         val path = root.resolve("docs/psi/schema/v1/examples").resolve(yamlName)
         val validation = Files.newBufferedReader(path).use { ConfigValidation.loadAndValidateV1(it) }
         assertTrue(validation.ok, "$path: ${validation.errors}")
-        val config = assertNotNull(validation.config)
+        val config = kotlin.test.assertNotNull(validation.config)
 
         val violating = myFixture.configureByText(violatingFile, violatingSource)
         val detected = ShamashPsiEngine().analyzeFileResult(violating, config)
