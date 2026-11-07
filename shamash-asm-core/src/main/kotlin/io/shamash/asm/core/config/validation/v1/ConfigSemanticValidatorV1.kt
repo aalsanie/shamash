@@ -279,7 +279,9 @@ object ConfigSemanticValidatorV1 {
             project.bytecode.outputsGlobs,
             "project.bytecode.outputsGlobs",
             errors,
-            allowEmptyInclude = project.bytecode.jarGlobs.include.isNotEmpty(),
+            allowEmptyInclude =
+                project.bytecode.jarGlobs.include
+                    .isNotEmpty(),
         )
         validateGlobSet(
             project.bytecode.jarGlobs,
