@@ -79,5 +79,4 @@ class RunPsiScanAction(
         val yaml = doc?.text ?: String(vf.contentsToByteArray())
         IdeAnalysisCoordinator.getInstance(project).analyze(LegacySourceBackend(project, yaml, runner))
     }
-
 }

@@ -53,7 +53,9 @@ import java.util.concurrent.Future
  * source-facts extractor without changing ownership, cancellation, diagnostics or presentation.
  */
 @Service(Service.Level.PROJECT)
-class IdeAnalysisCoordinator(private val project: Project) : Disposable {
+class IdeAnalysisCoordinator(
+    private val project: Project,
+) : Disposable {
     data class SourcePresentation(
         val findings: List<Finding> = emptyList(),
         val validationErrors: List<ValidationError> = emptyList(),
@@ -61,7 +63,10 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     )
 
     fun interface Backend {
-        fun analyze(request: AnalysisRequest, indicator: ProgressIndicator): AnalysisOutcome<SourcePresentation>
+        fun analyze(
+            request: AnalysisRequest,
+            indicator: ProgressIndicator,
+        ): AnalysisOutcome<SourcePresentation>
     }
 
     private val lifecycle = AnalysisLifecycle<SourcePresentation>()
@@ -71,6 +76,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     private val gate = Any()
     private var activeTask: Future<*>? = null
     private var indicator: ProgressIndicatorBase? = null
+
     @Volatile
     private var disposed = false
 
@@ -104,7 +110,8 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
                             val path = change.path.replace('\\', '/')
                             (path.endsWith(".java") || path.endsWith(".kt")) &&
                                 contentRoots.any { root -> path.startsWith(root) }
-                        }) {
+                        }
+                    ) {
                         sourceChanged()
                     }
                 }
@@ -114,7 +121,10 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
 
     fun state(): IdeAnalysisState<SourcePresentation> = lifecycle.snapshot()
 
-    fun subscribe(owner: Disposable, callback: (IdeAnalysisState<SourcePresentation>) -> Unit) {
+    fun subscribe(
+        owner: Disposable,
+        callback: (IdeAnalysisState<SourcePresentation>) -> Unit,
+    ) {
         if (disposed || Disposer.isDisposed(owner)) return
         callbacks.add(callback)
         Disposer.register(owner) { callbacks.remove(callback) }
@@ -168,7 +178,10 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     /** Called by graph-producing backends between extraction and off-read-lock graph work. */
-    fun graphStarted(request: AnalysisRequest, progress: Double? = null): Boolean {
+    fun graphStarted(
+        request: AnalysisRequest,
+        progress: Double? = null,
+    ): Boolean {
         val moved = lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, progress)
         if (moved) publishState()
         return moved
@@ -221,7 +234,9 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
             ) {
                 return@invokeLater
             }
-            val ui = io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService.getInstance(project)
+            val ui =
+                io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService
+                    .getInstance(project)
             ui.updateFromScan(data.findings, data.validationErrors, null, null)
             // Views subscribe with their own Disposable. Never contact a possibly disposed
             // tool-window content or activate it as a side effect of completion.
@@ -249,7 +264,6 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     companion object {
-        fun getInstance(project: Project): IdeAnalysisCoordinator =
-            project.getService(IdeAnalysisCoordinator::class.java)
+        fun getInstance(project: Project): IdeAnalysisCoordinator = project.getService(IdeAnalysisCoordinator::class.java)
     }
 }

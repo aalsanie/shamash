@@ -24,8 +24,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AnalysisLifecycleTest {
-    private fun complete(name: String) =
-        AnalysisOutcome.Complete(name, AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1))
+    private fun complete(name: String) = AnalysisOutcome.Complete(name, AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1))
+
     private fun partial(name: String?) =
         AnalysisOutcome.Partial(
             name,
@@ -42,7 +42,14 @@ class AnalysisLifecycleTest {
         assertTrue(lifecycle.publish(b, complete("new")))
         assertFalse(lifecycle.publish(a, complete("old")))
         assertEquals("new", lifecycle.snapshot().visibleResult?.payload)
-        assertEquals(b.generation, lifecycle.snapshot().visibleResult?.request?.generation)
+        assertEquals(
+            b.generation,
+            lifecycle
+                .snapshot()
+                .visibleResult
+                ?.request
+                ?.generation,
+        )
         assertEquals(ResultRelation.CURRENT, lifecycle.snapshot().resultRelation)
     }
 
@@ -218,9 +225,15 @@ class AnalysisLifecycleTest {
         val a = requireNotNull(lifecycle.begin())
         lifecycle.publish(a, complete("previous"))
         val b = requireNotNull(lifecycle.begin())
-        assertTrue(lifecycle.publish(b, AnalysisOutcome.Unavailable(
-            "NO_SOURCE", AnalysisCoverage(eligibleFiles = 0, analyzedFiles = 0),
-        )))
+        assertTrue(
+            lifecycle.publish(
+                b,
+                AnalysisOutcome.Unavailable(
+                    "NO_SOURCE",
+                    AnalysisCoverage(eligibleFiles = 0, analyzedFiles = 0),
+                ),
+            ),
+        )
         assertEquals("previous", lifecycle.snapshot().visibleResult?.payload)
         assertEquals(ResultRelation.PREVIOUS, lifecycle.snapshot().resultRelation)
         assertEquals(0, lifecycle.snapshot().attemptCoverage?.eligibleFiles)
