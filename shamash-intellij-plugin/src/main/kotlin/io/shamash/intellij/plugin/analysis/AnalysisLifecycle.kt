@@ -76,7 +76,15 @@ class AnalysisLifecycle<T : Any> {
                         AnalysisOutcome.Unavailable("No supported Java/Kotlin source files", coverage)
                     }
 
-                    (coverage.failedFiles ?: 0) > 0 ||
+                    coverage.eligibleFiles == null ||
+                        coverage.analyzedFiles == null ||
+                        coverage.eligibleFiles < 0 ||
+                        coverage.analyzedFiles < 0 ||
+                        coverage.analyzedFiles > coverage.eligibleFiles ||
+                        (coverage.failedFiles ?: 0) < 0 ||
+                        (coverage.unresolvedOccurrences ?: 0) < 0 ||
+                        (coverage.resolvedOccurrences ?: 0) < 0 ||
+                        (coverage.failedFiles ?: 0) > 0 ||
                         (coverage.unresolvedOccurrences ?: 0) > 0 ||
                         (
                             coverage.eligibleFiles != null &&
@@ -138,9 +146,19 @@ class AnalysisLifecycle<T : Any> {
         current =
             current.copy(
                 phase = phase,
-                visibleResult = if (result.completeness == Completeness.UNAVAILABLE) current.visibleResult else result,
+                visibleResult =
+                    if (result.completeness == Completeness.UNAVAILABLE ||
+                        (result.completeness == Completeness.PARTIAL &&
+                            result.payload == null && current.visibleResult != null)
+                    ) {
+                        current.visibleResult
+                    } else {
+                        result
+                    },
                 resultRelation =
-                    if (result.completeness == Completeness.UNAVAILABLE) {
+                    if (result.completeness == Completeness.UNAVAILABLE ||
+                        (result.completeness == Completeness.PARTIAL && result.payload == null)
+                    ) {
                         current.visibleResult?.let { ResultRelation.PREVIOUS }
                     } else {
                         ResultRelation.CURRENT

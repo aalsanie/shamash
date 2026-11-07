@@ -164,6 +164,40 @@ class AnalysisLifecycleTest {
     }
 
     @Test
+    fun \`unknown or inconsistent coverage cannot claim complete analysis\`() {
+        val coverages = listOf(
+            AnalysisCoverage(),
+            AnalysisCoverage(eligibleFiles = 3),
+            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 3),
+            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = -1),
+            AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2, failedFiles = -1),
+        )
+        for (coverage in coverages) {
+            val lifecycle = AnalysisLifecycle<String>()
+            val request = requireNotNull(lifecycle.begin())
+            assertTrue(lifecycle.publish(request, AnalysisOutcome.Complete("not verified", coverage)))
+            assertEquals(AnalysisPhase.PARTIAL, lifecycle.snapshot().phase)
+            assertEquals(Completeness.PARTIAL, lifecycle.snapshot().attemptCompleteness)
+        }
+    }
+
+    @Test
+    fun \`partial attempt without evidence retains previous result and reports partial status\`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val first = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(first, complete("previous")))
+        val next = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(next, partial(null)))
+        val state = lifecycle.snapshot()
+        assertEquals(AnalysisPhase.PARTIAL, state.phase)
+        assertEquals(Completeness.PARTIAL, state.attemptCompleteness)
+        assertEquals(ResultRelation.PREVIOUS, state.resultRelation)
+        assertEquals("previous", state.visibleResult?.payload)
+        assertEquals(first, state.visibleResult?.request)
+        assertTrue(state.diagnostics.isNotEmpty())
+    }
+
+    @Test
     fun `closing a project blocks future work and callbacks`() {
         val lifecycle = AnalysisLifecycle<String>()
         val request = requireNotNull(lifecycle.begin())

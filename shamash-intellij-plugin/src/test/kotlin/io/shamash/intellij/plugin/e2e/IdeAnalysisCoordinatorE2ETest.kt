@@ -188,6 +188,43 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
     }
 
+    fun testSupersededCancellationExceptionCannotCancelTheReplacement() {
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val firstStarted = CountDownLatch(1)
+        val releaseOld = CountDownLatch(1)
+        val first = kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                firstStarted.countDown()
+                try {
+                    releaseOld.await(10, TimeUnit.SECONDS)
+                } catch (_: InterruptedException) {
+                    releaseOld.await(10, TimeUnit.SECONDS)
+                }
+                throw com.intellij.openapi.progress.ProcessCanceledException()
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(firstStarted.await(10, TimeUnit.SECONDS))
+
+        val secondFinished = CountDownLatch(1)
+        val second = kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                secondFinished.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        releaseOld.countDown()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(secondFinished.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertTrue(second.generation > first.generation)
+        assertEquals(second, coordinator.state().visibleResult?.request)
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+    }
+
     fun testBackendFailureLeavesPriorResultAndDurableDiagnostic() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val good = CountDownLatch(1)
@@ -290,7 +327,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
 
     private fun awaitTerminal() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
-        repeat(100) {
+        repeat(500) {
             PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
             if (!coordinator.state().active) return
             Thread.sleep(20)

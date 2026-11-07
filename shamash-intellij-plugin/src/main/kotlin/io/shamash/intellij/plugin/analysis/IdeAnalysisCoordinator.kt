@@ -170,6 +170,13 @@ class IdeAnalysisCoordinator(
                             cancelRequest(request)
                         } catch (failure: Throwable) {
                             if (lifecycle.fail(request, failure.message ?: failure.javaClass.simpleName)) publishState()
+                        } finally {
+                            synchronized(gate) {
+                                if (indicator === progress) {
+                                    indicator = null
+                                    activeTask = null
+                                }
+                            }
                         }
                     }
             }
@@ -195,9 +202,16 @@ class IdeAnalysisCoordinator(
     }
 
     private fun cancelRequest(request: AnalysisRequest) {
-        if (lifecycle.isCurrent(request)) {
-            cancel()
-        }
+        val cancelled =
+            synchronized(gate) {
+                if (!lifecycle.isCurrent(request) || !lifecycle.cancel()) {
+                    false
+                } else {
+                    cancelWork()
+                    true
+                }
+            }
+        if (cancelled) publishState()
     }
 
     private fun sourceChanged() {
@@ -229,9 +243,7 @@ class IdeAnalysisCoordinator(
         val data = state.visibleResult?.payload ?: return
         if (state.resultRelation != ResultRelation.CURRENT) return
         ApplicationManager.getApplication().invokeLater {
-            if (disposed || project.isDisposed ||
-                lifecycle.snapshot().visibleResult?.request != state.visibleResult.request
-            ) {
+            if (disposed || project.isDisposed || lifecycle.snapshot() !== state) {
                 return@invokeLater
             }
             val ui =
@@ -248,7 +260,7 @@ class IdeAnalysisCoordinator(
         val current = lifecycle.snapshot()
         ApplicationManager.getApplication().invokeLater {
             if (disposed || project.isDisposed) return@invokeLater
-            if (lifecycle.snapshot().requestGeneration != current.requestGeneration) return@invokeLater
+            if (lifecycle.snapshot() !== current) return@invokeLater
             for (listener in callbacks) listener(current)
         }
     }
