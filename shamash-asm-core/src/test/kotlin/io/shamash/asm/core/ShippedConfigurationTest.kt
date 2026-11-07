@@ -126,10 +126,11 @@ class ShippedConfigurationTest {
         val registry = DefaultRuleRegistry.create()
         val jarOnly = ConfigValidation.loadAndValidateV1(StringReader(yaml), registry)
         assertTrue(jarOnly.ok, "JAR-only scans must be accepted")
-        val withoutJar = yaml.replace(
-            "      include:\n        - \"**/build/libs/*.jar\"",
-            "      include: []",
-        )
+        val withoutJar =
+            yaml.replace(
+                "      include:\n        - \"**/build/libs/*.jar\"",
+                "      include: []",
+            )
         assertTrue(withoutJar != yaml)
         val empty = ConfigValidation.loadAndValidateV1(StringReader(withoutJar), registry)
         assertTrue(!empty.ok, "Scans with no input patterns must be rejected")

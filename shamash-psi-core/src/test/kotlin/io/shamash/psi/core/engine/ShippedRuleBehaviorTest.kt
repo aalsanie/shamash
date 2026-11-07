@@ -126,11 +126,18 @@ class ShippedRuleBehaviorTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         )
     }
 
-    private fun addJavaSource(fileName: String, source: String) =
-        myFixture.addFileToProject(
-            "src/main/java/" + source.substringAfter("package ").substringBefore(';').trim().replace('.', '/') + "/$fileName",
-            source,
-        )
+    private fun addJavaSource(
+        fileName: String,
+        source: String,
+    ) = myFixture.addFileToProject(
+        "src/main/java/" +
+            source
+                .substringAfter("package ")
+                .substringBefore(';')
+                .trim()
+                .replace('.', '/') + "/$fileName",
+        source,
+    )
 
     private fun assertExample(
         yamlName: String,
