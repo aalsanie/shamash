@@ -37,9 +37,13 @@ class ShippedConfigurationTest {
             },
         )
         val registry = DefaultRuleRegistry.create()
+        val invalidExamples = mutableListOf<String>()
         for (file in files) {
             val result = Files.newBufferedReader(file).use { ConfigValidation.loadAndValidateV1(it, registry) }
-            assertTrue(result.ok, "$file: ${result.errors}")
+            if (!result.ok) {
+                invalidExamples += "$file: ${result.errors}"
+                continue
+            }
             val config = assertNotNull(result.config, file.toString())
             assertTrue(config.rules.isNotEmpty(), "$file contains no rule")
             assertTrue(config.rules.any { it.enabled }, "$file contains no enabled rule")
@@ -47,6 +51,7 @@ class ShippedConfigurationTest {
                 assertNotNull(registry.byId("${rule.type}.${rule.name}"), "$file: unimplemented rule ${rule.type}.${rule.name}")
             }
         }
+        assertTrue(invalidExamples.isEmpty(), invalidExamples.joinToString("\n"))
     }
 
     @Test
