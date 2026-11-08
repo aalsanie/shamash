@@ -64,11 +64,11 @@ class SourceRelationshipAccumulatorTest {
     }
 
     @Test
-    fun `total relationship budget includes external and unresolved targets`() {
-        val reducer = SourceRelationshipAccumulator(SourceAnalysisProfile(maxRelationships = 2))
+    fun `external references cannot consume the internal graph budget`() {
+        val reducer = SourceRelationshipAccumulator(SourceAnalysisProfile(maxRelationships = 1))
         reducer.add(reference(SourceTarget.External("java.util.Map"), 1))
-        reducer.add(reference(SourceTarget.Internal(target), 2))
-        reducer.add(reference(SourceTarget.Unresolved("Missing"), 3))
+        reducer.add(reference(SourceTarget.Unresolved("Missing"), 2))
+        reducer.add(reference(SourceTarget.Internal(target), 3))
         reducer.add(reference(SourceTarget.Internal(target), 4))
 
         assertTrue(reducer.truncated)

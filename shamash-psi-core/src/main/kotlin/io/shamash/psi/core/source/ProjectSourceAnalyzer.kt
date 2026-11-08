@@ -108,6 +108,7 @@ class ProjectSourceAnalyzer(
                 Thread.currentThread().interrupt()
                 throw ProcessCanceledException()
             } catch (t: Exception) {
+                rethrowSourceCancellation(t)
                 failed++
                 diagnostics +=
                     SourceDiagnostic(item.file.url, "extract", "${t.javaClass.simpleName}: ${t.message ?: "source failed"}")
