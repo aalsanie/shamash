@@ -47,6 +47,7 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
+import io.shamash.psi.core.source.ProjectSourceSnapshot
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
@@ -63,6 +64,7 @@ class IdeAnalysisCoordinator(
         val findings: List<Finding> = emptyList(),
         val validationErrors: List<ValidationError> = emptyList(),
         val engineErrors: List<EngineError> = emptyList(),
+        val sourceFacts: ProjectSourceSnapshot? = null,
     )
 
     fun interface Backend {
@@ -258,7 +260,7 @@ class IdeAnalysisCoordinator(
     private fun publishLegacySnapshot() {
         val state = lifecycle.snapshot()
         val data = state.visibleResult?.payload ?: return
-        if (state.resultRelation != ResultRelation.CURRENT) return
+        if (state.resultRelation != ResultRelation.CURRENT || data.sourceFacts != null) return
         ApplicationManager.getApplication().invokeLater {
             if (disposed || project.isDisposed || lifecycle.snapshot() !== state) {
                 return@invokeLater
