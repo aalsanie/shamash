@@ -216,12 +216,9 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
     fun setGraph(next: SourceUiModel?) {
         val oldId = selectedId
         source = next
-        resetFilters(preserve = true)
-        selectedId = oldId
+        selectedId = oldId?.takeIf { id -> next?.findings?.any { it.id == id } == true }
+        resetFilters(preserve = next != null)
         refreshFilter()
-        if (oldId != null && next?.findings?.none { it.id == oldId } == true) {
-            clearDetails("Previously selected cycle no longer appears in this analysis.")
-        }
     }
 
     private fun resetFilters(preserve: Boolean = false) {

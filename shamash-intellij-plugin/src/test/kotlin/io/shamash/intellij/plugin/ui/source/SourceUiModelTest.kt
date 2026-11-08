@@ -64,7 +64,12 @@ class SourceUiModelTest {
         assertEquals(1, model.uses(SourceSelection.Package(a)).size)
         assertEquals(1, model.usedBy(SourceSelection.Package(b)).size)
         assertTrue(model.usedBy(SourceSelection.Package(a)).isEmpty())
-        assertTrue(model.uses(SourceSelection.Module("module")).isEmpty())
+        val moduleUses = model.uses(SourceSelection.Module("module")).single()
+        assertEquals("module (within-module packages)", moduleUses.label)
+        assertEquals(1L, moduleUses.occurrences)
+        assertEquals(1, moduleUses.distinctTargets)
+        assertEquals(1, moduleUses.evidence.size)
+        assertEquals(1, model.usedBy(SourceSelection.Module("module")).size)
     }
 
     @Test
@@ -108,6 +113,11 @@ class SourceUiModelTest {
         assertEquals(1, model.filteredFindings("", "right", null).size)
         assertEquals(listOf("left", "right"), model.moduleIds)
         assertEquals(1, model.uses(SourceSelection.Package(SourcePackageId("left", "shared"))).size)
+        val crossModule = model.uses(SourceSelection.Module("left")).single()
+        assertEquals("right (IDE module)", crossModule.label)
+        assertEquals(1, crossModule.distinctTargets)
+        assertEquals(1L, crossModule.occurrences)
+        assertEquals("left (IDE module)", model.usedBy(SourceSelection.Module("right")).single().label)
         assertEquals(1, model.usedBy(SourceSelection.Package(SourcePackageId("right", "shared"))).size)
     }
 

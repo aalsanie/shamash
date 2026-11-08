@@ -118,6 +118,8 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
         graph.packageDependencies.groupBy { it.from }
     private val incomingPackages: Map<SourcePackageId, List<SourcePackageDependency>> =
         graph.packageDependencies.groupBy { it.target }
+    private val outgoingModules = graph.packageDependencies.groupBy { it.from.moduleId }
+    private val incomingModules = graph.packageDependencies.groupBy { it.target.moduleId }
 
     fun filteredFindings(query: String, module: String?, pkg: SourcePackageId?): List<FindingRow> {
         val text = query.trim().lowercase(Locale.ROOT)
@@ -157,7 +159,20 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
 
     private fun relationships(selection: SourceSelection, incoming: Boolean): List<SourceRelationRow> =
         when (selection) {
-            is SourceSelection.Module -> emptyList()
+            is SourceSelection.Module -> {
+                val edges = if (incoming) incomingModules[selection.moduleId] else outgoingModules[selection.moduleId]
+                edges.orEmpty()
+                    .groupBy { edge -> if (incoming) edge.from.moduleId else edge.target.moduleId }
+                    .toSortedMap()
+                    .map { (module, dependencies) ->
+                        SourceRelationRow(
+                            if (module == selection.moduleId) "$module (within-module packages)" else "$module (IDE module)",
+                            dependencies.sumOf { it.distinctEntityRelationships },
+                            dependencies.sumOf { it.occurrences },
+                            dependencies.flatMap(::packageEvidence).distinct().take(MAX_WITNESSES),
+                        )
+                    }
+            }
             is SourceSelection.Package -> {
                 val edges = if (incoming) incomingPackages[selection.id] else outgoingPackages[selection.id]
                 edges.orEmpty().map { edge ->
@@ -166,12 +181,7 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                         qualified(other),
                         edge.distinctEntityRelationships,
                         edge.occurrences,
-                        edge.witnesses.take(MAX_WITNESSES).map {
-                            SourceEvidence(
-                                it.reference, it.from, it.from.signature + " → " + it.target.signature,
-                                SourceTarget.Internal(it.target), it.kind,
-                            )
-                        },
+                        packageEvidence(edge).take(MAX_WITNESSES),
                     )
                 }.sortedBy { it.label }
             }
@@ -198,6 +208,14 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                         )
                     }.sortedBy { it.label }.toList()
             }
+        }
+
+    private fun packageEvidence(edge: SourcePackageDependency): List<SourceEvidence> =
+        edge.witnesses.map {
+            SourceEvidence(
+                it.reference, it.from, it.from.signature + " → " + it.target.signature,
+                SourceTarget.Internal(it.target), it.kind,
+            )
         }
 
     internal fun external(selection: SourceSelection): List<SourceRelationRow> {
