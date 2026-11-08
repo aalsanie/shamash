@@ -24,8 +24,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AnalysisLifecycleTest {
-    private fun complete(name: String) =
-        AnalysisOutcome.Complete(name, AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1))
+    private fun complete(name: String) = AnalysisOutcome.Complete(name, AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1))
+
     private fun partial(name: String?) =
         AnalysisOutcome.Partial(
             name,
@@ -42,7 +42,14 @@ class AnalysisLifecycleTest {
         assertTrue(lifecycle.publish(b, complete("new")))
         assertFalse(lifecycle.publish(a, complete("old")))
         assertEquals("new", lifecycle.snapshot().visibleResult?.payload)
-        assertEquals(b.generation, lifecycle.snapshot().visibleResult?.request?.generation)
+        assertEquals(
+            b.generation,
+            lifecycle
+                .snapshot()
+                .visibleResult
+                ?.request
+                ?.generation,
+        )
         assertEquals(ResultRelation.CURRENT, lifecycle.snapshot().resultRelation)
     }
 
@@ -157,6 +164,55 @@ class AnalysisLifecycleTest {
     }
 
     @Test
+    fun `unknown or inconsistent coverage cannot claim complete analysis`() {
+        val coverages =
+            listOf(
+                AnalysisCoverage(),
+                AnalysisCoverage(eligibleFiles = 3),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 3),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = -1),
+                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2, failedFiles = -1),
+            )
+        for (coverage in coverages) {
+            val lifecycle = AnalysisLifecycle<String>()
+            val request = requireNotNull(lifecycle.begin())
+            assertTrue(lifecycle.publish(request, AnalysisOutcome.Complete("not verified", coverage)))
+            assertEquals(AnalysisPhase.PARTIAL, lifecycle.snapshot().phase)
+            assertEquals(Completeness.PARTIAL, lifecycle.snapshot().attemptCompleteness)
+        }
+    }
+
+    @Test
+    fun `partial attempt without evidence retains previous result and reports partial status`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val first = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(first, complete("previous")))
+        val next = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(next, partial(null)))
+        val state = lifecycle.snapshot()
+        assertEquals(AnalysisPhase.PARTIAL, state.phase)
+        assertEquals(Completeness.PARTIAL, state.attemptCompleteness)
+        assertEquals(ResultRelation.PREVIOUS, state.resultRelation)
+        assertEquals("previous", state.visibleResult?.payload)
+        assertEquals(first, state.visibleResult?.request)
+        assertTrue(state.diagnostics.isNotEmpty())
+    }
+
+    @Test
+    fun `analysis stages do not regress and invalid progress is rejected`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val request = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.advance(request, AnalysisPhase.EXTRACTING, 0.2))
+        assertFalse(lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, Double.NaN))
+        assertEquals(AnalysisPhase.EXTRACTING, lifecycle.snapshot().phase)
+        assertTrue(lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, 0.5))
+        assertFalse(lifecycle.advance(request, AnalysisPhase.EXTRACTING))
+        assertFalse(lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, Double.POSITIVE_INFINITY))
+        assertEquals(AnalysisPhase.BUILDING_GRAPH, lifecycle.snapshot().phase)
+        assertEquals(0.5, lifecycle.snapshot().progress)
+    }
+
+    @Test
     fun `closing a project blocks future work and callbacks`() {
         val lifecycle = AnalysisLifecycle<String>()
         val request = requireNotNull(lifecycle.begin())
@@ -218,9 +274,15 @@ class AnalysisLifecycleTest {
         val a = requireNotNull(lifecycle.begin())
         lifecycle.publish(a, complete("previous"))
         val b = requireNotNull(lifecycle.begin())
-        assertTrue(lifecycle.publish(b, AnalysisOutcome.Unavailable(
-            "NO_SOURCE", AnalysisCoverage(eligibleFiles = 0, analyzedFiles = 0),
-        )))
+        assertTrue(
+            lifecycle.publish(
+                b,
+                AnalysisOutcome.Unavailable(
+                    "NO_SOURCE",
+                    AnalysisCoverage(eligibleFiles = 0, analyzedFiles = 0),
+                ),
+            ),
+        )
         assertEquals("previous", lifecycle.snapshot().visibleResult?.payload)
         assertEquals(ResultRelation.PREVIOUS, lifecycle.snapshot().resultRelation)
         assertEquals(0, lifecycle.snapshot().attemptCoverage?.eligibleFiles)

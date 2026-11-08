@@ -35,7 +35,9 @@ class RunPsiScanActionNoConfigE2ETest : ShamashPluginE2eTestBase() {
 
         fire(RunPsiScanAction())
 
-        val lifecycle = io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator.getInstance(project)
+        val lifecycle =
+            io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
+                .getInstance(project)
         assertTrue(lifecycle.state().requestGeneration > 0)
         assertTrue(ShamashPsiUiStateService.getInstance(project).lastValidationErrors.isEmpty())
         assertSame(controller.dashboardTab.component(), tabs.selectedComponent)

@@ -146,27 +146,32 @@ class ShamashAsmScanRunner(
                 )
             }
 
-        val inputErrors = buildList {
-            runnerErrors.forEach { error ->
-                add(EngineError.factsExtractionFailed(
-                    message = "Bytecode scan incomplete: ${error.message}",
-                    details = mapOf("path" to error.path.orEmpty()),
-                ))
+        val inputErrors =
+            buildList {
+                runnerErrors.forEach { error ->
+                    add(
+                        EngineError.factsExtractionFailed(
+                            message = "Bytecode scan incomplete: ${error.message}",
+                            details = mapOf("path" to error.path.orEmpty()),
+                        ),
+                    )
+                }
+                factsResult.errors.forEach { error ->
+                    add(
+                        EngineError.factsExtractionFailed(
+                            message = "Facts extraction incomplete: ${error.message}",
+                            details = mapOf("origin" to error.originId, "phase" to error.phase),
+                        ),
+                    )
+                }
+                if (scan.truncated) {
+                    add(EngineError.factsExtractionFailed("Bytecode scan was truncated by its class limit"))
+                }
             }
-            factsResult.errors.forEach { error ->
-                add(EngineError.factsExtractionFailed(
-                    message = "Facts extraction incomplete: ${error.message}",
-                    details = mapOf("origin" to error.originId, "phase" to error.phase),
-                ))
-            }
-            if (scan.truncated) {
-                add(EngineError.factsExtractionFailed("Bytecode scan was truncated by its class limit"))
-            }
-        }
 
         val engineResult =
             try {
-                engine.analyze(
+                engine.analyzeWithInputErrors(
                     projectBasePath = options.projectBasePath,
                     projectName = options.projectName,
                     config = effectiveConfig,

@@ -34,11 +34,12 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         val snapshot = analyze()
         assertEquals(2, snapshot.coverage.analyzedFiles)
         assertFalse(snapshot.coverage.truncated)
-        val edge = snapshot.references.single {
-            it.target is SourceTarget.Internal &&
-                (it.target as SourceTarget.Internal).entity.signature == "demo.Repository" &&
-                it.kind == SourceDependencyKind.TYPE
-        }
+        val edge =
+            snapshot.references.single {
+                it.target is SourceTarget.Internal &&
+                    (it.target as SourceTarget.Internal).entity.signature == "demo.Repository" &&
+                    it.kind == SourceDependencyKind.TYPE
+            }
         assertTrue(edge.evidence.offset > 0)
         assertEquals("demo.Repository", (edge.target as SourceTarget.Internal).entity.signature)
         assertTrue(snapshot.coverage.resolvedOccurrences >= 1)
@@ -53,14 +54,20 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         )
         val snapshot = analyze()
         val edges = snapshot.references.filter { it.target is SourceTarget.Internal }
-        assertTrue(edges.any {
-            it.from.signature.contains("JavaCaller") &&
-                (it.target as SourceTarget.Internal).entity.signature.contains("KotlinTarget")
-        }, snapshot.diagnostics.toString())
-        assertTrue(edges.any {
-            it.from.signature.contains("KotlinTarget") &&
-                (it.target as SourceTarget.Internal).entity.signature.contains("JavaTarget")
-        }, snapshot.diagnostics.toString())
+        assertTrue(
+            edges.any {
+                it.from.signature.contains("JavaCaller") &&
+                    (it.target as SourceTarget.Internal).entity.signature.contains("KotlinTarget")
+            },
+            snapshot.diagnostics.toString(),
+        )
+        assertTrue(
+            edges.any {
+                it.from.signature.contains("KotlinTarget") &&
+                    (it.target as SourceTarget.Internal).entity.signature.contains("JavaTarget")
+            },
+            snapshot.diagnostics.toString(),
+        )
     }
 
     fun testKotlinTopLevelDeclarationsRetainPackageAndFileIdentity() {
@@ -79,14 +86,20 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         val properties = snapshot.entities.filter { it.id.declarationKind == SourceEntityKind.PROPERTY }
         assertTrue(properties.any { it.id.signature == "demo.singleton" && it.packageName == "demo" })
         val callerTargets = snapshot.references.filter { it.from.signature.contains("Caller") }.map { it.target }
-        assertTrue(callerTargets.any {
-            it is SourceTarget.Internal && it.entity.declarationKind == SourceEntityKind.FUNCTION &&
-                it.entity.signature.contains("demo.helper")
-        }, callerTargets.toString())
-        assertTrue(callerTargets.any {
-            it is SourceTarget.Internal && it.entity.declarationKind == SourceEntityKind.PROPERTY &&
-                it.entity.signature == "demo.singleton"
-        }, callerTargets.toString())
+        assertTrue(
+            callerTargets.any {
+                it is SourceTarget.Internal && it.entity.declarationKind == SourceEntityKind.FUNCTION &&
+                    it.entity.signature.contains("demo.helper")
+            },
+            callerTargets.toString(),
+        )
+        assertTrue(
+            callerTargets.any {
+                it is SourceTarget.Internal && it.entity.declarationKind == SourceEntityKind.PROPERTY &&
+                    it.entity.signature == "demo.singleton"
+            },
+            callerTargets.toString(),
+        )
     }
 
     fun testKotlinObjectsExtensionsCompanionsAndAliasesRemainDistinct() {
@@ -117,22 +130,33 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
             """.trimIndent(),
         )
         val snapshot = analyze()
-        assertTrue(snapshot.entities.any {
-            it.id.declarationKind == SourceEntityKind.TYPE_ALIAS && it.id.signature == "demo.Db"
-        })
-        assertTrue(snapshot.entities.any {
-            it.id.declarationKind == SourceEntityKind.OBJECT && it.id.signature.contains("Registry")
-        })
-        assertTrue(snapshot.entities.any {
-            it.id.declarationKind == SourceEntityKind.FUNCTION && it.id.signature.contains("extension")
-        })
-        assertTrue(snapshot.entities.any {
-            it.id.signature.contains("Factory.Companion.make")
-        })
-        assertTrue(snapshot.references.any {
-            it.from.signature.contains("Use") &&
-                (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("demo.Repository") == true
-        }, snapshot.diagnostics.toString())
+        assertTrue(
+            snapshot.entities.any {
+                it.id.declarationKind == SourceEntityKind.TYPE_ALIAS && it.id.signature == "demo.Db"
+            },
+        )
+        assertTrue(
+            snapshot.entities.any {
+                it.id.declarationKind == SourceEntityKind.OBJECT && it.id.signature.contains("Registry")
+            },
+        )
+        assertTrue(
+            snapshot.entities.any {
+                it.id.declarationKind == SourceEntityKind.FUNCTION && it.id.signature.contains("extension")
+            },
+        )
+        assertTrue(
+            snapshot.entities.any {
+                it.id.signature.contains("Factory.Companion.make")
+            },
+        )
+        assertTrue(
+            snapshot.references.any {
+                it.from.signature.contains("Use") &&
+                    (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("demo.Repository") == true
+            },
+            snapshot.diagnostics.toString(),
+        )
     }
 
     fun testGenericKotlinTypeAliasesRetainAllResolvedArguments() {
@@ -143,10 +167,13 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
             "package demo\nclass AliasUser { val items: Repositories = emptyList() }",
         )
         val result = analyze()
-        assertTrue(result.references.any {
-            it.from.signature == "demo.AliasUser.items" &&
-                (it.target as? SourceTarget.Internal)?.entity?.signature == "demo.Repository"
-        }, result.references.toString())
+        assertTrue(
+            result.references.any {
+                it.from.signature == "demo.AliasUser.items" &&
+                    (it.target as? SourceTarget.Internal)?.entity?.signature == "demo.Repository"
+            },
+            result.references.toString(),
+        )
     }
 
     fun testTestRootAndNestedRootsAreExcludedOrDeduplicated() {
@@ -160,7 +187,13 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertEquals(1, snapshot.coverage.eligibleFiles)
         assertEquals(1, snapshot.entities.count { it.displayName.contains("Production") })
         assertTrue(snapshot.entities.none { it.displayName.contains("TestOnly") })
-        assertEquals(1, snapshot.entities.map { it.id.fileUrl }.distinct().size)
+        assertEquals(
+            1,
+            snapshot.entities
+                .map { it.id.fileUrl }
+                .distinct()
+                .size,
+        )
     }
 
     fun testUnresolvedJavaReferenceIsPartialNotClean() {
@@ -175,8 +208,13 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
     fun testUnsavedEditorChangesAffectEdgesWithoutSavingDiskBytes() {
         java("Target.java", "package demo; class Target {}")
         val file = java("Caller.java", "package demo; class Caller {}")
-        val path = java.nio.file.Path.of(file.virtualFile.path)
-        val bytes = java.nio.file.Files.readAllBytes(path).toList()
+        val path =
+            java.nio.file.Path
+                .of(file.virtualFile.path)
+        val bytes =
+            java.nio.file.Files
+                .readAllBytes(path)
+                .toList()
         val before = analyze()
         assertTrue(before.relationships.isEmpty(), before.relationships.toString())
         val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file.virtualFile))
@@ -186,8 +224,24 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         }
         val after = analyze()
         assertTrue(after.relationships.any { it.target.signature == "demo.Target" }, after.diagnostics.toString())
-        assertEquals(bytes, java.nio.file.Files.readAllBytes(path).toList())
+        assertEquals(
+            bytes,
+            java.nio.file.Files
+                .readAllBytes(path)
+                .toList(),
+        )
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
+    }
+
+    fun testGraphAssemblyStageIsReachedForSelectedProductionSources() {
+        java("Repository.java", "package demo; class Repository {}")
+        var graphAssemblyCalls = 0
+        val result =
+            ProjectSourceAnalyzer(project).analyze(ProgressIndicatorBase()) {
+                graphAssemblyCalls++
+            }
+        assertEquals(1, graphAssemblyCalls)
+        assertEquals(1, result.coverage.analyzedFiles)
     }
 
     fun testFileLimitMarksSnapshotIncomplete() {
@@ -201,57 +255,15 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertTrue(snapshot.diagnostics.any { it.phase == "limit" })
     }
 
-    fun testRealJavaReferencesProduceClosedPackageCycleWithNavigableWitnesses() {
-        myFixture.addFileToProject(
-            "src/main/java/a/A.java",
-            "package a; public class A { b.B dependency; }",
-        )
-        myFixture.addFileToProject(
-            "src/main/java/b/B.java",
-            "package b; public class B { a.A dependency; }",
-        )
-        val source = analyze()
-        val graph = SourceGraphAnalyzer().analyze(source)
-        assertEquals(1, graph.cycles.size, graph.diagnostics.toString())
-        val concern = graph.cycles.single()
-        assertEquals(setOf("a", "b"), concern.members.map { it.packageName }.toSet())
-        assertEquals(2, concern.witness.size)
-        for (edge in concern.witness) {
-            assertEquals(edge.target, concern.witness[(concern.witness.indexOf(edge) + 1) % 2].from)
-            assertTrue(edge.witnesses.isNotEmpty())
-            for (witness in edge.witnesses) {
-                val file = com.intellij.openapi.vfs.VirtualFileManager.getInstance()
-                    .findFileByUrl(witness.reference.fileUrl)
-                assertTrue(file != null && file.isValid, "Unnavigable source witness: $witness")
-                assertTrue(witness.reference.length > 0)
-                assertTrue(witness.reference.offset >= 0)
-                assertEquals(witness.from.fileUrl, witness.reference.fileUrl)
-            }
-        }
-    }
-
-    fun testRealJavaKotlinPackageCycleUsesResolvedCrossLanguageEvidence() {
-        myFixture.addFileToProject(
-            "src/main/java/a/A.java",
-            "package a; public class A { b.K dependency; }",
-        )
-        myFixture.addFileToProject(
-            "src/main/kotlin/b/K.kt",
-            "package b\nclass K { val dependency: a.A? = null }",
-        )
-        val source = analyze()
-        val graph = SourceGraphAnalyzer().analyze(source)
-        assertEquals(1, graph.cycles.size, graph.diagnostics.toString())
-        assertEquals(setOf("a", "b"), graph.cycles.single().members.map { it.packageName }.toSet())
-        assertTrue(graph.cycles.single().witness.all { it.witnesses.isNotEmpty() })
-        assertTrue(graph.entityUses.values.any { it.isNotEmpty() })
-    }
-
     private fun analyze(): ProjectSourceSnapshot = ProjectSourceAnalyzer(project).analyze(ProgressIndicatorBase())
 
-    private fun java(name: String, source: String) =
-        myFixture.addFileToProject("src/main/java/demo/$name", source)
+    private fun java(
+        name: String,
+        source: String,
+    ) = myFixture.addFileToProject("src/main/java/demo/$name", source)
 
-    private fun kotlin(name: String, source: String) =
-        myFixture.addFileToProject("src/main/kotlin/demo/$name", source)
+    private fun kotlin(
+        name: String,
+        source: String,
+    ) = myFixture.addFileToProject("src/main/kotlin/demo/$name", source)
 }

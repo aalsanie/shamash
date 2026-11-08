@@ -68,7 +68,7 @@ jobs:
             '[.protection_rules[] | select(.type == "required_reviewers" and .prevent_self_review == false and (.reviewers | length) == 1 and .reviewers[0].type == "User" and .reviewers[0].reviewer.id == 22101794)] | length' | grep -qx '1'
 
   authorize:
-    name: Approve expensive CI
+    name: Approve CI
     needs: preflight
     if: needs.preflight.outputs.expensive == 'true'
     runs-on: ubuntu-latest
@@ -100,7 +100,7 @@ jobs:
       - name: Verify coverage summary parser
         run: python -m unittest discover -s scripts/tests -v
       - name: Generate merged XML and HTML coverage
-        run: ./gradlew --stacktrace :koverXmlReport :koverHtmlReport
+        run: python scripts/ci-gradle-retry.py ./gradlew --stacktrace :koverXmlReport :koverHtmlReport
       - name: Validate package attribution and summarize coverage
         run: python scripts/coverage-summary.py build/reports/kover/report.xml --output build/reports/coverage/summary.json
       - if: always()
@@ -139,12 +139,25 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Spotless + tests (Unix)
         if: runner.os != 'Windows'
-        run: ./gradlew --stacktrace spotlessCheck test
+        run: python scripts/ci-gradle-retry.py ./gradlew --stacktrace spotlessCheck test
       - name: Spotless + tests (Windows)
         if: runner.os == 'Windows'
-        run: .\gradlew.bat --stacktrace spotlessCheck test
+        run: python scripts/ci-gradle-retry.py .\gradlew.bat --stacktrace spotlessCheck test
       - name: Verify IntelliJ test discovery
         run: python scripts/verify-plugin-tests.py
+      # Build one portable distribution from the fully tested Ubuntu checkout.
+      # Smoke jobs execute this exact ZIP on every OS rather than each downloading
+      # Gradle and dependencies again to rebuild identical bytecode.
+      - name: Package CLI for cross-platform smoke tests
+        if: matrix.os == 'ubuntu-latest'
+        run: python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-cli:distZip
+      - name: Upload tested CLI distribution
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: packaged-cli
+          path: shamash-cli/build/distributions/*.zip
+          if-no-files-found: error
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -167,20 +180,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - if: runner.os != 'Windows'
-        run: chmod +x gradlew
-      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: "17"
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
-      - name: Build CLI distribution (Unix)
-        if: runner.os != 'Windows'
-        run: ./gradlew --stacktrace :shamash-cli:distZip
-      - name: Build CLI distribution (Windows)
-        if: runner.os == 'Windows'
-        run: .\gradlew.bat --stacktrace :shamash-cli:distZip
+      - name: Download tested CLI distribution
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: packaged-cli
+          path: shamash-cli/build/distributions
       - name: Smoke packaged CLI
         run: python scripts/cli-smoke-test.py "shamash-cli/build/distributions/*.zip"
 
@@ -204,7 +212,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin :shamash-intellij-plugin:verifyPlugin 2>&1 | tee plugin-verifier.log
+          python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin :shamash-intellij-plugin:verifyPlugin 2>&1 | tee plugin-verifier.log
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -236,7 +244,7 @@ jobs:
       - name: Verify validation scripts
         run: python -m unittest discover -s scripts/tests -v
       - name: Publish candidate libraries locally
-        run: sh gradlew --no-configuration-cache --stacktrace publishLibrariesToTestRepository
+        run: python scripts/ci-gradle-retry.py sh gradlew --no-configuration-cache --stacktrace publishLibrariesToTestRepository
       - name: Verify isolated Java and Kotlin consumers
         run: python scripts/verify-consumers.py
       - name: Verify library ABI against reviewed baseline

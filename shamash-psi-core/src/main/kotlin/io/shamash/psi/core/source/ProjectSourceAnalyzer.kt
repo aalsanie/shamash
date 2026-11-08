@@ -11,10 +11,11 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
+import java.util.concurrent.CancellationException
 
 /** A changed PSI or project-root revision cannot produce a coherent source snapshot. */
 class SourceRevisionChangedException : IllegalStateException("Source or root revision changed during analysis")
@@ -24,7 +25,10 @@ class ProjectSourceAnalyzer(
     private val project: Project,
     private val profile: SourceAnalysisProfile = SourceAnalysisProfile(),
 ) {
-    fun analyze(indicator: ProgressIndicator): ProjectSourceSnapshot {
+    fun analyze(
+        indicator: ProgressIndicator,
+        beforeGraphAssembly: () -> Unit = {},
+    ): ProjectSourceSnapshot {
         val dumb = DumbService.getInstance(project)
         val psi = PsiManager.getInstance(project)
         val rootManager = ProjectRootManager.getInstance(project)
@@ -48,8 +52,7 @@ class ProjectSourceAnalyzer(
         var changed = false
         var truncated = scope.truncated
 
-        fun revisionsMatch(): Boolean =
-            initialPsi == psiTracker.modificationCount && initialRoots == rootTracker.modificationCount
+        fun revisionsMatch(): Boolean = initialPsi == psiTracker.modificationCount && initialRoots == rootTracker.modificationCount
 
         val extractor =
             SourceDependencyExtractor { file ->
@@ -98,7 +101,13 @@ class ProjectSourceAnalyzer(
                 }
             } catch (cancel: ProcessCanceledException) {
                 throw cancel
-            } catch (t: Throwable) {
+            } catch (cancel: CancellationException) {
+                throw ProcessCanceledException()
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw ProcessCanceledException()
+            } catch (t: Exception) {
+                rethrowSourceCancellation(t)
                 failed++
                 diagnostics +=
                     SourceDiagnostic(item.file.url, "extract", "${t.javaClass.simpleName}: ${t.message ?: "source failed"}")
@@ -107,30 +116,39 @@ class ProjectSourceAnalyzer(
         if (!revisionsMatch()) changed = true
         if (changed) throw SourceRevisionChangedException()
         if (!revisionsMatch()) throw SourceRevisionChangedException()
+        if (scope.files.isNotEmpty()) beforeGraphAssembly()
+        indicator.checkCanceled()
+        if (!revisionsMatch()) throw SourceRevisionChangedException()
         truncated = truncated || relationships.truncated
         if (truncated) {
             diagnostics += SourceDiagnostic(null, "limit", "Source analysis reached an internal resource bound")
         }
         val unresolved = relationships.unresolvedOccurrences
         val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
-        return ProjectSourceSnapshot(
-            profile = profile,
-            entities =
-                entities.distinctBy { it.id }
-                    .sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
-            references = relationships.evidence(),
-            relationships = relationships.relationships(),
-            diagnostics = diagnostics.distinct(),
-            coverage = SourceCoverage(
-                eligibleFiles = scope.files.size,
-                analyzedFiles = analyzed,
-                failedFiles = failed,
-                resolvedOccurrences = relationships.resolvedOccurrences,
-                unresolvedOccurrences = unresolved,
-                excludedFiles = scope.excluded,
-                truncated = truncated,
-            ),
-            complete = complete,
-        )
+        val snapshot =
+            ProjectSourceSnapshot(
+                profile = profile,
+                entities =
+                    entities
+                        .distinctBy { it.id }
+                        .sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
+                references = relationships.evidence(),
+                relationships = relationships.relationships(),
+                diagnostics = diagnostics.distinct(),
+                coverage =
+                    SourceCoverage(
+                        eligibleFiles = scope.files.size,
+                        analyzedFiles = analyzed,
+                        failedFiles = failed,
+                        resolvedOccurrences = relationships.resolvedOccurrences,
+                        unresolvedOccurrences = unresolved,
+                        excludedFiles = scope.excluded,
+                        truncated = truncated,
+                    ),
+                complete = complete,
+            )
+        indicator.checkCanceled()
+        if (!revisionsMatch()) throw SourceRevisionChangedException()
+        return snapshot
     }
 }
