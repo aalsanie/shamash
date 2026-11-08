@@ -30,8 +30,8 @@ import java.util.Locale
 import javax.swing.AbstractAction
 import javax.swing.DefaultListModel
 import javax.swing.JButton
-import javax.swing.JComponent
 import javax.swing.JComboBox
+import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTree
