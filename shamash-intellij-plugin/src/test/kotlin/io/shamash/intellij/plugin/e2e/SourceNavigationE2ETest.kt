@@ -18,7 +18,7 @@
 package io.shamash.intellij.plugin.e2e
 
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.testFramework.PsiTestUtil
@@ -87,7 +87,7 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
                 ),
             )
         val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
-        WriteAction.run<RuntimeException> { document.insertString(0, " ") }
+        WriteCommandAction.runWriteCommandAction(project) { document.insertString(0, " ") }
         assertFalse(SourceNavigationService(project).open(witness))
     }
 

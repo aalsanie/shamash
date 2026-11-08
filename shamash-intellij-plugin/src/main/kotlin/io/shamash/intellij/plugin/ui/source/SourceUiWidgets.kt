@@ -116,7 +116,7 @@ internal class SourceEvidencePanel(
                 }
             },
         )
-        accessibleContext.accessibleName = "Source evidence"
+        getAccessibleContext().accessibleName = "Source evidence"
     }
 
     fun showEvidence(
@@ -158,7 +158,7 @@ internal class PageControls : JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEF
         add(previous)
         add(next)
         add(label)
-        accessibleContext.accessibleName = "Result pages"
+        getAccessibleContext().accessibleName = "Result pages"
     }
 
     fun update(total: Int) {

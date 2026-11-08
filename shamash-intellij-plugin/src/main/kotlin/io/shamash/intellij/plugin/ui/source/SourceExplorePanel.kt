@@ -360,7 +360,7 @@ internal class SourceExplorePanel(
                 override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
             },
         )
-        accessibleContext.accessibleName = "Explore"
+        getAccessibleContext().accessibleName = "Explore"
         refreshTree()
     }
 

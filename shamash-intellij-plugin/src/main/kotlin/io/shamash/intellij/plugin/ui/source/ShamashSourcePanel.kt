@@ -92,7 +92,7 @@ class ShamashSourcePanel(
         analyze.accessibleContext.accessibleName = "Analyze project source"
         cancel.accessibleContext.accessibleName = "Cancel source analysis"
         help.accessibleContext.accessibleName = "Help and advanced architecture enforcement"
-        accessibleContext.accessibleName = "Shamash source analysis"
+        getAccessibleContext().accessibleName = "Shamash source analysis"
 
         coordinator.subscribe(this) { next ->
             if (!disposed && !project.isDisposed) render(next)

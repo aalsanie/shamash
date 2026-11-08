@@ -63,6 +63,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             val before = coordinator.state().requestGeneration
             val view = ShamashSourcePanel(project)
             try {
+                assertEquals("Shamash source analysis", view.accessibleContext.accessibleName)
+                assertEquals("Findings", view.findings.accessibleContext.accessibleName)
+                assertEquals("Explore", view.explore.accessibleContext.accessibleName)
                 assertEquals(2, view.tabs.tabCount)
                 assertEquals("Findings", view.tabs.getTitleAt(0))
                 assertEquals("Explore", view.tabs.getTitleAt(1))
@@ -342,6 +345,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     fun testEvidencePanelNeverOpensMissingOrStaleLocations() {
         runInEdtAndWait {
             val panel = SourceEvidencePanel(project)
+            assertEquals("Source evidence", panel.accessibleContext.accessibleName)
             val id =
                 SourceEntityId(
                     "missing-module",
@@ -381,6 +385,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     fun testPageControlsPreventOverflowAndDisableAtBoundaries() {
         runInEdtAndWait {
             val controls = PageControls()
+            assertEquals("Result pages", controls.accessibleContext.accessibleName)
             controls.update(0)
             assertFalse(controls.previous.isEnabled)
             assertFalse(controls.next.isEnabled)

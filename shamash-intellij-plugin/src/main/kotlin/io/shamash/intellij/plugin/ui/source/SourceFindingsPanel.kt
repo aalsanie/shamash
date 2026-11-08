@@ -239,7 +239,7 @@ internal class SourceFindingsPanel(
                 override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
             },
         )
-        accessibleContext.accessibleName = "Findings"
+        getAccessibleContext().accessibleName = "Findings"
         resetFilters()
         renderPage()
     }
