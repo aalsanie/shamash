@@ -17,8 +17,14 @@ internal fun rethrowSourceCancellation(failure: Throwable) {
     var cause: Throwable? = failure
     while (cause != null && seen.add(cause)) {
         when (cause) {
-            is ProcessCanceledException -> throw cause
-            is CancellationException -> throw ProcessCanceledException()
+            is ProcessCanceledException -> {
+                throw cause
+            }
+
+            is CancellationException -> {
+                throw ProcessCanceledException()
+            }
+
             is InterruptedException -> {
                 Thread.currentThread().interrupt()
                 throw ProcessCanceledException()

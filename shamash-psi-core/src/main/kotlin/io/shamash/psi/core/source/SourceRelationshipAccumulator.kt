@@ -11,7 +11,9 @@ package io.shamash.psi.core.source
  * Aggregates outside PSI read locks. Counts all occurrences; retains bounded evidence per
  * distinct relationship, with no silently evicted internal edge in a COMPLETE result.
  */
-class SourceRelationshipAccumulator(private val profile: SourceAnalysisProfile) {
+class SourceRelationshipAccumulator(
+    private val profile: SourceAnalysisProfile,
+) {
     init {
         require(profile.maxFiles > 0 && profile.maxRelationships > 0 && profile.maxWitnesses > 0)
     }
@@ -47,10 +49,12 @@ class SourceRelationshipAccumulator(private val profile: SourceAnalysisProfile) 
                     }
                 record(counter, dependency)
             }
+
             is SourceTarget.External -> {
                 resolvedOccurrences++
                 recordOther(dependency)
             }
+
             is SourceTarget.Unresolved -> {
                 unresolvedOccurrences++
                 recordOther(dependency)
@@ -71,24 +75,28 @@ class SourceRelationshipAccumulator(private val profile: SourceAnalysisProfile) 
         record(counter, reference)
     }
 
-    private fun record(counter: Counter, reference: SourceDependency) {
+    private fun record(
+        counter: Counter,
+        reference: SourceDependency,
+    ) {
         counter.total++
         counter.kinds += reference.kind
         if (counter.witnesses.size < profile.maxWitnesses) counter.witnesses += reference
     }
 
     fun relationships(): List<SourceRelationship> =
-        internal.map { (key, value) ->
-            SourceRelationship(
-                key.first,
-                key.second,
-                value.kinds.toSet(),
-                value.total,
-                value.witnesses.map { it.evidence },
+        internal
+            .map { (key, value) ->
+                SourceRelationship(
+                    key.first,
+                    key.second,
+                    value.kinds.toSet(),
+                    value.total,
+                    value.witnesses.map { it.evidence },
+                )
+            }.sortedWith(
+                compareBy({ it.from.moduleId }, { it.from.fileUrl }, { it.target.moduleId }, { it.target.signature }),
             )
-        }.sortedWith(
-            compareBy({ it.from.moduleId }, { it.from.fileUrl }, { it.target.moduleId }, { it.target.signature }),
-        )
 
     /** Retained evidence only; occurrence totals are in relationships and coverage. */
     fun evidence(): List<SourceDependency> =

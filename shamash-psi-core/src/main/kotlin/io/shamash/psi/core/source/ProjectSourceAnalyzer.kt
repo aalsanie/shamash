@@ -8,14 +8,14 @@
 package io.shamash.psi.core.source
 
 import com.intellij.openapi.progress.ProcessCanceledException
-import java.util.concurrent.CancellationException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
+import java.util.concurrent.CancellationException
 
 /** A changed PSI or project-root revision cannot produce a coherent source snapshot. */
 class SourceRevisionChangedException : IllegalStateException("Source or root revision changed during analysis")
@@ -52,8 +52,7 @@ class ProjectSourceAnalyzer(
         var changed = false
         var truncated = scope.truncated
 
-        fun revisionsMatch(): Boolean =
-            initialPsi == psiTracker.modificationCount && initialRoots == rootTracker.modificationCount
+        fun revisionsMatch(): Boolean = initialPsi == psiTracker.modificationCount && initialRoots == rootTracker.modificationCount
 
         val extractor =
             SourceDependencyExtractor { file ->
@@ -126,25 +125,28 @@ class ProjectSourceAnalyzer(
         }
         val unresolved = relationships.unresolvedOccurrences
         val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
-        val snapshot = ProjectSourceSnapshot(
-            profile = profile,
-            entities =
-                entities.distinctBy { it.id }
-                    .sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
-            references = relationships.evidence(),
-            relationships = relationships.relationships(),
-            diagnostics = diagnostics.distinct(),
-            coverage = SourceCoverage(
-                eligibleFiles = scope.files.size,
-                analyzedFiles = analyzed,
-                failedFiles = failed,
-                resolvedOccurrences = relationships.resolvedOccurrences,
-                unresolvedOccurrences = unresolved,
-                excludedFiles = scope.excluded,
-                truncated = truncated,
-            ),
-            complete = complete,
-        )
+        val snapshot =
+            ProjectSourceSnapshot(
+                profile = profile,
+                entities =
+                    entities
+                        .distinctBy { it.id }
+                        .sortedWith(compareBy({ it.id.moduleId }, { it.id.fileUrl }, { it.offset })),
+                references = relationships.evidence(),
+                relationships = relationships.relationships(),
+                diagnostics = diagnostics.distinct(),
+                coverage =
+                    SourceCoverage(
+                        eligibleFiles = scope.files.size,
+                        analyzedFiles = analyzed,
+                        failedFiles = failed,
+                        resolvedOccurrences = relationships.resolvedOccurrences,
+                        unresolvedOccurrences = unresolved,
+                        excludedFiles = scope.excluded,
+                        truncated = truncated,
+                    ),
+                complete = complete,
+            )
         indicator.checkCanceled()
         if (!revisionsMatch()) throw SourceRevisionChangedException()
         return snapshot

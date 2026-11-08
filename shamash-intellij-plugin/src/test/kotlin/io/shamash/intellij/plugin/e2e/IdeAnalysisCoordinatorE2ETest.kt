@@ -395,7 +395,6 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
     }
 
-
     private fun awaitTerminal() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         repeat(500) {

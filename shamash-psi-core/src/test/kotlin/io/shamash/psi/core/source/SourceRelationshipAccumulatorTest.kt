@@ -89,9 +89,13 @@ class SourceRelationshipAccumulatorTest {
         assertEquals(setOf(SourceDependencyKind.TYPE, SourceDependencyKind.CALL), relationship.kinds)
     }
 
-    private fun reference(target: SourceTarget, index: Int) =
-        SourceDependency(
-            from, target, SourceDependencyKind.TYPE,
-            SourceReference(from.fileUrl, index, 3, index.toLong()),
-        )
+    private fun reference(
+        target: SourceTarget,
+        index: Int,
+    ) = SourceDependency(
+        from,
+        target,
+        SourceDependencyKind.TYPE,
+        SourceReference(from.fileUrl, index, 3, index.toLong()),
+    )
 }
