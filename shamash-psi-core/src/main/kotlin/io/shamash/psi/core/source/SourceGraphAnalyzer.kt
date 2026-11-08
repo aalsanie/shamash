@@ -34,11 +34,13 @@ class SourceGraphAnalyzer {
                 diagnostics += SourceDiagnostic(entity.id.fileUrl, "graph", "Conflicting source declaration identity")
             }
         }
-        val packageByEntity = entityById.mapValues { (_, entity) ->
-            SourcePackageId(entity.id.moduleId, entity.packageName)
-        }
+        val packageByEntity =
+            entityById.mapValues { (_, entity) ->
+                SourcePackageId(entity.id.moduleId, entity.packageName)
+            }
         val packages =
-            entityById.values.groupBy { packageByEntity.getValue(it.id) }
+            entityById.values
+                .groupBy { packageByEntity.getValue(it.id) }
                 .toSortedMap()
                 .mapValues { (_, entities) -> entities.map { it.id }.sortedWith(ENTITY_ID_ORDER) }
 
@@ -51,7 +53,8 @@ class SourceGraphAnalyzer {
             if (!seenPairs.add(pair)) duplicatePairs.add(pair)
         }
         val evidenceByPair =
-            snapshot.references.asSequence()
+            snapshot.references
+                .asSequence()
                 .filter { it.target is SourceTarget.Internal }
                 .groupBy { it.from to (it.target as SourceTarget.Internal).entity }
         val valid = ArrayList<ValidatedRelationship>()
@@ -59,9 +62,12 @@ class SourceGraphAnalyzer {
             checkCancelled()
             if (relationship.from to relationship.target in duplicatePairs) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(
-                    relationship.from.fileUrl, "graph", "Duplicate source relationship identity",
-                )
+                diagnostics +=
+                    SourceDiagnostic(
+                        relationship.from.fileUrl,
+                        "graph",
+                        "Duplicate source relationship identity",
+                    )
                 continue
             }
             if (relationship.occurrences <= 0L ||
@@ -69,28 +75,34 @@ class SourceGraphAnalyzer {
                 relationship.target !in entityById
             ) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(
-                    relationship.from.fileUrl, "graph", "Missing declaration or invalid relationship count",
-                )
+                diagnostics +=
+                    SourceDiagnostic(
+                        relationship.from.fileUrl,
+                        "graph",
+                        "Missing declaration or invalid relationship count",
+                    )
                 continue
             }
             val pair = relationship.from to relationship.target
             val witnesses =
-                evidenceByPair[pair].orEmpty()
+                evidenceByPair[pair]
+                    .orEmpty()
                     .filter { ref ->
                         ref.kind in relationship.kinds &&
                             ref.evidence in relationship.witnesses &&
                             ref.evidence.fileUrl == relationship.from.fileUrl &&
                             ref.evidence.offset >= 0 && ref.evidence.length > 0
-                    }
-                    .distinct()
+                    }.distinct()
                     .sortedWith(REFERENCE_ORDER)
                     .take(profile.maxWitnesses)
             if (witnesses.isEmpty()) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(
-                    relationship.from.fileUrl, "graph", "No verified source occurrence for relationship",
-                )
+                diagnostics +=
+                    SourceDiagnostic(
+                        relationship.from.fileUrl,
+                        "graph",
+                        "No verified source occurrence for relationship",
+                    )
                 continue
             }
             valid += ValidatedRelationship(relationship, witnesses)
@@ -133,16 +145,21 @@ class SourceGraphAnalyzer {
                 SourceDependencySummary(entityUsedBy.getValue(id).size, entityIncomingOccurrences[id] ?: 0L)
             }
         val packageDeps =
-            packageEdges.entries.map { (key, value) ->
-                SourcePackageDependency(
-                    from = key.first,
-                    target = key.second,
-                    distinctEntityRelationships = value.distinctPairs.size,
-                    occurrences = value.occurrences,
-                    kinds = value.kinds.toSortedSet(compareBy { it.name }),
-                    witnesses = value.witnesses.distinct().sortedWith(PACKAGE_WITNESS_ORDER).take(profile.maxWitnesses),
-                )
-            }.sortedWith(compareBy({ it.from }, { it.target }))
+            packageEdges.entries
+                .map { (key, value) ->
+                    SourcePackageDependency(
+                        from = key.first,
+                        target = key.second,
+                        distinctEntityRelationships = value.distinctPairs.size,
+                        occurrences = value.occurrences,
+                        kinds = value.kinds.toSortedSet(compareBy { it.name }),
+                        witnesses =
+                            value.witnesses
+                                .distinct()
+                                .sortedWith(PACKAGE_WITNESS_ORDER)
+                                .take(profile.maxWitnesses),
+                    )
+                }.sortedWith(compareBy({ it.from }, { it.target }))
         val packageOut = packages.keys.associateWith { mutableSetOf<SourcePackageId>() }
         val packageIn = packages.keys.associateWith { mutableSetOf<SourcePackageId>() }
         val packageOccurrences = HashMap<SourcePackageId, Long>()
@@ -167,7 +184,8 @@ class SourceGraphAnalyzer {
             }
         val edgeByPair = packageDeps.associateBy { it.from to it.target }
         val cycles =
-            DirectedGraphAlgorithms.cyclicComponents(packages.keys, uses, checkCancelled)
+            DirectedGraphAlgorithms
+                .cyclicComponents(packages.keys, uses, checkCancelled)
                 .map { members ->
                     checkCancelled()
                     val witnessNodes = DirectedGraphAlgorithms.representativeCycle(members, uses, checkCancelled)
@@ -187,9 +205,12 @@ class SourceGraphAnalyzer {
                 reference.evidence.length <= 0
             ) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(
-                    reference.from.fileUrl, "graph", "Invalid external reference evidence",
-                )
+                diagnostics +=
+                    SourceDiagnostic(
+                        reference.from.fileUrl,
+                        "graph",
+                        "Invalid external reference evidence",
+                    )
                 continue
             }
             external += SourceExternalReference(reference.from, target.name, reference.kind, reference.evidence)
@@ -241,7 +262,10 @@ class SourceGraphAnalyzer {
         )
     }
 
-    private fun addCounts(left: Long, right: Long): Long = Math.addExact(left, right)
+    private fun addCounts(
+        left: Long,
+        right: Long,
+    ): Long = Math.addExact(left, right)
 
     private class PackageAccumulator {
         val distinctPairs = HashSet<Pair<SourceEntityId, SourceEntityId>>()
@@ -249,7 +273,10 @@ class SourceGraphAnalyzer {
         val witnesses = ArrayList<SourcePackageWitness>()
         var occurrences: Long = 0
 
-        fun retainWitness(candidate: SourcePackageWitness, limit: Int) {
+        fun retainWitness(
+            candidate: SourcePackageWitness,
+            limit: Int,
+        ) {
             val location = witnesses.binarySearch(candidate, PACKAGE_WITNESS_ORDER)
             if (location >= 0) return
             witnesses.add(-location - 1, candidate)
@@ -262,7 +289,10 @@ class SourceGraphAnalyzer {
         val witnesses: List<SourceDependency>,
     )
 
-    private fun cycleId(profileId: String, members: List<SourcePackageId>): String {
+    private fun cycleId(
+        profileId: String,
+        members: List<SourcePackageId>,
+    ): String {
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use { output ->
             fun field(value: String) {
@@ -292,8 +322,9 @@ class SourceGraphAnalyzer {
                 { it.signature },
             )
         val ENTITY_ORDER = compareBy<SourceEntity, SourceEntityId>(ENTITY_ID_ORDER) { it.id }
-        val RELATIONSHIP_ORDER = compareBy<SourceRelationship, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
-            .thenBy(ENTITY_ID_ORDER) { it.target }
+        val RELATIONSHIP_ORDER =
+            compareBy<SourceRelationship, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
+                .thenBy(ENTITY_ID_ORDER) { it.target }
         val REFERENCE_ORDER =
             compareBy<SourceDependency, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
                 .thenBy(ENTITY_ID_ORDER) { (it.target as SourceTarget.Internal).entity }

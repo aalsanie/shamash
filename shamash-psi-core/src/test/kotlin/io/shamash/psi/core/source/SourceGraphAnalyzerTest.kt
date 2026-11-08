@@ -9,13 +9,18 @@ package io.shamash.psi.core.source
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class SourceGraphAnalyzerTest {
-    private data class Arc(val from: Int, val to: Int, val occurrences: Long = 1L)
+    private data class Arc(
+        val from: Int,
+        val to: Int,
+        val occurrences: Long = 1L,
+    )
+
     private val analyzer = SourceGraphAnalyzer()
 
     @Test
@@ -42,11 +47,24 @@ class SourceGraphAnalyzerTest {
     @Test
     fun `long cycle closes without inventing a reverse dependency`() {
         val graph =
-            analyzer.analyze(fixture(listOf("a", "b", "c", "d"), listOf(
-                Arc(0, 1), Arc(1, 2), Arc(2, 3), Arc(3, 0),
-            )))
+            analyzer.analyze(
+                fixture(
+                    listOf("a", "b", "c", "d"),
+                    listOf(
+                        Arc(0, 1),
+                        Arc(1, 2),
+                        Arc(2, 3),
+                        Arc(3, 0),
+                    ),
+                ),
+            )
         assertEquals(1, graph.cycles.size)
-        assertEquals(4, graph.cycles.single().witness.size)
+        assertEquals(
+            4,
+            graph.cycles
+                .single()
+                .witness.size,
+        )
         assertCycleEvidence(graph.cycles.single())
         assertTrue(graph.packageUsedBy.getValue(pkg("b")).contains(pkg("a")))
         assertFalse(graph.packageUsedBy.getValue(pkg("a")).contains(pkg("b")))
@@ -55,9 +73,18 @@ class SourceGraphAnalyzerTest {
     @Test
     fun `intersecting cycles in one SCC give one concern with full membership`() {
         val graph =
-            analyzer.analyze(fixture(listOf("a", "b", "c", "d"), listOf(
-                Arc(0, 1), Arc(1, 0), Arc(1, 2), Arc(2, 1), Arc(2, 3),
-            )))
+            analyzer.analyze(
+                fixture(
+                    listOf("a", "b", "c", "d"),
+                    listOf(
+                        Arc(0, 1),
+                        Arc(1, 0),
+                        Arc(1, 2),
+                        Arc(2, 1),
+                        Arc(2, 3),
+                    ),
+                ),
+            )
         assertEquals(1, graph.cycles.size)
         val concern = graph.cycles.single()
         assertEquals(listOf(pkg("a"), pkg("b"), pkg("c")), concern.members)
@@ -69,9 +96,18 @@ class SourceGraphAnalyzerTest {
     @Test
     fun `disconnected SCCs stay separate and sort by membership count`() {
         val graph =
-            analyzer.analyze(fixture(listOf("a", "b", "c", "x", "y", "z"), listOf(
-                Arc(0, 1), Arc(1, 2), Arc(2, 0), Arc(3, 4), Arc(4, 3),
-            )))
+            analyzer.analyze(
+                fixture(
+                    listOf("a", "b", "c", "x", "y", "z"),
+                    listOf(
+                        Arc(0, 1),
+                        Arc(1, 2),
+                        Arc(2, 0),
+                        Arc(3, 4),
+                        Arc(4, 3),
+                    ),
+                ),
+            )
         assertEquals(listOf(3, 2), graph.cycles.map { it.members.size })
         graph.cycles.forEach(::assertCycleEvidence)
         assertFalse(graph.cycles.any { it.members.contains(pkg("z")) })
@@ -100,7 +136,11 @@ class SourceGraphAnalyzerTest {
         assertEquals(1, graph.cycles.size)
         assertEquals(
             setOf("module-left", "module-right"),
-            graph.cycles.single().members.map { it.moduleId }.toSet(),
+            graph.cycles
+                .single()
+                .members
+                .map { it.moduleId }
+                .toSet(),
         )
         assertCycleEvidence(graph.cycles.single())
     }
@@ -112,7 +152,12 @@ class SourceGraphAnalyzerTest {
         assertEquals(SourceDependencySummary(1, 20), graph.entityCounts.values.single { it.distinctTargets > 0 })
         assertEquals(SourceDependencySummary(1, 20), graph.packageCounts.getValue(pkg("a")))
         assertEquals(1, graph.packageDependencies.single().distinctEntityRelationships)
-        assertEquals(20, graph.packageDependencies.single().witnesses.size)
+        assertEquals(
+            20,
+            graph.packageDependencies
+                .single()
+                .witnesses.size,
+        )
         assertEquals(20L, graph.packageDependencies.single().occurrences)
         assertTrue(graph.cycles.isEmpty())
     }
@@ -120,16 +165,24 @@ class SourceGraphAnalyzerTest {
     @Test
     fun `full membership and profile define IDs independently of witness ordering`() {
         val source =
-            fixture(listOf("a", "b", "c"), listOf(
-                Arc(0, 1, 20), Arc(1, 2, 3), Arc(2, 0, 4), Arc(1, 0),
-            ))
+            fixture(
+                listOf("a", "b", "c"),
+                listOf(
+                    Arc(0, 1, 20),
+                    Arc(1, 2, 3),
+                    Arc(2, 0, 4),
+                    Arc(1, 0),
+                ),
+            )
         val baseline = analyzer.analyze(source)
         val shuffled =
-            analyzer.analyze(source.copy(
-                entities = source.entities.reversed(),
-                relationships = source.relationships.reversed().map { it.copy(witnesses = it.witnesses.reversed()) },
-                references = source.references.reversed(),
-            ))
+            analyzer.analyze(
+                source.copy(
+                    entities = source.entities.reversed(),
+                    relationships = source.relationships.reversed().map { it.copy(witnesses = it.witnesses.reversed()) },
+                    references = source.references.reversed(),
+                ),
+            )
         assertEquals(baseline.cycles, shuffled.cycles)
         assertEquals(baseline.packageDependencies, shuffled.packageDependencies)
         assertEquals(baseline.entityEvidence, shuffled.entityEvidence)
@@ -137,23 +190,38 @@ class SourceGraphAnalyzerTest {
         assertEquals(baseline.packageUses, shuffled.packageUses)
         val changedVersion = analyzer.analyze(source.copy(profile = source.profile.copy(id = "ide-source-v2")))
         assertNotEquals(baseline.cycles.single().id, changedVersion.cycles.single().id)
-        val expanded = analyzer.analyze(source.copy(
-            entities = source.entities + entity(3, "d", "module"),
-            relationships = source.relationships +
-                relationship(source.entities[2].id, entity(3, "d", "module").id),
-            references = source.references +
-                reference(source.entities[2].id, entity(3, "d", "module").id),
-        ))
+        val expanded =
+            analyzer.analyze(
+                source.copy(
+                    entities = source.entities + entity(3, "d", "module"),
+                    relationships =
+                        source.relationships +
+                            relationship(source.entities[2].id, entity(3, "d", "module").id),
+                    references =
+                        source.references +
+                            reference(source.entities[2].id, entity(3, "d", "module").id),
+                ),
+            )
         assertEquals(baseline.cycles.single().id, expanded.cycles.single().id)
     }
 
     @Test
     fun `external references remain labeled and never introduce a reverse edge`() {
         val source = fixture(listOf("a"), emptyList())
-        val ext = SourceDependency(
-            source.entities.single().id, SourceTarget.External("java.util.Map"), SourceDependencyKind.TYPE,
-            SourceReference(source.entities.single().id.fileUrl, 9, 3, 1),
-        )
+        val ext =
+            SourceDependency(
+                source.entities.single().id,
+                SourceTarget.External("java.util.Map"),
+                SourceDependencyKind.TYPE,
+                SourceReference(
+                    source.entities
+                        .single()
+                        .id.fileUrl,
+                    9,
+                    3,
+                    1,
+                ),
+            )
         val graph = analyzer.analyze(source.copy(references = listOf(ext)))
         assertTrue(graph.cycles.isEmpty())
         assertTrue(graph.packageDependencies.isEmpty())
@@ -219,23 +287,33 @@ class SourceGraphAnalyzerTest {
     @Test
     fun `length prefixed membership cannot collide across module and package boundaries`() {
         val first =
-            analyzer.analyze(fixture(
-                listOf("b|c", "z"), listOf(Arc(0, 1), Arc(1, 0)),
-                modules = listOf("a", "module"),
-            ))
+            analyzer.analyze(
+                fixture(
+                    listOf("b|c", "z"),
+                    listOf(Arc(0, 1), Arc(1, 0)),
+                    modules = listOf("a", "module"),
+                ),
+            )
         val second =
-            analyzer.analyze(fixture(
-                listOf("c", "z"), listOf(Arc(0, 1), Arc(1, 0)),
-                modules = listOf("a|b", "module"),
-            ))
+            analyzer.analyze(
+                fixture(
+                    listOf("c", "z"),
+                    listOf(Arc(0, 1), Arc(1, 0)),
+                    modules = listOf("a|b", "module"),
+                ),
+            )
         assertNotEquals(first.cycles.single().id, second.cycles.single().id)
     }
 
     @Test
     fun `package prefixes are not inferred as graph nodes or relationships`() {
-        val graph = analyzer.analyze(fixture(
-            listOf("com.acme.api", "com.acme.core"), listOf(Arc(0, 1)),
-        ))
+        val graph =
+            analyzer.analyze(
+                fixture(
+                    listOf("com.acme.api", "com.acme.core"),
+                    listOf(Arc(0, 1)),
+                ),
+            )
         assertEquals(2, graph.packages.size)
         assertFalse(graph.packages.containsKey(pkg("com")))
         assertFalse(graph.packages.containsKey(pkg("com.acme")))
@@ -245,32 +323,44 @@ class SourceGraphAnalyzerTest {
     @Test
     fun `two distinct entity dependencies can share a package edge with additive occurrences`() {
         val graph =
-            analyzer.analyze(fixture(
-                listOf("a", "a", "b", "b"), listOf(Arc(0, 2, 4), Arc(1, 3, 7)),
-            ))
+            analyzer.analyze(
+                fixture(
+                    listOf("a", "a", "b", "b"),
+                    listOf(Arc(0, 2, 4), Arc(1, 3, 7)),
+                ),
+            )
         val edge = graph.packageDependencies.single()
         assertEquals(2, edge.distinctEntityRelationships)
         assertEquals(11L, edge.occurrences)
         assertEquals(SourceDependencySummary(1, 11), graph.packageCounts.getValue(pkg("a")))
         assertEquals(SourceDependencySummary(1, 11), graph.packageIncomingCounts.getValue(pkg("b")))
-        assertEquals(SourceDependencySummary(1, 4), graph.entityIncomingCounts.getValue(
-            graph.entities[2].id,
-        ))
+        assertEquals(
+            SourceDependencySummary(1, 4),
+            graph.entityIncomingCounts.getValue(
+                graph.entities[2].id,
+            ),
+        )
         assertTrue(edge.witnesses.all { it.from.fileUrl == it.reference.fileUrl })
     }
 
     @Test
     fun `limited or diagnostic-bearing source coverage cannot establish no-cycle conclusion`() {
         val source = fixture(listOf("a", "b"), listOf(Arc(0, 1)))
-        val limited = analyzer.analyze(source.copy(
-            coverage = source.coverage.copy(truncated = true),
-        ))
+        val limited =
+            analyzer.analyze(
+                source.copy(
+                    coverage = source.coverage.copy(truncated = true),
+                ),
+            )
         assertFalse(limited.complete)
         assertFalse(limited.cycleAbsenceEstablished)
 
-        val diagnostic = analyzer.analyze(source.copy(
-            diagnostics = listOf(SourceDiagnostic(null, "resolve", "incomplete resolution")),
-        ))
+        val diagnostic =
+            analyzer.analyze(
+                source.copy(
+                    diagnostics = listOf(SourceDiagnostic(null, "resolve", "incomplete resolution")),
+                ),
+            )
         assertFalse(diagnostic.complete)
         assertFalse(diagnostic.cycleAbsenceEstablished)
     }
@@ -279,24 +369,33 @@ class SourceGraphAnalyzerTest {
     fun `missing declarations zero counts and invalid witness ranges fail closed`() {
         val base = fixture(listOf("a", "b"), listOf(Arc(0, 1)))
         val edge = base.relationships.single()
-        val missing = analyzer.analyze(base.copy(
-            relationships = listOf(edge.copy(target = edge.target.copy(signature = "not-collected"))),
-        ))
+        val missing =
+            analyzer.analyze(
+                base.copy(
+                    relationships = listOf(edge.copy(target = edge.target.copy(signature = "not-collected"))),
+                ),
+            )
         assertFalse(missing.complete)
         assertTrue(missing.packageDependencies.isEmpty())
         assertTrue(missing.diagnostics.any { it.message.contains("Missing declaration") })
 
-        val zero = analyzer.analyze(base.copy(
-            relationships = listOf(edge.copy(occurrences = 0)),
-        ))
+        val zero =
+            analyzer.analyze(
+                base.copy(
+                    relationships = listOf(edge.copy(occurrences = 0)),
+                ),
+            )
         assertFalse(zero.complete)
         assertTrue(zero.packageDependencies.isEmpty())
 
         val badWitness = SourceReference(edge.from.fileUrl, -1, 3, 1)
-        val bad = analyzer.analyze(base.copy(
-            relationships = listOf(edge.copy(witnesses = listOf(badWitness))),
-            references = listOf(base.references.single().copy(evidence = badWitness)),
-        ))
+        val bad =
+            analyzer.analyze(
+                base.copy(
+                    relationships = listOf(edge.copy(witnesses = listOf(badWitness))),
+                    references = listOf(base.references.single().copy(evidence = badWitness)),
+                ),
+            )
         assertFalse(bad.complete)
         assertTrue(bad.packageDependencies.isEmpty())
         assertTrue(bad.diagnostics.any { it.message.contains("verified source occurrence") })
@@ -321,7 +420,9 @@ class SourceGraphAnalyzerTest {
         val entity = source.entities.single().id
         val malformed =
             SourceDependency(
-                entity, SourceTarget.External("example.Outside"), SourceDependencyKind.TYPE,
+                entity,
+                SourceTarget.External("example.Outside"),
+                SourceDependencyKind.TYPE,
                 SourceReference(entity.fileUrl, -1, 3, 1),
             )
         val graph = analyzer.analyze(source.copy(references = listOf(malformed)))
@@ -344,8 +445,18 @@ class SourceGraphAnalyzerTest {
     fun `package evidence cap does not change occurrence or distinct-target counts`() {
         val source = fixture(listOf("a", "b"), listOf(Arc(0, 1, 20)))
         val graph = analyzer.analyze(source.copy(profile = source.profile.copy(maxWitnesses = 1)))
-        assertEquals(1, graph.packageDependencies.single().witnesses.size)
-        assertEquals(1, graph.entityRelationships.single().witnesses.size)
+        assertEquals(
+            1,
+            graph.packageDependencies
+                .single()
+                .witnesses.size,
+        )
+        assertEquals(
+            1,
+            graph.entityRelationships
+                .single()
+                .witnesses.size,
+        )
         assertEquals(20L, graph.packageDependencies.single().occurrences)
         assertEquals(20L, graph.entityRelationships.single().occurrences)
     }
@@ -368,8 +479,18 @@ class SourceGraphAnalyzerTest {
             )
         val graph = analyzer.analyze(source)
         assertEquals(1, graph.cycles.size)
-        assertEquals(count, graph.cycles.single().members.size)
-        assertEquals(count, graph.cycles.single().witness.size)
+        assertEquals(
+            count,
+            graph.cycles
+                .single()
+                .members.size,
+        )
+        assertEquals(
+            count,
+            graph.cycles
+                .single()
+                .witness.size,
+        )
         assertCycleEvidence(graph.cycles.single())
     }
 
@@ -387,20 +508,39 @@ class SourceGraphAnalyzerTest {
 
     private fun pkg(value: String) = SourcePackageId("module", value)
 
-    private fun entity(index: Int, packageName: String, module: String): SourceEntity {
+    private fun entity(
+        index: Int,
+        packageName: String,
+        module: String,
+    ): SourceEntity {
         val id =
             SourceEntityId(module, "file:///src", "file:///src/$module/$index.kt", SourceEntityKind.CLASS, "T$index")
         return SourceEntity(id, packageName, "T$index", 0)
     }
 
-    private fun reference(from: SourceEntityId, target: SourceEntityId, index: Int = 0) =
-        SourceDependency(from, SourceTarget.Internal(target), SourceDependencyKind.CALL,
-            SourceReference(from.fileUrl, 10 + index, 3, 1))
+    private fun reference(
+        from: SourceEntityId,
+        target: SourceEntityId,
+        index: Int = 0,
+    ) = SourceDependency(
+        from,
+        SourceTarget.Internal(target),
+        SourceDependencyKind.CALL,
+        SourceReference(from.fileUrl, 10 + index, 3, 1),
+    )
 
-    private fun relationship(from: SourceEntityId, target: SourceEntityId) =
-        SourceRelationship(from, target, setOf(SourceDependencyKind.CALL), 1, listOf(
+    private fun relationship(
+        from: SourceEntityId,
+        target: SourceEntityId,
+    ) = SourceRelationship(
+        from,
+        target,
+        setOf(SourceDependencyKind.CALL),
+        1,
+        listOf(
             SourceReference(from.fileUrl, 10, 3, 1),
-        ))
+        ),
+    )
 
     private fun fixture(
         packageNames: List<String>,
@@ -412,7 +552,10 @@ class SourceGraphAnalyzerTest {
             arcs.map { (a, b, count) ->
                 val from = nodes[a].id
                 SourceRelationship(
-                    from, nodes[b].id, setOf(SourceDependencyKind.CALL), count,
+                    from,
+                    nodes[b].id,
+                    setOf(SourceDependencyKind.CALL),
+                    count,
                     (0 until minOf(count, 20).toInt()).map { offset ->
                         SourceReference(from.fileUrl, offset + 10, 3, 1)
                     },

@@ -24,7 +24,11 @@ object DirectedGraphAlgorithms {
         val outgoing =
             vertices.associateWith { node ->
                 checkCancelled()
-                edges[node].orEmpty().filter { it in allowed }.distinct().sorted()
+                edges[node]
+                    .orEmpty()
+                    .filter { it in allowed }
+                    .distinct()
+                    .sorted()
             }
         val incoming = vertices.associateWith { mutableListOf<N>() }
         for ((from, targets) in outgoing) {
@@ -39,7 +43,10 @@ object DirectedGraphAlgorithms {
             it.sort()
         }
 
-        data class Frame<N>(val node: N, var next: Int = 0)
+        data class Frame<N>(
+            val node: N,
+            var next: Int = 0,
+        )
 
         val visited = HashSet<N>()
         val finished = ArrayList<N>(vertices.size)
@@ -95,7 +102,11 @@ object DirectedGraphAlgorithms {
         require(component.size > 1) { "A package cycle requires at least two nodes" }
         val group = component.toHashSet()
         val start = component.minOrNull() ?: error("Empty component")
-        for (next in edges[start].orEmpty().filter { it in group && it != start }.distinct().sorted()) {
+        for (next in edges[start]
+            .orEmpty()
+            .filter { it in group && it != start }
+            .distinct()
+            .sorted()) {
             checkCancelled()
             val queue = ArrayDeque<N>()
             val previous = HashMap<N, N?>()
@@ -104,7 +115,11 @@ object DirectedGraphAlgorithms {
             while (queue.isNotEmpty() && start !in previous) {
                 checkCancelled()
                 val node = queue.removeFirst()
-                for (neighbor in edges[node].orEmpty().filter { it in group }.distinct().sorted()) {
+                for (neighbor in edges[node]
+                    .orEmpty()
+                    .filter { it in group }
+                    .distinct()
+                    .sorted()) {
                     if (neighbor in previous) continue
                     previous[neighbor] = node
                     queue.addLast(neighbor)

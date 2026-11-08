@@ -421,9 +421,11 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(setOf("left", "right"), cycle.members.map { it.packageName }.toSet())
         assertEquals(2, cycle.witness.size)
         assertTrue(cycle.witness.all { it.witnesses.isNotEmpty() })
-        assertTrue(cycle.witness.all { edge ->
-            edge.witnesses.all { it.reference.fileUrl == it.from.fileUrl }
-        })
+        assertTrue(
+            cycle.witness.all { edge ->
+                edge.witnesses.all { it.reference.fileUrl == it.from.fileUrl }
+            },
+        )
     }
 
     private fun awaitTerminal() {
