@@ -45,6 +45,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.source.ProjectSourceSnapshot
@@ -67,6 +68,7 @@ class IdeAnalysisCoordinator(
         val engineErrors: List<EngineError> = emptyList(),
         val sourceFacts: ProjectSourceSnapshot? = null,
         val sourceGraph: SourceGraphSnapshot? = null,
+        val uiModel: SourceUiModel? = null,
     )
 
     fun interface Backend {

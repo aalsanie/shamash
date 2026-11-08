@@ -50,6 +50,11 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
+        <action id="io.shamash.analyze"
+                class="io.shamash.intellij.plugin.ui.source.AnalyzeProjectAction"
+                text="Shamash: Analyze Project"
+                description="Analyze Java/Kotlin production source dependencies"/>
+
         <!-- Internal actions remain registered because dashboards/toolbars invoke them by id.
              They are intentionally not added to the top-level Tools menu. -->
         <action id="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction"
