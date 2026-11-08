@@ -74,7 +74,13 @@ class SourceRelationshipAccumulatorTest {
         assertTrue(reducer.truncated)
         assertEquals(1, reducer.relationships().size)
         assertEquals(2L, reducer.relationships().single().occurrences)
-        assertEquals(2, reducer.evidence().size)
+        // The unresolved target exceeded the separate external/unresolved budget.
+        // The first external witness and both internal occurrences remain available.
+        val evidence = reducer.evidence()
+        assertEquals(3, evidence.size)
+        assertEquals(2, evidence.count { it.target == SourceTarget.Internal(target) })
+        assertTrue(evidence.any { it.target == SourceTarget.External("java.util.Map") })
+        assertTrue(evidence.none { it.target is SourceTarget.Unresolved })
         assertEquals(3L, reducer.resolvedOccurrences)
         assertEquals(1L, reducer.unresolvedOccurrences)
     }
