@@ -32,6 +32,8 @@ internal class SourceNavigationService(private val project: Project) {
         if (project.isDisposed) return false
         val reference = evidence.reference
         val owner = evidence.owner
+        val target = evidence.target ?: return false
+        val kind = evidence.kind ?: return false
         if (reference.fileUrl != owner.fileUrl || reference.offset < 0 || reference.length <= 0) return false
 
         val file = VirtualFileManager.getInstance().findFileByUrl(reference.fileUrl) ?: return false
@@ -67,13 +69,10 @@ internal class SourceNavigationService(private val project: Project) {
             }
             val extracted = extractor.extract(psi, location)
             if (extracted.entities.none { it.id == owner }) return@compute false
-            if (evidence.target != null || evidence.kind != null) {
-                extracted.references.any {
-                    it.from == owner && it.evidence == reference &&
-                        (evidence.target == null || it.target == evidence.target) &&
-                        (evidence.kind == null || it.kind == evidence.kind)
-                }
-            } else true
+            extracted.references.any {
+                it.from == owner && it.evidence == reference &&
+                    it.target == target && it.kind == kind
+            }
         }
         if (!valid ||
             FileDocumentManager.getInstance().getDocument(file)?.modificationStamp != reference.documentStamp

@@ -76,7 +76,11 @@ class SourceUiModelTest {
         assertEquals(20, out.evidence.size)
         assertEquals(1, out.distinctTargets)
         assertEquals(out.evidence, inbound.evidence)
-        assertEquals(20L, model.uses(SourceSelection.Declaration(model.graph.entities[0].id)).single().occurrences)
+        val declarationEvidence = model.uses(SourceSelection.Declaration(model.graph.entities[0].id)).single()
+        assertEquals(20L, declarationEvidence.occurrences)
+        assertTrue(declarationEvidence.evidence.all {
+            it.target is SourceTarget.Internal && it.kind == SourceDependencyKind.CALL
+        })
         assertEquals(1, model.usedBy(SourceSelection.Declaration(model.graph.entities[1].id)).size)
         assertTrue(model.usedBy(SourceSelection.Declaration(model.graph.entities[0].id)).isEmpty())
     }
@@ -161,6 +165,7 @@ class SourceUiModelTest {
         assertTrue(SourceUiModel.page(numbers, 3).isEmpty())
         assertEquals(numbers.take(50), SourceUiModel.page(numbers, -10))
         assertEquals(3, SourceUiModel.pageCount(111))
+        assertEquals(42_949_673, SourceUiModel.pageCount(Int.MAX_VALUE))
         assertEquals(1, SourceUiModel.pageCount(0))
         assertEquals("module:(default)", SourceUiModel.qualified(SourcePackageId("module", "")))
     }

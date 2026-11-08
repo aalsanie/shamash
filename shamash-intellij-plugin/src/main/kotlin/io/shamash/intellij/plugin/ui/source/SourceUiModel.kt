@@ -110,6 +110,9 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
         graph.entityRelationships.groupBy { it.from }
     private val incomingEntities: Map<SourceEntityId, List<io.shamash.psi.core.source.SourceRelationship>> =
         graph.entityRelationships.groupBy { it.target }
+    private val entityEvidenceByPair = graph.entityEvidence.groupBy {
+        it.from to (it.target as SourceTarget.Internal).entity
+    }
 
     private val outgoingPackages: Map<SourcePackageId, List<SourcePackageDependency>> =
         graph.packageDependencies.groupBy { it.from }
@@ -182,11 +185,15 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
                                 ?: target.signature,
                             1,
                             edge.occurrences,
-                            edge.witnesses.take(MAX_WITNESSES).map { ref ->
-                                SourceEvidence(
-                                    ref, edge.from, edge.from.signature + " → " + edge.target.signature,
-                                    SourceTarget.Internal(edge.target),
-                                )
+                            edge.witnesses.take(MAX_WITNESSES).mapNotNull { ref ->
+                                entityEvidenceByPair[edge.from to edge.target].orEmpty()
+                                    .firstOrNull { it.evidence == ref }
+                                    ?.let { occurrence ->
+                                        SourceEvidence(
+                                            ref, edge.from, edge.from.signature + " → " + edge.target.signature,
+                                            occurrence.target, occurrence.kind,
+                                        )
+                                    }
                             },
                         )
                     }.sortedBy { it.label }.toList()
@@ -275,6 +282,7 @@ class SourceUiModel(val graph: SourceGraphSnapshot) {
             else items.subList(start.toInt(), minOf(items.size, start.toInt() + PAGE_SIZE))
         }
 
-        fun pageCount(total: Int): Int = maxOf(1, (total + PAGE_SIZE - 1) / PAGE_SIZE)
+        fun pageCount(total: Int): Int =
+            maxOf(1, ((total.toLong() + PAGE_SIZE - 1) / PAGE_SIZE).toInt())
     }
 }

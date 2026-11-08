@@ -35,18 +35,30 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
     private fun evidence(): SourceEvidence {
         val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, sourceRoot)
-        val java = myFixture.addFileToProject(
+        myFixture.addFileToProject(
+            "src/main/java/demo/Target.java",
+            "package demo; public class Target {}",
+        )
+        val source = myFixture.addFileToProject(
             "src/main/java/demo/Sample.java",
-            "package demo; public class Sample { void call() {} }",
+            "package demo; public class Sample { Target value; }",
         )
-        val file = java.virtualFile
-        val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
-        val index = document.text.indexOf("Sample")
-        return SourceEvidence(
-            SourceReference(file.url, index, "Sample".length, document.modificationStamp),
-            SourceEntityId(myModule.name, sourceRoot.url, file.url, SourceEntityKind.CLASS, "demo.Sample"),
-            "demo.Sample",
+        val location = SourceDependencyExtractor.SourceLocation(
+            myModule.name, sourceRoot.url, source.virtualFile.url,
         )
+        val index = ProjectFileIndex.getInstance(project)
+        val reference = ReadAction.compute<io.shamash.psi.core.source.SourceDependency, RuntimeException> {
+            SourceDependencyExtractor { psi ->
+                val file = psi.virtualFile ?: return@SourceDependencyExtractor null
+                val module = index.getModuleForFile(file) ?: return@SourceDependencyExtractor null
+                val root = index.getSourceRootForFile(file) ?: return@SourceDependencyExtractor null
+                SourceDependencyExtractor.SourceLocation(module.name, root.url, file.url)
+            }.extract(source, location).references.first {
+                it.target is SourceTarget.Internal &&
+                    (it.target as SourceTarget.Internal).entity.signature == "demo.Target"
+            }
+        }
+        return SourceEvidence(reference.evidence, reference.from, "Sample → Target", reference.target, reference.kind)
     }
 
     fun testVerifiedReferenceNavigatesOnlyWhileSourceAndOwnershipAreCurrent() {
@@ -113,6 +125,14 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         assertFalse(navigation.open(evidence.copy(kind =
             if (dependency.kind == SourceDependencyKind.ANNOTATION) SourceDependencyKind.CALL
             else SourceDependencyKind.ANNOTATION)))
+    }
+
+    fun testCorrectStampWithFabricatedLocationOrMissingDependencyIdentityCannotNavigate() {
+        val witness = evidence()
+        val navigation = SourceNavigationService(project)
+        assertFalse(navigation.open(witness.copy(reference = witness.reference.copy(offset = witness.reference.offset + 1))))
+        assertFalse(navigation.open(witness.copy(target = null)))
+        assertFalse(navigation.open(witness.copy(kind = null)))
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
