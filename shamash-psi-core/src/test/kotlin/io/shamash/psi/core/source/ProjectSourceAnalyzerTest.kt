@@ -190,6 +190,16 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
     }
 
+    fun testGraphAssemblyStageIsReachedForSelectedProductionSources() {
+        java("Repository.java", "package demo; class Repository {}")
+        var graphAssemblyCalls = 0
+        val result = ProjectSourceAnalyzer(project).analyze(ProgressIndicatorBase()) {
+            graphAssemblyCalls++
+        }
+        assertEquals(1, graphAssemblyCalls)
+        assertEquals(1, result.coverage.analyzedFiles)
+    }
+
     fun testFileLimitMarksSnapshotIncomplete() {
         java("A.java", "package demo; class A {}")
         java("B.java", "package demo; class B {}")

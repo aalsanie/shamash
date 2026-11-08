@@ -25,7 +25,10 @@ class ProjectSourceAnalyzer(
     private val project: Project,
     private val profile: SourceAnalysisProfile = SourceAnalysisProfile(),
 ) {
-    fun analyze(indicator: ProgressIndicator): ProjectSourceSnapshot {
+    fun analyze(
+        indicator: ProgressIndicator,
+        beforeGraphAssembly: () -> Unit = {},
+    ): ProjectSourceSnapshot {
         val dumb = DumbService.getInstance(project)
         val psi = PsiManager.getInstance(project)
         val rootManager = ProjectRootManager.getInstance(project)
@@ -112,6 +115,9 @@ class ProjectSourceAnalyzer(
         }
         if (!revisionsMatch()) changed = true
         if (changed) throw SourceRevisionChangedException()
+        if (!revisionsMatch()) throw SourceRevisionChangedException()
+        if (scope.files.isNotEmpty()) beforeGraphAssembly()
+        indicator.checkCanceled()
         if (!revisionsMatch()) throw SourceRevisionChangedException()
         truncated = truncated || relationships.truncated
         if (truncated) {

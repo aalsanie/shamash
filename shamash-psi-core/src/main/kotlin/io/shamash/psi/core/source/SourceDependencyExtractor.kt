@@ -9,6 +9,7 @@ package io.shamash.psi.core.source
 
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import java.util.concurrent.CancellationException
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
@@ -111,6 +112,11 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                         }
                     } catch (c: ProcessCanceledException) {
                         throw c
+                    } catch (c: CancellationException) {
+                        throw ProcessCanceledException()
+                    } catch (interrupted: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        throw ProcessCanceledException()
                     } catch (t: Exception) {
                         diagnostics += SourceDiagnostic(
                             location.fileUrl,

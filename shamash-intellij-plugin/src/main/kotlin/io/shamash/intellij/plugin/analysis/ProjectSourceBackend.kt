@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.analysis
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
@@ -33,7 +34,9 @@ internal class ProjectSourceBackend(
     ): AnalysisOutcome<IdeAnalysisCoordinator.SourcePresentation> {
         val snapshot =
             try {
-                ProjectSourceAnalyzer(project).analyze(indicator)
+                ProjectSourceAnalyzer(project).analyze(indicator) {
+                    if (!coordinator.graphStarted(request)) throw ProcessCanceledException()
+                }
             } catch (_: SourceRevisionChangedException) {
                 return AnalysisOutcome.Unavailable(
                     "Sources changed during analysis; analyze again",
@@ -51,9 +54,6 @@ internal class ProjectSourceBackend(
                     reason = "NO_SOURCE",
                 ),
             )
-        }
-        if (!coordinator.graphStarted(request)) {
-            throw com.intellij.openapi.progress.ProcessCanceledException()
         }
         val coverage =
             AnalysisCoverage(
