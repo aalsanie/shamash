@@ -143,8 +143,14 @@ class ShamashPsiEngine {
                     UnknownRulePolicyV1.ERROR -> {
                         errors += EngineError(fileId, "rule:unknown", message, ruleId = baseId)
                     }
-                    UnknownRulePolicyV1.WARN -> log.warn(message)
-                    UnknownRulePolicyV1.IGNORE -> Unit
+
+                    UnknownRulePolicyV1.WARN -> {
+                        log.warn(message)
+                    }
+
+                    UnknownRulePolicyV1.IGNORE -> {
+                        Unit
+                    }
                 }
                 continue
             }

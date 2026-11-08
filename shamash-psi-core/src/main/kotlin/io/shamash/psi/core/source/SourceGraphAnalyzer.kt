@@ -34,50 +34,75 @@ class SourceGraphAnalyzer {
                 diagnostics += SourceDiagnostic(entity.id.fileUrl, "graph", "Conflicting source declaration identity")
             }
         }
-        val packageByEntity = entityById.mapValues { (_, entity) ->
-            SourcePackageId(entity.id.moduleId, entity.packageName)
-        }
+        val packageByEntity =
+            entityById.mapValues { (_, entity) ->
+                SourcePackageId(entity.id.moduleId, entity.packageName)
+            }
         val packages =
-            entityById.values.groupBy { packageByEntity.getValue(it.id) }
+            entityById.values
+                .groupBy { packageByEntity.getValue(it.id) }
                 .toSortedMap()
                 .mapValues { (_, entities) -> entities.map { it.id }.sortedWith(ENTITY_ID_ORDER) }
 
-        // PR8 retains bounded witness locations, but full occurrence counts in relationships.
-        // A declared relationship is usable only when at least one matching source occurrence exists.
+        // Occurrence totals can exceed retained witness samples, but each edge requires an actual witness.
+        val seenPairs = HashSet<Pair<SourceEntityId, SourceEntityId>>()
+        val duplicatePairs = HashSet<Pair<SourceEntityId, SourceEntityId>>()
+        for (relationship in snapshot.relationships) {
+            checkCancelled()
+            val pair = relationship.from to relationship.target
+            if (!seenPairs.add(pair)) duplicatePairs.add(pair)
+        }
         val evidenceByPair =
-            snapshot.references.asSequence()
+            snapshot.references
+                .asSequence()
                 .filter { it.target is SourceTarget.Internal }
                 .groupBy { it.from to (it.target as SourceTarget.Internal).entity }
         val valid = ArrayList<ValidatedRelationship>()
         for (relationship in snapshot.relationships.sortedWith(RELATIONSHIP_ORDER)) {
             checkCancelled()
+            if (relationship.from to relationship.target in duplicatePairs) {
+                invalidEvidence = true
+                diagnostics +=
+                    SourceDiagnostic(
+                        relationship.from.fileUrl,
+                        "graph",
+                        "Duplicate source relationship identity",
+                    )
+                continue
+            }
             if (relationship.occurrences <= 0L ||
                 relationship.from !in entityById ||
                 relationship.target !in entityById
             ) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(
-                    relationship.from.fileUrl, "graph", "Missing declaration or invalid relationship count",
-                )
+                diagnostics +=
+                    SourceDiagnostic(
+                        relationship.from.fileUrl,
+                        "graph",
+                        "Missing declaration or invalid relationship count",
+                    )
                 continue
             }
             val pair = relationship.from to relationship.target
             val witnesses =
-                evidenceByPair[pair].orEmpty()
+                evidenceByPair[pair]
+                    .orEmpty()
                     .filter { ref ->
                         ref.kind in relationship.kinds &&
                             ref.evidence in relationship.witnesses &&
                             ref.evidence.fileUrl == relationship.from.fileUrl &&
                             ref.evidence.offset >= 0 && ref.evidence.length > 0
-                    }
-                    .distinct()
+                    }.distinct()
                     .sortedWith(REFERENCE_ORDER)
                     .take(profile.maxWitnesses)
             if (witnesses.isEmpty()) {
                 invalidEvidence = true
-                diagnostics += SourceDiagnostic(
-                    relationship.from.fileUrl, "graph", "No verified source occurrence for relationship",
-                )
+                diagnostics +=
+                    SourceDiagnostic(
+                        relationship.from.fileUrl,
+                        "graph",
+                        "No verified source occurrence for relationship",
+                    )
                 continue
             }
             valid += ValidatedRelationship(relationship, witnesses)
@@ -120,16 +145,21 @@ class SourceGraphAnalyzer {
                 SourceDependencySummary(entityUsedBy.getValue(id).size, entityIncomingOccurrences[id] ?: 0L)
             }
         val packageDeps =
-            packageEdges.entries.map { (key, value) ->
-                SourcePackageDependency(
-                    from = key.first,
-                    target = key.second,
-                    distinctEntityRelationships = value.distinctPairs.size,
-                    occurrences = value.occurrences,
-                    kinds = value.kinds.toSortedSet(compareBy { it.name }),
-                    witnesses = value.witnesses.distinct().sortedWith(PACKAGE_WITNESS_ORDER).take(profile.maxWitnesses),
-                )
-            }.sortedWith(compareBy({ it.from }, { it.target }))
+            packageEdges.entries
+                .map { (key, value) ->
+                    SourcePackageDependency(
+                        from = key.first,
+                        target = key.second,
+                        distinctEntityRelationships = value.distinctPairs.size,
+                        occurrences = value.occurrences,
+                        kinds = value.kinds.toSortedSet(compareBy { it.name }),
+                        witnesses =
+                            value.witnesses
+                                .distinct()
+                                .sortedWith(PACKAGE_WITNESS_ORDER)
+                                .take(profile.maxWitnesses),
+                    )
+                }.sortedWith(compareBy({ it.from }, { it.target }))
         val packageOut = packages.keys.associateWith { mutableSetOf<SourcePackageId>() }
         val packageIn = packages.keys.associateWith { mutableSetOf<SourcePackageId>() }
         val packageOccurrences = HashMap<SourcePackageId, Long>()
@@ -154,7 +184,8 @@ class SourceGraphAnalyzer {
             }
         val edgeByPair = packageDeps.associateBy { it.from to it.target }
         val cycles =
-            DirectedGraphAlgorithms.cyclicComponents(packages.keys, uses, checkCancelled)
+            DirectedGraphAlgorithms
+                .cyclicComponents(packages.keys, uses, checkCancelled)
                 .map { members ->
                     checkCancelled()
                     val witnessNodes = DirectedGraphAlgorithms.representativeCycle(members, uses, checkCancelled)
@@ -164,16 +195,36 @@ class SourceGraphAnalyzer {
                         }
                     SourcePackageCycle(cycleId(profile.id, members), members, witnessEdges)
                 }
-        val external =
-            snapshot.references.asSequence()
-                .mapNotNull { ref ->
-                    val target = ref.target as? SourceTarget.External ?: return@mapNotNull null
-                    if (ref.from !in entityById) return@mapNotNull null
-                    SourceExternalReference(ref.from, target.name, ref.kind, ref.evidence)
-                }
-                .distinct()
-                .sortedWith(compareBy({ it.from.moduleId }, { it.from.fileUrl }, { it.name }, { it.evidence.offset }))
-                .toList()
+        val external = ArrayList<SourceExternalReference>()
+        for (reference in snapshot.references) {
+            checkCancelled()
+            val target = reference.target as? SourceTarget.External ?: continue
+            if (reference.from !in entityById ||
+                reference.evidence.fileUrl != reference.from.fileUrl ||
+                reference.evidence.offset < 0 ||
+                reference.evidence.length <= 0
+            ) {
+                invalidEvidence = true
+                diagnostics +=
+                    SourceDiagnostic(
+                        reference.from.fileUrl,
+                        "graph",
+                        "Invalid external reference evidence",
+                    )
+                continue
+            }
+            external += SourceExternalReference(reference.from, target.name, reference.kind, reference.evidence)
+        }
+        val externalEvidence =
+            external.distinct().sortedWith(
+                compareBy<SourceExternalReference, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
+                    .thenBy { it.name }
+                    .thenBy { it.evidence.fileUrl }
+                    .thenBy { it.evidence.offset }
+                    .thenBy { it.evidence.length }
+                    .thenBy { it.evidence.documentStamp }
+                    .thenBy { it.kind.name },
+            )
         val complete =
             snapshot.complete &&
                 !snapshot.coverage.truncated &&
@@ -183,6 +234,7 @@ class SourceGraphAnalyzer {
                 snapshot.coverage.eligibleFiles > 0 &&
                 !invalidEvidence &&
                 diagnostics.isEmpty()
+        checkCancelled()
         return SourceGraphSnapshot(
             profileId = profile.id,
             coverage = snapshot.coverage,
@@ -204,13 +256,16 @@ class SourceGraphAnalyzer {
             packageUsedBy = usedBy,
             packageCounts = packageCounts,
             packageIncomingCounts = packageIncomingCounts,
-            externalEvidence = external,
+            externalEvidence = externalEvidence,
             externalEvidenceIsSampled = true,
             cycles = cycles,
         )
     }
 
-    private fun addCounts(left: Long, right: Long): Long = Math.addExact(left, right)
+    private fun addCounts(
+        left: Long,
+        right: Long,
+    ): Long = Math.addExact(left, right)
 
     private class PackageAccumulator {
         val distinctPairs = HashSet<Pair<SourceEntityId, SourceEntityId>>()
@@ -218,7 +273,10 @@ class SourceGraphAnalyzer {
         val witnesses = ArrayList<SourcePackageWitness>()
         var occurrences: Long = 0
 
-        fun retainWitness(candidate: SourcePackageWitness, limit: Int) {
+        fun retainWitness(
+            candidate: SourcePackageWitness,
+            limit: Int,
+        ) {
             val location = witnesses.binarySearch(candidate, PACKAGE_WITNESS_ORDER)
             if (location >= 0) return
             witnesses.add(-location - 1, candidate)
@@ -231,7 +289,10 @@ class SourceGraphAnalyzer {
         val witnesses: List<SourceDependency>,
     )
 
-    private fun cycleId(profileId: String, members: List<SourcePackageId>): String {
+    private fun cycleId(
+        profileId: String,
+        members: List<SourcePackageId>,
+    ): String {
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use { output ->
             fun field(value: String) {
@@ -261,21 +322,24 @@ class SourceGraphAnalyzer {
                 { it.signature },
             )
         val ENTITY_ORDER = compareBy<SourceEntity, SourceEntityId>(ENTITY_ID_ORDER) { it.id }
-        val RELATIONSHIP_ORDER = compareBy<SourceRelationship, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
-            .thenBy(ENTITY_ID_ORDER) { it.target }
+        val RELATIONSHIP_ORDER =
+            compareBy<SourceRelationship, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
+                .thenBy(ENTITY_ID_ORDER) { it.target }
         val REFERENCE_ORDER =
-            compareBy<SourceDependency>(
-                { it.evidence.fileUrl },
-                { it.evidence.offset },
-                { it.evidence.length },
-                { it.evidence.documentStamp },
-                { it.kind.name },
-            )
+            compareBy<SourceDependency, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
+                .thenBy(ENTITY_ID_ORDER) { (it.target as SourceTarget.Internal).entity }
+                .thenBy { it.evidence.fileUrl }
+                .thenBy { it.evidence.offset }
+                .thenBy { it.evidence.length }
+                .thenBy { it.evidence.documentStamp }
+                .thenBy { it.kind.name }
         val PACKAGE_WITNESS_ORDER =
             compareBy<SourcePackageWitness, SourceEntityId>(ENTITY_ID_ORDER) { it.from }
                 .thenBy(ENTITY_ID_ORDER) { it.target }
                 .thenBy { it.reference.fileUrl }
                 .thenBy { it.reference.offset }
+                .thenBy { it.reference.length }
+                .thenBy { it.reference.documentStamp }
                 .thenBy { it.kind.name }
     }
 }

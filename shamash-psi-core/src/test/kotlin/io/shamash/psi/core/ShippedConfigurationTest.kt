@@ -24,10 +24,19 @@ class ShippedConfigurationTest {
     fun `all complete PSI examples are executable configurations`() {
         val root = repositoryRoot()
         val dir = root.resolve("docs/psi/schema/v1/examples")
-        val files = Files.list(dir).use { stream ->
-            stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
-        }
-        assertEquals((1..10).toList(), files.map { it.fileName.toString().substringBefore('_').toInt() })
+        val files =
+            Files.list(dir).use { stream ->
+                stream.filter { it.fileName.toString().endsWith(".yml") }.sorted().toList()
+            }
+        assertEquals(
+            (1..10).toList(),
+            files.map {
+                it.fileName
+                    .toString()
+                    .substringBefore('_')
+                    .toInt()
+            },
+        )
         for (file in files) assertValid(file)
     }
 
@@ -37,9 +46,10 @@ class ShippedConfigurationTest {
         assertValid(root.resolve("shamash-psi-core/src/main/resources/shamash/psi/schema/v1/shamash-psi.reference.yml"))
         assertValid(root.resolve("docs/asm/pit-violation/src/main/resources/shamash/configs/psi.yml"))
         assertValid(root.resolve("docs/psi/pit-violation/psi.yml"))
-        val reference = SchemaResources.openReferenceYaml().bufferedReader().use {
-            ConfigValidation.loadAndValidateV1(it)
-        }
+        val reference =
+            SchemaResources.openReferenceYaml().bufferedReader().use {
+                ConfigValidation.loadAndValidateV1(it)
+            }
         assertTrue(reference.ok, "Embedded PSI reference: ${reference.errors}")
     }
 
@@ -54,9 +64,10 @@ class ShippedConfigurationTest {
         val invalid = deadRule.copy(params = deadRule.params + ("ignoreNameRegex" to "^_"))
         assertTrue(DeadcodeUnusedPrivateMembersSpec().validate("rules[0]", invalid, deadConfig).isNotEmpty())
 
-        val showcase = Files.newBufferedReader(root.resolve("docs/psi/schema/v1/examples/10_full_showcase.yml")).use {
-            ConfigValidation.loadAndValidateV1(it)
-        }
+        val showcase =
+            Files.newBufferedReader(root.resolve("docs/psi/schema/v1/examples/10_full_showcase.yml")).use {
+                ConfigValidation.loadAndValidateV1(it)
+            }
         val showcaseConfig = assertNotNull(showcase.config)
         val rootRule = showcaseConfig.rules.single { it.type == "packages" && it.name == "rootPackage" }
         assertTrue(PackagesRootPackageSpec().validate("rules[0]", rootRule, showcaseConfig).isEmpty())

@@ -188,7 +188,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 }
                 search.text = "not present"
                 assertEquals(0, panel.explore.relationList.model.size)
-                assertTrue(descendants(panel.explore).filterIsInstance<JBLabel>().any {
+                assertTrue(descendants(panel.explore).filterIsInstance<JBTextArea>().any {
                     it.text == "No results match these filters"
                 })
                 search.text = "module:p1"

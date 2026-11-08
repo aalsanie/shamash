@@ -16,7 +16,9 @@ import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
 /** The indexed production-source scope, not a recursive walk of arbitrary project directories. */
-class ProjectSourceCollector(private val project: Project) {
+class ProjectSourceCollector(
+    private val project: Project,
+) {
     data class SourceFile(
         val file: VirtualFile,
         val module: Module,
@@ -33,6 +35,7 @@ class ProjectSourceCollector(private val project: Project) {
         require(maxFiles > 0)
         val index = ProjectRootManager.getInstance(project).fileIndex
         val selected = LinkedHashMap<String, SourceFile>()
+        val generatedRoots = HashMap<Pair<Module, VirtualFile>, Boolean>()
         var excluded = 0
         var truncated = false
         index.iterateContent { file ->
@@ -48,7 +51,7 @@ class ProjectSourceCollector(private val project: Project) {
                     !index.isInLibrarySource(file) &&
                     module != null &&
                     root != null &&
-                    !generated(module, root)
+                    !generatedRoots.getOrPut(module to root) { generated(module, root) }
             if (!eligible) {
                 excluded++
                 return@iterateContent true
@@ -63,8 +66,13 @@ class ProjectSourceCollector(private val project: Project) {
         return Selection(selected.values.sortedBy { it.file.url }, excluded, truncated)
     }
 
-    private fun generated(module: Module, root: VirtualFile): Boolean =
-        ModuleRootManager.getInstance(module).contentEntries
+    private fun generated(
+        module: Module,
+        root: VirtualFile,
+    ): Boolean =
+        ModuleRootManager
+            .getInstance(module)
+            .contentEntries
             .asSequence()
             .flatMap { it.sourceFolders.asSequence() }
             .filter { it.file == root }

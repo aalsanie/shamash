@@ -178,7 +178,7 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                             else -> "Production source"
                         }
                     this.text = "<html>" + escaped(text) + "</html>"
-                    return cell
+                    return this
                 }
             }
         left.add(JBScrollPane(tree), BorderLayout.CENTER)

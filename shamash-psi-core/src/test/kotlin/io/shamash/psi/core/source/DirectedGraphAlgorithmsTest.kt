@@ -23,9 +23,11 @@ class DirectedGraphAlgorithmsTest {
 
     @Test
     fun `self loops are not reported as multi-package cycles`() {
-        val groups = DirectedGraphAlgorithms.cyclicComponents(
-            listOf(1, 2, 3), mapOf(1 to listOf(1), 2 to listOf(3), 3 to listOf(2)),
-        )
+        val groups =
+            DirectedGraphAlgorithms.cyclicComponents(
+                listOf(1, 2, 3),
+                mapOf(1 to listOf(1), 2 to listOf(3), 3 to listOf(2)),
+            )
         assertEquals(listOf(listOf(2, 3)), groups)
     }
 

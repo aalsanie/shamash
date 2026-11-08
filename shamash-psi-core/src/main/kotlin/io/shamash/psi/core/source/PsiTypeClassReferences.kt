@@ -20,15 +20,24 @@ import com.intellij.psi.PsiWildcardType
 
 /** Traverses generic arguments and variable bounds without losing inner types or recursing forever. */
 object PsiTypeClassReferences {
-    data class Result(val classes: List<PsiClass>, val truncated: Boolean)
+    data class Result(
+        val classes: List<PsiClass>,
+        val truncated: Boolean,
+    )
 
-    fun collect(type: PsiType, maxDepth: Int = 128): Result {
+    fun collect(
+        type: PsiType,
+        maxDepth: Int = 128,
+    ): Result {
         require(maxDepth > 0)
         val visited = HashSet<String>()
         val classes = LinkedHashSet<PsiClass>()
         var truncated = false
 
-        fun visit(current: PsiType, depth: Int) {
+        fun visit(
+            current: PsiType,
+            depth: Int,
+        ) {
             ProgressManager.checkCanceled()
             if (depth >= maxDepth) {
                 truncated = true
@@ -36,11 +45,26 @@ object PsiTypeClassReferences {
             }
             if (!visited.add(current.canonicalText)) return
             when (current) {
-                is PsiCapturedWildcardType -> visit(current.wildcard, depth + 1)
-                is PsiWildcardType -> current.bound?.let { visit(it, depth + 1) }
-                is PsiArrayType -> visit(current.componentType, depth + 1)
-                is PsiIntersectionType -> current.conjuncts.forEach { visit(it, depth + 1) }
-                is PsiDisjunctionType -> current.disjunctions.forEach { visit(it, depth + 1) }
+                is PsiCapturedWildcardType -> {
+                    visit(current.wildcard, depth + 1)
+                }
+
+                is PsiWildcardType -> {
+                    current.bound?.let { visit(it, depth + 1) }
+                }
+
+                is PsiArrayType -> {
+                    visit(current.componentType, depth + 1)
+                }
+
+                is PsiIntersectionType -> {
+                    current.conjuncts.forEach { visit(it, depth + 1) }
+                }
+
+                is PsiDisjunctionType -> {
+                    current.disjunctions.forEach { visit(it, depth + 1) }
+                }
+
                 is PsiClassType -> {
                     val resolved = current.resolve()
                     if (resolved is PsiTypeParameter) {

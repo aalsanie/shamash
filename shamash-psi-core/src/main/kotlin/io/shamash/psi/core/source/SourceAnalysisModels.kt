@@ -35,11 +35,17 @@ data class SourceReference(
 enum class SourceDependencyKind { INHERITANCE, TYPE, ANNOTATION, CONSTRUCTOR, CALL, ACCESS }
 
 sealed interface SourceTarget {
-    data class Internal(val entity: SourceEntityId) : SourceTarget
+    data class Internal(
+        val entity: SourceEntityId,
+    ) : SourceTarget
 
-    data class External(val name: String) : SourceTarget
+    data class External(
+        val name: String,
+    ) : SourceTarget
 
-    data class Unresolved(val name: String) : SourceTarget
+    data class Unresolved(
+        val name: String,
+    ) : SourceTarget
 }
 
 data class SourceDependency(

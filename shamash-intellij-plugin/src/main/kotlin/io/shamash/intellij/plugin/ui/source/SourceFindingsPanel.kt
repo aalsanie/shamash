@@ -60,7 +60,7 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         "Cycle · " + it.title + " · " + it.summary
     }
     private val pager = PageControls()
-    private val empty = JBLabel("Understand your project's dependencies")
+    private val empty = wrappedText("Understand your project's dependencies")
     private val detailsTitle = JBLabel("Select a cycle to investigate")
     private val observation = wrappedText()
     private val members = wrappedText()

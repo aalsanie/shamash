@@ -64,6 +64,28 @@ class SourceRelationshipAccumulatorTest {
     }
 
     @Test
+    fun `external references cannot consume the internal graph budget`() {
+        val reducer = SourceRelationshipAccumulator(SourceAnalysisProfile(maxRelationships = 1))
+        reducer.add(reference(SourceTarget.External("java.util.Map"), 1))
+        reducer.add(reference(SourceTarget.Unresolved("Missing"), 2))
+        reducer.add(reference(SourceTarget.Internal(target), 3))
+        reducer.add(reference(SourceTarget.Internal(target), 4))
+
+        assertTrue(reducer.truncated)
+        assertEquals(1, reducer.relationships().size)
+        assertEquals(2L, reducer.relationships().single().occurrences)
+        // The unresolved target exceeded the separate external/unresolved budget.
+        // The first external witness and both internal occurrences remain available.
+        val evidence = reducer.evidence()
+        assertEquals(3, evidence.size)
+        assertEquals(2, evidence.count { it.target == SourceTarget.Internal(target) })
+        assertTrue(evidence.any { it.target == SourceTarget.External("java.util.Map") })
+        assertTrue(evidence.none { it.target is SourceTarget.Unresolved })
+        assertEquals(3L, reducer.resolvedOccurrences)
+        assertEquals(1L, reducer.unresolvedOccurrences)
+    }
+
+    @Test
     fun `different reference kinds aggregate one distinct relationship`() {
         val reducer = SourceRelationshipAccumulator(SourceAnalysisProfile())
         reducer.add(reference(SourceTarget.Internal(target), 1))
@@ -73,9 +95,13 @@ class SourceRelationshipAccumulatorTest {
         assertEquals(setOf(SourceDependencyKind.TYPE, SourceDependencyKind.CALL), relationship.kinds)
     }
 
-    private fun reference(target: SourceTarget, index: Int) =
-        SourceDependency(
-            from, target, SourceDependencyKind.TYPE,
-            SourceReference(from.fileUrl, index, 3, index.toLong()),
-        )
+    private fun reference(
+        target: SourceTarget,
+        index: Int,
+    ) = SourceDependency(
+        from,
+        target,
+        SourceDependencyKind.TYPE,
+        SourceReference(from.fileUrl, index, 3, index.toLong()),
+    )
 }

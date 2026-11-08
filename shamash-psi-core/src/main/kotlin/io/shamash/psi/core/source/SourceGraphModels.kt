@@ -49,7 +49,7 @@ data class SourceDependencySummary(
     val occurrences: Long,
 )
 
-/** External references are bounded samples in S01, not proven complete dependency totals. */
+/** Bounded external reference samples are not complete external dependency totals. */
 data class SourceExternalReference(
     val from: SourceEntityId,
     val name: String,

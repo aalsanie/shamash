@@ -29,7 +29,9 @@ enum class AnalysisPhase {
     CANCELLED,
     STALE,
 }
+
 enum class ResultRelation { CURRENT, PREVIOUS, STALE }
+
 enum class Completeness { COMPLETE, PARTIAL, UNAVAILABLE }
 
 data class AnalysisCoverage(

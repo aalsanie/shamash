@@ -20,6 +20,7 @@ package io.shamash.intellij.plugin.e2e
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
@@ -39,21 +40,27 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testInjectedBackendCompletesAndDoesNotActivateToolWindow() {
+        val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash")
+        val wasVisible = window?.isVisible
+        val wasActive = window?.isActive
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val completed = CountDownLatch(1)
-        val request = coordinator.analyze { _, _ ->
-            completed.countDown()
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
-            )
-        }
+        val request =
+            coordinator.analyze { _, _ ->
+                completed.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            }
         kotlin.test.assertNotNull(request)
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(completed.await(10, TimeUnit.SECONDS))
         awaitTerminal()
         assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
         assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
+        assertEquals(wasVisible, window?.isVisible)
+        assertEquals(wasActive, window?.isActive)
         coordinator.cancel()
     }
 
@@ -61,19 +68,20 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val request = coordinator.analyze { req, _ ->
-            coordinator.graphStarted(req)
-            started.countDown()
-            try {
-                release.await(10, TimeUnit.SECONDS)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
+        val request =
+            coordinator.analyze { req, _ ->
+                coordinator.graphStarted(req)
+                started.countDown()
+                try {
+                    release.await(10, TimeUnit.SECONDS)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2),
+                )
             }
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2),
-            )
-        }
         kotlin.test.assertNotNull(request)
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(started.await(10, TimeUnit.SECONDS))
@@ -89,17 +97,24 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val source = myFixture.addFileToProject("src/main/java/Sample.java", "class Sample {}")
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val done = CountDownLatch(1)
-        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            done.countDown()
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
-            )
-        })
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                done.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(done.await(10, TimeUnit.SECONDS))
         awaitTerminal()
-        val originalGeneration = coordinator.state().visibleResult?.request?.generation
+        val originalGeneration =
+            coordinator
+                .state()
+                .visibleResult
+                ?.request
+                ?.generation
 
         runInEdtAndWait {
             val doc = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(source.virtualFile))
@@ -107,7 +122,45 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         }
         assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
         assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
-        assertEquals(originalGeneration, coordinator.state().visibleResult?.request?.generation)
+        assertEquals(
+            originalGeneration,
+            coordinator
+                .state()
+                .visibleResult
+                ?.request
+                ?.generation,
+        )
+    }
+
+    fun testRenamingSourceToNonSourceExtensionMarksPreviousResultStale() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val source = myFixture.addFileToProject("src/main/java/Original.java", "class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val done = CountDownLatch(1)
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                done.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(done.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        val previous = kotlin.test.assertNotNull(coordinator.state().visibleResult)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                source.virtualFile.rename(this, "Renamed.txt")
+            }
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
     }
 
     fun testDisposedContentSubscriptionCannotReceiveLateCallback() {
@@ -119,9 +172,11 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         Disposer.dispose(owner)
         val before = delivered.get()
 
-        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            AnalysisOutcome.Complete(IdeAnalysisCoordinator.SourcePresentation(), AnalysisCoverage())
-        })
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                AnalysisOutcome.Complete(IdeAnalysisCoordinator.SourcePresentation(), AnalysisCoverage())
+            },
+        )
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         awaitTerminal()
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
@@ -132,29 +187,35 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val a = kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            started.countDown()
-            try {
-                release.await(10, TimeUnit.SECONDS)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-            }
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+        val a =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { _, _ ->
+                    started.countDown()
+                    try {
+                        release.await(10, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    }
+                    AnalysisOutcome.Complete(
+                        IdeAnalysisCoordinator.SourcePresentation(),
+                        AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                    )
+                },
             )
-        })
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(started.await(10, TimeUnit.SECONDS))
 
         val done = CountDownLatch(1)
-        val b = kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            done.countDown()
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2),
+        val b =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { _, _ ->
+                    done.countDown()
+                    AnalysisOutcome.Complete(
+                        IdeAnalysisCoordinator.SourcePresentation(),
+                        AnalysisCoverage(eligibleFiles = 2, analyzedFiles = 2),
+                    )
+                },
             )
-        })
         release.countDown()
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(done.await(10, TimeUnit.SECONDS))
@@ -164,26 +225,70 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
     }
 
+    fun testSupersededCancellationExceptionCannotCancelTheReplacement() {
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val firstStarted = CountDownLatch(1)
+        val releaseOld = CountDownLatch(1)
+        val first =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { _, _ ->
+                    firstStarted.countDown()
+                    try {
+                        releaseOld.await(10, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        releaseOld.await(10, TimeUnit.SECONDS)
+                    }
+                    throw com.intellij.openapi.progress
+                        .ProcessCanceledException()
+                },
+            )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(firstStarted.await(10, TimeUnit.SECONDS))
+
+        val secondFinished = CountDownLatch(1)
+        val second =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { _, _ ->
+                    secondFinished.countDown()
+                    AnalysisOutcome.Complete(
+                        IdeAnalysisCoordinator.SourcePresentation(),
+                        AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                    )
+                },
+            )
+        releaseOld.countDown()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(secondFinished.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertTrue(second.generation > first.generation)
+        assertEquals(second, coordinator.state().visibleResult?.request)
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+    }
+
     fun testBackendFailureLeavesPriorResultAndDurableDiagnostic() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val good = CountDownLatch(1)
-        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            good.countDown()
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
-            )
-        })
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                good.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(good.await(10, TimeUnit.SECONDS))
         awaitTerminal()
         val prior = kotlin.test.assertNotNull(coordinator.state().visibleResult)
 
         val failed = CountDownLatch(1)
-        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            failed.countDown()
-            error("injected extraction failure")
-        })
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                failed.countDown()
+                error("injected extraction failure")
+            },
+        )
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(failed.await(10, TimeUnit.SECONDS))
         awaitTerminal()
@@ -196,13 +301,15 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testModuleRootModificationMakesPreviousResultStale() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val done = CountDownLatch(1)
-        kotlin.test.assertNotNull(coordinator.analyze { _, _ ->
-            done.countDown()
-            AnalysisOutcome.Complete(
-                IdeAnalysisCoordinator.SourcePresentation(),
-                AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
-            )
-        })
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                done.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
         PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
         assertTrue(done.await(10, TimeUnit.SECONDS))
         awaitTerminal()
@@ -244,12 +351,17 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         fire(RunPsiScanAction())
         assertEquals(originalBytes, Files.readAllBytes(Path.of(vf.path)).toList())
         assertEquals(extraBytes, Files.readAllBytes(Path.of(extra.virtualFile.path)).toList())
-        assertEquals(true, FileDocumentManager.getInstance().isDocumentUnsaved(
-            kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(vf)),
-        ))
-        assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(
-            kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile)),
-        ))
+        assertEquals(
+            true,
+            FileDocumentManager.getInstance().isDocumentUnsaved(
+                kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(vf)),
+            ),
+        )
+        assertTrue(
+            FileDocumentManager.getInstance().isDocumentUnsaved(
+                kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(extra.virtualFile)),
+            ),
+        )
         IdeAnalysisCoordinator.getInstance(project).cancel()
     }
 
@@ -278,14 +390,47 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(facts.entities.any { it.id.signature == "demo.Repository" })
         assertTrue(facts.relationships.any { it.target.signature == "demo.Repository" })
         assertTrue(facts.entities.any { it.id.signature == "demo.Service" })
+        val graph = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceGraph)
+        assertEquals(facts.profile.id, graph.profileId)
+        assertTrue(graph.entityRelationships.any { it.target.signature == "demo.Repository" })
+        assertEquals(facts.coverage, graph.coverage)
         assertEquals(disk, Files.readAllBytes(Path.of(source.virtualFile.path)).toList())
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
     }
 
+    fun testJavaAndKotlinPackagesWithMutualReferencesProduceOneVerifiedCycle() {
+        val javaRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, javaRoot)
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot)
+        myFixture.addFileToProject(
+            "src/main/java/left/A.java",
+            "package left; public class A { public right.B dependency; }",
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/right/B.kt",
+            "package right\nclass B(val dependency: left.A)",
+        )
+
+        fire(RunPsiScanAction())
+        awaitTerminal()
+        val state = IdeAnalysisCoordinator.getInstance(project).state()
+        val graph = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceGraph)
+        val cycle = graph.cycles.single()
+        assertEquals(setOf("left", "right"), cycle.members.map { it.packageName }.toSet())
+        assertEquals(2, cycle.witness.size)
+        assertTrue(cycle.witness.all { it.witnesses.isNotEmpty() })
+        assertTrue(
+            cycle.witness.all { edge ->
+                edge.witnesses.all { it.reference.fileUrl == it.from.fileUrl }
+            },
+        )
+    }
+
     private fun awaitTerminal() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
-        repeat(100) {
+        repeat(500) {
             PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
             if (!coordinator.state().active) return
             Thread.sleep(20)

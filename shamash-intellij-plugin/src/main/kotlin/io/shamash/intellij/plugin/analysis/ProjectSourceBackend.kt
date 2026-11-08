@@ -17,12 +17,13 @@
  */
 package io.shamash.intellij.plugin.analysis
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
-import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
 import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceRevisionChangedException
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 
 /** No config, build invocation, disk write, policy rules or precomputed ASM facts. */
 internal class ProjectSourceBackend(
@@ -35,7 +36,9 @@ internal class ProjectSourceBackend(
     ): AnalysisOutcome<IdeAnalysisCoordinator.SourcePresentation> {
         val snapshot =
             try {
-                ProjectSourceAnalyzer(project).analyze(indicator)
+                ProjectSourceAnalyzer(project).analyze(indicator) {
+                    if (!coordinator.graphStarted(request)) throw ProcessCanceledException()
+                }
             } catch (_: SourceRevisionChangedException) {
                 return AnalysisOutcome.Unavailable(
                     "Sources changed during analysis; analyze again",
@@ -54,9 +57,8 @@ internal class ProjectSourceBackend(
                 ),
             )
         }
-        if (!coordinator.graphStarted(request)) {
-            throw com.intellij.openapi.progress.ProcessCanceledException()
-        }
+        val graph = SourceGraphAnalyzer().analyze(snapshot, indicator::checkCanceled)
+        indicator.checkCanceled()
         val coverage =
             AnalysisCoverage(
                 eligibleFiles = snapshot.coverage.eligibleFiles,
@@ -66,8 +68,6 @@ internal class ProjectSourceBackend(
                 unresolvedOccurrences = snapshot.coverage.unresolvedOccurrences,
                 reason = if (snapshot.coverage.truncated) "Internal limit or revision change" else null,
             )
-        val graph = SourceGraphAnalyzer().analyze(snapshot) { indicator.checkCanceled() }
-        indicator.checkCanceled()
         val payload = IdeAnalysisCoordinator.SourcePresentation(
             sourceFacts = snapshot,
             sourceGraph = graph,
@@ -77,7 +77,7 @@ internal class ProjectSourceBackend(
         return if (graph.complete) {
             AnalysisOutcome.Complete(payload, coverage)
         } else {
-            AnalysisOutcome.Partial(payload, coverage, diagnostics.ifEmpty { listOf("Source graph incomplete") })
+            AnalysisOutcome.Partial(payload, coverage, diagnostics.ifEmpty { listOf("Source resolution incomplete") })
         }
     }
 }

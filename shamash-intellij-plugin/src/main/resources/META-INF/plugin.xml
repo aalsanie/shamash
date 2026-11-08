@@ -30,7 +30,7 @@
         <notificationGroup id="Shamash ASM" displayType="BALLOON" isLogByDefault="true"/>
 
         <toolWindow id="Shamash"
-                    anchor="bottom"
+                    anchor="right"
                     icon="/icons/pluginIcon.svg"
                     factoryClass="io.shamash.intellij.plugin.ui.ShamashToolWindowFactory"/>
 
@@ -45,7 +45,7 @@
         <action id="io.shamash.open"
                 class="io.shamash.intellij.plugin.ui.actions.OpenShamashToolWindowAction"
                 text="Shamash"
-                description="Explore Java and Kotlin source dependencies"
+                description="Open Shamash architecture analysis"
                 icon="/icons/pluginIcon.svg">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
