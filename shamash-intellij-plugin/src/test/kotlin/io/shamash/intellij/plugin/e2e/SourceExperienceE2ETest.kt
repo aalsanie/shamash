@@ -95,11 +95,11 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         try {
             val coordinator = IdeAnalysisCoordinator.getInstance(project)
             var done = false
-            repeat(500) {
+            for (attempt in 0 until 500) {
                 PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
                 if (!coordinator.state().active) {
                     done = true
-                    return@repeat
+                    break
                 }
                 Thread.sleep(20)
             }
