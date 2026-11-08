@@ -399,16 +399,18 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
     }
 
-    fun testJavaPackagesWithMutualSourceReferencesProduceOneVerifiedCycle() {
-        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
-        PsiTestUtil.addSourceRoot(myModule, root)
+    fun testJavaAndKotlinPackagesWithMutualReferencesProduceOneVerifiedCycle() {
+        val javaRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, javaRoot)
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot)
         myFixture.addFileToProject(
             "src/main/java/left/A.java",
-            "package left; public class A { right.B dependency; }",
+            "package left; public class A { public right.B dependency; }",
         )
         myFixture.addFileToProject(
-            "src/main/java/right/B.java",
-            "package right; public class B { left.A dependency; }",
+            "src/main/kotlin/right/B.kt",
+            "package right\nclass B(val dependency: left.A)",
         )
 
         fire(RunPsiScanAction())
