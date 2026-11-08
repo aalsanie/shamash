@@ -390,9 +390,38 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(facts.entities.any { it.id.signature == "demo.Repository" })
         assertTrue(facts.relationships.any { it.target.signature == "demo.Repository" })
         assertTrue(facts.entities.any { it.id.signature == "demo.Service" })
+        val graph = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceGraph)
+        assertEquals(facts.profile.id, graph.profileId)
+        assertTrue(graph.entityRelationships.any { it.target.signature == "demo.Repository" })
+        assertEquals(facts.coverage, graph.coverage)
         assertEquals(disk, Files.readAllBytes(Path.of(source.virtualFile.path)).toList())
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
+    }
+
+    fun testJavaPackagesWithMutualSourceReferencesProduceOneVerifiedCycle() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject(
+            "src/main/java/left/A.java",
+            "package left; public class A { right.B dependency; }",
+        )
+        myFixture.addFileToProject(
+            "src/main/java/right/B.java",
+            "package right; public class B { left.A dependency; }",
+        )
+
+        fire(RunPsiScanAction())
+        awaitTerminal()
+        val state = IdeAnalysisCoordinator.getInstance(project).state()
+        val graph = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceGraph)
+        val cycle = graph.cycles.single()
+        assertEquals(setOf("left", "right"), cycle.members.map { it.packageName }.toSet())
+        assertEquals(2, cycle.witness.size)
+        assertTrue(cycle.witness.all { it.witnesses.isNotEmpty() })
+        assertTrue(cycle.witness.all { edge ->
+            edge.witnesses.all { it.reference.fileUrl == it.from.fileUrl }
+        })
     }
 
     private fun awaitTerminal() {

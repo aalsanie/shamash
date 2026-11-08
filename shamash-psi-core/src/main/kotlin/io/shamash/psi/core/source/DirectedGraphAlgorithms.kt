@@ -23,14 +23,21 @@ object DirectedGraphAlgorithms {
         val allowed = vertices.toHashSet()
         val outgoing =
             vertices.associateWith { node ->
+                checkCancelled()
                 edges[node].orEmpty().filter { it in allowed }.distinct().sorted()
             }
         val incoming = vertices.associateWith { mutableListOf<N>() }
         for ((from, targets) in outgoing) {
             checkCancelled()
-            for (to in targets) incoming.getValue(to).add(from)
+            for (to in targets) {
+                checkCancelled()
+                incoming.getValue(to).add(from)
+            }
         }
-        incoming.values.forEach { it.sort() }
+        incoming.values.forEach {
+            checkCancelled()
+            it.sort()
+        }
 
         data class Frame<N>(val node: N, var next: Int = 0)
 

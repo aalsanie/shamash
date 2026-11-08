@@ -132,6 +132,7 @@ class SourceGraphAnalyzerTest {
             ))
         assertEquals(baseline.cycles, shuffled.cycles)
         assertEquals(baseline.packageDependencies, shuffled.packageDependencies)
+        assertEquals(baseline.entityEvidence, shuffled.entityEvidence)
         assertEquals(baseline.entityUses, shuffled.entityUses)
         assertEquals(baseline.packageUses, shuffled.packageUses)
         val changedVersion = analyzer.analyze(source.copy(profile = source.profile.copy(id = "ide-source-v2")))
@@ -299,6 +300,34 @@ class SourceGraphAnalyzerTest {
         assertFalse(bad.complete)
         assertTrue(bad.packageDependencies.isEmpty())
         assertTrue(bad.diagnostics.any { it.message.contains("verified source occurrence") })
+    }
+
+    @Test
+    fun `duplicate relationship records cannot double count edges or fabricate a cycle`() {
+        val source = fixture(listOf("a", "b"), listOf(Arc(0, 1), Arc(1, 0)))
+        val duplicate = source.copy(relationships = source.relationships + source.relationships.first())
+        val graph = analyzer.analyze(duplicate)
+        assertFalse(graph.complete)
+        assertFalse(graph.cycleAbsenceEstablished)
+        assertTrue(graph.cycles.isEmpty())
+        assertEquals(1, graph.packageDependencies.size)
+        assertEquals(1L, graph.packageDependencies.single().occurrences)
+        assertTrue(graph.diagnostics.any { it.message.contains("Duplicate source relationship identity") })
+    }
+
+    @Test
+    fun `external references must have an actual positive source range`() {
+        val source = fixture(listOf("a"), emptyList())
+        val entity = source.entities.single().id
+        val malformed =
+            SourceDependency(
+                entity, SourceTarget.External("example.Outside"), SourceDependencyKind.TYPE,
+                SourceReference(entity.fileUrl, -1, 3, 1),
+            )
+        val graph = analyzer.analyze(source.copy(references = listOf(malformed)))
+        assertFalse(graph.complete)
+        assertTrue(graph.externalEvidence.isEmpty())
+        assertTrue(graph.diagnostics.any { it.message.contains("Invalid external reference evidence") })
     }
 
     @Test
