@@ -111,7 +111,7 @@ class SourceDependencyExtractor(private val sourceScope: (PsiFile) -> SourceLoca
                         }
                     } catch (c: ProcessCanceledException) {
                         throw c
-                    } catch (t: Throwable) {
+                    } catch (t: Exception) {
                         diagnostics += SourceDiagnostic(
                             location.fileUrl,
                             "resolve",

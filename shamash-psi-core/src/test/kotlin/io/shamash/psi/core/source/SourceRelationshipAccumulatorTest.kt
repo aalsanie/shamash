@@ -64,6 +64,22 @@ class SourceRelationshipAccumulatorTest {
     }
 
     @Test
+    fun `total relationship budget includes external and unresolved targets`() {
+        val reducer = SourceRelationshipAccumulator(SourceAnalysisProfile(maxRelationships = 2))
+        reducer.add(reference(SourceTarget.External("java.util.Map"), 1))
+        reducer.add(reference(SourceTarget.Internal(target), 2))
+        reducer.add(reference(SourceTarget.Unresolved("Missing"), 3))
+        reducer.add(reference(SourceTarget.Internal(target), 4))
+
+        assertTrue(reducer.truncated)
+        assertEquals(1, reducer.relationships().size)
+        assertEquals(2L, reducer.relationships().single().occurrences)
+        assertEquals(2, reducer.evidence().size)
+        assertEquals(3L, reducer.resolvedOccurrences)
+        assertEquals(1L, reducer.unresolvedOccurrences)
+    }
+
+    @Test
     fun `different reference kinds aggregate one distinct relationship`() {
         val reducer = SourceRelationshipAccumulator(SourceAnalysisProfile())
         reducer.add(reference(SourceTarget.Internal(target), 1))

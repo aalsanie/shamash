@@ -39,7 +39,7 @@ class SourceRelationshipAccumulator(private val profile: SourceAnalysisProfile) 
                 val key = dependency.from to target.entity
                 val counter =
                     internal[key] ?: run {
-                        if (internal.size == profile.maxRelationships) {
+                        if (internal.size + other.size >= profile.maxRelationships) {
                             truncated = true
                             return
                         }
@@ -62,7 +62,7 @@ class SourceRelationshipAccumulator(private val profile: SourceAnalysisProfile) 
         val key = reference.from to reference.target
         val counter =
             other[key] ?: run {
-                if (other.size >= profile.maxRelationships) {
+                if (internal.size + other.size >= profile.maxRelationships) {
                     truncated = true
                     return
                 }

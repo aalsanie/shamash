@@ -8,6 +8,7 @@
 package io.shamash.psi.core.source
 
 import com.intellij.openapi.progress.ProcessCanceledException
+import java.util.concurrent.CancellationException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
@@ -98,7 +99,12 @@ class ProjectSourceAnalyzer(
                 }
             } catch (cancel: ProcessCanceledException) {
                 throw cancel
-            } catch (t: Throwable) {
+            } catch (cancel: CancellationException) {
+                throw ProcessCanceledException()
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw ProcessCanceledException()
+            } catch (t: Exception) {
                 failed++
                 diagnostics +=
                     SourceDiagnostic(item.file.url, "extract", "${t.javaClass.simpleName}: ${t.message ?: "source failed"}")
@@ -113,7 +119,7 @@ class ProjectSourceAnalyzer(
         }
         val unresolved = relationships.unresolvedOccurrences
         val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
-        return ProjectSourceSnapshot(
+        val snapshot = ProjectSourceSnapshot(
             profile = profile,
             entities =
                 entities.distinctBy { it.id }
@@ -132,5 +138,8 @@ class ProjectSourceAnalyzer(
             ),
             complete = complete,
         )
+        indicator.checkCanceled()
+        if (!revisionsMatch()) throw SourceRevisionChangedException()
+        return snapshot
     }
 }
