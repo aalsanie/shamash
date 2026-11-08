@@ -51,53 +51,93 @@ class AnalysisLifecycle<T : Any> {
     }
 
     @Synchronized
-    fun advance(request: AnalysisRequest, phase: AnalysisPhase, progress: Double? = null): Boolean {
+    fun advance(
+        request: AnalysisRequest,
+        phase: AnalysisPhase,
+        progress: Double? = null,
+    ): Boolean {
         require(phase == AnalysisPhase.EXTRACTING || phase == AnalysisPhase.BUILDING_GRAPH)
         if (!eligible(request) || !current.active) return false
+        if (phase == AnalysisPhase.EXTRACTING && current.phase == AnalysisPhase.BUILDING_GRAPH) return false
+        if (progress != null && !progress.isFinite()) return false
         current = current.copy(phase = phase, progress = progress?.coerceIn(0.0, 1.0))
         return true
     }
 
     @Synchronized
-    fun publish(request: AnalysisRequest, outcome: AnalysisOutcome<T>): Boolean {
+    fun publish(
+        request: AnalysisRequest,
+        outcome: AnalysisOutcome<T>,
+    ): Boolean {
         if (!eligible(request) || !current.active) return false
         val normalized =
             if (outcome is AnalysisOutcome.Complete) {
                 val coverage = outcome.coverage
                 when {
-                    coverage.eligibleFiles == 0 ->
+                    coverage.eligibleFiles == 0 -> {
                         AnalysisOutcome.Unavailable("No supported Java/Kotlin source files", coverage)
-                    (coverage.failedFiles ?: 0) > 0 ||
+                    }
+
+                    coverage.eligibleFiles == null ||
+                        coverage.analyzedFiles == null ||
+                        coverage.eligibleFiles < 0 ||
+                        coverage.analyzedFiles < 0 ||
+                        coverage.analyzedFiles > coverage.eligibleFiles ||
+                        (coverage.failedFiles ?: 0) < 0 ||
+                        (coverage.unresolvedOccurrences ?: 0) < 0 ||
+                        (coverage.resolvedOccurrences ?: 0) < 0 ||
+                        (coverage.failedFiles ?: 0) > 0 ||
                         (coverage.unresolvedOccurrences ?: 0) > 0 ||
-                        (coverage.eligibleFiles != null &&
-                            coverage.analyzedFiles != null &&
-                            coverage.analyzedFiles < coverage.eligibleFiles) ->
+                        (
+                            coverage.eligibleFiles != null &&
+                                coverage.analyzedFiles != null &&
+                                coverage.analyzedFiles < coverage.eligibleFiles
+                        ) -> {
                         AnalysisOutcome.Partial(
-                            outcome.data, coverage,
+                            outcome.data,
+                            coverage,
                             outcome.diagnostics + "Analysis incomplete; conclusions may omit relationships",
                         )
-                    else -> outcome
+                    }
+
+                    else -> {
+                        outcome
+                    }
                 }
             } else {
                 outcome
             }
         val result =
             when (normalized) {
-                is AnalysisOutcome.Complete ->
+                is AnalysisOutcome.Complete -> {
                     AnalysisSnapshot(
-                        request, Completeness.COMPLETE, normalized.coverage, normalized.data,
+                        request,
+                        Completeness.COMPLETE,
+                        normalized.coverage,
+                        normalized.data,
                         normalized.diagnostics.toList(),
                     )
-                is AnalysisOutcome.Partial ->
+                }
+
+                is AnalysisOutcome.Partial -> {
                     AnalysisSnapshot(
-                        request, Completeness.PARTIAL, normalized.coverage, normalized.data,
+                        request,
+                        Completeness.PARTIAL,
+                        normalized.coverage,
+                        normalized.data,
                         normalized.diagnostics.toList(),
                     )
-                is AnalysisOutcome.Unavailable ->
+                }
+
+                is AnalysisOutcome.Unavailable -> {
                     AnalysisSnapshot<T>(
-                        request, Completeness.UNAVAILABLE, normalized.coverage,
-                        null, listOf(normalized.reason),
+                        request,
+                        Completeness.UNAVAILABLE,
+                        normalized.coverage,
+                        null,
+                        listOf(normalized.reason),
                     )
+                }
             }
         val phase =
             when (result.completeness) {
@@ -108,9 +148,21 @@ class AnalysisLifecycle<T : Any> {
         current =
             current.copy(
                 phase = phase,
-                visibleResult = if (result.completeness == Completeness.UNAVAILABLE) current.visibleResult else result,
+                visibleResult =
+                    if (result.completeness == Completeness.UNAVAILABLE ||
+                        (
+                            result.completeness == Completeness.PARTIAL &&
+                                result.payload == null && current.visibleResult != null
+                        )
+                    ) {
+                        current.visibleResult
+                    } else {
+                        result
+                    },
                 resultRelation =
-                    if (result.completeness == Completeness.UNAVAILABLE) {
+                    if (result.completeness == Completeness.UNAVAILABLE ||
+                        (result.completeness == Completeness.PARTIAL && result.payload == null)
+                    ) {
                         current.visibleResult?.let { ResultRelation.PREVIOUS }
                     } else {
                         ResultRelation.CURRENT
@@ -124,7 +176,10 @@ class AnalysisLifecycle<T : Any> {
     }
 
     @Synchronized
-    fun fail(request: AnalysisRequest, message: String): Boolean {
+    fun fail(
+        request: AnalysisRequest,
+        message: String,
+    ): Boolean {
         if (!eligible(request) || !current.active) return false
         current =
             current.copy(

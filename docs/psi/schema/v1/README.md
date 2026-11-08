@@ -196,7 +196,7 @@ A set of allowed params for each role specification:
   - ignoreNameRegex: optional list of regular expressions
 
 ## Exceptions
-A list*of exception definitions to supress rules where each exception:
+A list of exception definitions to suppress rules where each exception:
 - has an `id` and `reason`
 - optionally has `expiresOn` (YYYY-MM-DD)
 - has a `match` object (must contain at least one field)
@@ -263,8 +263,8 @@ match:
   role: "repository"
 ```
 
-### 2. Supress
-A list of `ruleId` of the targeted rules.  A rule id is made of `name.type`.
+### 2. Suppress
+A list of `ruleId` of the targeted rules.  A rule id is made of `type.name`.
 
 
 Below is a list of allowed rule keys below:

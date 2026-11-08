@@ -24,7 +24,6 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiDocumentManager
 import io.shamash.artifacts.baseline.BaselineConfig
 import io.shamash.intellij.plugin.ShamashPluginInfo
-import io.shamash.psi.core.config.ValidationSeverity
 import io.shamash.psi.core.scan.ShamashProjectScanRunner
 import io.shamash.psi.core.scan.ShamashScanOptions
 import java.io.StringReader
@@ -74,15 +73,12 @@ internal class LegacySourceBackend(
         // Unknown counts stay unknown; this old runner cannot prove a source-graph absence.
         val coverage =
             AnalysisCoverage(reason = "Legacy project-policy analysis; source relationship coverage unavailable")
-        return if (!result.isComplete || result.configErrors.any { it.severity == ValidationSeverity.ERROR }) {
-            AnalysisOutcome.Partial(
-                presentation,
-                coverage,
-                diagnostics.ifEmpty { listOf("Incomplete source analysis") },
-            )
-        } else {
-            AnalysisOutcome.Complete(presentation, coverage)
-        }
+        val summary = "Legacy policy results do not establish source dependency completeness"
+        return AnalysisOutcome.Partial(
+            presentation,
+            coverage,
+            diagnostics + summary,
+        )
     }
 
     private fun hasProductionSources(indicator: ProgressIndicator): Boolean {

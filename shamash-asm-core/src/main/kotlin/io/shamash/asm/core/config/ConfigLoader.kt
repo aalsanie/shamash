@@ -450,16 +450,16 @@ object ConfigLoader {
     private fun bindBaseline(map: Map<String, Any?>): BaselineConfig {
         val modeRaw = map.reqString("mode", "baseline.mode")
         val mode = modeRaw.toEnumOrThrow<BaselineMode>("baseline.mode")
-        val path = map.reqString("path", "baseline.path")
+        val path = map.optString("path", "baseline.path") ?: ""
         return BaselineConfig(mode = mode, path = path)
     }
 
     private fun bindExport(map: Map<String, Any?>): ExportConfig {
         val enabled = map.reqBoolean("enabled", "export.enabled")
-        val outputDir = map.reqString("outputDir", "export.outputDir")
+        val outputDir = map.optString("outputDir", "export.outputDir") ?: ""
         val overwrite = map.reqBoolean("overwrite", "export.overwrite")
 
-        val formatsAny = map.reqList("formats", "export.formats")
+        val formatsAny = map.optList("formats", "export.formats") ?: emptyList()
         val formats =
             formatsAny.mapIndexed { i, it ->
                 val s = it as? String ?: throw ConfigBindException("export.formats[$i]", "export.formats[$i] must be a string")

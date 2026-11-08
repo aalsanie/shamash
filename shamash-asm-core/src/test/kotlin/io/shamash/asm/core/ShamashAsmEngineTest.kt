@@ -428,7 +428,7 @@ class ShamashAsmEngineTest {
             val baseline = project.resolve(".shamash/baseline.json")
             Files.writeString(baseline, "previous-baseline")
             val result =
-                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyzeWithInputErrors(
                     projectBasePath = project,
                     projectName = "demo",
                     config = baselineConfig(exportEnabled = true),
@@ -558,7 +558,9 @@ class ShamashAsmEngineTest {
         withBaselineProject { project ->
             val cls =
                 io.shamash.asm.core.facts.model.ClassFact(
-                    type = io.shamash.asm.core.facts.model.TypeRef.fromInternalName("example/Foo"),
+                    type =
+                        io.shamash.asm.core.facts.model.TypeRef
+                            .fromInternalName("example/Foo"),
                     access = org.objectweb.asm.Opcodes.ACC_PUBLIC,
                     superType = null,
                     interfaces = emptySet(),
@@ -574,11 +576,14 @@ class ShamashAsmEngineTest {
                 minimalConfig("demo", emptyList(), BaselineMode.NONE, true).copy(
                     roles =
                         mapOf(
-                            "service" to io.shamash.asm.core.config.schema.v1.model.RoleDef(
-                                priority = 1,
-                                description = null,
-                                match = io.shamash.asm.core.config.schema.v1.model.Matcher.ClassNameEndsWith("Foo"),
-                            ),
+                            "service" to
+                                io.shamash.asm.core.config.schema.v1.model.RoleDef(
+                                    priority = 1,
+                                    description = null,
+                                    match =
+                                        io.shamash.asm.core.config.schema.v1.model.Matcher
+                                            .ClassNameEndsWith("Foo"),
+                                ),
                         ),
                     export =
                         minimalConfig("demo", emptyList(), BaselineMode.NONE, true).export.copy(

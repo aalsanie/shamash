@@ -149,6 +149,19 @@ function global:Invoke-WebRequest {
         self.assertNotEqual(0, self.invoke().returncode)
         self.unchanged()
 
+    def test_mismatched_installed_version_is_rejected(self):
+        self.owned()
+        (self.dest / ".shamash-install").write_text("shamash-cli:9.8.7\n")
+        self.assertNotEqual(0, self.invoke().returncode)
+        self.unchanged()
+
+    def test_ambiguous_checksum_is_rejected(self):
+        self.owned()
+        original = (self.assets / "SHA256SUMS.txt").read_text()
+        (self.assets / "SHA256SUMS.txt").write_text(original + original)
+        self.assertNotEqual(0, self.invoke().returncode)
+        self.unchanged()
+
     def test_download_and_checksum_failures(self):
         for kind in ("download", "checksum", "missing_checksum"):
             with self.subTest(kind=kind):

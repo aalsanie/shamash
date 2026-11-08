@@ -36,9 +36,12 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
@@ -54,7 +57,9 @@ import java.util.concurrent.Future
  * source-facts extractor without changing ownership, cancellation, diagnostics or presentation.
  */
 @Service(Service.Level.PROJECT)
-class IdeAnalysisCoordinator(private val project: Project) : Disposable {
+class IdeAnalysisCoordinator(
+    private val project: Project,
+) : Disposable {
     data class SourcePresentation(
         val findings: List<Finding> = emptyList(),
         val validationErrors: List<ValidationError> = emptyList(),
@@ -63,7 +68,10 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     )
 
     fun interface Backend {
-        fun analyze(request: AnalysisRequest, indicator: ProgressIndicator): AnalysisOutcome<SourcePresentation>
+        fun analyze(
+            request: AnalysisRequest,
+            indicator: ProgressIndicator,
+        ): AnalysisOutcome<SourcePresentation>
     }
 
     private val lifecycle = AnalysisLifecycle<SourcePresentation>()
@@ -73,6 +81,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     private val gate = Any()
     private var activeTask: Future<*>? = null
     private var indicator: ProgressIndicatorBase? = null
+
     @Volatile
     private var disposed = false
 
@@ -104,9 +113,24 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
                         ProjectRootManager.getInstance(project).contentRoots.map { it.path.trimEnd('/') + "/" }
                     if (events.any { change ->
                             val path = change.path.replace('\\', '/')
-                            (path.endsWith(".java") || path.endsWith(".kt")) &&
-                                contentRoots.any { root -> path.startsWith(root) }
-                        }) {
+                            val previousNameWasSource =
+                                change is VFilePropertyChangeEvent &&
+                                    change.propertyName == VirtualFile.PROP_NAME &&
+                                    (change.oldValue as? String)?.let {
+                                        it.endsWith(".java") || it.endsWith(".kt")
+                                    } == true
+                            val sourceFile = path.endsWith(".java") || path.endsWith(".kt") || previousNameWasSource
+                            val insideProject =
+                                contentRoots.any { root -> path.startsWith(root) } ||
+                                    (
+                                        change is VFileMoveEvent &&
+                                            contentRoots.any { root ->
+                                                (change.oldParent.path.trimEnd('/') + "/").startsWith(root)
+                                            }
+                                    )
+                            sourceFile && insideProject
+                        }
+                    ) {
                         sourceChanged()
                     }
                 }
@@ -116,7 +140,10 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
 
     fun state(): IdeAnalysisState<SourcePresentation> = lifecycle.snapshot()
 
-    fun subscribe(owner: Disposable, callback: (IdeAnalysisState<SourcePresentation>) -> Unit) {
+    fun subscribe(
+        owner: Disposable,
+        callback: (IdeAnalysisState<SourcePresentation>) -> Unit,
+    ) {
         if (disposed || Disposer.isDisposed(owner)) return
         callbacks.add(callback)
         Disposer.register(owner) { callbacks.remove(callback) }
@@ -162,6 +189,13 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
                             cancelRequest(request)
                         } catch (failure: Throwable) {
                             if (lifecycle.fail(request, failure.message ?: failure.javaClass.simpleName)) publishState()
+                        } finally {
+                            synchronized(gate) {
+                                if (indicator === progress) {
+                                    indicator = null
+                                    activeTask = null
+                                }
+                            }
                         }
                     }
             }
@@ -170,7 +204,10 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     /** Called by graph-producing backends between extraction and off-read-lock graph work. */
-    fun graphStarted(request: AnalysisRequest, progress: Double? = null): Boolean {
+    fun graphStarted(
+        request: AnalysisRequest,
+        progress: Double? = null,
+    ): Boolean {
         val moved = lifecycle.advance(request, AnalysisPhase.BUILDING_GRAPH, progress)
         if (moved) publishState()
         return moved
@@ -184,9 +221,16 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     private fun cancelRequest(request: AnalysisRequest) {
-        if (lifecycle.isCurrent(request)) {
-            cancel()
-        }
+        val cancelled =
+            synchronized(gate) {
+                if (!lifecycle.isCurrent(request) || !lifecycle.cancel()) {
+                    false
+                } else {
+                    cancelWork()
+                    true
+                }
+            }
+        if (cancelled) publishState()
     }
 
     private fun sourceChanged() {
@@ -216,14 +260,14 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     private fun publishLegacySnapshot() {
         val state = lifecycle.snapshot()
         val data = state.visibleResult?.payload ?: return
-        if (state.resultRelation != ResultRelation.CURRENT) return
+        if (state.resultRelation != ResultRelation.CURRENT || data.sourceFacts != null) return
         ApplicationManager.getApplication().invokeLater {
-            if (disposed || project.isDisposed ||
-                lifecycle.snapshot().visibleResult?.request != state.visibleResult.request
-            ) {
+            if (disposed || project.isDisposed || lifecycle.snapshot() !== state) {
                 return@invokeLater
             }
-            val ui = io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService.getInstance(project)
+            val ui =
+                io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService
+                    .getInstance(project)
             ui.updateFromScan(data.findings, data.validationErrors, null, null)
             // Views subscribe with their own Disposable. Never contact a possibly disposed
             // tool-window content or activate it as a side effect of completion.
@@ -235,7 +279,7 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
         val current = lifecycle.snapshot()
         ApplicationManager.getApplication().invokeLater {
             if (disposed || project.isDisposed) return@invokeLater
-            if (lifecycle.snapshot().requestGeneration != current.requestGeneration) return@invokeLater
+            if (lifecycle.snapshot() !== current) return@invokeLater
             for (listener in callbacks) listener(current)
         }
     }
@@ -251,7 +295,6 @@ class IdeAnalysisCoordinator(private val project: Project) : Disposable {
     }
 
     companion object {
-        fun getInstance(project: Project): IdeAnalysisCoordinator =
-            project.getService(IdeAnalysisCoordinator::class.java)
+        fun getInstance(project: Project): IdeAnalysisCoordinator = project.getService(IdeAnalysisCoordinator::class.java)
     }
 }

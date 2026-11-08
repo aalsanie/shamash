@@ -142,14 +142,14 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         assertEquals(1, findings.size, "Expected a finding for $kinds; got $findings")
         assertEquals("example.Sample", findings.single().classFqn)
         assertEquals(count.toString(), findings.single().data["actual"])
-        assertEquals(
-            emptyList(),
-            MetricsMaxMethodsByRoleRule().evaluate(
-                file,
-                facts,
-                definition.copy(params = definition.params + ("limits" to mapOf(role to count))),
-                config,
-            ),
+        assertTrue(
+            MetricsMaxMethodsByRoleRule()
+                .evaluate(
+                    file,
+                    facts,
+                    definition.copy(params = definition.params + ("limits" to mapOf(role to count))),
+                    config,
+                ).isEmpty(),
         )
     }
 
@@ -167,11 +167,14 @@ class MethodCountContractTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBui
         return RuleDef("metrics", "maxMethodsByRole", null, true, Severity.ERROR, null, parameters)
     }
 
-    private fun withRole(facts: FactsIndex, className: String, role: String): FactsIndex =
-        facts.copy(roles = mapOf(role to setOf(className)), classToRole = mapOf(className to role))
+    private fun withRole(
+        facts: FactsIndex,
+        className: String,
+        role: String,
+    ): FactsIndex = facts.copy(roles = mapOf(role to setOf(className)), classToRole = mapOf(className to role))
 
     private fun config(): ShamashPsiConfigV1 =
         SchemaResources.openReferenceYaml().reader().use {
-            assertNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
+            checkNotNull(ConfigValidation.loadAndValidateV1(StringReader(it.readText())).config)
         }
 }

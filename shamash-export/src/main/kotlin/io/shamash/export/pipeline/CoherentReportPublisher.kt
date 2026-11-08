@@ -73,12 +73,18 @@ class CoherentReportPublisher(
         Files.walkFileTree(
             source,
             object : SimpleFileVisitor<Path>() {
-                override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                override fun preVisitDirectory(
+                    dir: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
                     Files.createDirectories(destination.resolve(source.relativize(dir)))
                     return FileVisitResult.CONTINUE
                 }
 
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                override fun visitFile(
+                    file: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
                     if (source.relativize(file).nameCount == 1 && file.fileName.toString() in REPORT_FILES) {
                         return FileVisitResult.CONTINUE
                     }
@@ -94,12 +100,18 @@ class CoherentReportPublisher(
         Files.walkFileTree(
             path,
             object : SimpleFileVisitor<Path>() {
-                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                override fun visitFile(
+                    file: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
                     Files.delete(file)
                     return FileVisitResult.CONTINUE
                 }
 
-                override fun postVisitDirectory(dir: Path, exc: java.io.IOException?): FileVisitResult {
+                override fun postVisitDirectory(
+                    dir: Path,
+                    exc: java.io.IOException?,
+                ): FileVisitResult {
                     if (exc != null) throw exc
                     Files.delete(dir)
                     return FileVisitResult.CONTINUE
