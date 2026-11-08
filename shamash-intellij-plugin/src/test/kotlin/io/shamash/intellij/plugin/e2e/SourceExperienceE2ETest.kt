@@ -18,6 +18,8 @@
 package io.shamash.intellij.plugin.e2e
 
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
@@ -71,6 +73,49 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             } finally {
                 Disposer.dispose(view)
             }
+        }
+    }
+
+    fun testAnalyzeButtonPublishesActualProjectSourceGraphToBothTabs() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject(
+            "src/main/java/left/Left.java",
+            "package left; public class Left { right.Right dependency; }",
+        )
+        myFixture.addFileToProject(
+            "src/main/java/right/Right.java",
+            "package right; public class Right { left.Left dependency; }",
+        )
+        lateinit var panel: ShamashSourcePanel
+        runInEdtAndWait {
+            panel = ShamashSourcePanel(project)
+            panel.analyze.doClick()
+        }
+        try {
+            val coordinator = IdeAnalysisCoordinator.getInstance(project)
+            var done = false
+            repeat(500) {
+                PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+                if (!coordinator.state().active) {
+                    done = true
+                    return@repeat
+                }
+                Thread.sleep(20)
+            }
+            assertTrue("Source analysis did not terminate", done)
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            runInEdtAndWait {
+                val current = kotlin.test.assertNotNull(coordinator.state().visibleResult?.payload)
+                val graph = kotlin.test.assertNotNull(current.sourceGraph)
+                assertEquals(1, graph.cycles.size)
+                assertEquals(1, panel.findings.findingList.model.size)
+                panel.tabs.selectedIndex = 1
+                assertTrue(panel.explore.tree.model.getChildCount(panel.explore.tree.model.root) > 0)
+                assertEquals("Analyze again", panel.analyze.text)
+            }
+        } finally {
+            runInEdtAndWait { Disposer.dispose(panel) }
         }
     }
 
