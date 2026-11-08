@@ -18,7 +18,6 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
-import com.intellij.ui.components.JBComboBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -36,6 +35,7 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JComboBox
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.KeyStroke
@@ -58,8 +58,8 @@ internal class SourceFindingsPanel(
     private var selectedId: String? = null
     private var suppressFilters = false
     private val search = JBTextField()
-    private val modules = JBComboBox<Choice<String>>()
-    private val packages = JBComboBox<Choice<SourcePackageId>>()
+    private val modules = JComboBox<Choice<String>>()
+    private val packages = JComboBox<Choice<SourcePackageId>>()
     private val clear = JButton("Clear filters")
     private val listModel = DefaultListModel<SourceUiModel.FindingRow>()
     val findingList =

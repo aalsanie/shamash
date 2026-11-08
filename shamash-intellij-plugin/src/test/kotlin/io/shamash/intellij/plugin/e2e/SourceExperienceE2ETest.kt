@@ -52,6 +52,7 @@ import io.shamash.psi.core.source.SourceTarget
 import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
+import javax.swing.JComboBox
 import javax.swing.JSplitPane
 import javax.swing.tree.TreePath
 
@@ -414,7 +415,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 assertEquals(0, panel.explore.relationList.model.size)
                 val direction =
                     descendants(panel.explore)
-                        .filterIsInstance<com.intellij.ui.components.JBComboBox<*>>()
+                        .filterIsInstance<JComboBox<*>>()
                         .single { it.accessibleContext?.accessibleName == "Dependency direction" }
                 direction.selectedIndex = 1
                 assertEquals(1, panel.explore.relationList.model.size)

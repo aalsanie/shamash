@@ -18,7 +18,6 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
-import com.intellij.ui.components.JBComboBox
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.treeStructure.Tree
@@ -32,6 +31,7 @@ import javax.swing.AbstractAction
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JComboBox
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTree
@@ -181,7 +181,7 @@ internal class SourceExplorePanel(
     private val summary = wrappedText()
     private val related = wrappedText()
     private val empty = wrappedText("Analyze project to explore dependencies")
-    private val direction = JBComboBox(arrayOf("Uses", "Used by", "External dependencies"))
+    private val direction = JComboBox(arrayOf("Uses", "Used by", "External dependencies"))
     private val sort = JButton("Sort: name")
     private var mostDependencies = false
     private val relationModel = DefaultListModel<SourceRelationRow>()
