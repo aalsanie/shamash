@@ -45,11 +45,11 @@ import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
+import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.source.ProjectSourceSnapshot
 import io.shamash.psi.core.source.SourceGraphSnapshot
-import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future

@@ -24,21 +24,21 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.ui.treeStructure.Tree
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
-import java.awt.FlowLayout
 import java.util.Locale
 import javax.swing.AbstractAction
 import javax.swing.DefaultListModel
-import javax.swing.event.DocumentEvent
-import javax.swing.event.DocumentListener
-import javax.swing.event.TreeModelListener
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.JTree
 import javax.swing.KeyStroke
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
+import javax.swing.event.TreeModelListener
 import javax.swing.tree.DefaultTreeCellRenderer
 import javax.swing.tree.TreeModel
 import javax.swing.tree.TreePath
@@ -48,25 +48,43 @@ internal class SourceExploreTreeModel(
     private val query: String,
 ) : TreeModel {
     private val root = "Production source"
-    private val modulePackages = source?.moduleIds.orEmpty().associateWith {
-        source?.filteredPackages(it, query).orEmpty()
-    }
-    private val packageEntities = modulePackages.values.flatten().associateWith { pkg ->
-        source?.filteredEntities(pkg, query).orEmpty()
-    }
+    private val modulePackages =
+        source?.moduleIds.orEmpty().associateWith {
+            source?.filteredPackages(it, query).orEmpty()
+        }
+    private val packageEntities =
+        modulePackages.values.flatten().associateWith { pkg ->
+            source?.filteredEntities(pkg, query).orEmpty()
+        }
     private val modules: List<SourceSelection.Module> =
-        modulePackages.filterValues { it.isNotEmpty() }.keys.sorted().map(SourceSelection::Module)
+        modulePackages
+            .filterValues { it.isNotEmpty() }
+            .keys
+            .sorted()
+            .map(SourceSelection::Module)
 
     override fun getRoot(): Any = root
 
-    override fun getChild(parent: Any?, index: Int): Any =
+    override fun getChild(
+        parent: Any?,
+        index: Int,
+    ): Any =
         when (parent) {
-            root -> modules[index]
-            is SourceSelection.Module ->
+            root -> {
+                modules[index]
+            }
+
+            is SourceSelection.Module -> {
                 SourceSelection.Package(modulePackages.getValue(parent.moduleId)[index])
-            is SourceSelection.Package ->
+            }
+
+            is SourceSelection.Package -> {
                 SourceSelection.Declaration(packageEntities.getValue(parent.id)[index].id)
-            else -> throw IndexOutOfBoundsException("Not a tree branch")
+            }
+
+            else -> {
+                throw IndexOutOfBoundsException("Not a tree branch")
+            }
         }
 
     override fun getChildCount(parent: Any?): Int =
@@ -79,42 +97,67 @@ internal class SourceExploreTreeModel(
 
     override fun isLeaf(node: Any?): Boolean = node is SourceSelection.Declaration
 
-    override fun getIndexOfChild(parent: Any?, child: Any?): Int =
+    override fun getIndexOfChild(
+        parent: Any?,
+        child: Any?,
+    ): Int =
         when (parent) {
-            root -> modules.indexOf(child)
+            root -> {
+                modules.indexOf(child)
+            }
+
             is SourceSelection.Module -> {
                 val id = (child as? SourceSelection.Package)?.id
                 if (id == null) -1 else modulePackages[parent.moduleId]?.indexOf(id) ?: -1
             }
-            is SourceSelection.Package ->
+
+            is SourceSelection.Package -> {
                 packageEntities[parent.id]?.indexOfFirst {
                     it.id == (child as? SourceSelection.Declaration)?.id
                 } ?: -1
-            else -> -1
+            }
+
+            else -> {
+                -1
+            }
         }
 
-    override fun valueForPathChanged(path: TreePath?, newValue: Any?) = Unit
+    override fun valueForPathChanged(
+        path: TreePath?,
+        newValue: Any?,
+    ) = Unit
+
     override fun addTreeModelListener(l: TreeModelListener?) = Unit
+
     override fun removeTreeModelListener(l: TreeModelListener?) = Unit
 
     fun pathFor(selection: SourceSelection): TreePath? {
         val sourceModel = source ?: return null
-        val module = when (selection) {
-            is SourceSelection.Module -> selection.moduleId
-            is SourceSelection.Package -> selection.id.moduleId
-            is SourceSelection.Declaration -> selection.id.moduleId
-        }
+        val module =
+            when (selection) {
+                is SourceSelection.Module -> selection.moduleId
+                is SourceSelection.Package -> selection.id.moduleId
+                is SourceSelection.Declaration -> selection.id.moduleId
+            }
         val moduleNode = SourceSelection.Module(module)
         if (moduleNode !in modules) return null
         if (selection is SourceSelection.Module) return TreePath(arrayOf(root, moduleNode))
-        val pkg = when (selection) {
-            is SourceSelection.Package -> selection.id
-            is SourceSelection.Declaration -> {
-                val entity = sourceModel.declarations[selection.id] ?: return null
-                io.shamash.psi.core.source.SourcePackageId(module, entity.packageName)
+        val pkg =
+            when (selection) {
+                is SourceSelection.Package -> {
+                    selection.id
+                }
+
+                is SourceSelection.Declaration -> {
+                    val entity = sourceModel.declarations[selection.id] ?: return null
+                    io.shamash.psi.core.source
+                        .SourcePackageId(module, entity.packageName)
+                }
+
+                else -> {
+                    return null
+                }
             }
-            else -> return null
-        }
         if (pkg !in modulePackages[module].orEmpty()) return null
         val packageNode = SourceSelection.Package(pkg)
         if (selection is SourceSelection.Package) return TreePath(arrayOf(root, moduleNode, packageNode))
@@ -126,7 +169,9 @@ internal class SourceExploreTreeModel(
     fun isEmpty(): Boolean = modules.isEmpty()
 }
 
-internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
+internal class SourceExplorePanel(
+    project: Project,
+) : JPanel(BorderLayout()) {
     private var source: SourceUiModel? = null
     private var selection: SourceSelection? = null
     private var relations: List<SourceRelationRow> = emptyList()
@@ -140,10 +185,15 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
     private val sort = JButton("Sort: name")
     private var mostDependencies = false
     private val relationModel = DefaultListModel<SourceRelationRow>()
-    val relationList = sourceList<SourceRelationRow>("Source relationships") {
-        it.label + if (it.sampled) " · " + it.occurrences + " sampled references"
-        else " · " + it.distinctTargets + " distinct source relationships · " + it.occurrences + " occurrences"
-    }
+    val relationList =
+        sourceList<SourceRelationRow>("Source relationships") {
+            it.label +
+                if (it.sampled) {
+                    " · " + it.occurrences + " sampled references"
+                } else {
+                    " · " + it.distinctTargets + " distinct source relationships · " + it.occurrences + " occurrences"
+                }
+        }
     private val pager = PageControls()
     private val relationEmpty = wrappedText("")
     private val evidence = SourceEvidencePanel(project)
@@ -165,17 +215,32 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         tree.cellRenderer =
             object : DefaultTreeCellRenderer() {
                 override fun getTreeCellRendererComponent(
-                    tree: JTree?, value: Any?, sel: Boolean, expanded: Boolean,
-                    leaf: Boolean, row: Int, hasFocus: Boolean,
+                    tree: JTree?,
+                    value: Any?,
+                    sel: Boolean,
+                    expanded: Boolean,
+                    leaf: Boolean,
+                    row: Int,
+                    hasFocus: Boolean,
                 ): java.awt.Component {
                     super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus)
                     val text =
                         when (value) {
-                            is SourceSelection.Module -> value.moduleId
-                            is SourceSelection.Package -> value.id.packageName.ifEmpty { "(default package)" }
-                            is SourceSelection.Declaration ->
+                            is SourceSelection.Module -> {
+                                value.moduleId
+                            }
+
+                            is SourceSelection.Package -> {
+                                value.id.packageName.ifEmpty { "(default package)" }
+                            }
+
+                            is SourceSelection.Declaration -> {
                                 source?.declarations?.get(value.id)?.displayName ?: value.id.signature
-                            else -> "Production source"
+                            }
+
+                            else -> {
+                                "Production source"
+                            }
                         }
                     this.text = "<html>" + escaped(text) + "</html>"
                     return this
@@ -216,12 +281,14 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         split.rightComponent = detail
         split.resizeWeight = 0.38
         add(split, BorderLayout.CENTER)
-        addComponentListener(object : ComponentAdapter() {
-            override fun componentResized(e: ComponentEvent?) {
-                split.orientation = if (width < 560) JSplitPane.VERTICAL_SPLIT else JSplitPane.HORIZONTAL_SPLIT
-                split.resizeWeight = if (width < 560) 0.45 else 0.38
-            }
-        })
+        addComponentListener(
+            object : ComponentAdapter() {
+                override fun componentResized(e: ComponentEvent?) {
+                    split.orientation = if (width < 560) JSplitPane.VERTICAL_SPLIT else JSplitPane.HORIZONTAL_SPLIT
+                    split.resizeWeight = if (width < 560) 0.45 else 0.38
+                }
+            },
+        )
 
         tree.addTreeSelectionListener {
             val selected = tree.lastSelectedPathComponent as? SourceSelection
@@ -230,45 +297,69 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
                 showSelection()
             }
         }
-        search.document.addDocumentListener(object : DocumentListener {
-            override fun insertUpdate(e: DocumentEvent?) = refreshTree()
-            override fun removeUpdate(e: DocumentEvent?) = refreshTree()
-            override fun changedUpdate(e: DocumentEvent?) = refreshTree()
-        })
+        search.document.addDocumentListener(
+            object : DocumentListener {
+                override fun insertUpdate(e: DocumentEvent?) = refreshTree()
+
+                override fun removeUpdate(e: DocumentEvent?) = refreshTree()
+
+                override fun changedUpdate(e: DocumentEvent?) = refreshTree()
+            },
+        )
         clear.addActionListener { search.text = "" }
-        relationSearch.document.addDocumentListener(object : DocumentListener {
-            override fun insertUpdate(e: DocumentEvent?) = renderRelationships()
-            override fun removeUpdate(e: DocumentEvent?) = renderRelationships()
-            override fun changedUpdate(e: DocumentEvent?) = renderRelationships()
-        })
+        relationSearch.document.addDocumentListener(
+            object : DocumentListener {
+                override fun insertUpdate(e: DocumentEvent?) = renderRelationships()
+
+                override fun removeUpdate(e: DocumentEvent?) = renderRelationships()
+
+                override fun changedUpdate(e: DocumentEvent?) = renderRelationships()
+            },
+        )
         direction.addActionListener { renderRelationships() }
         sort.addActionListener {
             mostDependencies = !mostDependencies
             sort.text = if (mostDependencies) "Sort: most dependencies" else "Sort: name"
             renderRelationships()
         }
-        pager.previous.addActionListener { pager.change(-1, relations.size); renderPage() }
-        pager.next.addActionListener { pager.change(1, relations.size); renderPage() }
+        pager.previous.addActionListener {
+            pager.change(-1, relations.size)
+            renderPage()
+        }
+        pager.next.addActionListener {
+            pager.change(1, relations.size)
+            renderPage()
+        }
         relationList.addListSelectionListener {
             if (!it.valueIsAdjusting) {
                 val row = relationList.selectedValue
-                if (row == null) evidence.showEvidence(emptyList(), 0)
-                else evidence.showEvidence(row.evidence, row.occurrences)
+                if (row == null) {
+                    evidence.showEvidence(emptyList(), 0)
+                } else {
+                    evidence.showEvidence(row.evidence, row.occurrences)
+                }
             }
         }
         back.addActionListener { returnToTree() }
         val escape = KeyStroke.getKeyStroke("ESCAPE")
         for (component in listOf(relationList, evidence.list)) {
             component.inputMap.put(escape, "backToTree")
-            component.actionMap.put("backToTree", object : AbstractAction() {
-                override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
-            })
+            component.actionMap.put(
+                "backToTree",
+                object : AbstractAction() {
+                    override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
+                },
+            )
         }
-        detail.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        detail
+            .getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
             .put(escape, "backToTree")
-        detail.actionMap.put("backToTree", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
-        })
+        detail.actionMap.put(
+            "backToTree",
+            object : AbstractAction() {
+                override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToTree()
+            },
+        )
         accessibleContext.accessibleName = "Explore"
         refreshTree()
     }
@@ -318,49 +409,69 @@ internal class SourceExplorePanel(project: Project) : JPanel(BorderLayout()) {
         summary.text = source.scopeLabel(selected) + "\n" + source.summary(selected)
         val cycles = source.relatedCycles(selected)
         related.text =
-            if (cycles.isEmpty()) "No observed related package cycles"
-            else "Related cyclic groups: " + cycles.size +
-                "\n" + cycles.take(3).joinToString("\n") { cycle ->
-                    val sample = cycle.members.take(5).joinToString(", ") { SourceUiModel.qualified(it) }
-                    sample + if (cycle.members.size > 5) " · +" + (cycle.members.size - 5) +
-                        " other packages in group" else ""
-                } + if (cycles.size > 3) "\nShowing 3 of " + cycles.size else ""
+            if (cycles.isEmpty()) {
+                "No observed related package cycles"
+            } else {
+                "Related cyclic groups: " + cycles.size +
+                    "\n" +
+                    cycles.take(3).joinToString("\n") { cycle ->
+                        val sample = cycle.members.take(5).joinToString(", ") { SourceUiModel.qualified(it) }
+                        sample +
+                            if (cycle.members.size > 5) {
+                                " · +" + (cycle.members.size - 5) +
+                                    " other packages in group"
+                            } else {
+                                ""
+                            }
+                    } + if (cycles.size > 3) "\nShowing 3 of " + cycles.size else ""
+            }
         renderRelationships()
     }
 
     private fun renderRelationships() {
         val source = source ?: return
         val selected = selection ?: return
-        relations = when (direction.selectedIndex) {
-            1 -> source.usedBy(selected)
-            2 -> source.external(selected)
-            else -> source.uses(selected)
-        }.let { rows ->
-            val term = relationSearch.text.trim().lowercase(Locale.ROOT)
-            val matching = if (term.isEmpty()) rows else rows.filter { row ->
-                row.label.lowercase(Locale.ROOT).contains(term) ||
-                    row.evidence.any { evidence ->
-                        evidence.label.lowercase(Locale.ROOT).contains(term)
+        relations =
+            when (direction.selectedIndex) {
+                1 -> source.usedBy(selected)
+                2 -> source.external(selected)
+                else -> source.uses(selected)
+            }.let { rows ->
+                val term = relationSearch.text.trim().lowercase(Locale.ROOT)
+                val matching =
+                    if (term.isEmpty()) {
+                        rows
+                    } else {
+                        rows.filter { row ->
+                            row.label.lowercase(Locale.ROOT).contains(term) ||
+                                row.evidence.any { evidence ->
+                                    evidence.label.lowercase(Locale.ROOT).contains(term)
+                                }
+                        }
                     }
+                if (mostDependencies) {
+                    matching.sortedWith(
+                        compareByDescending<SourceRelationRow> { it.distinctTargets }
+                            .thenByDescending { it.occurrences }
+                            .thenBy { it.label },
+                    )
+                } else {
+                    matching.sortedBy { it.label }
+                }
             }
-            if (mostDependencies) matching.sortedWith(
-                compareByDescending<SourceRelationRow> { it.distinctTargets }
-                    .thenByDescending { it.occurrences }.thenBy { it.label },
-            )
-            else matching.sortedBy { it.label }
-        }
         pager.reset()
         renderPage()
     }
 
     private fun renderPage() {
         pager.update(relations.size)
-        relationEmpty.text = when {
-            source == null || selection == null -> ""
-            relations.isNotEmpty() -> ""
-            relationSearch.text.isNotBlank() -> "No results match these filters"
-            else -> "No observed relationships in this direction"
-        }
+        relationEmpty.text =
+            when {
+                source == null || selection == null -> ""
+                relations.isNotEmpty() -> ""
+                relationSearch.text.isNotBlank() -> "No results match these filters"
+                else -> "No observed relationships in this direction"
+            }
         relationModel.clear()
         SourceUiModel.page(relations, pager.page).forEach(relationModel::addElement)
         if (relationModel.isEmpty) evidence.showEvidence(emptyList(), 0)

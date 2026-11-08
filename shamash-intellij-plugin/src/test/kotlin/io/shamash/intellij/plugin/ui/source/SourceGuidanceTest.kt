@@ -25,13 +25,12 @@ import io.shamash.intellij.plugin.analysis.Completeness
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
+import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import org.junit.Test
 
 class SourceGuidanceTest {
-    private fun state(phase: AnalysisPhase) =
-        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(phase = phase)
+    private fun state(phase: AnalysisPhase) = IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(phase = phase)
 
     @Test
     fun allLifecyclePhasesHaveTruthfulProductCopy() {
@@ -58,10 +57,11 @@ class SourceGuidanceTest {
 
     @Test
     fun unavailableNoSourceDoesNotClaimCleanArchitecture() {
-        val s = state(AnalysisPhase.UNAVAILABLE).copy(
-            attemptCoverage = AnalysisCoverage(eligibleFiles = 0, reason = "NO_SOURCE"),
-            diagnostics = listOf("No supported production Java/Kotlin source files"),
-        )
+        val s =
+            state(AnalysisPhase.UNAVAILABLE).copy(
+                attemptCoverage = AnalysisCoverage(eligibleFiles = 0, reason = "NO_SOURCE"),
+                diagnostics = listOf("No supported production Java/Kotlin source files"),
+            )
         assertEquals("No supported production source found", SourceGuidance.status(s))
         assertTrue(SourceGuidance.detailStatus(s).contains("Import a Java/Kotlin JVM module"))
         assertTrue(SourceGuidance.detailStatus(s).contains("No supported production"))
@@ -69,14 +69,21 @@ class SourceGuidanceTest {
 
     @Test
     fun staleStatusDistinguishesRootsFromSourceChanges() {
-        val old = AnalysisSnapshot(
-            AnalysisRequest(1, 0, 0), Completeness.COMPLETE, AnalysisCoverage(1, 1),
-            IdeAnalysisCoordinator.SourcePresentation(), emptyList(),
-        )
-        val rootChange = state(AnalysisPhase.STALE).copy(
-            rootRevision = 2, sourceRevision = 0, visibleResult = old,
-            resultRelation = ResultRelation.STALE,
-        )
+        val old =
+            AnalysisSnapshot(
+                AnalysisRequest(1, 0, 0),
+                Completeness.COMPLETE,
+                AnalysisCoverage(1, 1),
+                IdeAnalysisCoordinator.SourcePresentation(),
+                emptyList(),
+            )
+        val rootChange =
+            state(AnalysisPhase.STALE).copy(
+                rootRevision = 2,
+                sourceRevision = 0,
+                visibleResult = old,
+                resultRelation = ResultRelation.STALE,
+            )
         val edit = rootChange.copy(rootRevision = 0, sourceRevision = 1)
         assertEquals("Project structure changed; analyze again", SourceGuidance.status(rootChange))
         assertEquals("Code changed since this analysis", SourceGuidance.status(edit))
@@ -85,16 +92,21 @@ class SourceGuidanceTest {
 
     @Test
     fun partialAndFailedStatesRetainDiagnosticsAndExplicitLimits() {
-        val previous = AnalysisSnapshot(
-            AnalysisRequest(1, 0, 0), Completeness.PARTIAL,
-            AnalysisCoverage(4, 3, 1, 10, 2),
-            IdeAnalysisCoordinator.SourcePresentation(), listOf("previous failure"),
-        )
-        val failed = state(AnalysisPhase.FAILED).copy(
-            visibleResult = previous, resultRelation = ResultRelation.PREVIOUS,
-            attemptCoverage = AnalysisCoverage(4, 3, 1, 10, 2, "Internal limit"),
-            diagnostics = (1..12).map { "error " + it },
-        )
+        val previous =
+            AnalysisSnapshot(
+                AnalysisRequest(1, 0, 0),
+                Completeness.PARTIAL,
+                AnalysisCoverage(4, 3, 1, 10, 2),
+                IdeAnalysisCoordinator.SourcePresentation(),
+                listOf("previous failure"),
+            )
+        val failed =
+            state(AnalysisPhase.FAILED).copy(
+                visibleResult = previous,
+                resultRelation = ResultRelation.PREVIOUS,
+                attemptCoverage = AnalysisCoverage(4, 3, 1, 10, 2, "Internal limit"),
+                diagnostics = (1..12).map { "error " + it },
+            )
         val message = SourceGuidance.detailStatus(failed)
         assertTrue(message.contains("3 of 4"))
         assertTrue(message.contains("2 unresolved"))
@@ -123,12 +135,18 @@ class SourceGuidanceTest {
         val commit = "0123456789abcdef0123456789abcdef01234567"
         val exact = SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/" + commit + "\n")
         assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/" + commit, exact)
-        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/v0.92.0",
-            SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/v0.92.0"))
+        assertEquals(
+            SourceGuidance.REPOSITORY_URL + "/tree/v0.92.0",
+            SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/v0.92.0"),
+        )
         assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/main", SourceGuidance.sourceRoot(null))
-        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/main",
-            SourceGuidance.sourceRoot("https://evil.invalid/tree/" + commit))
-        assertEquals(SourceGuidance.REPOSITORY_URL + "/tree/main",
-            SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/" + commit + "/other"))
+        assertEquals(
+            SourceGuidance.REPOSITORY_URL + "/tree/main",
+            SourceGuidance.sourceRoot("https://evil.invalid/tree/" + commit),
+        )
+        assertEquals(
+            SourceGuidance.REPOSITORY_URL + "/tree/main",
+            SourceGuidance.sourceRoot(SourceGuidance.REPOSITORY_URL + "/tree/" + commit + "/other"),
+        )
     }
 }

@@ -39,25 +39,30 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             "src/main/java/demo/Target.java",
             "package demo; public class Target {}",
         )
-        val source = myFixture.addFileToProject(
-            "src/main/java/demo/Sample.java",
-            "package demo; public class Sample { Target value; }",
-        )
-        val location = SourceDependencyExtractor.SourceLocation(
-            myModule.name, sourceRoot.url, source.virtualFile.url,
-        )
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/demo/Sample.java",
+                "package demo; public class Sample { Target value; }",
+            )
+        val location =
+            SourceDependencyExtractor.SourceLocation(
+                myModule.name,
+                sourceRoot.url,
+                source.virtualFile.url,
+            )
         val index = ProjectFileIndex.getInstance(project)
-        val reference = ReadAction.compute<io.shamash.psi.core.source.SourceDependency, RuntimeException> {
-            SourceDependencyExtractor { psi ->
-                val file = psi.virtualFile ?: return@SourceDependencyExtractor null
-                val module = index.getModuleForFile(file) ?: return@SourceDependencyExtractor null
-                val root = index.getSourceRootForFile(file) ?: return@SourceDependencyExtractor null
-                SourceDependencyExtractor.SourceLocation(module.name, root.url, file.url)
-            }.extract(source, location).references.first {
-                it.target is SourceTarget.Internal &&
-                    (it.target as SourceTarget.Internal).entity.signature == "demo.Target"
+        val reference =
+            ReadAction.compute<io.shamash.psi.core.source.SourceDependency, RuntimeException> {
+                SourceDependencyExtractor { psi ->
+                    val file = psi.virtualFile ?: return@SourceDependencyExtractor null
+                    val module = index.getModuleForFile(file) ?: return@SourceDependencyExtractor null
+                    val root = index.getSourceRootForFile(file) ?: return@SourceDependencyExtractor null
+                    SourceDependencyExtractor.SourceLocation(module.name, root.url, file.url)
+                }.extract(source, location).references.first {
+                    it.target is SourceTarget.Internal &&
+                        (it.target as SourceTarget.Internal).entity.signature == "demo.Target"
+                }
             }
-        }
         return SourceEvidence(reference.evidence, reference.from, "Sample → Target", reference.target, reference.kind)
     }
 
@@ -68,12 +73,19 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
 
     fun testChangedDocumentStampNeverUsesOldOffset() {
         val witness = evidence()
-        assertFalse(SourceNavigationService(project).open(witness.copy(
-            reference = witness.reference.copy(documentStamp = witness.reference.documentStamp + 1),
-        )))
-        val file = requireNotNull(com.intellij.openapi.vfs.VirtualFileManager.getInstance().findFileByUrl(
-            witness.reference.fileUrl,
-        ))
+        assertFalse(
+            SourceNavigationService(project).open(
+                witness.copy(
+                    reference = witness.reference.copy(documentStamp = witness.reference.documentStamp + 1),
+                ),
+            ),
+        )
+        val file =
+            requireNotNull(
+                com.intellij.openapi.vfs.VirtualFileManager.getInstance().findFileByUrl(
+                    witness.reference.fileUrl,
+                ),
+            )
         val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
         WriteAction.run<RuntimeException> { document.insertString(0, " ") }
         assertFalse(SourceNavigationService(project).open(witness))
@@ -89,42 +101,68 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
     fun testResolvedDependencyMustMatchExactTargetAndKind() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)
-        myFixture.addFileToProject("src/main/java/demo/Target.java",
-            "package demo; public class Target {}")
-        val source = myFixture.addFileToProject("src/main/java/demo/Owner.java",
-            "package demo; public class Owner { Target value; }")
+        myFixture.addFileToProject(
+            "src/main/java/demo/Target.java",
+            "package demo; public class Target {}",
+        )
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/demo/Owner.java",
+                "package demo; public class Owner { Target value; }",
+            )
         val index = ProjectFileIndex.getInstance(project)
-        val location = SourceDependencyExtractor.SourceLocation(
-            myModule.name, root.url, source.virtualFile.url,
-        )
-        val dependency = ReadAction.compute<io.shamash.psi.core.source.SourceDependency, RuntimeException> {
-            val extractor = SourceDependencyExtractor { psi ->
-                val file = psi.virtualFile ?: return@SourceDependencyExtractor null
-                val module = index.getModuleForFile(file) ?: return@SourceDependencyExtractor null
-                val sourceRoot = index.getSourceRootForFile(file) ?: return@SourceDependencyExtractor null
-                SourceDependencyExtractor.SourceLocation(module.name, sourceRoot.url, file.url)
+        val location =
+            SourceDependencyExtractor.SourceLocation(
+                myModule.name,
+                root.url,
+                source.virtualFile.url,
+            )
+        val dependency =
+            ReadAction.compute<io.shamash.psi.core.source.SourceDependency, RuntimeException> {
+                val extractor =
+                    SourceDependencyExtractor { psi ->
+                        val file = psi.virtualFile ?: return@SourceDependencyExtractor null
+                        val module = index.getModuleForFile(file) ?: return@SourceDependencyExtractor null
+                        val sourceRoot = index.getSourceRootForFile(file) ?: return@SourceDependencyExtractor null
+                        SourceDependencyExtractor.SourceLocation(module.name, sourceRoot.url, file.url)
+                    }
+                extractor.extract(source, location).references.first {
+                    it.target is SourceTarget.Internal &&
+                        (it.target as SourceTarget.Internal).entity.signature == "demo.Target"
+                }
             }
-            extractor.extract(source, location).references.first { it.target is SourceTarget.Internal &&
-                (it.target as SourceTarget.Internal).entity.signature == "demo.Target"
-            }
-        }
-        val evidence = SourceEvidence(
-            dependency.evidence,
-            dependency.from,
-            "Owner → Target",
-            dependency.target,
-            dependency.kind,
-        )
+        val evidence =
+            SourceEvidence(
+                dependency.evidence,
+                dependency.from,
+                "Owner → Target",
+                dependency.target,
+                dependency.kind,
+            )
         val navigation = SourceNavigationService(project)
         assertTrue(navigation.open(evidence))
-        val wrongTarget = evidence.copy(
-            target = SourceTarget.Internal((dependency.target as SourceTarget.Internal)
-                .entity.copy(signature = "demo.Unrelated")),
-        )
+        val wrongTarget =
+            evidence.copy(
+                target =
+                    SourceTarget.Internal(
+                        (dependency.target as SourceTarget.Internal)
+                            .entity
+                            .copy(signature = "demo.Unrelated"),
+                    ),
+            )
         assertFalse(navigation.open(wrongTarget))
-        assertFalse(navigation.open(evidence.copy(kind =
-            if (dependency.kind == SourceDependencyKind.ANNOTATION) SourceDependencyKind.CALL
-            else SourceDependencyKind.ANNOTATION)))
+        assertFalse(
+            navigation.open(
+                evidence.copy(
+                    kind =
+                        if (dependency.kind == SourceDependencyKind.ANNOTATION) {
+                            SourceDependencyKind.CALL
+                        } else {
+                            SourceDependencyKind.ANNOTATION
+                        },
+                ),
+            ),
+        )
     }
 
     fun testCorrectStampWithFabricatedLocationOrMissingDependencyIdentityCannotNavigate() {

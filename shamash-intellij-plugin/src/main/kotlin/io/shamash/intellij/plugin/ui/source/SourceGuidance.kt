@@ -24,9 +24,13 @@ import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 
 internal object SourceGuidance {
     const val REPOSITORY_URL = "https://github.com/aalsanie/shamash"
-    private val publishedSource = sourceRoot(
-        SourceGuidance::class.java.getResourceAsStream("/META-INF/SOURCE")?.bufferedReader()?.use { it.readText() },
-    )
+    private val publishedSource =
+        sourceRoot(
+            SourceGuidance::class.java
+                .getResourceAsStream("/META-INF/SOURCE")
+                ?.bufferedReader()
+                ?.use { it.readText() },
+        )
     val SOURCE_URL: String = publishedSource + "/shamash-intellij-plugin"
     val LICENSE_URL: String = publishedSource.replace("/tree/", "/blob/") + "/shamash-intellij-plugin/LICENSE"
     val CORE_LICENSE_URL: String = publishedSource.replace("/tree/", "/blob/") + "/LICENSE"
@@ -36,8 +40,13 @@ internal object SourceGuidance {
         val ref = source.removePrefix(REPOSITORY_URL + "/tree/")
         return if (source.startsWith(REPOSITORY_URL + "/tree/") &&
             (ref.matches(Regex("[0-9a-f]{40}")) || ref.matches(Regex("v[0-9]+\\.[0-9]+\\.[0-9]+")))
-        ) source else REPOSITORY_URL + "/tree/main"
+        ) {
+            source
+        } else {
+            REPOSITORY_URL + "/tree/main"
+        }
     }
+
     const val SCOPE_LINE = "Production source · Project rules not evaluated."
     const val SCOPE_DETAILS =
         "Analyzes Java and Kotlin JVM production source roots in the imported IntelliJ project. " +
@@ -75,23 +84,57 @@ internal object SourceGuidance {
 
     fun status(state: IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>): String =
         when (state.phase) {
-            AnalysisPhase.IDLE -> "Understand your project's dependencies"
-            AnalysisPhase.WAITING_FOR_INDEX -> "Waiting for IntelliJ to finish indexing"
-            AnalysisPhase.EXTRACTING, AnalysisPhase.BUILDING_GRAPH -> "Analyzing source dependencies…"
-            AnalysisPhase.COMPLETED ->
-                if (state.visibleResult?.payload?.sourceGraph?.cycleAbsenceEstablished == true)
+            AnalysisPhase.IDLE -> {
+                "Understand your project's dependencies"
+            }
+
+            AnalysisPhase.WAITING_FOR_INDEX -> {
+                "Waiting for IntelliJ to finish indexing"
+            }
+
+            AnalysisPhase.EXTRACTING, AnalysisPhase.BUILDING_GRAPH -> {
+                "Analyzing source dependencies…"
+            }
+
+            AnalysisPhase.COMPLETED -> {
+                if (state.visibleResult
+                        ?.payload
+                        ?.sourceGraph
+                        ?.cycleAbsenceEstablished == true
+                ) {
                     "No package cycles found in the analyzed source"
-                else "Source analysis complete"
-            AnalysisPhase.PARTIAL -> "Some source dependencies could not be analyzed"
-            AnalysisPhase.UNAVAILABLE ->
-                if (state.attemptCoverage?.reason == "NO_SOURCE") "No supported production source found"
-                else "Source analysis is unavailable for this project"
-            AnalysisPhase.FAILED -> "Source analysis couldn't finish"
-            AnalysisPhase.CANCELLED -> "Analysis cancelled"
-            AnalysisPhase.STALE ->
-                if (state.visibleResult != null && state.rootRevision != state.visibleResult.request.rootRevision)
+                } else {
+                    "Source analysis complete"
+                }
+            }
+
+            AnalysisPhase.PARTIAL -> {
+                "Some source dependencies could not be analyzed"
+            }
+
+            AnalysisPhase.UNAVAILABLE -> {
+                if (state.attemptCoverage?.reason == "NO_SOURCE") {
+                    "No supported production source found"
+                } else {
+                    "Source analysis is unavailable for this project"
+                }
+            }
+
+            AnalysisPhase.FAILED -> {
+                "Source analysis couldn't finish"
+            }
+
+            AnalysisPhase.CANCELLED -> {
+                "Analysis cancelled"
+            }
+
+            AnalysisPhase.STALE -> {
+                if (state.visibleResult != null && state.rootRevision != state.visibleResult.request.rootRevision) {
                     "Project structure changed; analyze again"
-                else "Code changed since this analysis"
+                } else {
+                    "Code changed since this analysis"
+                }
+            }
         }
 
     fun detailStatus(state: IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>): String {

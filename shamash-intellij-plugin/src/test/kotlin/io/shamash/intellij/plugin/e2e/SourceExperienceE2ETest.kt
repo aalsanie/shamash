@@ -111,7 +111,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 assertEquals(1, graph.cycles.size)
                 assertEquals(1, panel.findings.findingList.model.size)
                 panel.tabs.selectedIndex = 1
-                assertTrue(panel.explore.tree.model.getChildCount(panel.explore.tree.model.root) > 0)
+                assertTrue(
+                    panel.explore.tree.model
+                        .getChildCount(panel.explore.tree.model.root) > 0,
+                )
                 assertEquals("Analyze again", panel.analyze.text)
             }
         } finally {
@@ -130,12 +133,18 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 assertEquals(2, panel.findings.findingList.model.size)
                 assertEquals(2, panel.tabs.tabCount)
                 panel.tabs.selectedIndex = 1
-                assertTrue(panel.explore.tree.model.getChildCount(panel.explore.tree.model.root) > 0)
+                assertTrue(
+                    panel.explore.tree.model
+                        .getChildCount(panel.explore.tree.model.root) > 0,
+                )
 
                 panel.render(presentation(acyclic))
                 assertEquals("No package cycles found in the analyzed source", panel.status.text)
                 assertEquals(0, panel.findings.findingList.model.size)
-                assertTrue(panel.explore.tree.model.getChildCount(panel.explore.tree.model.root) > 0)
+                assertTrue(
+                    panel.explore.tree.model
+                        .getChildCount(panel.explore.tree.model.root) > 0,
+                )
             } finally {
                 Disposer.dispose(panel)
             }
@@ -156,17 +165,22 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 pager.next.doClick()
                 assertEquals(1, panel.findings.findingList.model.size)
 
-                val search = descendants(panel.findings).filterIsInstance<JBTextField>().first {
-                    it.accessibleContext?.accessibleName == "Search all package cycle findings"
-                }
+                val search =
+                    descendants(panel.findings).filterIsInstance<JBTextField>().first {
+                        it.accessibleContext?.accessibleName == "Search all package cycle findings"
+                    }
                 search.text = "not a real package"
                 assertEquals(0, panel.findings.findingList.model.size)
-                assertTrue(descendants(panel.findings).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
-                    it.text == "No results match these filters"
-                })
-                descendants(panel.findings).filterIsInstance<JButton>().first {
-                    it.text == "Clear filters"
-                }.doClick()
+                assertTrue(
+                    descendants(panel.findings).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
+                        it.text == "No results match these filters"
+                    },
+                )
+                descendants(panel.findings)
+                    .filterIsInstance<JButton>()
+                    .first {
+                        it.text == "Clear filters"
+                    }.doClick()
                 assertEquals(50, panel.findings.findingList.model.size)
             } finally {
                 Disposer.dispose(panel)
@@ -181,32 +195,46 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             try {
                 panel.render(presentation(graph))
                 val previous = panel.findings.findingList.model.size
-                panel.render(presentation(graph).copy(
-                    phase = AnalysisPhase.STALE, resultRelation = ResultRelation.STALE,
-                    sourceRevision = 5,
-                ))
+                panel.render(
+                    presentation(graph).copy(
+                        phase = AnalysisPhase.STALE,
+                        resultRelation = ResultRelation.STALE,
+                        sourceRevision = 5,
+                    ),
+                )
                 assertEquals("Code changed since this analysis", panel.status.text)
                 assertEquals(previous, panel.findings.findingList.model.size)
 
-                panel.render(presentation(graph).copy(
-                    phase = AnalysisPhase.FAILED, diagnostics = listOf("injected extraction failure"),
-                    resultRelation = ResultRelation.PREVIOUS,
-                ))
+                panel.render(
+                    presentation(graph).copy(
+                        phase = AnalysisPhase.FAILED,
+                        diagnostics = listOf("injected extraction failure"),
+                        resultRelation = ResultRelation.PREVIOUS,
+                    ),
+                )
                 assertEquals("Source analysis couldn't finish", panel.status.text)
                 assertEquals(previous, panel.findings.findingList.model.size)
 
-                panel.render(presentation(graph).copy(
-                    phase = AnalysisPhase.PARTIAL, resultRelation = ResultRelation.CURRENT,
-                ))
+                panel.render(
+                    presentation(graph).copy(
+                        phase = AnalysisPhase.PARTIAL,
+                        resultRelation = ResultRelation.CURRENT,
+                    ),
+                )
                 assertEquals("Some source dependencies could not be analyzed", panel.status.text)
-                panel.render(presentation(graph).copy(
-                    phase = AnalysisPhase.CANCELLED, resultRelation = ResultRelation.PREVIOUS,
-                ))
+                panel.render(
+                    presentation(graph).copy(
+                        phase = AnalysisPhase.CANCELLED,
+                        resultRelation = ResultRelation.PREVIOUS,
+                    ),
+                )
                 assertEquals("Analysis cancelled", panel.status.text)
-                panel.render(IdeAnalysisState(
-                    phase = AnalysisPhase.UNAVAILABLE,
-                    attemptCoverage = AnalysisCoverage(eligibleFiles = 0, reason = "NO_SOURCE"),
-                ))
+                panel.render(
+                    IdeAnalysisState(
+                        phase = AnalysisPhase.UNAVAILABLE,
+                        attemptCoverage = AnalysisCoverage(eligibleFiles = 0, reason = "NO_SOURCE"),
+                    ),
+                )
                 assertEquals("No supported production source found", panel.status.text)
             } finally {
                 Disposer.dispose(panel)
@@ -228,17 +256,23 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 tree.selectionPath = TreePath(arrayOf(model.root, module, pkg))
                 assertEquals(1, panel.explore.relationList.model.size)
 
-                val search = descendants(panel.explore).filterIsInstance<JBTextField>().first {
-                    it.accessibleContext?.accessibleName == "Search all relationships for selected source"
-                }
+                val search =
+                    descendants(panel.explore).filterIsInstance<JBTextField>().first {
+                        it.accessibleContext?.accessibleName == "Search all relationships for selected source"
+                    }
                 search.text = "not present"
                 assertEquals(0, panel.explore.relationList.model.size)
-                assertTrue(descendants(panel.explore).filterIsInstance<JBTextArea>().any {
-                    it.text == "No results match these filters"
-                })
+                assertTrue(
+                    descendants(panel.explore).filterIsInstance<JBTextArea>().any {
+                        it.text == "No results match these filters"
+                    },
+                )
                 search.text = "module:p1"
                 assertEquals(1, panel.explore.relationList.model.size)
-                assertNotNull(panel.explore.relationList.actionMap.get("backToTree"))
+                assertNotNull(
+                    panel.explore.relationList.actionMap
+                        .get("backToTree"),
+                )
             } finally {
                 Disposer.dispose(panel)
             }
@@ -254,12 +288,15 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             val panel = ShamashSourcePanel(project)
             try {
                 panel.render(presentation(graph))
-                val text = descendants(panel.findings).filterIsInstance<JBTextArea>().first {
-                    it.text.startsWith("Packages 1–50 of 125")
-                }
+                val text =
+                    descendants(panel.findings).filterIsInstance<JBTextArea>().first {
+                        it.text.startsWith("Packages 1–50 of 125")
+                    }
                 assertFalse(text.text.contains("package99"))
-                val membersPager = descendants(panel.findings).filterIsInstance<PageControls>()
-                    .first { it.next.isEnabled }
+                val membersPager =
+                    descendants(panel.findings)
+                        .filterIsInstance<PageControls>()
+                        .first { it.next.isEnabled }
                 membersPager.next.doClick()
                 assertTrue(text.text.startsWith("Packages 51–100 of 125"))
                 assertTrue(text.text.contains("package99"))
@@ -276,15 +313,24 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             val panel = ShamashSourcePanel(project)
             try {
                 panel.findings.setSize(350, 700)
-                panel.findings.dispatchEvent(java.awt.event.ComponentEvent(
-                    panel.findings, java.awt.event.ComponentEvent.COMPONENT_RESIZED,
-                ))
-                val split = panel.findings.components.filterIsInstance<JSplitPane>().single()
+                panel.findings.dispatchEvent(
+                    java.awt.event.ComponentEvent(
+                        panel.findings,
+                        java.awt.event.ComponentEvent.COMPONENT_RESIZED,
+                    ),
+                )
+                val split =
+                    panel.findings.components
+                        .filterIsInstance<JSplitPane>()
+                        .single()
                 assertEquals(JSplitPane.VERTICAL_SPLIT, split.orientation)
                 panel.findings.setSize(900, 320)
-                panel.findings.dispatchEvent(java.awt.event.ComponentEvent(
-                    panel.findings, java.awt.event.ComponentEvent.COMPONENT_RESIZED,
-                ))
+                panel.findings.dispatchEvent(
+                    java.awt.event.ComponentEvent(
+                        panel.findings,
+                        java.awt.event.ComponentEvent.COMPONENT_RESIZED,
+                    ),
+                )
                 assertEquals(JSplitPane.HORIZONTAL_SPLIT, split.orientation)
             } finally {
                 Disposer.dispose(panel)
@@ -295,25 +341,36 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     fun testEvidencePanelNeverOpensMissingOrStaleLocations() {
         runInEdtAndWait {
             val panel = SourceEvidencePanel(project)
-            val id = SourceEntityId(
-                "missing-module", "file:///missing", "file:///missing.kt", SourceEntityKind.CLASS, "Missing",
-            )
-            val witness = SourceEvidence(
-                SourceReference(id.fileUrl, 10, 2, 1), id, "Missing evidence",
-            )
+            val id =
+                SourceEntityId(
+                    "missing-module",
+                    "file:///missing",
+                    "file:///missing.kt",
+                    SourceEntityKind.CLASS,
+                    "Missing",
+                )
+            val witness =
+                SourceEvidence(
+                    SourceReference(id.fileUrl, 10, 2, 1),
+                    id,
+                    "Missing evidence",
+                )
             panel.showEvidence(listOf(witness), 35L)
-            val count = descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().first {
-                it.text.startsWith("Showing ")
-            }
+            val count =
+                descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().first {
+                    it.text.startsWith("Showing ")
+                }
             assertEquals("Showing 1 of 35 reference occurrences (up to 20 locations)", count.text)
             val open = descendants(panel).filterIsInstance<JButton>().single { it.text == "Open source" }
             assertFalse(open.isEnabled)
             panel.list.selectedIndex = 0
             assertTrue(open.isEnabled)
             open.doClick()
-            assertTrue(descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
-                it.text.contains("Analyze again")
-            })
+            assertTrue(
+                descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
+                    it.text.contains("Analyze again")
+                },
+            )
             panel.showEvidence(emptyList(), 0L)
             assertFalse(open.isEnabled)
             assertEquals(0, panel.list.model.size)
@@ -355,9 +412,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 val packageB = tree.getChild(module, 1)
                 sourceTree.selectionPath = TreePath(arrayOf(tree.root, module, packageB))
                 assertEquals(0, panel.explore.relationList.model.size)
-                val direction = descendants(panel.explore)
-                    .filterIsInstance<com.intellij.ui.components.JBComboBox<*>>()
-                    .single { it.accessibleContext?.accessibleName == "Dependency direction" }
+                val direction =
+                    descendants(panel.explore)
+                        .filterIsInstance<com.intellij.ui.components.JBComboBox<*>>()
+                        .single { it.accessibleContext?.accessibleName == "Dependency direction" }
                 direction.selectedIndex = 1
                 assertEquals(1, panel.explore.relationList.model.size)
                 panel.explore.relationList.selectedIndex = 0
@@ -371,46 +429,77 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
-    private fun presentation(graph: io.shamash.psi.core.source.SourceGraphSnapshot):
-        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation> {
-        val result = AnalysisSnapshot(
-            AnalysisRequest(1, 0, 0), Completeness.COMPLETE,
-            AnalysisCoverage(graph.coverage.eligibleFiles, graph.coverage.analyzedFiles),
-            IdeAnalysisCoordinator.SourcePresentation(sourceGraph = graph, uiModel = SourceUiModel(graph)),
-            emptyList(),
-        )
+    private fun presentation(
+        graph: io.shamash.psi.core.source.SourceGraphSnapshot,
+    ): IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation> {
+        val result =
+            AnalysisSnapshot(
+                AnalysisRequest(1, 0, 0),
+                Completeness.COMPLETE,
+                AnalysisCoverage(graph.coverage.eligibleFiles, graph.coverage.analyzedFiles),
+                IdeAnalysisCoordinator.SourcePresentation(sourceGraph = graph, uiModel = SourceUiModel(graph)),
+                emptyList(),
+            )
         return IdeAnalysisState(
-            requestGeneration = 1, phase = AnalysisPhase.COMPLETED,
-            visibleResult = result, resultRelation = ResultRelation.CURRENT,
+            requestGeneration = 1,
+            phase = AnalysisPhase.COMPLETED,
+            visibleResult = result,
+            resultRelation = ResultRelation.CURRENT,
         )
     }
 
     private fun sampleGraph(cyclePairs: Int): io.shamash.psi.core.source.SourceGraphSnapshot {
-        val nodes = (0 until cyclePairs * 2).map { index ->
-            val id = SourceEntityId("module", "file:///src", "file:///src/T" + index + ".kt",
-                SourceEntityKind.CLASS, "T" + index)
-            SourceEntity(id, "p" + index, "T" + index, 0)
-        }
+        val nodes =
+            (0 until cyclePairs * 2).map { index ->
+                val id =
+                    SourceEntityId(
+                        "module",
+                        "file:///src",
+                        "file:///src/T" + index + ".kt",
+                        SourceEntityKind.CLASS,
+                        "T" + index,
+                    )
+                SourceEntity(id, "p" + index, "T" + index, 0)
+            }
         val edges =
             (0 until cyclePairs).flatMap { i ->
                 val a = nodes[i * 2].id
                 val b = nodes[i * 2 + 1].id
-                if (cyclePairs == 1) listOf(a to b)
-                else listOf(a to b, b to a)
+                if (cyclePairs == 1) {
+                    listOf(a to b)
+                } else {
+                    listOf(a to b, b to a)
+                }
             }
-        val relationships = edges.map { (from, to) ->
-            SourceRelationship(from, to, setOf(SourceDependencyKind.CALL), 1,
-                listOf(SourceReference(from.fileUrl, 10, 2, 1)))
-        }
-        val references = edges.map { (from, to) ->
-            SourceDependency(from, SourceTarget.Internal(to), SourceDependencyKind.CALL,
-                SourceReference(from.fileUrl, 10, 2, 1))
-        }
-        val snapshot = ProjectSourceSnapshot(
-            SourceAnalysisProfile(), nodes, references, relationships, emptyList(),
-            SourceCoverage(nodes.size, nodes.size, 0, edges.size.toLong(), 0, 0, false),
-            true,
-        )
+        val relationships =
+            edges.map { (from, to) ->
+                SourceRelationship(
+                    from,
+                    to,
+                    setOf(SourceDependencyKind.CALL),
+                    1,
+                    listOf(SourceReference(from.fileUrl, 10, 2, 1)),
+                )
+            }
+        val references =
+            edges.map { (from, to) ->
+                SourceDependency(
+                    from,
+                    SourceTarget.Internal(to),
+                    SourceDependencyKind.CALL,
+                    SourceReference(from.fileUrl, 10, 2, 1),
+                )
+            }
+        val snapshot =
+            ProjectSourceSnapshot(
+                SourceAnalysisProfile(),
+                nodes,
+                references,
+                relationships,
+                emptyList(),
+                SourceCoverage(nodes.size, nodes.size, 0, edges.size.toLong(), 0, 0, false),
+                true,
+            )
         return SourceGraphAnalyzer().analyze(snapshot)
     }
 

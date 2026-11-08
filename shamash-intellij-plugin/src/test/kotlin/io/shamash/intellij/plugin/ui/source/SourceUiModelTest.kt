@@ -32,10 +32,10 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceRelationship
 import io.shamash.psi.core.source.SourceTarget
+import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.junit.Test
 
 class SourceUiModelTest {
     private val a = SourcePackageId("module", "alpha")
@@ -83,9 +83,11 @@ class SourceUiModelTest {
         assertEquals(out.evidence, inbound.evidence)
         val declarationEvidence = model.uses(SourceSelection.Declaration(model.graph.entities[0].id)).single()
         assertEquals(20L, declarationEvidence.occurrences)
-        assertTrue(declarationEvidence.evidence.all {
-            it.target is SourceTarget.Internal && it.kind == SourceDependencyKind.CALL
-        })
+        assertTrue(
+            declarationEvidence.evidence.all {
+                it.target is SourceTarget.Internal && it.kind == SourceDependencyKind.CALL
+            },
+        )
         assertEquals(1, model.usedBy(SourceSelection.Declaration(model.graph.entities[1].id)).size)
         assertTrue(model.usedBy(SourceSelection.Declaration(model.graph.entities[0].id)).isEmpty())
     }
@@ -104,9 +106,10 @@ class SourceUiModelTest {
 
     @Test
     fun moduleAndPackageIdentityAreNotConflated() {
-        val model = SourceUiModel(
-            graph(listOf("shared", "shared"), listOf(0 to 1, 1 to 0), listOf("left", "right")),
-        )
+        val model =
+            SourceUiModel(
+                graph(listOf("shared", "shared"), listOf(0 to 1, 1 to 0), listOf("left", "right")),
+            )
         assertEquals(2, model.packagesByModule.size)
         assertEquals(2, model.packageIds.size)
         assertEquals(1, model.filteredFindings("", "left", null).size)
@@ -140,10 +143,13 @@ class SourceUiModelTest {
     fun sampledExternalDependenciesDoNotInventIncomingEdgesOrFullCounts() {
         val base = graph(listOf("alpha", "beta"), listOf(0 to 1))
         val node = base.entities.first().id
-        val evidence = SourceExternalReference(
-            node, "external.Service", SourceDependencyKind.TYPE,
-            SourceReference(node.fileUrl, 10, 4, 1),
-        )
+        val evidence =
+            SourceExternalReference(
+                node,
+                "external.Service",
+                SourceDependencyKind.TYPE,
+                SourceReference(node.fileUrl, 10, 4, 1),
+            )
         val model = SourceUiModel(base.copy(externalEvidence = listOf(evidence, evidence)))
         val sampled = model.external(SourceSelection.Package(a)).single()
         assertEquals("external.Service (external sample)", sampled.label)
@@ -183,10 +189,11 @@ class SourceUiModelTest {
     @Test
     fun findingsSortLargerGroupsBeforeSmallerGroupsNotBySeverity() {
         val two = graph(listOf("alpha", "beta"), listOf(0 to 1, 1 to 0)).cycles.single()
-        val larger = two.copy(
-            id = "larger",
-            members = listOf(a, b, SourcePackageId("module", "gamma")),
-        )
+        val larger =
+            two.copy(
+                id = "larger",
+                members = listOf(a, b, SourcePackageId("module", "gamma")),
+            )
         val base = graph(listOf("alpha", "beta"), listOf(0 to 1, 1 to 0))
         val model = SourceUiModel(base.copy(cycles = listOf(two, larger)))
         assertEquals(listOf("larger", two.id), model.findings.map { it.id })
@@ -255,33 +262,48 @@ class SourceUiModelTest {
         modules: List<String> = List(packages.size) { "module" },
         occurrences: Long = 1L,
     ): SourceGraphSnapshot {
-        val nodes = packages.mapIndexed { index, pkg ->
-            val id = SourceEntityId(
-                modules[index], "file:///src", "file:///src/" + modules[index] + "/T" + index + ".kt",
-                SourceEntityKind.CLASS, "T" + index,
+        val nodes =
+            packages.mapIndexed { index, pkg ->
+                val id =
+                    SourceEntityId(
+                        modules[index],
+                        "file:///src",
+                        "file:///src/" + modules[index] + "/T" + index + ".kt",
+                        SourceEntityKind.CLASS,
+                        "T" + index,
+                    )
+                SourceEntity(id, pkg, "T" + index, 0)
+            }
+        val relations =
+            arcs.map { (from, target) ->
+                val id = nodes[from].id
+                val witness =
+                    (0 until minOf(occurrences, 20).toInt()).map {
+                        SourceReference(id.fileUrl, it + 10, 3, 1)
+                    }
+                SourceRelationship(id, nodes[target].id, setOf(SourceDependencyKind.CALL), occurrences, witness)
+            }
+        val references =
+            arcs.flatMap { (from, target) ->
+                (0 until minOf(occurrences, 20).toInt()).map { offset ->
+                    SourceDependency(
+                        nodes[from].id,
+                        SourceTarget.Internal(nodes[target].id),
+                        SourceDependencyKind.CALL,
+                        SourceReference(nodes[from].id.fileUrl, offset + 10, 3, 1),
+                    )
+                }
+            }
+        val source =
+            ProjectSourceSnapshot(
+                SourceAnalysisProfile(),
+                nodes,
+                references,
+                relations,
+                emptyList(),
+                SourceCoverage(nodes.size, nodes.size, 0, arcs.size.toLong() * occurrences, 0, 0, false),
+                true,
             )
-            SourceEntity(id, pkg, "T" + index, 0)
-        }
-        val relations = arcs.map { (from, target) ->
-            val id = nodes[from].id
-            val witness = (0 until minOf(occurrences, 20).toInt()).map {
-                SourceReference(id.fileUrl, it + 10, 3, 1)
-            }
-            SourceRelationship(id, nodes[target].id, setOf(SourceDependencyKind.CALL), occurrences, witness)
-        }
-        val references = arcs.flatMap { (from, target) ->
-            (0 until minOf(occurrences, 20).toInt()).map { offset ->
-                SourceDependency(
-                    nodes[from].id, SourceTarget.Internal(nodes[target].id), SourceDependencyKind.CALL,
-                    SourceReference(nodes[from].id.fileUrl, offset + 10, 3, 1),
-                )
-            }
-        }
-        val source = ProjectSourceSnapshot(
-            SourceAnalysisProfile(), nodes, references, relations, emptyList(),
-            SourceCoverage(nodes.size, nodes.size, 0, arcs.size.toLong() * occurrences, 0, 0, false),
-            true,
-        )
         return SourceGraphAnalyzer().analyze(source)
     }
 }

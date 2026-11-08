@@ -34,7 +34,10 @@ import javax.swing.JOptionPane
 import javax.swing.JPanel
 import javax.swing.JPopupMenu
 
-class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()), Disposable {
+class ShamashSourcePanel(
+    private val project: Project,
+) : JPanel(BorderLayout()),
+    Disposable {
     private val coordinator = IdeAnalysisCoordinator.getInstance(project)
     val tabs = JBTabbedPane()
     internal val findings = SourceFindingsPanel(project) { tabs.selectedIndex = 1 }
@@ -113,9 +116,12 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
             }
         val graph = state.visibleResult?.payload?.sourceGraph
         val counts =
-            if (graph == null) ""
-            else "\n" + graph.cycles.size + " observed cyclic groups · " +
-                graph.packages.size + " packages · " + graph.entities.size + " declarations" + relation
+            if (graph == null) {
+                ""
+            } else {
+                "\n" + graph.cycles.size + " observed cyclic groups · " +
+                    graph.packages.size + " packages · " + graph.entities.size + " declarations" + relation
+            }
         details.text = SourceGuidance.detailStatus(state) + counts
         scope.text = SourceGuidance.SCOPE_LINE
         val next = state.visibleResult?.payload?.uiModel
@@ -128,7 +134,11 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
 
     private fun showHelp() {
         val menu = JPopupMenu()
-        fun item(label: String, action: () -> Unit) {
+
+        fun item(
+            label: String,
+            action: () -> Unit,
+        ) {
             val entry = JMenuItem(label)
             entry.addActionListener { action() }
             menu.add(entry)
@@ -148,7 +158,10 @@ class ShamashSourcePanel(private val project: Project) : JPanel(BorderLayout()),
         text.columns = 55
         text.rows = 18
         JOptionPane.showMessageDialog(
-            this, JBScrollPane(text), "Shamash · About these checks", JOptionPane.INFORMATION_MESSAGE,
+            this,
+            JBScrollPane(text),
+            "Shamash · About these checks",
+            JOptionPane.INFORMATION_MESSAGE,
         )
     }
 

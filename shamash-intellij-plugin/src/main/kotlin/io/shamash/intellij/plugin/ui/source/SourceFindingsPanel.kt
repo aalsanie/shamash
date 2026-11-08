@@ -27,23 +27,29 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
-import java.awt.FlowLayout
 import javax.swing.AbstractAction
 import javax.swing.BoxLayout
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
-import javax.swing.event.DocumentEvent
-import javax.swing.event.DocumentListener
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSplitPane
 import javax.swing.KeyStroke
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 
-internal class SourceFindingsPanel(project: Project, private val showExplore: () -> Unit) : JPanel(BorderLayout()) {
-    private data class Choice<T>(val key: T?, val label: String) {
+internal class SourceFindingsPanel(
+    project: Project,
+    private val showExplore: () -> Unit,
+) : JPanel(BorderLayout()) {
+    private data class Choice<T>(
+        val key: T?,
+        val label: String,
+    ) {
         override fun toString(): String = label
     }
 
@@ -56,9 +62,10 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
     private val packages = JBComboBox<Choice<SourcePackageId>>()
     private val clear = JButton("Clear filters")
     private val listModel = DefaultListModel<SourceUiModel.FindingRow>()
-    val findingList = sourceList<SourceUiModel.FindingRow>("Package cycle findings") {
-        "Cycle · " + it.title + " · " + it.summary
-    }
+    val findingList =
+        sourceList<SourceUiModel.FindingRow>("Package cycle findings") {
+            "Cycle · " + it.title + " · " + it.summary
+        }
     private val pager = PageControls()
     private val empty = wrappedText("Understand your project's dependencies")
     private val detailsTitle = JBLabel("Select a cycle to investigate")
@@ -70,11 +77,12 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
     private var edges: List<SourcePackageDependency> = emptyList()
     private val edgePager = PageControls()
     private val edgeModel = DefaultListModel<SourcePackageDependency>()
-    val edgeList = sourceList<SourcePackageDependency>("Directed edges of the representative cycle") {
-        SourceUiModel.qualified(it.from) + " → " + SourceUiModel.qualified(it.target) +
-            " · " + it.distinctEntityRelationships + " distinct source relationships · " +
-            it.occurrences + " occurrences"
-    }
+    val edgeList =
+        sourceList<SourcePackageDependency>("Directed edges of the representative cycle") {
+            SourceUiModel.qualified(it.from) + " → " + SourceUiModel.qualified(it.target) +
+                " · " + it.distinctEntityRelationships + " distinct source relationships · " +
+                it.occurrences + " occurrences"
+        }
     private val evidence = SourceEvidencePanel(project)
     private val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT)
     private val explore = JButton("Explore dependencies")
@@ -133,18 +141,24 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         split.isContinuousLayout = false
         add(split, BorderLayout.CENTER)
 
-        addComponentListener(object : ComponentAdapter() {
-            override fun componentResized(e: ComponentEvent?) {
-                split.orientation = if (width < 560) JSplitPane.VERTICAL_SPLIT else JSplitPane.HORIZONTAL_SPLIT
-                split.resizeWeight = if (width < 560) 0.48 else 0.42
-            }
-        })
+        addComponentListener(
+            object : ComponentAdapter() {
+                override fun componentResized(e: ComponentEvent?) {
+                    split.orientation = if (width < 560) JSplitPane.VERTICAL_SPLIT else JSplitPane.HORIZONTAL_SPLIT
+                    split.resizeWeight = if (width < 560) 0.48 else 0.42
+                }
+            },
+        )
 
-        search.document.addDocumentListener(object : DocumentListener {
-            override fun insertUpdate(e: DocumentEvent?) = refreshFilter()
-            override fun removeUpdate(e: DocumentEvent?) = refreshFilter()
-            override fun changedUpdate(e: DocumentEvent?) = refreshFilter()
-        })
+        search.document.addDocumentListener(
+            object : DocumentListener {
+                override fun insertUpdate(e: DocumentEvent?) = refreshFilter()
+
+                override fun removeUpdate(e: DocumentEvent?) = refreshFilter()
+
+                override fun changedUpdate(e: DocumentEvent?) = refreshFilter()
+            },
+        )
         modules.addActionListener {
             if (!suppressFilters) {
                 updatePackages()
@@ -158,8 +172,14 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
             packages.selectedIndex = 0
             refreshFilter()
         }
-        pager.previous.addActionListener { pager.change(-1, filtered.size); renderPage() }
-        pager.next.addActionListener { pager.change(1, filtered.size); renderPage() }
+        pager.previous.addActionListener {
+            pager.change(-1, filtered.size)
+            renderPage()
+        }
+        pager.next.addActionListener {
+            pager.change(1, filtered.size)
+            renderPage()
+        }
         memberPager.previous.addActionListener {
             memberPager.change(-1, memberIds.size)
             renderMembers()
@@ -168,25 +188,34 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
             memberPager.change(1, memberIds.size)
             renderMembers()
         }
-        edgePager.previous.addActionListener { edgePager.change(-1, edges.size); renderEdges() }
-        edgePager.next.addActionListener { edgePager.change(1, edges.size); renderEdges() }
+        edgePager.previous.addActionListener {
+            edgePager.change(-1, edges.size)
+            renderEdges()
+        }
+        edgePager.next.addActionListener {
+            edgePager.change(1, edges.size)
+            renderEdges()
+        }
         findingList.addListSelectionListener { if (!it.valueIsAdjusting) selectFinding() }
         edgeList.addListSelectionListener {
             if (!it.valueIsAdjusting) {
                 val edge = edgeList.selectedValue
-                if (edge == null) evidence.showEvidence(emptyList(), 0)
-                else evidence.showEvidence(
-                    edge.witnesses.map { witness ->
-                        SourceEvidence(
-                            witness.reference,
-                            witness.from,
-                            witness.from.signature + " → " + witness.target.signature,
-                            SourceTarget.Internal(witness.target),
-                            witness.kind,
-                        )
-                    },
-                    edge.occurrences,
-                )
+                if (edge == null) {
+                    evidence.showEvidence(emptyList(), 0)
+                } else {
+                    evidence.showEvidence(
+                        edge.witnesses.map { witness ->
+                            SourceEvidence(
+                                witness.reference,
+                                witness.from,
+                                witness.from.signature + " → " + witness.target.signature,
+                                SourceTarget.Internal(witness.target),
+                                witness.kind,
+                            )
+                        },
+                        edge.occurrences,
+                    )
+                }
             }
         }
         explore.addActionListener { showExplore() }
@@ -194,15 +223,22 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         val escape = KeyStroke.getKeyStroke("ESCAPE")
         for (component in listOf(edgeList, evidence.list)) {
             component.inputMap.put(escape, "backToFindings")
-            component.actionMap.put("backToFindings", object : AbstractAction() {
-                override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
-            })
+            component.actionMap.put(
+                "backToFindings",
+                object : AbstractAction() {
+                    override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
+                },
+            )
         }
-        right.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+        right
+            .getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
             .put(escape, "backToFindings")
-        right.actionMap.put("backToFindings", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
-        })
+        right.actionMap.put(
+            "backToFindings",
+            object : AbstractAction() {
+                override fun actionPerformed(e: java.awt.event.ActionEvent?) = returnToFindings()
+            },
+        )
         accessibleContext.accessibleName = "Findings"
         resetFilters()
         renderPage()
@@ -224,8 +260,9 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
     private fun resetFilters(preserve: Boolean = false) {
         suppressFilters = true
         val priorModule = if (preserve) (modules.selectedItem as? Choice<*>)?.key else null
-        val all = listOf(Choice<String>(null, "All modules")) +
-            source?.moduleIds.orEmpty().map { Choice(it, it) }
+        val all =
+            listOf(Choice<String>(null, "All modules")) +
+                source?.moduleIds.orEmpty().map { Choice(it, it) }
         modules.model = DefaultComboBoxModel(all.toTypedArray())
         modules.selectedItem = all.firstOrNull { it.key == priorModule } ?: all.first()
         suppressFilters = false
@@ -236,10 +273,13 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         suppressFilters = true
         val selected = (packages.selectedItem as? Choice<*>)?.key
         val module = (modules.selectedItem as? Choice<String>)?.key
-        val all = listOf(Choice<SourcePackageId>(null, "All packages")) +
-            source?.packageIds.orEmpty()
-                .filter { module == null || it.moduleId == module }
-                .map { Choice(it, SourceUiModel.qualified(it)) }
+        val all =
+            listOf(Choice<SourcePackageId>(null, "All packages")) +
+                source
+                    ?.packageIds
+                    .orEmpty()
+                    .filter { module == null || it.moduleId == module }
+                    .map { Choice(it, SourceUiModel.qualified(it)) }
         packages.model = DefaultComboBoxModel(all.toTypedArray())
         packages.selectedItem = all.firstOrNull { it.key == selected } ?: all.first()
         suppressFilters = false
@@ -265,27 +305,51 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         current.forEach(listModel::addElement)
         empty.text =
             when {
-                source == null -> "Understand your project's dependencies"
-                source?.findings?.isEmpty() == true ->
-                    if (source?.graph?.complete == true)
+                source == null -> {
+                    "Understand your project's dependencies"
+                }
+
+                source?.findings?.isEmpty() == true -> {
+                    if (source?.graph?.complete == true) {
                         "No package cycles found in the analyzed source. Explore dependencies."
-                    else "No cycles observed in the available evidence; analysis is incomplete."
-                filtered.isEmpty() -> "No results match these filters"
-                else -> filtered.size.toString() + " observed cyclic groups · sorted by size, not risk"
+                    } else {
+                        "No cycles observed in the available evidence; analysis is incomplete."
+                    }
+                }
+
+                filtered.isEmpty() -> {
+                    "No results match these filters"
+                }
+
+                else -> {
+                    filtered.size.toString() + " observed cyclic groups · sorted by size, not risk"
+                }
             }
-        if (current.isEmpty() && selectedId == null) clearDetails(
-            if (source?.findings?.isEmpty() == true)
-                if (source?.graph?.complete == true) "No package cycles found in the analyzed source."
-                else "No cycles observed; analysis is incomplete."
-            else if (source == null) "" else "No results match these filters",
-        )
+        if (current.isEmpty() && selectedId == null) {
+            clearDetails(
+                if (source?.findings?.isEmpty() == true) {
+                    if (source?.graph?.complete == true) {
+                        "No package cycles found in the analyzed source."
+                    } else {
+                        "No cycles observed; analysis is incomplete."
+                    }
+                } else if (source == null) {
+                    ""
+                } else {
+                    "No results match these filters"
+                },
+            )
+        }
         val index = current.indexOfFirst { it.id == selectedId }
         if (index >= 0) {
             findingList.selectedIndex = index
         } else {
             findingList.clearSelection()
-            if (selectedId == null && current.isNotEmpty()) findingList.selectedIndex = 0
-            else if (selectedId != null) clearDetails("Selected cycle is not on this page or is hidden by filters")
+            if (selectedId == null && current.isNotEmpty()) {
+                findingList.selectedIndex = 0
+            } else if (selectedId != null) {
+                clearDetails("Selected cycle is not on this page or is hidden by filters")
+            }
         }
     }
 
@@ -296,8 +360,8 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         val cycle = finding.cycle
         observation.text =
             "Observed: " + SourceUiModel.qualified(cycle.members.first()) + " and " +
-                (cycle.members.size - 1) + " other package(s) are mutually reachable through " +
-                "resolved source dependencies. This is one advisory cyclic group."
+            (cycle.members.size - 1) + " other package(s) are mutually reachable through " +
+            "resolved source dependencies. This is one advisory cyclic group."
         memberIds = cycle.members
         memberPager.reset()
         renderMembers()
@@ -311,17 +375,24 @@ internal class SourceFindingsPanel(project: Project, private val showExplore: ()
         memberPager.update(memberIds.size)
         val page = SourceUiModel.page(memberIds, memberPager.page)
         val first = memberPager.page * SourceUiModel.PAGE_SIZE + 1
-        members.text = if (page.isEmpty()) "" else
-            "Packages " + first + "–" + (first + page.size - 1) + " of " + memberIds.size +
-                ":\n" + page.joinToString("\n", transform = SourceUiModel::qualified)
+        members.text =
+            if (page.isEmpty()) {
+                ""
+            } else {
+                "Packages " + first + "–" + (first + page.size - 1) + " of " + memberIds.size +
+                    ":\n" + page.joinToString("\n", transform = SourceUiModel::qualified)
+            }
     }
 
     private fun renderEdges() {
         edgePager.update(edges.size)
         edgeModel.clear()
         SourceUiModel.page(edges, edgePager.page).forEach(edgeModel::addElement)
-        if (!edgeModel.isEmpty) edgeList.selectedIndex = 0
-        else evidence.showEvidence(emptyList(), 0)
+        if (!edgeModel.isEmpty) {
+            edgeList.selectedIndex = 0
+        } else {
+            evidence.showEvidence(emptyList(), 0)
+        }
     }
 
     private fun clearDetails(message: String) {
