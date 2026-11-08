@@ -22,8 +22,10 @@ class PsiTypeClassReferencesTest : CodeInsightFixtureTestCase<EmptyModuleFixture
                 """
                 package demo;
                 class Repository {}
+                class Box<T> {}
+                class Pair<K, V> {}
                 class Uses {
-                    java.util.Map<String, java.util.List<? extends Repository[]>> dependencies;
+                    Pair<Repository, Box<? extends Repository[]>> dependencies;
                 }
                 """.trimIndent(),
             )
@@ -35,7 +37,8 @@ class PsiTypeClassReferencesTest : CodeInsightFixtureTestCase<EmptyModuleFixture
         val result = PsiTypeClassReferences.collect(type)
         assertFalse(result.truncated)
         assertTrue(result.classes.any { it.qualifiedName == "demo.Repository" })
-        assertTrue(result.classes.any { it.qualifiedName == "java.util.List" })
+        assertTrue(result.classes.any { it.qualifiedName == "demo.Box" })
+        assertTrue(result.classes.any { it.qualifiedName == "demo.Pair" })
     }
 
     fun testSelfReferentialTypeBoundsTerminate() {
