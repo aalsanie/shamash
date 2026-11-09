@@ -180,9 +180,14 @@ class ShamashStarterJourneysTest {
                     invokeAction("io.shamash.asm.runScan")
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Old Build Scan must invoke source analysis, including Kotlin", present)
+                    x(xQuery { byVisibleText("1 observed cyclic groups") })
+                        .shouldBe("The mixed-language cycle must be represented once", present)
                     x(xQuery { byVisibleText("Explore") }).click()
-                    x(xQuery { byAccessibleName("IDE module, package and declaration tree") })
-                        .shouldBe("Explore must expose production-source declarations", present)
+                    val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
+                    tree.expandAll()
+                    val paths = tree.collectExpandedPathsAsStrings()
+                    assertTrue(paths.any { it.contains("JavaOwner") }, "The Java declaration must remain explorable")
+                    assertTrue(paths.any { it.contains("KotlinPeer") }, "The Kotlin declaration must remain explorable")
                 }
             }
         val actualProject = requireNotNull(openedProject) { "Driver did not expose the opened project" }
@@ -203,6 +208,8 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Some source dependencies could not be analyzed") })
                         .shouldBe("Unresolved production references must produce a partial result", present)
+                    x(xQuery { byVisibleText("No cycles observed in the available evidence; analysis is incomplete.") })
+                        .shouldBe("Incomplete evidence must never be presented as cycle-free", present)
                 }
             }
     }
