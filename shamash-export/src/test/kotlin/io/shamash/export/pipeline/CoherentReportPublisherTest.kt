@@ -354,6 +354,23 @@ class CoherentReportPublisherTest {
             assertNoTemporaryDirectories(root)
         }
 
+    @Test
+    fun `report path aliases cannot publish concurrently`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            val alias = root.resolve("REPORTS")
+            CoherentReportPublisher().publish(output) { stage ->
+                assertFailsWith<IllegalStateException> {
+                    CoherentReportPublisher().publish(alias) { competing ->
+                        Files.writeString(competing.resolve(ExportOutputLayout.JSON_FILE_NAME), "competing")
+                    }
+                }
+                Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "first")
+            }
+            assertEquals("first", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertNoTemporaryDirectories(root)
+        }
+
     private fun withProject(action: (Path) -> Unit) {
         val root = Files.createTempDirectory("shamash-publisher-test")
         try {

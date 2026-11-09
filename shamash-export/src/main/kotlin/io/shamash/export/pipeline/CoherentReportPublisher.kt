@@ -18,7 +18,6 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
 
 /**
  * Renders a complete report generation away from its destination and swaps directories only on success.
@@ -49,12 +48,8 @@ class CoherentReportPublisher(
         val parent = requireNotNull(destination.parent) { "Report directory has no parent" }
         Files.createDirectories(parent)
         require(!Files.isSymbolicLink(destination)) { "Report destination must not be a symbolic link" }
-        val digest =
-            MessageDigest
-                .getInstance("SHA-256")
-                .digest(destination.toString().toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        val lockFile = parent.resolve(".shamash-publish-${digest.take(24)}.lock")
+        // One lock per parent also protects case-insensitive aliases of the same destination.
+        val lockFile = parent.resolve(".shamash-publish-lock")
         FileChannel
             .open(
                 lockFile,
