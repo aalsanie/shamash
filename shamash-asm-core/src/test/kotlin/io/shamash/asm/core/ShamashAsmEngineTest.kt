@@ -296,6 +296,109 @@ class ShamashAsmEngineTest {
     }
 
     @Test
+    fun `failed baseline activation restores previously completed reports and user files`() {
+        withBaselineProject { project ->
+            val output = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            val oldJson = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            val oldXml = output.resolve(ExportOutputLayout.XML_FILE_NAME)
+            Files.writeString(oldJson, "last-complete-json")
+            Files.writeString(oldXml, "last-complete-xml")
+            Files.writeString(output.resolve("notes.txt"), "personal-notes")
+            val baseline = Files.createDirectories(project.resolve(".shamash/baseline.json"))
+            Files.writeString(baseline.resolve("keep"), "existing-baseline-directory")
+
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project, "demo", baselineConfig(exportEnabled = true), FactIndex.empty(),
+                )
+
+            assertFalse(result.isSuccess)
+            assertEquals(null, result.export)
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED }, result.errors.toString())
+            assertFalse(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED }, result.errors.toString())
+            assertEquals("last-complete-json", Files.readString(oldJson))
+            assertEquals("last-complete-xml", Files.readString(oldXml))
+            assertEquals("personal-notes", Files.readString(output.resolve("notes.txt")))
+            assertEquals("existing-baseline-directory", Files.readString(baseline.resolve("keep")))
+            assertNoBaselineTemps(project)
+            assertNoPublisherTemps(project)
+        }
+    }
+
+    @Test
+    fun `failed baseline activation without old reports leaves no new published reports`() {
+        withBaselineProject { project ->
+            val baseline = Files.createDirectories(project.resolve(".shamash/baseline.json"))
+            Files.writeString(baseline.resolve("keep"), "sentinel")
+            val output = project.resolve(".shamash/reports/asm")
+
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project, "demo", baselineConfig(exportEnabled = true), FactIndex.empty(),
+                )
+
+            assertFalse(result.isSuccess)
+            assertEquals(null, result.export)
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED }, result.errors.toString())
+            assertFalse(Files.exists(output))
+            assertEquals("sentinel", Files.readString(baseline.resolve("keep")))
+            assertNoBaselineTemps(project)
+            assertNoPublisherTemps(project)
+        }
+    }
+
+    @Test
+    fun `baseline inside report directory is committed with the generation`() {
+        withBaselineProject { project ->
+            val output = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            Files.writeString(output.resolve("notes.txt"), "unrelated")
+            val config =
+                baselineConfig(exportEnabled = true)
+                    .copy(baseline = BaselineConfig(BaselineMode.GENERATE, ".shamash/reports/asm/baseline.json"))
+
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project, "demo", config, FactIndex.empty(),
+                )
+
+            assertTrue(result.isSuccess, result.errors.toString())
+            assertTrue(assertNotNull(result.export).baselineWritten)
+            assertTrue(Files.readString(output.resolve("baseline.json")).contains("\"fingerprints\""))
+            assertEquals("unrelated", Files.readString(output.resolve("notes.txt")))
+            assertNoPublisherTemps(project)
+        }
+    }
+
+    @Test
+    fun `baseline path cannot overwrite a managed report`() {
+        withBaselineProject { project ->
+            val output = Files.createDirectories(project.resolve(".shamash/reports/asm"))
+            val existing = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(existing, "existing-report")
+            val config =
+                baselineConfig(exportEnabled = true).copy(
+                    baseline =
+                        BaselineConfig(
+                            BaselineMode.GENERATE,
+                            ".shamash/reports/asm/${ExportOutputLayout.JSON_FILE_NAME}",
+                        ),
+                )
+
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project, "demo", config, FactIndex.empty(),
+                )
+
+            assertFalse(result.isSuccess)
+            assertEquals(null, result.export)
+            assertTrue(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED }, result.errors.toString())
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED }, result.errors.toString())
+            assertEquals("existing-report", Files.readString(existing))
+            assertNoPublisherTemps(project)
+        }
+    }
+
+    @Test
     fun `successful generation records findings and verify leaves the baseline unchanged`() {
         withBaselineProject { project ->
             val baseline = project.resolve(".shamash/baseline.json")
@@ -628,6 +731,20 @@ class ShamashAsmEngineTest {
     private fun assertNoBaselineTemps(project: Path) {
         Files.list(project.resolve(".shamash")).use { paths ->
             assertFalse(paths.anyMatch { it.fileName.toString().endsWith(".tmp") })
+        }
+    }
+
+    private fun assertNoPublisherTemps(project: Path) {
+        val parent = project.resolve(".shamash/reports")
+        if (!Files.isDirectory(parent)) return
+        Files.list(parent).use { paths ->
+            assertFalse(
+                paths.anyMatch {
+                    it.fileName.toString().startsWith(".shamash-stage-") ||
+                        it.fileName.toString().startsWith(".shamash-previous-") ||
+                        it.fileName.toString().startsWith(".shamash-discarded-")
+                },
+            )
         }
     }
 

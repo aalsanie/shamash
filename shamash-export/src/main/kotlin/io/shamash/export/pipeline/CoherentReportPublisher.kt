@@ -12,6 +12,10 @@ import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.channels.FileChannel
+import java.nio.channels.OverlappingFileLockException
+import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
@@ -29,14 +33,51 @@ class CoherentReportPublisher(
     fun <T> publish(
         outputDir: Path,
         render: (Path) -> T,
+    ): T = publish(outputDir, {}, render)
+
+    /**
+     * Activates the reports before [onActivated], retaining the previous generation until both
+     * succeed. A failed completion restores the previous reports; separate destinations cannot
+     * offer crash-atomic visibility.
+     */
+    fun <T> publish(
+        outputDir: Path,
+        onActivated: () -> Unit,
+        render: (Path) -> T,
     ): T {
         val destination = outputDir.toAbsolutePath().normalize()
         val parent = requireNotNull(destination.parent) { "Report directory has no parent" }
         Files.createDirectories(parent)
         require(!Files.isSymbolicLink(destination)) { "Report destination must not be a symbolic link" }
+        val digest =
+            MessageDigest.getInstance("SHA-256")
+                .digest(destination.toString().toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        val lockFile = parent.resolve(".shamash-publish-${digest.take(24)}.lock")
+        FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { channel ->
+            val lock =
+                try {
+                    channel.tryLock()
+                } catch (_: OverlappingFileLockException) {
+                    null
+                }
+            checkNotNull(lock) { "Report destination is already being published: $destination" }
+            lock.use {
+                return publishLocked(destination, parent, onActivated, render)
+            }
+        }
+    }
+
+    private fun <T> publishLocked(
+        destination: Path,
+        parent: Path,
+        onActivated: () -> Unit,
+        render: (Path) -> T,
+    ): T {
         val stage = Files.createTempDirectory(parent, ".shamash-stage-")
         var backup: Path? = null
-        var published = false
+        var activated = false
+        var completed = false
         try {
             if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
                 require(Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
@@ -48,21 +89,45 @@ class CoherentReportPublisher(
             if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
                 val reserved = Files.createTempDirectory(parent, ".shamash-previous-")
                 Files.delete(reserved)
-                moveDirectory(destination, reserved)
                 backup = reserved
+                moveDirectory(destination, reserved)
             }
-            try {
-                moveDirectory(stage, destination)
-            } catch (failure: Throwable) {
-                backup?.let { moveDirectory(it, destination) }
-                backup = null
-                throw failure
-            }
-            published = true
+            moveDirectory(stage, destination)
+            activated = true
+            onActivated()
+            completed = true
             return result
+        } catch (failure: Throwable) {
+            // A move hook may throw after completing its move; reconcile the on-disk state.
+            if (!activated && !Files.exists(stage, LinkOption.NOFOLLOW_LINKS) &&
+                Files.exists(destination, LinkOption.NOFOLLOW_LINKS)
+            ) {
+                activated = true
+            }
+            var discarded: Path? = null
+            try {
+                if (activated) {
+                    val reserved = Files.createTempDirectory(parent, ".shamash-discarded-")
+                    Files.delete(reserved)
+                    moveDirectory(destination, reserved)
+                    discarded = reserved
+                }
+                val previous = backup
+                if (previous != null && Files.exists(previous, LinkOption.NOFOLLOW_LINKS)) {
+                    moveDirectory(previous, destination)
+                }
+                backup = null
+                discarded?.let { deleteTree(it) }
+            } catch (rollbackFailure: Throwable) {
+                failure.addSuppressed(
+                    IllegalStateException("Report rollback failed; inspect retained generations in $parent", rollbackFailure),
+                )
+                // Do not delete retained generations if restoration did not complete.
+            }
+            throw failure
         } finally {
             if (Files.exists(stage, LinkOption.NOFOLLOW_LINKS)) deleteTree(stage)
-            if (published) backup?.let { runCatching { deleteTree(it) } }
+            if (completed) backup?.let { runCatching { deleteTree(it) } }
         }
     }
 
