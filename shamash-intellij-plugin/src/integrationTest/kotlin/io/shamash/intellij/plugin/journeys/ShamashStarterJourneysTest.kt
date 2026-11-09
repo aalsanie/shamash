@@ -18,11 +18,12 @@
 package io.shamash.intellij.plugin.journeys
 
 import com.intellij.driver.client.Remote
+import com.intellij.driver.sdk.getOpenProjects
 import com.intellij.driver.sdk.invokeAction
 import com.intellij.driver.sdk.singleProject
-import com.intellij.driver.sdk.ui.components.common.ideFrame
-import com.intellij.driver.sdk.ui.components.elements.accessibleList
-import com.intellij.driver.sdk.ui.components.elements.accessibleTree
+import com.intellij.driver.sdk.ui.components.ideFrame
+import com.intellij.driver.sdk.ui.components.list
+import com.intellij.driver.sdk.ui.components.tree
 import com.intellij.driver.sdk.ui.present
 import com.intellij.driver.sdk.ui.shouldBe
 import com.intellij.driver.sdk.ui.shouldNot
@@ -48,6 +49,8 @@ import org.kodein.di.DI
 import org.kodein.di.bindSingleton
 import org.w3c.dom.Element
 import java.awt.event.KeyEvent
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
@@ -64,18 +67,22 @@ class ShamashStarterJourneysTest {
             DI {
                 extend(di)
                 bindSingleton<CIServer>(overrides = true) {
-                    object : CIServer by NoCIServer {
-                        override fun reportTestFailure(
-                            testName: String,
-                            message: String,
-                            details: String,
-                            linkToLogs: String?,
-                        ): Unit = throw AssertionError("$testName: $message\n$details\n${linkToLogs.orEmpty()}")
-                    }
+                    Proxy.newProxyInstance(
+                        CIServer::class.java.classLoader,
+                        arrayOf(CIServer::class.java),
+                    ) { _, method, args ->
+                        if (method.name == "reportTestFailure") {
+                            throw AssertionError(args?.joinToString("\n") ?: "IDE reported an error")
+                        }
+                        try {
+                            method.invoke(NoCIServer, *(args ?: emptyArray()))
+                        } catch (failure: InvocationTargetException) {
+                            throw failure.targetException
+                        }
+                    } as CIServer
                 }
             }
     }
-
     @Test
     fun firstRunWithoutSourcesIsHonestAndDoesNotRewriteExistingProjectData() {
         val project = fixture("empty")
@@ -90,7 +97,7 @@ class ShamashStarterJourneysTest {
             .runIdeWithDriver()
             .useDriverAndCloseIde {
                 waitForIndicators(5.minutes)
-                openedProject = Path.of(singleProject().getBasePath())
+                openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
                     x(xQuery { byVisibleText("Findings") }).shouldBe("Findings must be available", present)
@@ -122,7 +129,7 @@ class ShamashStarterJourneysTest {
             .runIdeWithDriver()
             .useDriverAndCloseIde {
                 waitForIndicators(5.minutes)
-                openedProject = Path.of(singleProject().getBasePath())
+                openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
@@ -130,7 +137,7 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Both directions of the Java package cycle must be observed", present)
                     x(xQuery { byVisibleText("1 observed cyclic groups") })
                         .shouldBe("The cycle must be represented once", present)
-                    val evidence = accessibleList { byAccessibleName("Verified source references") }
+                    val evidence = list { byAccessibleName("Verified source references") }
                     evidence.shouldBe("The selected cycle edge must retain a source witness", present)
                     evidenceLabel = evidence.items.firstOrNull()
                         ?: throw AssertionError("The Java cycle has no retained source reference")
@@ -143,7 +150,7 @@ class ShamashStarterJourneysTest {
                 }
                 val snapshot =
                     withContext {
-                        val manager = service<RemoteFileEditorManager>(singleProject())
+                        val manager = service(RemoteFileEditorManager::class, singleProject())
                         val file = requireNotNull(manager.getSelectedFiles().firstOrNull())
                         val editor = requireNotNull(manager.getSelectedTextEditor())
                         EditorSnapshot(file.getPath(), editor.getDocument().getText(), editor.getCaretModel().getOffset())
@@ -180,7 +187,7 @@ class ShamashStarterJourneysTest {
             .runIdeWithDriver()
             .useDriverAndCloseIde {
                 waitForIndicators(5.minutes)
-                openedProject = Path.of(singleProject().getBasePath())
+                openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.asm.runScan")
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
@@ -188,11 +195,11 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("1 observed cyclic groups") })
                         .shouldBe("The mixed-language cycle must be represented once", present)
                     x(xQuery { byVisibleText("Explore") }).click()
-                    val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
-                    tree.expandAll()
-                    val paths = tree.collectExpandedPathsAsStrings()
-                    assertTrue(paths.any { it.contains("JavaOwner") }, "The Java declaration must remain explorable")
-                    assertTrue(paths.any { it.contains("KotlinPeer") }, "The Kotlin declaration must remain explorable")
+                    val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
+                    tree.expandAll(30.seconds)
+                    val paths = tree.collectExpandedPaths().map { it.path }
+                    assertTrue(paths.any { path -> path.any { it.contains("JavaOwner") } }, "The Java declaration must remain explorable")
+                    assertTrue(paths.any { path -> path.any { it.contains("KotlinPeer") } }, "The Kotlin declaration must remain explorable")
                 }
             }
         val actualProject = requireNotNull(openedProject) { "Driver did not expose the opened project" }
@@ -237,9 +244,9 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("1 observed cyclic groups") })
                         .shouldBe("The Kotlin cycle must be represented once", present)
                     x(xQuery { byVisibleText("Explore") }).click()
-                    val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
-                    tree.expandAll()
-                    val paths = tree.collectExpandedPathsAsStrings()
+                    val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
+                    tree.expandAll(30.seconds)
+                    val paths = tree.collectExpandedPaths().map { it.path }
                     for (declaration in listOf(
                         "KotlinOwner",
                         "RightBatch",
@@ -249,10 +256,13 @@ class ShamashStarterJourneysTest {
                         "defaultPayload",
                         "create",
                     )) {
-                        assertTrue(paths.any { it.contains(declaration) }, "Missing Kotlin declaration " + declaration + ": " + paths)
+                        assertTrue(paths.any { path -> path.any { it.contains(declaration) } }, "Missing Kotlin declaration " + declaration + ": " + paths)
                     }
-                    tree.selectRow { it.contains("RightBatch") }
-                    val relationships = accessibleList { byAccessibleName("Source relationships") }
+                    tree.clickRow(
+                        tree.collectExpandedPaths().firstOrNull { path -> path.path.any { it.contains("RightBatch") } }?.row
+                            ?: throw AssertionError("Missing type alias in Explore tree"),
+                    )
+                    val relationships = list { byAccessibleName("Source relationships") }
                     assertTrue(
                         relationships.items.any { it.contains("Container") },
                         "The type alias must resolve its generic container target",
@@ -276,7 +286,7 @@ class ShamashStarterJourneysTest {
             .runIdeWithDriver()
             .useDriverAndCloseIde {
                 waitForIndicators(5.minutes)
-                openedProject = Path.of(singleProject().getBasePath())
+                openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
@@ -287,20 +297,20 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Acyclic dependencies must remain explorable", present)
                     invokeAction("GotoFile")
                     keyboard {
-                        typeText("Beta.java")
+                        enterText("Beta.java")
                         enter()
                     }
                 }
                 val selectedPath =
                     withContext {
-                        val manager = service<RemoteFileEditorManager>(singleProject())
+                        val manager = service(RemoteFileEditorManager::class, singleProject())
                         requireNotNull(manager.getSelectedFiles().firstOrNull()).getPath()
                     }
                 assertTrue(selectedPath.endsWith("/Beta.java"), "Goto File opened the wrong editor: " + selectedPath)
                 ideFrame {
                     keyboard {
                         hotKey(KeyEvent.VK_CONTROL, KeyEvent.VK_A)
-                        typeText(editedBeta)
+                        enterText(editedBeta)
                     }
                     x(xQuery { byVisibleText("Code changed since this analysis") })
                         .shouldBe("An unsaved source edit must invalidate the previous result", present)
@@ -328,19 +338,22 @@ class ShamashStarterJourneysTest {
             .runIdeWithDriver()
             .useDriverAndCloseIde {
                 waitForIndicators(5.minutes)
-                openedProject = Path.of(singleProject().getBasePath())
+                openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
                         .shouldBe("A one-way module dependency must remain acyclic", present)
                     x(xQuery { byVisibleText("Explore") }).click()
-                    val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
-                    tree.expandAll()
-                    val sharedPackages = tree.collectExpandedPathsAsStrings().filter { it.endsWith("/shared") }
+                    val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
+                    tree.expandAll(30.seconds)
+                    val sharedPackages = tree.collectExpandedPaths().filter { it.path.lastOrNull() == "shared" }
                     assertEquals(2, sharedPackages.size, "The same package name must remain distinct across IDE modules")
-                    tree.selectRow { it == "multi-a" }
-                    val relationships = accessibleList { byAccessibleName("Source relationships") }
+                    tree.clickRow(
+                        tree.collectExpandedPaths().firstOrNull { it.path.lastOrNull() == "multi-a" }?.row
+                            ?: throw AssertionError("Missing multi-a IDE module in Explore tree"),
+                    )
+                    val relationships = list { byAccessibleName("Source relationships") }
                     assertTrue(
                         relationships.items.any { it.contains("multi-b (IDE module)") },
                         "The module dependency must retain its target module identity: " + relationships.items,
@@ -369,8 +382,8 @@ class ShamashStarterJourneysTest {
                         .shouldBe("A subsequent request must enter the active state", present)
                     invokeAction("CloseProject")
                 }
-                waitFor("the project is disposed", timeout = 30.seconds) {
-                    withContext { service<RemoteProjectManager>().getOpenProjects().isEmpty() }
+                waitFor(30.seconds, errorMessage = "the project is disposed") {
+                    getOpenProjects().isEmpty()
                 }
                 Thread.sleep(1_000)
             }
@@ -482,12 +495,3 @@ interface RemoteCaretModel {
     fun getOffset(): Int
 }
 
-@Remote("com.intellij.openapi.project.ProjectManager")
-interface RemoteProjectManager {
-    fun getOpenProjects(): Array<RemoteProject>
-}
-
-@Remote("com.intellij.openapi.project.Project")
-interface RemoteProject {
-    fun isDisposed(): Boolean
-}
