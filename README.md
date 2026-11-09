@@ -14,7 +14,7 @@
 
 **Architecture checks for Java and Kotlin, without architecture tests.**
 
-Detect dependency cycles, enforce package and role boundaries, and surface coupling hotspots. Use compiled-code checks in the CLI or CI, with source-aware findings and fixes in IntelliJ.
+Understand Java/Kotlin source dependencies and investigate package cycles in IntelliJ. Use standalone compiled-code checks in the CLI or CI to enforce configurable architecture policies.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
@@ -72,7 +72,7 @@ Replace the build step with `./mvnw package` for Maven. The Action verifies the 
 
 ## IntelliJ
 
-[Install from JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) and open **Tools → Shamash**. **Build Analysis** checks compiled code; **Source Analysis** provides source-aware findings, suppressions, and fixes.
+[Install from JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) and open **Tools → Shamash**. Select **Findings** or **Explore**, then choose **Analyze project** to investigate Java/Kotlin production-source dependencies. The plugin does not evaluate your project YAML policies or perform custom fixes; use the CLI for enforcement, reports, and baselines. See the [upgrade notes](./docs/intellij-migration.md) for retired actions and shortcuts.
 
 ## Library
 

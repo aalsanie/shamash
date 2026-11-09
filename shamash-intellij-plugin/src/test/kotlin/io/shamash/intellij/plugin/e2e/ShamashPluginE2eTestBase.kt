@@ -28,22 +28,10 @@ import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
 import com.intellij.testFramework.runInEdtAndWait
-import io.shamash.intellij.plugin.asm.ui.actions.ShamashAsmUiStateService
-import io.shamash.intellij.plugin.asm.ui.settings.ShamashAsmSettingsState
-import io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService
-import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiSettingsState
 import java.nio.file.Files
 import java.nio.file.Path
 
 abstract class ShamashPluginE2eTestBase : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder<*>>() {
-    override fun setUp() {
-        super.setUp()
-        ShamashAsmSettingsState.getInstance(project).loadState(ShamashAsmSettingsState.State())
-        ShamashPsiSettingsState.getInstance(project).loadState(ShamashPsiSettingsState.State())
-        ShamashAsmUiStateService.getInstance(project).clear()
-        ShamashPsiUiStateService.getInstance(project).updateFromScan(emptyList(), emptyList(), null, null)
-    }
-
     protected fun ensureMainResourcesRoot(): VirtualFile {
         val dir = myFixture.tempDirFixture.findOrCreateDir("src/main/resources")
         // Register as a source root so ResourceBaseLookup/AsmResourceBaseLookup can see it.

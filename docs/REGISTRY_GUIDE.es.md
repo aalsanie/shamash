@@ -29,7 +29,7 @@ Maven:
 </dependency>
 ```
 
-Utiliza la versión correspondiente a tu proveedor. La CLI o el complemento IntelliJ proporciona `shamash-asm-core` durante la ejecución; no incluyas otra copia dentro del JAR del proveedor.
+Utiliza la versión correspondiente a tu proveedor. La CLI de Shamash proporciona `shamash-asm-core` durante la ejecución; no incluyas otra copia dentro del JAR del proveedor.
 
 ## Proveedores de registros para la CLI
 
@@ -80,33 +80,9 @@ shamash scan --registry acme
 
 Un identificador de registro desconocido produce un error de configuración y muestra los identificadores disponibles.
 
-## Proveedores de registros para IntelliJ
+## Integración de registros de IntelliJ (retirada)
 
-El complemento IntelliJ expone este punto de extensión:
-
-```text
-io.shamash.asmRuleRegistryProvider
-```
-
-Utiliza la misma interfaz de proveedor que la CLI:
-
-```text
-io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
-```
-
-Un complemento de IntelliJ adicional puede implementar esa interfaz y registrar su implementación:
-
-```xml
-<idea-plugin>
-    <depends>io.shamash</depends>
-
-    <extensions defaultExtensionNs="io.shamash">
-        <asmRuleRegistryProvider implementation="com.acme.shamash.AcmeRuleRegistryProvider"/>
-    </extensions>
-</idea-plugin>
-```
-
-Los registros aportados aparecen en el selector de registros. El complemento ignora y notifica los identificadores duplicados o vacíos.
+El complemento de IntelliJ, centrado ahora en el código fuente, ya no ejecuta registros ASM personalizados ni ofrece el punto de extensión `io.shamash.asmRuleRegistryProvider`. Elimina esa declaración de otros complementos. La CLI sigue descubriendo proveedores mediante `ServiceLoader`; la API ASM publicada permanece disponible.
 
 ## Compatibilidad
 
@@ -114,4 +90,4 @@ Los proveedores de registros dependen de la compatibilidad binaria con la API de
 
 Compila contra una versión explícita de `shamash-asm-core` y ejecuta el proveedor con una versión compatible. Si una actualización modifica la API de registros, recompila el proveedor y vuelve a probarlo.
 
-`ServiceLoader` y el punto de extensión de IntelliJ permiten descubrir proveedores en ejecución. Maven Central suministra la dependencia de API necesaria para compilarlos.
+`ServiceLoader` permite descubrir proveedores durante la ejecución de la CLI; Maven Central suministra la API necesaria para compilarlos.

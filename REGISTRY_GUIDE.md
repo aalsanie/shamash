@@ -29,7 +29,7 @@ Maven:
 </dependency>
 ```
 
-Use the Shamash version your provider targets. The Shamash CLI or IntelliJ plugin supplies `shamash-asm-core` at runtime; provider JARs should not bundle their own copy.
+Use the Shamash version your provider targets. The Shamash CLI supplies `shamash-asm-core` at runtime; provider JARs should not bundle their own copy.
 
 ## CLI registry providers
 
@@ -80,33 +80,9 @@ shamash scan --registry acme
 
 An unknown registry id is a configuration error and Shamash prints the available ids.
 
-## IntelliJ registry providers
+## IntelliJ registry integration (retired)
 
-The IntelliJ plugin exposes this extension point:
-
-```text
-io.shamash.asmRuleRegistryProvider
-```
-
-It uses the same provider interface as the CLI:
-
-```text
-io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
-```
-
-A companion IntelliJ plugin can implement that interface and register the implementation:
-
-```xml
-<idea-plugin>
-    <depends>io.shamash</depends>
-
-    <extensions defaultExtensionNs="io.shamash">
-        <asmRuleRegistryProvider implementation="com.acme.shamash.AcmeRuleRegistryProvider"/>
-    </extensions>
-</idea-plugin>
-```
-
-Contributed registries appear in Shamash's registry selection UI. Duplicate or blank ids are ignored and reported by the plugin.
+The source-only IntelliJ plugin no longer executes custom ASM registries and no longer exposes the `io.shamash.asmRuleRegistryProvider` extension point. Remove this registration from companion IntelliJ plugins. The standalone CLI still discovers providers via `ServiceLoader` and the published ASM registry SPI remains supported.
 
 ## Compatibility
 
@@ -114,4 +90,4 @@ Registry providers are binary-coupled to the Shamash rule-registry API they comp
 
 Compile against an explicit `shamash-asm-core` version and run the provider with a compatible Shamash version. Rebuild and retest the provider when upgrading across versions that change the rule-registry API.
 
-`ServiceLoader` and the IntelliJ extension point provide runtime discovery. Maven Central provides the compile-time API dependency.
+`ServiceLoader` provides runtime discovery for the CLI; Maven Central provides the compile-time API dependency.

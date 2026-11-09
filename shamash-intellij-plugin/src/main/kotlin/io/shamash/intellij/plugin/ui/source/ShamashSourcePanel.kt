@@ -25,6 +25,7 @@ import com.intellij.ui.components.JBTabbedPane
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
+import io.shamash.intellij.plugin.settings.ShamashSourceMigrationState
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
@@ -55,6 +56,7 @@ class ShamashSourcePanel(
     private var disposed = false
 
     init {
+        ShamashSourceMigrationState.getInstance(project).acknowledge()
         val toolbar = JPanel(FlowLayout(FlowLayout.LEFT, 8, 3))
         toolbar.add(analyze)
         toolbar.add(cancel)

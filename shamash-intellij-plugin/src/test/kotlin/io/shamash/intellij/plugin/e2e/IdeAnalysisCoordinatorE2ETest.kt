@@ -30,7 +30,6 @@ import io.shamash.intellij.plugin.analysis.AnalysisPhase
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.ResultRelation
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
-import io.shamash.intellij.plugin.psi.ui.settings.ShamashPsiSettingsState
 import io.shamash.psi.core.config.SchemaResources
 import java.nio.file.Files
 import java.nio.file.Path
@@ -337,7 +336,6 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val config = SchemaResources.openReferenceYaml().bufferedReader().use { it.readText() }
         val configPath = Path.of(project.basePath!!).resolve("shamash/configs/psi.yml")
         writeFile(configPath, config)
-        ShamashPsiSettingsState.getInstance(project).state.configPath = configPath.toString()
         runInEdtAndWait {
             val doc = kotlin.test.assertNotNull(FileDocumentManager.getInstance().getDocument(vf))
             WriteCommandAction.runWriteCommandAction(project) { doc.insertString(doc.textLength, " // unsaved") }

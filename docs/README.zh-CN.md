@@ -14,7 +14,7 @@
 
 **无需编写架构测试，即可检查 Java 和 Kotlin 项目的架构。**
 
-检测依赖环、约束包与架构角色之间的边界，并识别高耦合区域。通过命令行或 CI 检查已编译代码，也可在 IntelliJ 中查看源码级问题并使用修复功能。
+在 IntelliJ 中探索 Java/Kotlin 源码依赖和包循环。使用 CLI 或 CI 对已编译代码执行可配置的架构策略检查。
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
@@ -72,7 +72,7 @@ Maven 项目请将构建步骤替换为 `./mvnw package`。此 Action 会在扫�
 
 ## IntelliJ
 
-从 [JetBrains Marketplace 安装插件](https://plugins.jetbrains.com/plugin/29504-shamash)，然后打开 **Tools → Shamash**。**Build Analysis** 检查已编译代码；**Source Analysis** 提供源码级问题定位、抑制规则和修复功能。
+从 [JetBrains Marketplace 安装插件](https://plugins.jetbrains.com/plugin/29504-shamash)，然后打开 **Tools → Shamash**。选择 **Findings** 或 **Explore**，点击 **Analyze project**。插件不执行项目 YAML 策略，也不提供自动修复；架构策略、报告和基线请使用 CLI。
 
 ## 库集成
 

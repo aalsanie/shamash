@@ -4,37 +4,28 @@
     <vendor email="a.aalsanie@outlook.com">A.Alsanie</vendor>
 
     <description><![CDATA[
-        <b>Stop JVM architecture drift before it reaches main. No need to fix past debt, baseline is highly configurable in YAML, no tests or code is required!</b>
+        <b>Understand source dependencies in Java and Kotlin projects.</b>
         <br/><br/>
-        Shamash finds dependency cycles, boundary violations and structural risks in Java/Kotlin projects,
-        and can enforce accepted architecture in CI without requiring architecture test code.
+        Shamash helps investigate package dependency cycles, explore relationships between
+        source declarations, and navigate to supporting references. Start with Analyze project;
+        it does not require a Shamash configuration, application build, or report export.
         <br/><br/>
-        The IntelliJ plugin provides one Shamash workspace with <b>Build Analysis</b> for compiled-bytecode
-        checks and <b>Source Analysis</b> for source-aware feedback, suppressions and fixes.
-            <br/><br/>
-        Plugin source: <a href="https://github.com/aalsanie/shamash">Shamash</a> (Apache-2.0);
-        core dependencies: AGPL-3.0-only. See bundled licenses and source metadata.
+        Source relationships are advisory; existing project architecture policies are not evaluated
+        by the IDE experience. For build-time enforcement, reports, baselines and custom rules,
+        visit <a href="https://github.com/aalsanie/shamash">Shamash on GitHub</a>.
+        <br/><br/>
+        Plugin source is Apache-2.0; core dependencies are AGPL-3.0-only.
+        See bundled licenses and source metadata.
     ]]></description>
 
     <depends>com.intellij.modules.java</depends>
     <depends>org.jetbrains.kotlin</depends>
 
-    <extensionPoints>
-        <extensionPoint qualifiedName="io.shamash.asmRuleRegistryProvider"
-                        interface="io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider"
-                        dynamic="true"/>
-    </extensionPoints>
-
     <extensions defaultExtensionNs="com.intellij">
-        <notificationGroup id="Shamash PSI" displayType="BALLOON" isLogByDefault="true"/>
-        <notificationGroup id="Shamash ASM" displayType="BALLOON" isLogByDefault="true"/>
-
         <toolWindow id="Shamash"
-                    anchor="right"
+                    anchor="bottom"
                     icon="/icons/pluginIcon.svg"
                     factoryClass="io.shamash.intellij.plugin.ui.ShamashToolWindowFactory"/>
-
-        <applicationService serviceImplementation="io.shamash.intellij.plugin.settings.ShamashSettings"/>
     </extensions>
 
     <extensions defaultExtensionNs="org.jetbrains.kotlin">
@@ -45,7 +36,7 @@
         <action id="io.shamash.open"
                 class="io.shamash.intellij.plugin.ui.actions.OpenShamashToolWindowAction"
                 text="Shamash"
-                description="Open Shamash architecture analysis"
+                description="Open Shamash source dependency analysis"
                 icon="/icons/pluginIcon.svg">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
@@ -55,56 +46,28 @@
                 text="Shamash: Analyze Project"
                 description="Analyze Java/Kotlin production source dependencies"/>
 
-        <!-- Internal actions remain registered because dashboards/toolbars invoke them by id.
-             They are intentionally not added to the top-level Tools menu. -->
+        <!-- One-major-version action-ID compatibility for previously assigned shortcuts.
+             No legacy PSI/ASM scan, configuration, export or registry action is registered. -->
         <action id="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction"
                 class="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction"
-                text="Shamash: Source Dashboard"/>
+                text="Shamash: Open Findings (legacy Source Dashboard)"/>
         <action id="io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
                 class="io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction"
-                text="Shamash: Run Source Scan"/>
-        <action id="io.shamash.intellij.plugin.psi.ui.actions.CancelSourceAnalysisAction"
-                class="io.shamash.intellij.plugin.psi.ui.actions.CancelSourceAnalysisAction"
-                text="Shamash: Cancel Source Analysis"/>
-        <action id="io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
-                class="io.shamash.intellij.plugin.psi.ui.actions.ValidatePsiConfigAction"
-                text="Shamash: Validate Source Config"/>
-        <action id="io.shamash.intellij.plugin.psi.ui.actions.CreatePsiConfigFromReferenceAction"
-                class="io.shamash.intellij.plugin.psi.ui.actions.CreatePsiConfigFromReferenceAction"
-                text="Shamash: Create Source Config"/>
-        <action id="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiReferenceConfigAction"
-                class="io.shamash.intellij.plugin.psi.ui.actions.OpenPsiReferenceConfigAction"
-                text="Shamash: Open Source Reference Config"/>
-        <action id="io.shamash.intellij.plugin.psi.ui.actions.ExportPsiReportsAction"
-                class="io.shamash.intellij.plugin.psi.ui.actions.ExportPsiReportsAction"
-                text="Shamash: Export Source Reports"/>
-
+                text="Shamash: Analyze Source (legacy Run Source Scan)"/>
         <action id="io.shamash.asm.openDashboard"
                 class="io.shamash.intellij.plugin.asm.ui.actions.OpenAsmDashboardAction"
-                text="Shamash: Build Dashboard"/>
+                text="Shamash: Open Findings (legacy Build Dashboard)"/>
         <action id="io.shamash.asm.runScan"
                 class="io.shamash.intellij.plugin.asm.ui.actions.RunAsmScanAction"
-                text="Shamash: Run Build Scan"/>
-        <action id="io.shamash.asm.validateConfig"
-                class="io.shamash.intellij.plugin.asm.ui.actions.ValidateAsmConfigAction"
-                text="Shamash: Validate Build Config"/>
-        <action id="io.shamash.asm.createConfigFromReference"
-                class="io.shamash.intellij.plugin.asm.ui.actions.CreateAsmConfigFromReferenceAction"
-                text="Shamash: Create Build Config"/>
-        <action id="io.shamash.asm.openReferenceConfig"
-                class="io.shamash.intellij.plugin.asm.ui.actions.OpenAsmReferenceConfigAction"
-                text="Shamash: Open Build Reference Config"/>
-        <action id="io.shamash.asm.exportReports"
-                class="io.shamash.intellij.plugin.asm.ui.actions.ExportAsmReportsAction"
-                text="Shamash: Export Build Reports"/>
+                text="Shamash: Analyze Source (legacy Run Build Scan)"/>
     </actions>
 
     <change-notes><![CDATA[
-      <h3>0.91.1 — Marketplace Compatibility Fix</h3>
+      <h3>Source-first experience</h3>
       <ul>
-        <li>Removed IntelliJ Platform internal API usage from plugin version reporting</li>
-        <li>Declared Kotlin K2 compatibility for supported IDEs</li>
-        <li>Minimum supported IntelliJ IDEA version is now 2024.2.1</li>
+        <li>One Shamash tool window with Findings and Explore for Java/Kotlin source dependencies.</li>
+        <li>Existing configurations, reports and baselines remain available to the standalone CLI.</li>
+        <li>Retired plugin-only configuration, registry, export and automatic-fix actions.</li>
       </ul>
     ]]></change-notes>
 </idea-plugin>

@@ -83,7 +83,7 @@ shamash scan --fail-on NONE
 Tools → Shamash
 ```
 
-使用 **Build Analysis** 检查已编译代码，使用 **Source Analysis** 在 IDE 中获取源码级诊断与修复功能。
+在 **Tools → Shamash** 中 打开 **Findings** 或 **Explore**，点击 **Analyze project** 分析 Java/Kotlin 生产源码依赖。插件不执行已编译代码的架构策略检查，也不提供自动修复；策略校验、报告和基线请使用 CLI。
 
 ## 校验和验证
 

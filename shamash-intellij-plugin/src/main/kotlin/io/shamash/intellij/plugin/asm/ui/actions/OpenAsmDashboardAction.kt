@@ -17,27 +17,13 @@
  */
 package io.shamash.intellij.plugin.asm.ui.actions
 
-import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.project.DumbAwareAction
-import io.shamash.intellij.plugin.asm.ui.ShamashAsmToolWindowController
+import io.shamash.intellij.plugin.ui.source.LegacyActionBridge
 
-class OpenAsmDashboardAction : DumbAwareAction() {
-    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
-
-    override fun update(e: AnActionEvent) {
-        val project = e.project
-        e.presentation.isEnabledAndVisible = project != null && !project.isDisposed
-    }
-
+/** Retains the old action ID without exposing the retired bytecode UI. */
+class OpenAsmDashboardAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        if (project.isDisposed) return
-
-        AsmActionUtil.openAsmToolWindow(project)
-
-        project
-            .getService(ShamashAsmToolWindowController::class.java)
-            ?.select(ShamashAsmToolWindowController.Tab.DASHBOARD)
+        e.project?.let(LegacyActionBridge::openFindings)
     }
 }

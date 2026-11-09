@@ -83,7 +83,7 @@ Instala el complemento y abre:
 Tools → Shamash
 ```
 
-Usa **Build Analysis** para comprobar el código compilado y **Source Analysis** para recibir resultados y correcciones sobre el código fuente en el IDE.
+En **Tools → Shamash**, usa **Findings** y **Explore** y pulsa **Analyze project** para examinar dependencias del código fuente Java/Kotlin. El complemento no comprueba políticas del código compilado ni aplica correcciones; utiliza la CLI para políticas, informes y líneas base.
 
 ## Verificación de integridad
 

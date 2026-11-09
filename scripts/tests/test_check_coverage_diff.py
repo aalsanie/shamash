@@ -187,6 +187,13 @@ class CoverageDiffTest(unittest.TestCase):
         self.assertNotIn("--ignore-all-space", args)
         self.assertNotIn("--ignore-blank-lines", args)
         self.assertIn("a" * 40 + "...HEAD", args)
+        self.assertEqual("utf-8", git.call_args.kwargs["encoding"])
+
+    def test_non_ascii_code_diff_keeps_implementation_line(self):
+        self.report_lines(entries={1: (0, 1, 0, 0)})
+        modified = diff("@@ -1 +1 @@").replace("+new", '+val title = "مرحبا – 你好"')
+        self.assertEqual({PATH: {1}}, checker.changed_lines(modified))
+        self.assertEqual((1, 1), checker.check_coverage(self.report, modified)["line"])
 
     def test_bad_commit_hash_fails_before_git_diff(self):
         with mock.patch.object(sys, "argv", [str(SCRIPT), str(self.report), "bad"]), \

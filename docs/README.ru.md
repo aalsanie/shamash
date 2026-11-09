@@ -14,7 +14,7 @@
 
 **Проверка архитектуры Java и Kotlin без написания архитектурных тестов.**
 
-Находите циклические зависимости, контролируйте границы пакетов и архитектурных ролей и выявляйте области высокой связанности. Проверяйте скомпилированный код через CLI или CI, а в IntelliJ получайте диагностику и исправления на уровне исходного кода.
+Исследуйте зависимости Java/Kotlin и циклы между пакетами в IntelliJ. Для применения архитектурных правил к скомпилированному коду используйте CLI или CI.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
@@ -72,7 +72,7 @@ jobs:
 
 ## IntelliJ
 
-[Установите плагин из JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) и откройте **Tools → Shamash**. **Build Analysis** проверяет скомпилированный код, а **Source Analysis** предоставляет диагностику, подавление предупреждений и исправления на уровне исходников.
+[Установите плагин из JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) и откройте **Tools → Shamash**. Перейдите в **Findings** или **Explore** и нажмите **Analyze project**. Плагин не применяет YAML-политики проекта и не выполняет автоматические исправления; для этого используйте CLI.
 
 ## Библиотека
 
