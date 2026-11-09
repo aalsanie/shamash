@@ -8,17 +8,17 @@
 package io.shamash.export.pipeline
 
 import io.shamash.artifacts.report.layout.ExportOutputLayout
+import java.nio.channels.FileChannel
+import java.nio.channels.OverlappingFileLockException
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.nio.channels.FileChannel
-import java.nio.channels.OverlappingFileLockException
-import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
+import java.security.MessageDigest
 
 /**
  * Renders a complete report generation away from its destination and swaps directories only on success.
@@ -54,7 +54,12 @@ class CoherentReportPublisher(
                 .digest(destination.toString().toByteArray(Charsets.UTF_8))
                 .joinToString("") { "%02x".format(it.toInt() and 0xff) }
         val lockFile = parent.resolve(".shamash-publish-${digest.take(24)}.lock")
-        FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { channel ->
+        FileChannel.open(
+            lockFile,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE,
+            LinkOption.NOFOLLOW_LINKS,
+        ).use { channel ->
             val lock =
                 try {
                     channel.tryLock()
