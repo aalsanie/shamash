@@ -22,22 +22,22 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
+import com.intellij.testFramework.PsiTestUtil
+import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
 import com.intellij.ui.content.ContentManager
-import com.intellij.testFramework.PsiTestUtil
-import com.intellij.testFramework.runInEdtAndWait
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.asm.ui.actions.OpenAsmDashboardAction
 import io.shamash.intellij.plugin.asm.ui.actions.RunAsmScanAction
 import io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.intellij.plugin.settings.ShamashSourceMigrationState
-import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel
 import io.shamash.intellij.plugin.ui.source.LegacyActionBridge
+import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel
+import java.lang.reflect.Proxy
 import java.nio.file.Files
 import java.nio.file.Path
-import java.lang.reflect.Proxy
 import javax.swing.JPanel
 import kotlin.test.assertContentEquals
 
@@ -171,8 +171,14 @@ class LegacyActionMigrationE2ETest : ShamashPluginE2eTestBase() {
                     onActivate()
                     null
                 }
-                "getContentManager" -> contentManager
-                else -> error("Unexpected tool-window call: ${method.name}")
+
+                "getContentManager" -> {
+                    contentManager
+                }
+
+                else -> {
+                    error("Unexpected tool-window call: ${method.name}")
+                }
             }
         } as ToolWindow
     }
