@@ -167,14 +167,14 @@ class CoverageDiffTest(unittest.TestCase):
 
     def test_each_changed_file_must_pass_even_when_global_total_passes(self):
         second = "shamash-asm-core/src/main/kotlin/io/shamash/asm/core/Second.kt"
-        self.report_lines(entries={1: (0, 1, 0, 2)})
+        self.report_lines(entries={n: (0, 1, 0, 2) for n in range(1, 21)})
         tree = ET.parse(self.report)
         node = tree.getroot().find("package")
         extra = ET.SubElement(node, "sourcefile", name="Second.kt")
         ET.SubElement(extra, "line", nr="1", mi="1", ci="0", mb="1", cb="0")
         tree.write(self.report)
         with self.assertRaisesRegex(ValueError, "Second.kt: changed line coverage"):
-            checker.check_coverage(self.report, diff("@@ -1 +1 @@") + diff("@@ -1 +1 @@", second))
+            checker.check_coverage(self.report, diff("@@ -1,20 +1,20 @@") + diff("@@ -1 +1 @@", second))
 
     def test_command_line_accepts_valid_commit_hash_and_tests_checkout(self):
         self.report_lines(entries={1: (0, 1, 0, 2)})
