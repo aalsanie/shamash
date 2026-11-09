@@ -68,19 +68,30 @@ require(journeySuite in setOf("full", "essential")) {
 val integrationTest by intellijPlatformTesting.testIdeUi.registering {
     task {
         dependsOn(pluginArchive)
-        systemProperty("path.to.build.plugin", pluginArchive.get().archiveFile.get().asFile.absolutePath)
+        systemProperty(
+            "path.to.build.plugin",
+            pluginArchive
+                .get()
+                .archiveFile
+                .get()
+                .asFile.absolutePath,
+        )
         testClassesDirs = integrationTestSourceSet.output.classesDirs
         classpath = integrationTestSourceSet.runtimeClasspath
         useJUnitPlatform {
             if (journeySuite == "essential") includeTags("essential")
         }
         maxHeapSize = "2g"
-        systemProperty("shamash.fixture.root", layout.projectDirectory.dir("src/integrationTest/fixtures").asFile.absolutePath)
+        systemProperty(
+            "shamash.fixture.root",
+            layout.projectDirectory
+                .dir("src/integrationTest/fixtures")
+                .asFile.absolutePath,
+        )
         systemProperty("shamash.ide.version", providers.gradleProperty("shamashIdeJourneyVersion").orElse("2024.2.1").get())
         maxParallelForks = 1
     }
 }
-
 
 tasks.jar {
     manifest {

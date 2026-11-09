@@ -20,15 +20,15 @@ package io.shamash.intellij.plugin.journeys
 import com.intellij.driver.client.Remote
 import com.intellij.driver.sdk.invokeAction
 import com.intellij.driver.sdk.singleProject
-import com.intellij.driver.sdk.waitFor
-import com.intellij.driver.sdk.waitForIndicators
+import com.intellij.driver.sdk.ui.components.common.ideFrame
+import com.intellij.driver.sdk.ui.components.elements.accessibleList
+import com.intellij.driver.sdk.ui.components.elements.accessibleTree
 import com.intellij.driver.sdk.ui.present
 import com.intellij.driver.sdk.ui.shouldBe
 import com.intellij.driver.sdk.ui.shouldNot
 import com.intellij.driver.sdk.ui.xQuery
-import com.intellij.driver.sdk.ui.components.common.ideFrame
-import com.intellij.driver.sdk.ui.components.elements.accessibleList
-import com.intellij.driver.sdk.ui.components.elements.accessibleTree
+import com.intellij.driver.sdk.waitFor
+import com.intellij.driver.sdk.waitForIndicators
 import com.intellij.ide.starter.ci.CIServer
 import com.intellij.ide.starter.ci.NoCIServer
 import com.intellij.ide.starter.di.di
@@ -40,19 +40,19 @@ import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.runner.Starter
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.kodein.di.DI
 import org.kodein.di.bindSingleton
+import org.w3c.dom.Element
+import java.awt.event.KeyEvent
 import java.nio.file.Files
 import java.nio.file.Path
-import java.awt.event.KeyEvent
-import org.w3c.dom.Element
 import javax.xml.parsers.DocumentBuilderFactory
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Real out-of-process IDE journeys. These are deliberately separate from CodeInsightFixtureTestCase.
@@ -70,9 +70,7 @@ class ShamashStarterJourneysTest {
                             message: String,
                             details: String,
                             linkToLogs: String?,
-                        ) {
-                            throw AssertionError("$testName: $message\n$details\n${linkToLogs.orEmpty()}")
-                        }
+                        ): Unit = throw AssertionError("$testName: $message\n$details\n${linkToLogs.orEmpty()}")
                     }
                 }
             }
@@ -221,7 +219,6 @@ class ShamashStarterJourneysTest {
             }
     }
 
-
     @Test
     fun kotlinOnlyCycleAppearsInFindingsAndExplore() {
         val project = fixture("kotlin")
@@ -243,13 +240,27 @@ class ShamashStarterJourneysTest {
                     val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
                     tree.expandAll()
                     val paths = tree.collectExpandedPathsAsStrings()
-                    for (declaration in listOf("KotlinOwner", "RightBatch", "Container", "Payload", "Registry", "defaultPayload", "create")) {
+                    for (declaration in listOf(
+                        "KotlinOwner",
+                        "RightBatch",
+                        "Container",
+                        "Payload",
+                        "Registry",
+                        "defaultPayload",
+                        "create",
+                    )) {
                         assertTrue(paths.any { it.contains(declaration) }, "Missing Kotlin declaration " + declaration + ": " + paths)
                     }
                     tree.selectRow { it.contains("RightBatch") }
                     val relationships = accessibleList { byAccessibleName("Source relationships") }
-                    assertTrue(relationships.items.any { it.contains("Container") }, "The type alias must resolve its generic container target")
-                    assertTrue(relationships.items.any { it.contains("Payload") }, "The type alias must resolve its nested generic argument")
+                    assertTrue(
+                        relationships.items.any { it.contains("Container") },
+                        "The type alias must resolve its generic container target",
+                    )
+                    assertTrue(
+                        relationships.items.any { it.contains("Payload") },
+                        "The type alias must resolve its nested generic argument",
+                    )
                 }
             }
     }
@@ -399,7 +410,8 @@ class ShamashStarterJourneysTest {
         }
 
     private fun fixture(name: String): Path =
-        Path.of(requireNotNull(System.getProperty("shamash.fixture.root")) { "Missing fixture root" })
+        Path
+            .of(requireNotNull(System.getProperty("shamash.fixture.root")) { "Missing fixture root" })
             .resolve(name)
             .toAbsolutePath()
             .normalize()
@@ -408,25 +420,32 @@ class ShamashStarterJourneysTest {
     private fun context(
         test: String,
         project: Path,
-    ) = Starter.newContext(
-        testName = "shamash-${test}-${ideVersion().replace('.', '-')}",
-        TestCase(if (ideVersion() == "2024.2.1" || ideVersion() == "2025.2") IdeProductProvider.IC else IdeProductProvider.IU, LocalProjectInfo(project))
-            .withVersion(ideVersion()),
-    ).apply {
-        val pluginArchive =
-            Path.of(requireNotNull(System.getProperty("path.to.build.plugin")) { "No built plugin archive" })
-        require(Files.isRegularFile(pluginArchive)) { "Missing Shamash plugin archive: $pluginArchive" }
-        PluginConfigurator(this).installPluginFromPath(pluginArchive)
-        applyVMOptionsPatch {
-            addSystemProperty("idea.trust.all.projects", true)
-            addSystemProperty("ide.show.tips.on.startup.default.value", false)
+    ) = Starter
+        .newContext(
+            testName = "shamash-$test-${ideVersion().replace('.', '-')}",
+            TestCase(
+                if (ideVersion() == "2024.2.1" ||
+                    ideVersion() == "2025.2"
+                ) {
+                    IdeProductProvider.IC
+                } else {
+                    IdeProductProvider.IU
+                },
+                LocalProjectInfo(project),
+            ).withVersion(ideVersion()),
+        ).apply {
+            val pluginArchive =
+                Path.of(requireNotNull(System.getProperty("path.to.build.plugin")) { "No built plugin archive" })
+            require(Files.isRegularFile(pluginArchive)) { "Missing Shamash plugin archive: $pluginArchive" }
+            PluginConfigurator(this).installPluginFromPath(pluginArchive)
+            applyVMOptionsPatch {
+                addSystemProperty("idea.trust.all.projects", true)
+                addSystemProperty("ide.show.tips.on.startup.default.value", false)
+            }
         }
-    }
 
-    private fun ideVersion(): String =
-        System.getProperty("shamash.ide.version")?.takeIf(String::isNotBlank) ?: "2024.2.1"
+    private fun ideVersion(): String = System.getProperty("shamash.ide.version")?.takeIf(String::isNotBlank) ?: "2024.2.1"
 }
-
 
 private data class EditorSnapshot(
     val path: String,
