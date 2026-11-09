@@ -133,6 +133,10 @@ class CoverageDiffTest(unittest.TestCase):
         self.assertEqual({}, checker.changed_lines(comments))
         self.assertEqual({}, checker.changed_lines(diff("@@ -1 +1 @@").replace("+new", "+  ")))
 
+    def test_kotlin_spread_expression_is_implementation(self):
+        src = diff("@@ -1 +1 @@").replace("+new", "+*arguments")
+        self.assertEqual({PATH: {1}}, checker.changed_lines(src))
+
     def test_only_deleted_production_lines_are_exempt(self):
         self.assertEqual({}, checker.changed_lines(diff("@@ -1 +1,0 @@").replace("+new\n", "")))
 
@@ -180,7 +184,8 @@ class CoverageDiffTest(unittest.TestCase):
             checker.main()
         args = git.call_args.args[0]
         self.assertIn("--no-renames", args)
-        self.assertIn("--ignore-all-space", args)
+        self.assertNotIn("--ignore-all-space", args)
+        self.assertNotIn("--ignore-blank-lines", args)
         self.assertIn("a" * 40 + "...HEAD", args)
 
     def test_bad_commit_hash_fails_before_git_diff(self):

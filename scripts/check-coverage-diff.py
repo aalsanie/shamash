@@ -59,7 +59,11 @@ def changed_lines(diff: str) -> dict[str, set[int]]:
 
 def implementation_line(value: str) -> bool:
     stripped = value.strip()
-    return bool(stripped) and not stripped.startswith(("//", "/*", "*", "package ", "import "))
+    return bool(stripped) and not (
+        stripped.startswith(("//", "/*", "*/", "package ", "import "))
+        or stripped == "*"
+        or stripped.startswith("* ")
+    )
 
 
 def source_coverage(report: Path, paths: set[str]) -> dict[str, dict[int, tuple[int, int, int, int]]]:
@@ -155,7 +159,7 @@ def main() -> None:
     if not re.fullmatch(r"[0-9a-f]{40}", args.base):
         parser.error("base must be a full commit SHA")
     diff = subprocess.run(
-        ["git", "diff", "--no-ext-diff", "--no-renames", "--ignore-all-space", "--ignore-blank-lines", "--unified=0", f"{args.base}...{args.head}", "--"],
+        ["git", "diff", "--no-ext-diff", "--no-renames", "--unified=0", f"{args.base}...{args.head}", "--"],
         text=True,
         capture_output=True,
         check=True,
