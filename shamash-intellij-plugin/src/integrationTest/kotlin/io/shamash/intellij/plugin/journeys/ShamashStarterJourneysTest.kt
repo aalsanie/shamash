@@ -18,8 +18,15 @@
 package io.shamash.intellij.plugin.journeys
 
 import com.intellij.driver.client.Remote
-import com.intellij.driver.sdk.*
-import com.intellij.driver.sdk.ui.components.*
+import com.intellij.driver.sdk.invokeAction
+import com.intellij.driver.sdk.singleProject
+import com.intellij.driver.sdk.waitFor
+import com.intellij.driver.sdk.waitForIndicators
+import com.intellij.driver.sdk.ui.present
+import com.intellij.driver.sdk.ui.shouldBe
+import com.intellij.driver.sdk.ui.shouldNot
+import com.intellij.driver.sdk.ui.xQuery
+import com.intellij.driver.sdk.ui.components.common.ideFrame
 import com.intellij.driver.sdk.ui.components.elements.accessibleList
 import com.intellij.driver.sdk.ui.components.elements.accessibleTree
 import com.intellij.ide.starter.ci.CIServer
