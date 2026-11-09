@@ -25,12 +25,12 @@ import com.intellij.openapi.wm.ToolWindowManager
 internal object LegacyActionBridge {
     fun openFindings(project: Project) {
         if (project.isDisposed) return
-        val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash") ?: return
-        showFindings(window)
+        showFindings(ToolWindowManager.getInstance(project).getToolWindow("Shamash"))
     }
 
-    /** The registered window may still be empty while IntelliJ initializes its content. */
-    internal fun showFindings(window: ToolWindow) {
+    /** The registered window may be unavailable or empty while IntelliJ initializes its content. */
+    internal fun showFindings(window: ToolWindow?) {
+        if (window == null) return
         window.activate(null, true)
         val panel =
             window.contentManager.contents

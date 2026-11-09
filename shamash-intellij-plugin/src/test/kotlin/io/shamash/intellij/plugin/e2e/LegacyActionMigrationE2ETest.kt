@@ -102,6 +102,12 @@ class LegacyActionMigrationE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
+    fun testLegacyBridgeIgnoresUnavailableToolWindow() {
+        runInEdtAndWait {
+            LegacyActionBridge.showFindings(null)
+        }
+    }
+
     fun testLegacyBridgeHandlesEmptyAndUnrelatedToolWindowContent() {
         runInEdtAndWait {
             var activations = 0
