@@ -89,6 +89,10 @@ class ShamashAsmEngine
                 inputErrors = emptyList(),
             )
 
+        private class BaselinePublicationFailure(
+            cause: Throwable,
+        ) : IllegalStateException("Baseline publication failed", cause)
+
         internal fun analyzeWithInputErrors(
             projectBasePath: Path,
             projectName: String,
@@ -348,7 +352,14 @@ class ShamashAsmEngine
                                 )
                         }
                     } else {
-                        exportResult =
+                        val fingerprints =
+                            if (config.baseline.mode == BaselineMode.GENERATE) {
+                                requireValidBaselineDestination(outputDir, baselinePath)
+                                computeFingerprints(projectBasePath, findings)
+                            } else {
+                                null
+                            }
+                        val published =
                             publishReports(
                                 projectBasePath = projectBasePath,
                                 projectName = projectName,
@@ -359,35 +370,57 @@ class ShamashAsmEngine
                                 analysis = analysisResult,
                                 outputDir = outputDir,
                                 generatedAtEpochMillis = generatedAtEpochMillis,
+                                onActivated = {
+                                    if (fingerprints != null) {
+                                        try {
+                                            writeBaselineFile(baselinePath, fingerprints)
+                                        } catch (failure: Throwable) {
+                                            throw BaselinePublicationFailure(failure)
+                                        }
+                                    }
+                                },
                             )
+                        exportResult = if (fingerprints == null) published else published.copy(baselineWritten = true)
                     }
-                } catch (t: Throwable) {
+                } catch (failure: BaselinePublicationFailure) {
+                    errors +=
+                        EngineError.baselineFailed(
+                            message = "Baseline publication failed",
+                            details =
+                                mapOf(
+                                    "path" to baselinePath.toString(),
+                                    "reportRollbackFailed" to failure.suppressed.isNotEmpty().toString(),
+                                ),
+                            t = failure,
+                        )
+                } catch (failure: Throwable) {
                     errors +=
                         EngineError.exportFailed(
                             message = "Export failed",
                             details = mapOf("outputDir" to config.export.outputDir),
-                            t = t,
+                            t = failure,
                         )
                 }
             }
 
             if (config.baseline.mode == BaselineMode.GENERATE) {
                 if (errors.isNotEmpty()) {
-                    errors +=
-                        EngineError.baselineFailed(
-                            message = "Baseline generation skipped because the engine reported errors",
-                            details = mapOf("path" to baselinePath.toString()),
-                        )
-                } else {
+                    if (errors.none { it.code == EngineError.Code.BASELINE_FAILED }) {
+                        errors +=
+                            EngineError.baselineFailed(
+                                message = "Baseline generation skipped because the engine reported errors",
+                                details = mapOf("path" to baselinePath.toString()),
+                            )
+                    }
+                } else if (!config.export.enabled) {
                     try {
                         writeBaselineFile(baselinePath, computeFingerprints(projectBasePath, findings))
-                        exportResult = exportResult?.copy(baselineWritten = true)
-                    } catch (t: Throwable) {
+                    } catch (failure: Throwable) {
                         errors +=
                             EngineError.baselineFailed(
                                 message = "Baseline generation failed",
                                 details = mapOf("path" to baselinePath.toString()),
-                                t = t,
+                                t = failure,
                             )
                     }
                 }
@@ -640,6 +673,22 @@ class ShamashAsmEngine
             }
         }
 
+        private fun requireValidBaselineDestination(
+            outputDir: Path,
+            baselinePath: Path,
+        ) {
+            val baseline = baselinePath.toAbsolutePath().normalize()
+            require(!outputDir.startsWith(baseline)) {
+                "Baseline destination cannot be the report directory or an ancestor"
+            }
+            require(
+                baseline.parent != outputDir ||
+                    baseline.fileName.toString() !in ExportOutputLayout.MANAGED_REPORT_FILE_NAMES,
+            ) {
+                "Baseline destination conflicts with a managed report"
+            }
+        }
+
         private fun resolveBaselinePath(
             projectBasePath: Path,
             raw: String,
@@ -659,8 +708,9 @@ class ShamashAsmEngine
             analysis: AnalysisResult?,
             outputDir: Path,
             generatedAtEpochMillis: Long,
+            onActivated: () -> Unit,
         ): EngineExportResult =
-            CoherentReportPublisher().publish(outputDir) { staging ->
+            CoherentReportPublisher().publish(outputDir, onActivated) { staging ->
                 val report =
                     exportReport(
                         projectBasePath = projectBasePath,
