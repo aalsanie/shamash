@@ -17,8 +17,11 @@
  */
 package io.shamash.intellij.plugin.journeys
 
+import com.intellij.driver.client.Remote
 import com.intellij.driver.sdk.*
 import com.intellij.driver.sdk.ui.components.*
+import com.intellij.driver.sdk.ui.components.elements.accessibleList
+import com.intellij.driver.sdk.ui.components.elements.accessibleTree
 import com.intellij.ide.starter.ci.CIServer
 import com.intellij.ide.starter.ci.NoCIServer
 import com.intellij.ide.starter.di.di
@@ -29,12 +32,19 @@ import com.intellij.ide.starter.plugins.PluginConfigurator
 import com.intellij.ide.starter.project.LocalProjectInfo
 import com.intellij.ide.starter.runner.Starter
 import org.junit.jupiter.api.Assertions.assertArrayEquals
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.kodein.di.DI
 import org.kodein.di.bindSingleton
 import java.nio.file.Files
 import java.nio.file.Path
+import java.awt.event.KeyEvent
+import org.w3c.dom.Element
+import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -67,7 +77,9 @@ class ShamashStarterJourneysTest {
         val config = project.resolve("shamash/configs/psi.yml")
         val baseline = project.resolve(".shamash/baseline/asm-baseline.json")
         val report = project.resolve(".shamash/reports/previous.json")
+        val workspace = project.resolve(".idea/workspace.xml")
         val originals = listOf(config, baseline, report).associateWith(Files::readAllBytes)
+        assertTrue(Files.readString(workspace).contains("acknowledgedVersion\" value=\"0"))
         var openedProject: Path? = null
         context("no-source", project)
             .runIdeWithDriver()
@@ -76,6 +88,9 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(singleProject().getBasePath())
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    x(xQuery { byVisibleText("Findings") }).shouldBe("Findings must be available", present)
+                    x(xQuery { byVisibleText("Explore") }).shouldBe("Explore must be available", present)
+                    x(xQuery { byVisibleText("Configuration") }).shouldNot(present)
                     x(xQuery { byAccessibleName("Analyze project source") })
                         .shouldBe("Shamash must show the explicit analysis action", present)
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
@@ -87,12 +102,17 @@ class ShamashStarterJourneysTest {
         originals.forEach { (file, bytes) ->
             assertArrayEquals(bytes, Files.readAllBytes(actualProject.resolve(project.relativize(file))), "Shamash modified $file")
         }
+        assertLegacyWorkspace(actualProject.resolve(".idea/workspace.xml"))
     }
 
+    @Tag("essential")
     @Test
     fun javaCycleCanBeInvestigatedFromFindingsWithoutGeneratingReports() {
         val project = fixture("java")
+        assertFalse(Files.exists(project.resolve("shamash")))
+        assertFalse(Files.exists(project.resolve("build.gradle.kts")))
         var openedProject: Path? = null
+        var evidenceLabel = ""
         context("java-cycle", project)
             .runIdeWithDriver()
             .useDriverAndCloseIde {
@@ -103,9 +123,43 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Both directions of the Java package cycle must be observed", present)
-                    x(xQuery { byAccessibleName("Directed edges of the representative cycle") })
-                        .shouldBe("Cycle investigation must retain its directed source evidence", present)
+                    x(xQuery { byVisibleText("1 observed cyclic groups") })
+                        .shouldBe("The cycle must be represented once", present)
+                    val evidence = accessibleList { byAccessibleName("Verified source references") }
+                    evidence.shouldBe("The selected cycle edge must retain a source witness", present)
+                    evidenceLabel = evidence.items.firstOrNull()
+                        ?: throw AssertionError("The Java cycle has no retained source reference")
+                    assertTrue(
+                        evidenceLabel.contains("left.Left#dependency") || evidenceLabel.contains("right.Right#dependency"),
+                        "Unexpected Java source witness: " + evidenceLabel,
+                    )
+                    evidence.clickItem(evidenceLabel)
+                    x(xQuery { byVisibleText("Open source") }).click()
                 }
+                val snapshot =
+                    withContext {
+                        val manager = service<RemoteFileEditorManager>(singleProject())
+                        val file = requireNotNull(manager.getSelectedFiles().firstOrNull())
+                        val editor = requireNotNull(manager.getSelectedTextEditor())
+                        EditorSnapshot(file.getPath(), editor.getDocument().getText(), editor.getCaretModel().getOffset())
+                    }
+                val owner = evidenceLabel.substringBefore(" → ")
+                val target = evidenceLabel.substringAfter(" → ")
+                val expectedFile =
+                    when (owner) {
+                        "left.Left#dependency" -> "Left.java"
+                        "right.Right#dependency" -> "Right.java"
+                        else -> throw AssertionError("Unexpected source owner: " + owner)
+                    }
+                assertTrue(snapshot.path.endsWith("/" + expectedFile), "Navigation opened the wrong source file: " + snapshot.path)
+                val targetStart = snapshot.documentText.indexOf(target)
+                assertTrue(targetStart >= 0, "The verified target is absent from the opened document: " + target)
+                val classStart = targetStart + target.lastIndexOf('.') + 1
+                assertTrue(
+                    snapshot.caretOffset == targetStart || snapshot.caretOffset == classStart,
+                    "Navigation did not land on the verified reference: " + snapshot.caretOffset,
+                )
+                assertEquals(target, snapshot.documentText.substring(targetStart, targetStart + target.length))
             }
         assertFalse(Files.exists(requireNotNull(openedProject).resolve(".shamash")), "IDE analysis must not export reports")
     }
@@ -157,6 +211,9 @@ class ShamashStarterJourneysTest {
     @Test
     fun kotlinOnlyCycleAppearsInFindingsAndExplore() {
         val project = fixture("kotlin")
+        assertFalse(Files.exists(project.resolve("src/main/java")))
+        assertFalse(Files.exists(project.resolve("shamash")))
+        assertFalse(Files.exists(project.resolve("build.gradle.kts")))
         context("kotlin-cycle", project)
             .runIdeWithDriver()
             .useDriverAndCloseIde {
@@ -166,20 +223,35 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Kotlin-only references must produce a package cycle", present)
+                    x(xQuery { byVisibleText("1 observed cyclic groups") })
+                        .shouldBe("The Kotlin cycle must be represented once", present)
                     x(xQuery { byVisibleText("Explore") }).click()
-                    x(xQuery { byAccessibleName("IDE module, package and declaration tree") })
-                        .shouldBe("Kotlin-only declarations must appear in Explore", present)
+                    val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
+                    tree.expandAll()
+                    val paths = tree.collectExpandedPathsAsStrings()
+                    for (declaration in listOf("KotlinOwner", "RightBatch", "Container", "Payload", "Registry", "defaultPayload", "create")) {
+                        assertTrue(paths.any { it.contains(declaration) }, "Missing Kotlin declaration " + declaration + ": " + paths)
+                    }
+                    tree.selectRow { it.contains("RightBatch") }
+                    val relationships = accessibleList { byAccessibleName("Source relationships") }
+                    assertTrue(relationships.items.any { it.contains("Container") }, "The type alias must resolve its generic container target")
+                    assertTrue(relationships.items.any { it.contains("Payload") }, "The type alias must resolve its nested generic argument")
                 }
             }
     }
 
     @Test
-    fun acyclicProductionSourceHasNoCycleFindingButExploreRemainsAvailable() {
+    fun acyclicProductionSourceCanBeExploredAndReanalyzedFromUnsavedEdits() {
         val project = fixture("acyclic")
+        val beta = project.resolve("src/main/java/beta/Beta.java")
+        val originalBeta = Files.readString(beta)
+        val editedBeta = "package beta;\npublic final class Beta { alpha.Alpha owner; }\n"
+        var openedProject: Path? = null
         context("acyclic", project)
             .runIdeWithDriver()
             .useDriverAndCloseIde {
                 waitForIndicators(5.minutes)
+                openedProject = Path.of(singleProject().getBasePath())
                 ideFrame {
                     invokeAction("io.shamash.open")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
@@ -188,9 +260,129 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("Explore") }).click()
                     x(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                         .shouldBe("Acyclic dependencies must remain explorable", present)
+                    invokeAction("GotoFile")
+                    keyboard {
+                        typeText("Beta.java")
+                        enter()
+                    }
                 }
+                val selectedPath =
+                    withContext {
+                        val manager = service<RemoteFileEditorManager>(singleProject())
+                        requireNotNull(manager.getSelectedFiles().firstOrNull()).getPath()
+                    }
+                assertTrue(selectedPath.endsWith("/Beta.java"), "Goto File opened the wrong editor: " + selectedPath)
+                ideFrame {
+                    keyboard {
+                        hotKey(KeyEvent.VK_CONTROL, KeyEvent.VK_A)
+                        typeText(editedBeta)
+                    }
+                    x(xQuery { byVisibleText("Code changed since this analysis") })
+                        .shouldBe("An unsaved source edit must invalidate the previous result", present)
+                }
+                val actualBeta = requireNotNull(openedProject).resolve("src/main/java/beta/Beta.java")
+                assertEquals(originalBeta, Files.readString(actualBeta), "The edit must remain unsaved until explicitly saved")
+                ideFrame {
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("Cyclic group of 2 packages") })
+                        .shouldBe("Analysis must include the unsaved reverse dependency", present)
+                    x(xQuery { byVisibleText("1 observed cyclic groups") })
+                        .shouldBe("The new cycle must be represented once", present)
+                    invokeAction("SaveAll")
+                }
+                assertTrue(Files.readString(actualBeta).contains("alpha.Alpha owner"), "SaveAll did not persist the edited source")
             }
+        assertFalse(Files.exists(requireNotNull(openedProject).resolve(".shamash")))
     }
+
+    @Test
+    fun duplicatePackagesRemainDistinctAndProjectDisposalCancelsActiveAnalysis() {
+        val project = fixture("multi-module")
+        var openedProject: Path? = null
+        context("multi-module", project)
+            .runIdeWithDriver()
+            .useDriverAndCloseIde {
+                waitForIndicators(5.minutes)
+                openedProject = Path.of(singleProject().getBasePath())
+                ideFrame {
+                    invokeAction("io.shamash.open")
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
+                        .shouldBe("A one-way module dependency must remain acyclic", present)
+                    x(xQuery { byVisibleText("Explore") }).click()
+                    val tree = accessibleTree { byAccessibleName("IDE module, package and declaration tree") }
+                    tree.expandAll()
+                    val sharedPackages = tree.collectExpandedPathsAsStrings().filter { it.endsWith("/shared") }
+                    assertEquals(2, sharedPackages.size, "The same package name must remain distinct across IDE modules")
+                    tree.selectRow { it == "multi-a" }
+                    val relationships = accessibleList { byAccessibleName("Source relationships") }
+                    assertTrue(
+                        relationships.items.any { it.contains("multi-b (IDE module)") },
+                        "The module dependency must retain its target module identity: " + relationships.items,
+                    )
+                }
+                val actualProject = requireNotNull(openedProject)
+                Files.writeString(actualProject.resolve("multi-a/src/main/java/slow/Load.java"), slowSource())
+                ideFrame { invokeAction("Synchronize") }
+                waitForIndicators(5.minutes)
+                ideFrame {
+                    x(xQuery { byVisibleText("Code changed since this analysis") })
+                        .shouldBe("A refreshed source file must invalidate the previous result", present)
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("Analyzing source dependencies…") })
+                        .shouldBe("The analysis must expose its active state before cancellation", present)
+                    x(xQuery { byAccessibleName("Cancel source analysis") }).click()
+                    x(xQuery { byVisibleText("Analysis cancelled") })
+                        .shouldBe("The real IDE cancellation action must cancel active source analysis", present)
+                }
+                Thread.sleep(1_000)
+                ideFrame {
+                    x(xQuery { byVisibleText("Analysis cancelled") })
+                        .shouldBe("A late result must not replace the cancelled state", present)
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("Analyzing source dependencies…") })
+                        .shouldBe("A subsequent request must enter the active state", present)
+                    invokeAction("CloseProject")
+                }
+                waitFor("the project is disposed", timeout = 30.seconds) {
+                    withContext { service<RemoteProjectManager>().getOpenProjects().isEmpty() }
+                }
+                Thread.sleep(1_000)
+            }
+        assertFalse(Files.exists(requireNotNull(openedProject).resolve(".shamash")), "IDE analysis must not export reports")
+    }
+
+    private fun assertLegacyWorkspace(workspace: Path) {
+        val document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(workspace.toFile())
+        val components = document.getElementsByTagName("component")
+        val migration =
+            (0 until components.length)
+                .map { components.item(it) as Element }
+                .firstOrNull { it.getAttribute("name") == "ShamashSourceMigration" }
+        val options = requireNotNull(migration) { "The source migration state was not persisted" }.getElementsByTagName("option")
+        val acknowledged =
+            (0 until options.length)
+                .map { options.item(it) as Element }
+                .firstOrNull { it.getAttribute("name") == "acknowledgedVersion" }
+        assertEquals("1", requireNotNull(acknowledged).getAttribute("value"))
+        val windows = document.getElementsByTagName("window_info")
+        val shamash =
+            (0 until windows.length)
+                .map { windows.item(it) as Element }
+                .firstOrNull { it.getAttribute("id") == "Shamash" }
+        assertEquals("right", requireNotNull(shamash) { "The saved Shamash tool-window position was lost" }.getAttribute("anchor"))
+    }
+
+    private fun slowSource(): String =
+        buildString(2_500_000) {
+            appendLine("package slow;")
+            appendLine("final class Load {")
+            appendLine("    void run() {")
+            repeat(120_000) { appendLine("        Helper.run();") }
+            appendLine("    }")
+            appendLine("}")
+            appendLine("final class Helper { static void run() {} }")
+        }
 
     private fun fixture(name: String): Path =
         Path.of(requireNotNull(System.getProperty("shamash.fixture.root")) { "Missing fixture root" })
@@ -204,7 +396,7 @@ class ShamashStarterJourneysTest {
         project: Path,
     ) = Starter.newContext(
         testName = "shamash-${test}-${ideVersion().replace('.', '-')}",
-        TestCase(if (ideVersion().startsWith("2026.")) IdeProductProvider.IU else IdeProductProvider.IC, LocalProjectInfo(project))
+        TestCase(if (ideVersion() == "2024.2.1" || ideVersion() == "2025.2") IdeProductProvider.IC else IdeProductProvider.IU, LocalProjectInfo(project))
             .withVersion(ideVersion()),
     ).apply {
         val pluginArchive =
@@ -219,4 +411,50 @@ class ShamashStarterJourneysTest {
 
     private fun ideVersion(): String =
         System.getProperty("shamash.ide.version")?.takeIf(String::isNotBlank) ?: "2024.2.1"
+}
+
+
+private data class EditorSnapshot(
+    val path: String,
+    val documentText: String,
+    val caretOffset: Int,
+)
+
+@Remote("com.intellij.openapi.fileEditor.FileEditorManager")
+interface RemoteFileEditorManager {
+    fun getSelectedFiles(): Array<RemoteVirtualFile>
+
+    fun getSelectedTextEditor(): RemoteEditor?
+}
+
+@Remote("com.intellij.openapi.vfs.VirtualFile")
+interface RemoteVirtualFile {
+    fun getPath(): String
+}
+
+@Remote("com.intellij.openapi.editor.Editor")
+interface RemoteEditor {
+    fun getDocument(): RemoteDocument
+
+    fun getCaretModel(): RemoteCaretModel
+}
+
+@Remote("com.intellij.openapi.editor.Document")
+interface RemoteDocument {
+    fun getText(): String
+}
+
+@Remote("com.intellij.openapi.editor.CaretModel")
+interface RemoteCaretModel {
+    fun getOffset(): Int
+}
+
+@Remote("com.intellij.openapi.project.ProjectManager")
+interface RemoteProjectManager {
+    fun getOpenProjects(): Array<RemoteProject>
+}
+
+@Remote("com.intellij.openapi.project.Project")
+interface RemoteProject {
+    fun isDisposed(): Boolean
 }

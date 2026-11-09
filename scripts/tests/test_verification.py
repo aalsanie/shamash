@@ -129,6 +129,19 @@ class PluginDiscoveryVerificationTest(unittest.TestCase):
                 plugin_tests.verify(self.source, self.results, junit5=True)
 
 
+    def test_junit5_essential_suite_runs_only_tagged_methods(self):
+        (self.source / "ExampleTest.kt").write_text(
+            "package sample\nclass ExampleTest {\n"
+            "    @Tag(\"essential\")\n    @Test\n    fun smoke() {}\n"
+            "    @Test\n    fun fullJourney() {}\n}\n",
+            encoding="utf-8",
+        )
+        self.report(method="smoke()")
+        plugin_tests.verify(self.source, self.results, junit5=True, essential_only=True)
+        self.report(method="fullJourney()")
+        with self.assertRaisesRegex(ValueError, "discovery mismatch"):
+            plugin_tests.verify(self.source, self.results, junit5=True, essential_only=True)
+
     def test_rejects_missing_method(self):
         self.report(method="testSomethingElse")
         with self.assertRaisesRegex(ValueError, "discovery mismatch"):

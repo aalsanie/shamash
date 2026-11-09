@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ShamashSourceMigration">
+    <option name="acknowledgedVersion" value="0" />
+  </component>
+  <component name="ToolWindowManager">
+    <layout>
+      <window_info id="Shamash" anchor="right" auto_hide="false" internal_type="DOCKED" type="WINDOWED" visible="false" weight="0.25" />
+    </layout>
+  </component>
+</project>

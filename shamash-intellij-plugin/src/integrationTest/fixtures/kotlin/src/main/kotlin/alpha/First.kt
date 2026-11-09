@@ -1,3 +1,5 @@
-package alpha
+package kotlin_left
 
-class First(val next: beta.Second)
+typealias RightBatch = kotlin_right.Container<List<kotlin_right.Payload>>
+
+class KotlinOwner(val batch: RightBatch)

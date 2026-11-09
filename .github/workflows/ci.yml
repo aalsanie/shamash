@@ -175,13 +175,23 @@ jobs:
           if-no-files-found: ignore
 
   ide-journeys:
-    name: IDE journeys (${{ matrix.ide }})
+    name: IDE journeys (${{ matrix.ide }} / ${{ matrix.suite }})
     needs: [authorize, build-test]
     if: needs.authorize.result == 'success' && needs.build-test.result == 'success'
     strategy:
       fail-fast: false
       matrix:
-        ide: ["2024.2.1", "2026.2"]
+        include:
+          - ide: "2024.2.1"
+            suite: full
+          - ide: "2025.2"
+            suite: essential
+          - ide: "2025.3"
+            suite: essential
+          - ide: "2026.1"
+            suite: essential
+          - ide: "2026.2"
+            suite: full
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -200,19 +210,26 @@ jobs:
       - name: Execute real IDE Starter/Driver journeys
         env:
           TEST_IDE: ${{ matrix.ide }}
-        run: xvfb-run -a python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:integrationTest "-PshamashIdeJourneyVersion=$TEST_IDE"
+          TEST_SUITE: ${{ matrix.suite }}
+        run: xvfb-run -a python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:integrationTest "-PshamashIdeJourneyVersion=$TEST_IDE" "-PshamashIdeJourneySuite=$TEST_SUITE"
       - name: Verify actual JUnit 5 journey execution
-        run: python scripts/verify-plugin-tests.py --integration
+        env:
+          TEST_SUITE: ${{ matrix.suite }}
+        run: |
+          if [ "$TEST_SUITE" = "essential" ]; then
+            python scripts/verify-plugin-tests.py --integration --essential
+          else
+            python scripts/verify-plugin-tests.py --integration
+          fi
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: ide-journeys-${{ matrix.ide }}
+          name: ide-journeys-${{ matrix.ide }}-${{ matrix.suite }}
           path: |
             shamash-intellij-plugin/build/test-results/integrationTest/**
             shamash-intellij-plugin/build/reports/tests/integrationTest/**
             shamash-intellij-plugin/build/idea-sandbox/**
           if-no-files-found: warn
-
   packaged-cli-smoke:
     name: Packaged CLI smoke (${{ matrix.os }})
     needs: build-test
