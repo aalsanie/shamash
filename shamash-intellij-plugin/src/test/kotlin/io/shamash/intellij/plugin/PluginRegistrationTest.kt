@@ -17,13 +17,13 @@
  */
 package io.shamash.intellij.plugin
 
+import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import org.w3c.dom.Element
 
 /** The plugin's registered API surface must not re-enable retired mutating actions or registries. */
 class PluginRegistrationTest {

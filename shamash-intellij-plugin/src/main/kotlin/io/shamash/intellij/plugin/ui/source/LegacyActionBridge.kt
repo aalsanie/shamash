@@ -27,7 +27,10 @@ internal object LegacyActionBridge {
         val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash") ?: return
         window.activate(null, true)
         // The first tab of a newly created window is Findings; reset an existing window immediately.
-        val panel = window.contentManager.contents.firstOrNull()?.component as? ShamashSourcePanel
+        val panel =
+            window.contentManager.contents
+                .firstOrNull()
+                ?.component as? ShamashSourcePanel
         panel?.tabs?.selectedIndex = 0
     }
 

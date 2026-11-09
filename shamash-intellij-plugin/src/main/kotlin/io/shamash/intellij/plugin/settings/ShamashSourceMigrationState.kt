@@ -56,7 +56,6 @@ class ShamashSourceMigrationState : PersistentStateComponent<ShamashSourceMigrat
     companion object {
         const val CURRENT_VERSION: Int = 1
 
-        fun getInstance(project: Project): ShamashSourceMigrationState =
-            project.getService(ShamashSourceMigrationState::class.java)
+        fun getInstance(project: Project): ShamashSourceMigrationState = project.getService(ShamashSourceMigrationState::class.java)
     }
 }
