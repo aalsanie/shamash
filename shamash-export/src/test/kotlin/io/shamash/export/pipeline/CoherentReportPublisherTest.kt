@@ -371,6 +371,24 @@ class CoherentReportPublisherTest {
             assertNoTemporaryDirectories(root)
         }
 
+    @Test
+    fun `removed staging tree cannot cause deletion of previously published reports`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
+            Files.writeString(output.resolve("notes.txt"), "personal")
+            assertFailsWith<IOException> {
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.delete(stage.resolve("notes.txt"))
+                    Files.delete(stage)
+                    throw IOException("renderer discarded its staging directory")
+                }
+            }
+            assertEquals("previous", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("personal", Files.readString(output.resolve("notes.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+
     private fun withProject(action: (Path) -> Unit) {
         val root = Files.createTempDirectory("shamash-publisher-test")
         try {

@@ -78,6 +78,7 @@ class CoherentReportPublisher(
     ): T {
         val stage = Files.createTempDirectory(parent, ".shamash-stage-")
         var backup: Path? = null
+        var activationAttempted = false
         var activated = false
         var completed = false
         try {
@@ -94,6 +95,7 @@ class CoherentReportPublisher(
                 backup = reserved
                 moveDirectory(destination, reserved)
             }
+            activationAttempted = true
             moveDirectory(stage, destination)
             activated = true
             onActivated()
@@ -101,7 +103,7 @@ class CoherentReportPublisher(
             return result
         } catch (failure: Throwable) {
             // A move hook may throw after completing its move; reconcile the on-disk state.
-            if (!activated && !Files.exists(stage, LinkOption.NOFOLLOW_LINKS) &&
+            if (activationAttempted && !activated && !Files.exists(stage, LinkOption.NOFOLLOW_LINKS) &&
                 Files.exists(destination, LinkOption.NOFOLLOW_LINKS)
             ) {
                 activated = true
