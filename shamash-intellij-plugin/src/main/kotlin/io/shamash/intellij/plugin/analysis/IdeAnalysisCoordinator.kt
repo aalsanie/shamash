@@ -183,7 +183,6 @@ class IdeAnalysisCoordinator(
                                 )
                             progress.checkCanceled()
                             if (lifecycle.publish(request, outcome)) {
-                                publishLegacySnapshot()
                                 publishState()
                             }
                         } catch (_: ProcessCanceledException) {
@@ -258,24 +257,6 @@ class IdeAnalysisCoordinator(
         activeTask?.cancel(true)
         indicator = null
         activeTask = null
-    }
-
-    /** The legacy dashboard is an interim adapter; its contents are never treated as source graph results. */
-    private fun publishLegacySnapshot() {
-        val state = lifecycle.snapshot()
-        val data = state.visibleResult?.payload ?: return
-        if (state.resultRelation != ResultRelation.CURRENT || data.sourceFacts != null) return
-        ApplicationManager.getApplication().invokeLater {
-            if (disposed || project.isDisposed || lifecycle.snapshot() !== state) {
-                return@invokeLater
-            }
-            val ui =
-                io.shamash.intellij.plugin.psi.ui.actions.ShamashPsiUiStateService
-                    .getInstance(project)
-            ui.updateFromScan(data.findings, data.validationErrors, null, null)
-            // Views subscribe with their own Disposable. Never contact a possibly disposed
-            // tool-window content or activate it as a side effect of completion.
-        }
     }
 
     private fun publishState() {

@@ -161,6 +161,7 @@ def main() -> None:
     diff = subprocess.run(
         ["git", "diff", "--no-ext-diff", "--no-renames", "--unified=0", f"{args.base}...{args.head}", "--"],
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=True,
     ).stdout
