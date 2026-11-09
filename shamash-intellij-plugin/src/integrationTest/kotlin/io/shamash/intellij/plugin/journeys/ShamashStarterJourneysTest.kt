@@ -494,4 +494,3 @@ interface RemoteDocument {
 interface RemoteCaretModel {
     fun getOffset(): Int
 }
-
