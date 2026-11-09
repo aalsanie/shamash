@@ -318,6 +318,7 @@ class ShamashAsmEngineTest {
             assertFalse(result.isSuccess)
             assertEquals(null, result.export)
             assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED }, result.errors.toString())
+            assertEquals("false", result.errors.single { it.code == EngineError.Code.BASELINE_FAILED }.details["reportRollbackFailed"])
             assertFalse(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED }, result.errors.toString())
             assertEquals("last-complete-json", Files.readString(oldJson))
             assertEquals("last-complete-xml", Files.readString(oldXml))

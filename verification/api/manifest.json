@@ -2,7 +2,7 @@
   "baseline": "2ec2202ba35d6762d9fb962fdefa178d168a2111",
   "reference_sha256": {
     "shamash-artifacts/shamash-artifacts.api": "65449b5b200441b5d37705b951cb6c1a73b86e0927d9def2c608555a54e6d699",
-    "shamash-export/shamash-export.api": "25a713f45b4395a2461227747f028d222eb756e44cf31a520d24fc22150928f4",
+    "shamash-export/shamash-export.api": "d432a14cf7f4d6005b6d495d717e93d40b192eeebd0b842d0312772ae9776827",
     "shamash-asm-core/shamash-asm-core.api": "ac2a567be1bbd7a51ecd7a698379a9a21346c1fe04252d6b509c321443dfa317"
   }
 }

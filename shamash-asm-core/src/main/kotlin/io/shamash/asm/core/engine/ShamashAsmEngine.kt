@@ -386,17 +386,13 @@ class ShamashAsmEngine
                     errors +=
                         EngineError.baselineFailed(
                             message = "Baseline publication failed",
-                            details = mapOf("path" to baselinePath.toString()),
-                            t = failure.cause ?: failure,
+                            details =
+                                mapOf(
+                                    "path" to baselinePath.toString(),
+                                    "reportRollbackFailed" to failure.suppressed.isNotEmpty().toString(),
+                                ),
+                            t = failure,
                         )
-                    if (failure.suppressed.isNotEmpty()) {
-                        errors +=
-                            EngineError.exportFailed(
-                                message = "Report restoration failed after baseline publication failure",
-                                details = mapOf("outputDir" to config.export.outputDir),
-                                t = failure,
-                            )
-                    }
                 } catch (failure: Throwable) {
                     errors +=
                         EngineError.exportFailed(

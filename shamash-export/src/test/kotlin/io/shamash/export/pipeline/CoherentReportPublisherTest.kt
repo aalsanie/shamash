@@ -310,6 +310,50 @@ class CoherentReportPublisherTest {
         }
     }
 
+    @Test
+    fun `filesystem root cannot be used as a report destination`() {
+        val root = Path.of("").toAbsolutePath().root
+        assertFailsWith<IllegalArgumentException> {
+            CoherentReportPublisher().publish(root) { stage ->
+                Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "never")
+            }
+        }
+    }
+
+    @Test
+    fun `failed first activation does not publish reports or leave temporary directories`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            val publisher =
+                CoherentReportPublisher { _, _ ->
+                    throw IOException("could not activate first generation")
+                }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "not published")
+                }
+            }
+            assertFalse(Files.exists(output))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `failed render with removed staging tree does not invent an activation`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            assertFailsWith<IOException> {
+                CoherentReportPublisher().publish(output) { stage ->
+                    val report = stage.resolve(ExportOutputLayout.JSON_FILE_NAME)
+                    Files.writeString(report, "partial")
+                    Files.delete(report)
+                    Files.delete(stage)
+                    throw IOException("stage was discarded")
+                }
+            }
+            assertFalse(Files.exists(output))
+            assertNoTemporaryDirectories(root)
+        }
+
     private fun withProject(action: (Path) -> Unit) {
         val root = Files.createTempDirectory("shamash-publisher-test")
         try {

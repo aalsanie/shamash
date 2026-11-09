@@ -22,8 +22,8 @@ public final class io/shamash/export/pipeline/CoherentReportPublisher {
 	public fun <init> ()V
 	public fun <init> (Lkotlin/jvm/functions/Function2;)V
 	public synthetic fun <init> (Lkotlin/jvm/functions/Function2;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun publish (Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
 	public final fun publish (Ljava/nio/file/Path;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
+	public final fun publish (Ljava/nio/file/Path;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
 }
 
 public final class io/shamash/export/pipeline/DefaultExportPipelineFactory {
