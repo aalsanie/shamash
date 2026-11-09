@@ -25,13 +25,10 @@ internal object LegacyActionBridge {
     fun openFindings(project: Project) {
         if (project.isDisposed) return
         val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash") ?: return
-        window.activate(
-            {
-                val panel = window.contentManager.contents.firstOrNull()?.component as? ShamashSourcePanel
-                panel?.tabs?.selectedIndex = 0
-            },
-            true,
-        )
+        window.activate(null, true)
+        // The first tab of a newly created window is Findings; reset an existing window immediately.
+        val panel = window.contentManager.contents.firstOrNull()?.component as? ShamashSourcePanel
+        panel?.tabs?.selectedIndex = 0
     }
 
     fun runSourceAnalysis(project: Project) {
