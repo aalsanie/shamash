@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 
 /** Compatibility for pre-1.0 dashboard/run shortcuts. Never invokes the configured PSI/ASM engines. */
@@ -25,8 +26,12 @@ internal object LegacyActionBridge {
     fun openFindings(project: Project) {
         if (project.isDisposed) return
         val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash") ?: return
+        showFindings(window)
+    }
+
+    /** The registered window may still be empty while IntelliJ initializes its content. */
+    internal fun showFindings(window: ToolWindow) {
         window.activate(null, true)
-        // The first tab of a newly created window is Findings; reset an existing window immediately.
         val panel =
             window.contentManager.contents
                 .firstOrNull()

@@ -21,6 +21,10 @@ import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.ToolWindow
+import com.intellij.ui.content.Content
+import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.content.ContentManager
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
@@ -30,8 +34,11 @@ import io.shamash.intellij.plugin.psi.ui.actions.OpenPsiDashboardAction
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.intellij.plugin.settings.ShamashSourceMigrationState
 import io.shamash.intellij.plugin.ui.source.ShamashSourcePanel
+import io.shamash.intellij.plugin.ui.source.LegacyActionBridge
 import java.nio.file.Files
 import java.nio.file.Path
+import java.lang.reflect.Proxy
+import javax.swing.JPanel
 import kotlin.test.assertContentEquals
 
 class LegacyActionMigrationE2ETest : ShamashPluginE2eTestBase() {
@@ -76,6 +83,39 @@ class LegacyActionMigrationE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
+    fun testLegacyBridgeActivatesWindowAndSelectsFindings() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.tabs.selectedIndex = 1
+                var activations = 0
+                val content = ContentFactory.getInstance().createContent(panel, "", false)
+                val window = stubToolWindow(arrayOf(content)) { activations++ }
+
+                LegacyActionBridge.showFindings(window)
+
+                assertEquals(1, activations)
+                assertEquals(0, panel.tabs.selectedIndex)
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testLegacyBridgeHandlesEmptyAndUnrelatedToolWindowContent() {
+        runInEdtAndWait {
+            var activations = 0
+            val emptyWindow = stubToolWindow(emptyArray()) { activations++ }
+            val unrelated = ContentFactory.getInstance().createContent(JPanel(), "", false)
+            val unrelatedWindow = stubToolWindow(arrayOf(unrelated)) { activations++ }
+
+            LegacyActionBridge.showFindings(emptyWindow)
+            LegacyActionBridge.showFindings(unrelatedWindow)
+
+            assertEquals(2, activations)
+        }
+    }
+
     fun testMigrationPreservesExistingConfigBaselinesReportsAndSource() {
         val base = Path.of(project.basePath!!)
         val files =
@@ -106,5 +146,34 @@ class LegacyActionMigrationE2ETest : ShamashPluginE2eTestBase() {
         }
         assertEquals(initial, coordinator.state().requestGeneration)
         before.forEach { (path, bytes) -> assertContentEquals(bytes, Files.readAllBytes(path)) }
+    }
+
+    private fun stubToolWindow(
+        contents: Array<Content>,
+        onActivate: () -> Unit,
+    ): ToolWindow {
+        val contentManager =
+            Proxy.newProxyInstance(
+                ContentManager::class.java.classLoader,
+                arrayOf(ContentManager::class.java),
+            ) { _, method, _ ->
+                when (method.name) {
+                    "getContents" -> contents
+                    else -> error("Unexpected content-manager call: ${method.name}")
+                }
+            } as ContentManager
+        return Proxy.newProxyInstance(
+            ToolWindow::class.java.classLoader,
+            arrayOf(ToolWindow::class.java),
+        ) { _, method, _ ->
+            when (method.name) {
+                "activate" -> {
+                    onActivate()
+                    null
+                }
+                "getContentManager" -> contentManager
+                else -> error("Unexpected tool-window call: ${method.name}")
+            }
+        } as ToolWindow
     }
 }
