@@ -87,6 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - run: chmod +x gradlew
       - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
@@ -103,6 +104,11 @@ jobs:
         run: python scripts/ci-gradle-retry.py ./gradlew --stacktrace :koverXmlReport :koverHtmlReport
       - name: Validate package attribution and summarize coverage
         run: python scripts/coverage-summary.py build/reports/kover/report.xml --output build/reports/coverage/summary.json
+      - name: Enforce changed-source line and branch coverage
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/check-coverage-diff.py build/reports/kover/report.xml "$BASE_SHA"
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
