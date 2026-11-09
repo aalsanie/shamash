@@ -399,6 +399,27 @@ class ShamashAsmEngineTest {
     }
 
     @Test
+    fun `baseline destination cannot be an ancestor of report output`() {
+        withBaselineProject { project ->
+            val config =
+                baselineConfig(exportEnabled = true).let { original ->
+                    original.copy(
+                        baseline = BaselineConfig(BaselineMode.GENERATE, ".shamash/reports.json"),
+                        export = original.export.copy(outputDir = ".shamash/reports.json/asm"),
+                    )
+                }
+            val result =
+                ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
+                    project, "demo", config, FactIndex.empty(),
+                )
+            assertFalse(result.isSuccess)
+            assertTrue(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED }, result.errors.toString())
+            assertTrue(result.errors.any { it.code == EngineError.Code.BASELINE_FAILED }, result.errors.toString())
+            assertFalse(Files.exists(project.resolve(".shamash/reports.json")))
+        }
+    }
+
+    @Test
     fun `successful generation records findings and verify leaves the baseline unchanged`() {
         withBaselineProject { project ->
             val baseline = project.resolve(".shamash/baseline.json")
