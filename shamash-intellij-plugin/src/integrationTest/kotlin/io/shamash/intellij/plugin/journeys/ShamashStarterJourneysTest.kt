@@ -153,6 +153,45 @@ class ShamashStarterJourneysTest {
             }
     }
 
+
+    @Test
+    fun kotlinOnlyCycleAppearsInFindingsAndExplore() {
+        val project = fixture("kotlin")
+        context("kotlin-cycle", project)
+            .runIdeWithDriver()
+            .useDriverAndCloseIde {
+                waitForIndicators(5.minutes)
+                ideFrame {
+                    invokeAction("io.shamash.open")
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("Cyclic group of 2 packages") })
+                        .shouldBe("Kotlin-only references must produce a package cycle", present)
+                    x(xQuery { byVisibleText("Explore") }).click()
+                    x(xQuery { byAccessibleName("IDE module, package and declaration tree") })
+                        .shouldBe("Kotlin-only declarations must appear in Explore", present)
+                }
+            }
+    }
+
+    @Test
+    fun acyclicProductionSourceHasNoCycleFindingButExploreRemainsAvailable() {
+        val project = fixture("acyclic")
+        context("acyclic", project)
+            .runIdeWithDriver()
+            .useDriverAndCloseIde {
+                waitForIndicators(5.minutes)
+                ideFrame {
+                    invokeAction("io.shamash.open")
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
+                        .shouldBe("Complete acyclic source must not be reported as partial or cyclic", present)
+                    x(xQuery { byVisibleText("Explore") }).click()
+                    x(xQuery { byAccessibleName("IDE module, package and declaration tree") })
+                        .shouldBe("Acyclic dependencies must remain explorable", present)
+                }
+            }
+    }
+
     private fun fixture(name: String): Path =
         Path.of(requireNotNull(System.getProperty("shamash.fixture.root")) { "Missing fixture root" })
             .resolve(name)
