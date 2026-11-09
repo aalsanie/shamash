@@ -79,7 +79,6 @@ class CoherentReportPublisherTest {
                     moves++
                     if (moves == 2) throw IOException("injected activation failure")
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    Unit
                 }
             assertFailsWith<IOException> {
                 publisher.publish(output) { stage ->
@@ -386,6 +385,92 @@ class CoherentReportPublisherTest {
             }
             assertEquals("previous", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
             assertEquals("personal", Files.readString(output.resolve("notes.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `stage lost during activation restores the previous generation`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    if (from.fileName.toString().startsWith(".shamash-stage-")) {
+                        Files.delete(from.resolve(ExportOutputLayout.JSON_FILE_NAME))
+                        Files.delete(from)
+                        throw IOException("staging disappeared before activation")
+                    }
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                }
+            }
+            assertEquals("previous", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `stage lost during first activation leaves no published generation`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            val publisher =
+                CoherentReportPublisher { from, _ ->
+                    Files.delete(from.resolve(ExportOutputLayout.JSON_FILE_NAME))
+                    Files.delete(from)
+                    throw IOException("staging disappeared")
+                }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "incomplete")
+                }
+            }
+            assertFalse(Files.exists(output))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `failure after moving the old generation restores it before activation`() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
+            Files.writeString(output.resolve("notes.txt"), "user")
+            var moves = 0
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    moves++
+                    if (moves == 1) throw IOException("move completed but reported failure")
+                }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "incomplete")
+                }
+            }
+            assertEquals(2, moves)
+            assertEquals("previous", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertEquals("user", Files.readString(output.resolve("notes.txt")))
+            assertNoTemporaryDirectories(root)
+        }
+
+    @Test
+    fun `failed first activation after move still removes the incomplete generation`() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    if (from.fileName.toString().startsWith(".shamash-stage-")) {
+                        throw IOException("activation completed before failure")
+                    }
+                }
+            assertFailsWith<IOException> {
+                publisher.publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "incomplete")
+                }
+            }
+            assertFalse(Files.exists(output))
             assertNoTemporaryDirectories(root)
         }
 

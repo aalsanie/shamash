@@ -80,7 +80,6 @@ class CoherentReportPublisher(
         var backup: Path? = null
         var activationAttempted = false
         var activated = false
-        var completed = false
         try {
             if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
                 require(Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
@@ -99,7 +98,7 @@ class CoherentReportPublisher(
             moveDirectory(stage, destination)
             activated = true
             onActivated()
-            completed = true
+            backup?.let { runCatching { deleteTree(it) } }
             return result
         } catch (failure: Throwable) {
             // A move hook may throw after completing its move; reconcile the on-disk state.
@@ -120,7 +119,6 @@ class CoherentReportPublisher(
                 if (previous != null && Files.exists(previous, LinkOption.NOFOLLOW_LINKS)) {
                     moveDirectory(previous, destination)
                 }
-                backup = null
                 discarded?.let { deleteTree(it) }
             } catch (rollbackFailure: Throwable) {
                 failure.addSuppressed(
@@ -131,7 +129,6 @@ class CoherentReportPublisher(
             throw failure
         } finally {
             if (Files.exists(stage, LinkOption.NOFOLLOW_LINKS)) deleteTree(stage)
-            if (completed) backup?.let { runCatching { deleteTree(it) } }
         }
     }
 
