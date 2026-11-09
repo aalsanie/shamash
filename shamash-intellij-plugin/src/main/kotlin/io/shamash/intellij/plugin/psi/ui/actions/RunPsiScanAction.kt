@@ -19,21 +19,11 @@ package io.shamash.intellij.plugin.psi.ui.actions
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.psi.PsiDocumentManager
-import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
-import io.shamash.intellij.plugin.analysis.ProjectSourceBackend
+import io.shamash.intellij.plugin.ui.source.LegacyActionBridge
 
-/** Source analysis is available on first run without YAML, compilation or a report export. */
+/** Retains the old action ID without exposing the retired configured PSI UI. */
 class RunPsiScanAction : AnAction() {
-    override fun update(e: AnActionEvent) {
-        e.presentation.isEnabled = e.project?.let { !IdeAnalysisCoordinator.getInstance(it).state().active } == true
-    }
-
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        // Synchronize unsaved editor text with PSI; this does not save document bytes to disk.
-        PsiDocumentManager.getInstance(project).commitAllDocuments()
-        val coordinator = IdeAnalysisCoordinator.getInstance(project)
-        coordinator.analyze(ProjectSourceBackend(project, coordinator))
+        e.project?.let(LegacyActionBridge::runSourceAnalysis)
     }
 }

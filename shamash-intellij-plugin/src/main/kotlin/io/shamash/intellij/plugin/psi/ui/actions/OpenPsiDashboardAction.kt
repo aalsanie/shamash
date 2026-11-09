@@ -19,16 +19,11 @@ package io.shamash.intellij.plugin.psi.ui.actions
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import io.shamash.intellij.plugin.psi.ui.ShamashPsiToolWindowController
+import io.shamash.intellij.plugin.ui.source.LegacyActionBridge
 
+/** Retains the old action ID without exposing the retired configured PSI UI. */
 class OpenPsiDashboardAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-
-        PsiActionUtil.openPsiToolWindow(project)
-
-        val tw = ShamashPsiToolWindowController.getInstance(project)
-        tw.select(ShamashPsiToolWindowController.Tab.DASHBOARD)
-        tw.refreshAll()
+        e.project?.let(LegacyActionBridge::openFindings)
     }
 }

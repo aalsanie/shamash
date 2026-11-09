@@ -21,9 +21,7 @@ repositories {
 
 dependencies {
     implementation(project(":shamash-psi-core"))
-    implementation(project(":shamash-export"))
     implementation(project(":shamash-artifacts"))
-    implementation(project(":shamash-asm-core"))
 
     intellijPlatform {
         intellijIdeaCommunity("2024.2.1")
