@@ -59,8 +59,11 @@ dependencies {
     integrationTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
 }
 
+val pluginArchive = tasks.named<Zip>("buildPlugin")
 val integrationTest by intellijPlatformTesting.testIdeUi.registering {
     task {
+        dependsOn(pluginArchive)
+        systemProperty("path.to.build.plugin", pluginArchive.get().archiveFile.get().asFile.absolutePath)
         testClassesDirs = integrationTestSourceSet.output.classesDirs
         classpath = integrationTestSourceSet.runtimeClasspath
         useJUnitPlatform()
