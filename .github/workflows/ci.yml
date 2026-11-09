@@ -175,7 +175,7 @@ jobs:
           if-no-files-found: ignore
 
   ide-journeys:
-    name: IDE journeys (${{ matrix.ide }} / ${{ matrix.suite }})
+    name: IDE journeys (${{ matrix.ide }}${{ matrix.suite == 'essential' && ' / essential' || '' }})
     needs: [authorize, build-test]
     if: needs.authorize.result == 'success' && needs.build-test.result == 'success'
     strategy:
