@@ -174,6 +174,45 @@ jobs:
             **/build/reports/spotless/**
           if-no-files-found: ignore
 
+  ide-journeys:
+    name: IDE journeys (${{ matrix.ide }})
+    needs: [authorize, build-test]
+    if: needs.authorize.result == 'success' && needs.build-test.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix:
+        ide: ["2024.2.1", "2026.2"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - run: chmod +x gradlew
+      - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Execute real IDE Starter/Driver journeys
+        env:
+          TEST_IDE: ${{ matrix.ide }}
+        run: xvfb-run -a python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:integrationTest "-PshamashIdeJourneyVersion=$TEST_IDE"
+      - name: Verify actual JUnit 5 journey execution
+        run: python scripts/verify-plugin-tests.py --integration
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ide-journeys-${{ matrix.ide }}
+          path: |
+            shamash-intellij-plugin/build/test-results/integrationTest/**
+            shamash-intellij-plugin/build/reports/tests/integrationTest/**
+            shamash-intellij-plugin/build/idea-sandbox/**
+          if-no-files-found: warn
+
   packaged-cli-smoke:
     name: Packaged CLI smoke (${{ matrix.os }})
     needs: build-test
@@ -300,7 +339,7 @@ jobs:
   required:
     name: Required checks
     if: always()
-    needs: [preflight, authorize, coverage, build-test, packaged-cli-smoke, plugin-verifier, library-verification, qodana]
+    needs: [preflight, authorize, coverage, build-test, ide-journeys, packaged-cli-smoke, plugin-verifier, library-verification, qodana]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs
@@ -321,8 +360,8 @@ jobs:
           if expensive not in ("true", "false"):
               sys.exit("Invalid change classification")
           expected = "success" if expensive == "true" else "skipped"
-          for name in ("authorize", "coverage", "build-test", "packaged-cli-smoke",
-                       "plugin-verifier", "library-verification", "qodana"):
+          for name in ("authorize", "coverage", "build-test", "ide-journeys",
+                       "packaged-cli-smoke", "plugin-verifier", "library-verification", "qodana"):
               if results[name] != expected:
                   sys.exit(f"{name}: expected {expected}, got {results[name]}")
           print("All applicable checks passed")
