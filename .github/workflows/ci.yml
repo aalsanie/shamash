@@ -151,6 +151,9 @@ jobs:
         run: python scripts/ci-gradle-retry.py .\gradlew.bat --stacktrace spotlessCheck test
       - name: Verify IntelliJ test discovery
         run: python scripts/verify-plugin-tests.py
+      - name: Verify Windows installer and script regressions
+        if: runner.os == 'Windows'
+        run: python -B -m unittest discover -s scripts/tests -v
       # Build one portable distribution from the fully tested Ubuntu checkout.
       # Smoke jobs execute this exact ZIP on every OS rather than each downloading
       # Gradle and dependencies again to rebuild identical bytecode.
