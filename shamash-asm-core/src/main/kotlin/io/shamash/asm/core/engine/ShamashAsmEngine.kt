@@ -89,8 +89,9 @@ class ShamashAsmEngine
                 inputErrors = emptyList(),
             )
 
-        private class BaselinePublicationFailure(cause: Throwable) :
-            IllegalStateException("Baseline publication failed", cause)
+        private class BaselinePublicationFailure(
+            cause: Throwable,
+        ) : IllegalStateException("Baseline publication failed", cause)
 
         internal fun analyzeWithInputErrors(
             projectBasePath: Path,

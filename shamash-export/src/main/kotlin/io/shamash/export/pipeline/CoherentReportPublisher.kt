@@ -50,27 +50,29 @@ class CoherentReportPublisher(
         Files.createDirectories(parent)
         require(!Files.isSymbolicLink(destination)) { "Report destination must not be a symbolic link" }
         val digest =
-            MessageDigest.getInstance("SHA-256")
+            MessageDigest
+                .getInstance("SHA-256")
                 .digest(destination.toString().toByteArray(Charsets.UTF_8))
                 .joinToString("") { "%02x".format(it.toInt() and 0xff) }
         val lockFile = parent.resolve(".shamash-publish-${digest.take(24)}.lock")
-        FileChannel.open(
-            lockFile,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.WRITE,
-            LinkOption.NOFOLLOW_LINKS,
-        ).use { channel ->
-            val lock =
-                try {
-                    channel.tryLock()
-                } catch (_: OverlappingFileLockException) {
-                    null
+        FileChannel
+            .open(
+                lockFile,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS,
+            ).use { channel ->
+                val lock =
+                    try {
+                        channel.tryLock()
+                    } catch (_: OverlappingFileLockException) {
+                        null
+                    }
+                checkNotNull(lock) { "Report destination is already being published: $destination" }
+                lock.use {
+                    return publishLocked(destination, parent, onActivated, render)
                 }
-            checkNotNull(lock) { "Report destination is already being published: $destination" }
-            lock.use {
-                return publishLocked(destination, parent, onActivated, render)
             }
-        }
     }
 
     private fun <T> publishLocked(

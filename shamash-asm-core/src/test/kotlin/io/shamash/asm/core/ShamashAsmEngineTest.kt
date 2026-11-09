@@ -309,7 +309,10 @@ class ShamashAsmEngineTest {
 
             val result =
                 ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
-                    project, "demo", baselineConfig(exportEnabled = true), FactIndex.empty(),
+                    project,
+                    "demo",
+                    baselineConfig(exportEnabled = true),
+                    FactIndex.empty(),
                 )
 
             assertFalse(result.isSuccess)
@@ -334,7 +337,10 @@ class ShamashAsmEngineTest {
 
             val result =
                 ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
-                    project, "demo", baselineConfig(exportEnabled = true), FactIndex.empty(),
+                    project,
+                    "demo",
+                    baselineConfig(exportEnabled = true),
+                    FactIndex.empty(),
                 )
 
             assertFalse(result.isSuccess)
@@ -358,7 +364,10 @@ class ShamashAsmEngineTest {
 
             val result =
                 ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
-                    project, "demo", config, FactIndex.empty(),
+                    project,
+                    "demo",
+                    config,
+                    FactIndex.empty(),
                 )
 
             assertTrue(result.isSuccess, result.errors.toString())
@@ -386,7 +395,10 @@ class ShamashAsmEngineTest {
 
             val result =
                 ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
-                    project, "demo", config, FactIndex.empty(),
+                    project,
+                    "demo",
+                    config,
+                    FactIndex.empty(),
                 )
 
             assertFalse(result.isSuccess)
@@ -410,7 +422,10 @@ class ShamashAsmEngineTest {
                 }
             val result =
                 ShamashAsmEngine(SingleRuleRegistry(AlwaysFindingRule())).analyze(
-                    project, "demo", config, FactIndex.empty(),
+                    project,
+                    "demo",
+                    config,
+                    FactIndex.empty(),
                 )
             assertFalse(result.isSuccess)
             assertTrue(result.errors.any { it.code == EngineError.Code.EXPORT_FAILED }, result.errors.toString())

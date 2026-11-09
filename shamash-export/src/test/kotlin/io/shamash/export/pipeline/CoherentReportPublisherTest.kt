@@ -286,14 +286,16 @@ class CoherentReportPublisherTest {
         withProject { root ->
             val output = root.resolve("reports")
             // A pre-existing lock is deliberately not followed, even if the file is writable.
-            val first = CoherentReportPublisher().publish(output) { stage ->
-                Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "first")
-                "ok"
-            }
+            val first =
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "first")
+                    "ok"
+                }
             assertEquals("ok", first)
-            val lock = Files.list(root).use { paths ->
-                paths.filter { it.fileName.toString().startsWith(".shamash-publish-") }.findFirst().orElseThrow()
-            }
+            val lock =
+                Files.list(root).use { paths ->
+                    paths.filter { it.fileName.toString().startsWith(".shamash-publish-") }.findFirst().orElseThrow()
+                }
             Files.delete(lock)
             val sentinel = root.resolve("sentinel")
             Files.writeString(sentinel, "untouched")
