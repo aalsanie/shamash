@@ -83,6 +83,7 @@ class ShamashStarterJourneysTest {
                 }
             }
     }
+
     @Test
     fun firstRunWithoutSourcesIsHonestAndDoesNotRewriteExistingProjectData() {
         val project = fixture("empty")
@@ -199,7 +200,12 @@ class ShamashStarterJourneysTest {
                     tree.expandAll(30.seconds)
                     val paths = tree.collectExpandedPaths().map { it.path }
                     assertTrue(paths.any { path -> path.any { it.contains("JavaOwner") } }, "The Java declaration must remain explorable")
-                    assertTrue(paths.any { path -> path.any { it.contains("KotlinPeer") } }, "The Kotlin declaration must remain explorable")
+                    assertTrue(
+                        paths.any { path ->
+                            path.any { it.contains("KotlinPeer") }
+                        },
+                        "The Kotlin declaration must remain explorable",
+                    )
                 }
             }
         val actualProject = requireNotNull(openedProject) { "Driver did not expose the opened project" }
@@ -256,7 +262,10 @@ class ShamashStarterJourneysTest {
                         "defaultPayload",
                         "create",
                     )) {
-                        assertTrue(paths.any { path -> path.any { it.contains(declaration) } }, "Missing Kotlin declaration " + declaration + ": " + paths)
+                        assertTrue(
+                            paths.any { path -> path.any { it.contains(declaration) } },
+                            "Missing Kotlin declaration " + declaration + ": " + paths,
+                        )
                     }
                     tree.clickRow(
                         tree.collectExpandedPaths().firstOrNull { path -> path.path.any { it.contains("RightBatch") } }?.row
