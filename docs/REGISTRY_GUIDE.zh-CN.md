@@ -29,7 +29,7 @@ Maven：
 </dependency>
 ```
 
-应使用与提供者目标版本一致的依赖。运行时由命令行工具或 IntelliJ 插件提供 `shamash-asm-core`，因此提供者 JAR 不应重复打包该库。
+请使用与提供者目标版本匹配的依赖。CLI 在运行时提供 `shamash-asm-core`，因此提供者 JAR 不应重复打包该库。
 
 ## 命令行规则注册表提供者
 
@@ -80,33 +80,9 @@ shamash scan --registry acme
 
 指定未知注册表 ID 会导致配置错误，同时列出可用 ID。
 
-## IntelliJ 规则注册表提供者
+## IntelliJ 注册表集成（已移除）
 
-IntelliJ 插件提供以下扩展点：
-
-```text
-io.shamash.asmRuleRegistryProvider
-```
-
-它与命令行工具使用相同的提供者接口：
-
-```text
-io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
-```
-
-配套的 IntelliJ 插件可以实现该接口并注册实现类：
-
-```xml
-<idea-plugin>
-    <depends>io.shamash</depends>
-
-    <extensions defaultExtensionNs="io.shamash">
-        <asmRuleRegistryProvider implementation="com.acme.shamash.AcmeRuleRegistryProvider"/>
-    </extensions>
-</idea-plugin>
-```
-
-注册的规则集会显示在注册表选择界面中。插件会忽略重复或空白的 ID，并报告相应问题。
+新版 IntelliJ 插件仅分析源码，不再执行自定义 ASM 注册表，也不再提供 `io.shamash.asmRuleRegistryProvider` 扩展点。请从配套插件中移除该扩展声明。CLI 仍通过 `ServiceLoader` 发现提供者，已发布的 ASM 规则注册表 API 保持可用。
 
 ## 兼容性
 
@@ -114,4 +90,4 @@ io.shamash.asm.core.engine.rules.spi.AsmRuleRegistryProvider
 
 明确指定编译时使用的 `shamash-asm-core` 版本，并确保运行时版本兼容。如果升级改变了规则注册表 API，需要重新编译并测试提供者。
 
-`ServiceLoader` 与 IntelliJ 扩展点负责运行时发现，Maven Central 则提供编译所需的 API 依赖。
+CLI 通过 `ServiceLoader` 在运行时发现提供者，Maven Central 提供编译所需的 API 依赖。

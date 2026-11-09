@@ -14,7 +14,7 @@
 
 **Verifique a arquitetura de projetos Java e Kotlin sem escrever testes de arquitetura.**
 
-Detecte ciclos de dependências, aplique limites entre pacotes e papéis arquiteturais e identifique pontos de alto acoplamento. Analise código compilado pela CLI ou na CI e obtenha diagnósticos e correções no código-fonte pelo IntelliJ.
+Explore dependências do código-fonte Java/Kotlin e ciclos entre pacotes no IntelliJ. Use a CLI ou a CI para aplicar políticas arquiteturais ao código compilado.
 
 [![Release](https://img.shields.io/github/v/release/aalsanie/shamash?label=release)](https://github.com/aalsanie/shamash/releases)
 ![CI](https://github.com/aalsanie/shamash/actions/workflows/ci.yml/badge.svg)
@@ -72,7 +72,7 @@ Para projetos Maven, substitua a etapa de compilação por `./mvnw package`. A A
 
 ## IntelliJ
 
-[Instale pelo JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) e abra **Tools → Shamash**. **Build Analysis** verifica o código compilado; **Source Analysis** oferece diagnósticos no código-fonte, supressões e correções.
+[Instale pelo JetBrains Marketplace](https://plugins.jetbrains.com/plugin/29504-shamash) e abra **Tools → Shamash**. Use **Findings** e **Explore** e clique em **Analyze project**. O plugin não avalia políticas YAML do projeto nem oferece correções automáticas; use a CLI para regras, relatórios e baselines.
 
 ## Biblioteca
 

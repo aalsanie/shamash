@@ -83,7 +83,7 @@ Install Shamash and open:
 Tools → Shamash
 ```
 
-Use **Build Analysis** for compiled-code enforcement and **Source Analysis** for IDE/source-aware feedback.
+Use **Findings** and **Explore** in **Tools → Shamash**, then choose **Analyze project** to inspect Java/Kotlin production-source dependencies. The plugin does not run compiled-code policy checks or custom fixes; use the CLI for enforcement, reports and baselines.
 
 ## Checksum
 
