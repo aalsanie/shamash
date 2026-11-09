@@ -384,7 +384,7 @@ class ShamashAsmEngine
                 } catch (failure: BaselinePublicationFailure) {
                     errors +=
                         EngineError.baselineFailed(
-                            message = "Baseline publication failed; report generation was rolled back",
+                            message = "Baseline publication failed",
                             details = mapOf("path" to baselinePath.toString()),
                             t = failure.cause ?: failure,
                         )
