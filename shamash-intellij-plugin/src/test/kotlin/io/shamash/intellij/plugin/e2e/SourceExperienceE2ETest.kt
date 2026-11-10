@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.openapi.ui.JBSplitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -53,7 +54,6 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.JComboBox
-import com.intellij.openapi.ui.JBSplitter
 import javax.swing.tree.TreePath
 
 class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
@@ -338,6 +338,12 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     )
                     assertFalse(split.orientation)
                     assertEquals(proportions.second, split.proportion)
+                    split.proportion = 0.6f
+                    view.setSize(920, 360)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    assertEquals(0.6f, split.proportion)
                 }
             } finally {
                 Disposer.dispose(panel)

@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -37,7 +38,6 @@ import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
-import com.intellij.openapi.ui.JBSplitter
 import javax.swing.KeyStroke
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
