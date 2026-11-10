@@ -17,11 +17,11 @@
  */
 package io.shamash.intellij.plugin.e2e
 
-import com.intellij.ui.JBSplitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import io.shamash.intellij.plugin.analysis.AnalysisCoverage
@@ -316,8 +316,14 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         runInEdtAndWait {
             val panel = ShamashSourcePanel(project)
             try {
-                val findingsSplit = panel.findings.components.filterIsInstance<JBSplitter>().single()
-                val exploreSplit = panel.explore.components.filterIsInstance<JBSplitter>().single()
+                val findingsSplit =
+                    panel.findings.components
+                        .filterIsInstance<JBSplitter>()
+                        .single()
+                val exploreSplit =
+                    panel.explore.components
+                        .filterIsInstance<JBSplitter>()
+                        .single()
                 val views =
                     listOf(
                         Triple(panel.findings, findingsSplit, 0.48f to 0.42f),
