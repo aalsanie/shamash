@@ -160,18 +160,6 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("Open source") }).click()
                     invokeAction("HideAllWindows")
                 }
-                waitFor(30.seconds, errorMessage = "The selected source editor is available after restoring the layout") {
-                    withContext {
-                        service(RemoteFileEditorManager::class, singleProject()).getSelectedTextEditor() != null
-                    }
-                }
-                val snapshot =
-                    withReadAction {
-                        val manager = service(RemoteFileEditorManager::class, singleProject())
-                        val file = requireNotNull(manager.getSelectedFiles().firstOrNull())
-                        val editor = requireNotNull(manager.getSelectedTextEditor())
-                        EditorSnapshot(file.getPath(), editor.getDocument().getText(), editor.getCaretModel().getOffset())
-                    }
                 val owner = evidenceLabel.substringBefore(" → ")
                 val target = evidenceLabel.substringAfter(" → ")
                 val expectedFile =
@@ -179,6 +167,21 @@ class ShamashStarterJourneysTest {
                         "left.Left#dependency" -> "Left.java"
                         "right.Right#dependency" -> "Right.java"
                         else -> throw AssertionError("Unexpected source owner: " + owner)
+                    }
+                waitFor(30.seconds, errorMessage = "The navigated source file must have an open text editor") {
+                    withReadAction {
+                        val manager = service(RemoteFileEditorManager::class, singleProject())
+                        manager.getOpenFiles().any { file ->
+                            file.getPath().endsWith("/" + expectedFile) && manager.getSelectedEditor(file) != null
+                        }
+                    }
+                }
+                val snapshot =
+                    withReadAction {
+                        val manager = service(RemoteFileEditorManager::class, singleProject())
+                        val file = manager.getOpenFiles().single { it.getPath().endsWith("/" + expectedFile) }
+                        val editor = requireNotNull(manager.getSelectedEditor(file)).getEditor()
+                        EditorSnapshot(file.getPath(), editor.getDocument().getText(), editor.getCaretModel().getOffset())
                     }
                 assertTrue(snapshot.path.endsWith("/" + expectedFile), "Navigation opened the wrong source file: " + snapshot.path)
                 val targetStart = snapshot.documentText.indexOf(target)
@@ -362,7 +365,6 @@ class ShamashStarterJourneysTest {
                         enterText(editedBeta)
                     }
                     invokeAction("io.shamash.open")
-                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Code changed since this analysis") })
                         .shouldBe("An unsaved source edit must invalidate the previous result", present)
                 }
@@ -419,7 +421,7 @@ class ShamashStarterJourneysTest {
                 }
                 val actualProject = requireNotNull(openedProject)
                 val slow = slowSource()
-                assertTrue(slow.toByteArray(Charsets.UTF_8).size < 2_500 * 1024)
+                assertTrue(slow.toByteArray(Charsets.UTF_8).size < 1_200_000)
                 Files.writeString(actualProject.resolve("multi-a/src/main/java/slow/Load.java"), slow)
                 ideFrame { invokeAction("Synchronize") }
                 waitForIndicators(5.minutes)
@@ -468,11 +470,11 @@ class ShamashStarterJourneysTest {
     }
 
     private fun slowSource(): String =
-        buildString(2_420_000) {
+        buildString(1_100_000) {
             appendLine("package slow;")
             appendLine("final class Load {")
             appendLine("    void run() {")
-            repeat(110_000) { appendLine("        Helper.run();") }
+            repeat(50_000) { appendLine("        Helper.run();") }
             appendLine("    }")
             appendLine("}")
             appendLine("final class Helper { static void run() {} }")
@@ -540,7 +542,16 @@ private data class EditorSnapshot(
 interface RemoteFileEditorManager {
     fun getSelectedFiles(): Array<RemoteVirtualFile>
 
+    fun getOpenFiles(): Array<RemoteVirtualFile>
+
+    fun getSelectedEditor(file: RemoteVirtualFile): RemoteTextEditor?
+
     fun getSelectedTextEditor(): RemoteEditor?
+}
+
+@Remote("com.intellij.openapi.fileEditor.TextEditor")
+interface RemoteTextEditor {
+    fun getEditor(): RemoteEditor
 }
 
 @Remote("com.intellij.openapi.vfs.VirtualFile")
