@@ -105,6 +105,7 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Findings") }).shouldBe("Findings must be available", present)
                     x(xQuery { byVisibleText("Explore") }).shouldBe("Explore must be available", present)
                     x(xQuery { byVisibleText("Configuration") }).shouldNot(present)
@@ -137,11 +138,13 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Both directions of the Java package cycle must be observed", present)
-                    x(xQuery { byVisibleText("1 observed cyclic groups") })
-                        .shouldBe("The cycle must be represented once", present)
+                    val findings = list { byAccessibleName("Package cycle findings") }
+                    findings.shouldBe("Findings list must be present", present)
+                    assertEquals(1, findings.items.size, "The cycle must be represented once: " + findings.items)
                     val evidence = list { byAccessibleName("Verified source references") }
                     evidence.shouldBe("The selected cycle edge must retain a source witness", present)
                     evidenceLabel = evidence.items.firstOrNull()
@@ -195,10 +198,12 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.asm.runScan")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Old Build Scan must invoke source analysis, including Kotlin", present)
-                    x(xQuery { byVisibleText("1 observed cyclic groups") })
-                        .shouldBe("The mixed-language cycle must be represented once", present)
+                    val findings = list { byAccessibleName("Package cycle findings") }
+                    findings.shouldBe("Findings list must be present", present)
+                    assertEquals(1, findings.items.size, "The mixed-language cycle must be represented once: " + findings.items)
                     x(xQuery { byVisibleText("Explore") }).click()
                     val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                     tree.expandAll(30.seconds)
@@ -227,6 +232,7 @@ class ShamashStarterJourneysTest {
                 waitForIndicators(5.minutes)
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Some source dependencies could not be analyzed") })
                         .shouldBe("Unresolved production references must produce a partial result", present)
@@ -248,11 +254,13 @@ class ShamashStarterJourneysTest {
                 waitForIndicators(5.minutes)
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Kotlin-only references must produce a package cycle", present)
-                    x(xQuery { byVisibleText("1 observed cyclic groups") })
-                        .shouldBe("The Kotlin cycle must be represented once", present)
+                    val findings = list { byAccessibleName("Package cycle findings") }
+                    findings.shouldBe("Findings list must be present", present)
+                    assertEquals(1, findings.items.size, "The Kotlin cycle must be represented once: " + findings.items)
                     x(xQuery { byVisibleText("Explore") }).click()
                     val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                     tree.expandAll(30.seconds)
@@ -302,6 +310,7 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
                         .shouldBe("Complete acyclic source must not be reported as partial or cyclic", present)
@@ -334,8 +343,9 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Analysis must include the unsaved reverse dependency", present)
-                    x(xQuery { byVisibleText("1 observed cyclic groups") })
-                        .shouldBe("The new cycle must be represented once", present)
+                    val findings = list { byAccessibleName("Package cycle findings") }
+                    findings.shouldBe("Findings list must be present", present)
+                    assertEquals(1, findings.items.size, "The new cycle must be represented once: " + findings.items)
                     invokeAction("SaveAll")
                 }
                 assertTrue(Files.readString(actualBeta).contains("alpha.Alpha owner"), "SaveAll did not persist the edited source")
@@ -354,6 +364,7 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
                         .shouldBe("A one-way module dependency must remain acyclic", present)
