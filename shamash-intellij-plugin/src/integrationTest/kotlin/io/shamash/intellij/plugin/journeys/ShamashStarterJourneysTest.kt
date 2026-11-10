@@ -105,7 +105,6 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.open")
-                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Findings") }).shouldBe("Findings must be available", present)
                     x(xQuery { byVisibleText("Explore") }).shouldBe("Explore must be available", present)
                     x(xQuery { byVisibleText("Configuration") }).shouldNot(present)
@@ -144,7 +143,11 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Both directions of the Java package cycle must be observed", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Findings list must be present", present)
-                    assertEquals(1, findings.items.size, "The cycle must be represented once: " + findings.items)
+                    assertEquals(
+                        1,
+                        findings.items.size,
+                        "The cycle must be represented once: " + findings.items,
+                    )
                     val evidence = list { byAccessibleName("Verified source references") }
                     evidence.shouldBe("The selected cycle edge must retain a source witness", present)
                     evidenceLabel = evidence.items.firstOrNull()
@@ -203,7 +206,11 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Old Build Scan must invoke source analysis, including Kotlin", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Findings list must be present", present)
-                    assertEquals(1, findings.items.size, "The mixed-language cycle must be represented once: " + findings.items)
+                    assertEquals(
+                        1,
+                        findings.items.size,
+                        "The mixed-language cycle must be represented once: " + findings.items,
+                    )
                     x(xQuery { byVisibleText("Explore") }).click()
                     val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                     tree.expandAll(30.seconds)
@@ -260,7 +267,11 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Kotlin-only references must produce a package cycle", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Findings list must be present", present)
-                    assertEquals(1, findings.items.size, "The Kotlin cycle must be represented once: " + findings.items)
+                    assertEquals(
+                        1,
+                        findings.items.size,
+                        "The Kotlin cycle must be represented once: " + findings.items,
+                    )
                     x(xQuery { byVisibleText("Explore") }).click()
                     val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                     tree.expandAll(30.seconds)
@@ -345,7 +356,11 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Analysis must include the unsaved reverse dependency", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Findings list must be present", present)
-                    assertEquals(1, findings.items.size, "The new cycle must be represented once: " + findings.items)
+                    assertEquals(
+                        1,
+                        findings.items.size,
+                        "The new cycle must be represented once: " + findings.items,
+                    )
                     invokeAction("SaveAll")
                 }
                 assertTrue(Files.readString(actualBeta).contains("alpha.Alpha owner"), "SaveAll did not persist the edited source")
