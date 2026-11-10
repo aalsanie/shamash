@@ -18,7 +18,7 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.JBSplitter
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField

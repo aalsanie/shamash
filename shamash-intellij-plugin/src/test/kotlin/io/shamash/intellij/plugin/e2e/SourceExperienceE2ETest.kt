@@ -17,7 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
-import com.intellij.openapi.ui.JBSplitter
+import com.intellij.ui.JBSplitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
