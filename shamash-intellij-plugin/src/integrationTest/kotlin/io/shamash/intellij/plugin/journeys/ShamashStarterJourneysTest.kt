@@ -45,6 +45,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import org.kodein.di.DI
 import org.kodein.di.bindSingleton
 import org.w3c.dom.Element
@@ -62,6 +63,9 @@ import kotlin.time.Duration.Companion.seconds
  * The Driver interacts with the actual registered plugin window and the Starter checks IDE errors.
  */
 class ShamashStarterJourneysTest {
+    @field:TempDir
+    lateinit var testDirectory: Path
+
     init {
         di =
             DI {
@@ -431,13 +435,27 @@ class ShamashStarterJourneysTest {
             appendLine("final class Helper { static void run() {} }")
         }
 
-    private fun fixture(name: String): Path =
-        Path
-            .of(requireNotNull(System.getProperty("shamash.fixture.root")) { "Missing fixture root" })
-            .resolve(name)
-            .toAbsolutePath()
-            .normalize()
-            .also { require(Files.isDirectory(it)) { "Missing journey fixture: $it" } }
+    private fun fixture(name: String): Path {
+        val source =
+            Path
+                .of(requireNotNull(System.getProperty("shamash.fixture.root")) { "Missing fixture root" })
+                .resolve(name)
+                .toAbsolutePath()
+                .normalize()
+        require(Files.isDirectory(source)) { "Missing journey fixture: $source" }
+        val destination = testDirectory.resolve(name)
+        Files.walk(source).use { entries ->
+            entries.forEach { entry ->
+                val target = destination.resolve(source.relativize(entry))
+                if (Files.isDirectory(entry)) {
+                    Files.createDirectories(target)
+                } else {
+                    Files.copy(entry, target)
+                }
+            }
+        }
+        return destination
+    }
 
     private fun context(
         test: String,

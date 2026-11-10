@@ -350,6 +350,17 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                         java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
                     )
                     assertEquals(0.6f, split.proportion)
+                    val backLabel = if (view === panel.findings) "Back to findings" else "Back to source tree"
+                    val back = descendants(view).filterIsInstance<JButton>().single { it.text == backLabel }
+                    back.doClick()
+                    assertEquals(0.6f, split.proportion)
+                    view.setSize(350, 700)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    split.proportion = 0.4f
+                    back.doClick()
+                    assertEquals(0.65f, split.proportion)
                 }
             } finally {
                 Disposer.dispose(panel)

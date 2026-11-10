@@ -29,6 +29,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - name: Verify IDE fixture project models
+        run: python -B -m unittest discover -s scripts/tests -p test_ide_journey_fixtures.py -v
       - name: Classify changes
         id: changes
         shell: bash
