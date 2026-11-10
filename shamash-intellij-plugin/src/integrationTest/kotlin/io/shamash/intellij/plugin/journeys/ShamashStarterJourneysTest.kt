@@ -166,7 +166,7 @@ class ShamashStarterJourneysTest {
                     }
                 }
                 val snapshot =
-                    withContext {
+                    withReadAction {
                         val manager = service(RemoteFileEditorManager::class, singleProject())
                         val file = requireNotNull(manager.getSelectedFiles().firstOrNull())
                         val editor = requireNotNull(manager.getSelectedTextEditor())
@@ -408,7 +408,9 @@ class ShamashStarterJourneysTest {
                     )
                 }
                 val actualProject = requireNotNull(openedProject)
-                Files.writeString(actualProject.resolve("multi-a/src/main/java/slow/Load.java"), slowSource())
+                val slow = slowSource()
+                assertTrue(slow.toByteArray(Charsets.UTF_8).size < 2_500 * 1024)
+                Files.writeString(actualProject.resolve("multi-a/src/main/java/slow/Load.java"), slow)
                 ideFrame { invokeAction("Synchronize") }
                 waitForIndicators(5.minutes)
                 ideFrame {
@@ -456,11 +458,11 @@ class ShamashStarterJourneysTest {
     }
 
     private fun slowSource(): String =
-        buildString(2_500_000) {
+        buildString(2_420_000) {
             appendLine("package slow;")
             appendLine("final class Load {")
             appendLine("    void run() {")
-            repeat(120_000) { appendLine("        Helper.run();") }
+            repeat(110_000) { appendLine("        Helper.run();") }
             appendLine("    }")
             appendLine("}")
             appendLine("final class Helper { static void run() {} }")
