@@ -53,7 +53,7 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.JComboBox
-import javax.swing.JSplitPane
+import com.intellij.openapi.ui.JBSplitter
 import javax.swing.tree.TreePath
 
 class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
@@ -316,26 +316,29 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         runInEdtAndWait {
             val panel = ShamashSourcePanel(project)
             try {
-                panel.findings.setSize(350, 700)
-                panel.findings.dispatchEvent(
-                    java.awt.event.ComponentEvent(
-                        panel.findings,
-                        java.awt.event.ComponentEvent.COMPONENT_RESIZED,
-                    ),
-                )
-                val split =
-                    panel.findings.components
-                        .filterIsInstance<JSplitPane>()
-                        .single()
-                assertEquals(JSplitPane.VERTICAL_SPLIT, split.orientation)
-                panel.findings.setSize(900, 320)
-                panel.findings.dispatchEvent(
-                    java.awt.event.ComponentEvent(
-                        panel.findings,
-                        java.awt.event.ComponentEvent.COMPONENT_RESIZED,
-                    ),
-                )
-                assertEquals(JSplitPane.HORIZONTAL_SPLIT, split.orientation)
+                val findingsSplit = panel.findings.components.filterIsInstance<JBSplitter>().single()
+                val exploreSplit = panel.explore.components.filterIsInstance<JBSplitter>().single()
+                val views =
+                    listOf(
+                        Triple(panel.findings, findingsSplit, 0.48f to 0.42f),
+                        Triple(panel.explore, exploreSplit, 0.45f to 0.38f),
+                    )
+                for ((view, split, proportions) in views) {
+                    assertNotNull(split.firstComponent)
+                    assertNotNull(split.secondComponent)
+                    view.setSize(350, 700)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    assertTrue(split.orientation)
+                    assertEquals(proportions.first, split.proportion)
+                    view.setSize(900, 320)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    assertFalse(split.orientation)
+                    assertEquals(proportions.second, split.proportion)
+                }
             } finally {
                 Disposer.dispose(panel)
             }

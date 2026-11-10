@@ -232,6 +232,8 @@ jobs:
             shamash-intellij-plugin/build/test-results/integrationTest/**
             shamash-intellij-plugin/build/reports/tests/integrationTest/**
             shamash-intellij-plugin/build/idea-sandbox/**
+            out/perf-startup/tests/**/log/idea.log
+            out/perf-startup/tests/**/log/screenshots/driverError/**
           if-no-files-found: warn
   packaged-cli-smoke:
     name: Packaged CLI smoke (${{ matrix.os }})
