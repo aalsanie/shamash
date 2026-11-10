@@ -214,7 +214,7 @@ jobs:
         env:
           TEST_IDE: ${{ matrix.ide }}
           TEST_SUITE: ${{ matrix.suite }}
-        run: xvfb-run -a python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:integrationTest "-PshamashIdeJourneyVersion=$TEST_IDE" "-PshamashIdeJourneySuite=$TEST_SUITE"
+        run: xvfb-run -a -f "$HOME/.Xauthority" python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:integrationTest "-PshamashIdeJourneyVersion=$TEST_IDE" "-PshamashIdeJourneySuite=$TEST_SUITE"
       - name: Verify actual JUnit 5 journey execution
         env:
           TEST_SUITE: ${{ matrix.suite }}

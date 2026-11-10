@@ -39,6 +39,14 @@ tasks.test {
     maxHeapSize = "2g"
 }
 
+kover {
+    currentProject {
+        instrumentation {
+            disabledForTestTasks.add("integrationTest")
+        }
+    }
+}
+
 // Real IDE journeys use Starter/Driver (JUnit 5), isolated from the legacy JUnit 4 fixtures.
 val integrationTestSourceSet =
     sourceSets.create("integrationTest") {
