@@ -226,6 +226,19 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     ),
                 )
                 assertEquals("Some source dependencies could not be analyzed", panel.status.text)
+                val incompleteGraph = sampleGraph(1).copy(complete = false)
+                panel.render(
+                    presentation(incompleteGraph).copy(
+                        phase = AnalysisPhase.PARTIAL,
+                        resultRelation = ResultRelation.CURRENT,
+                    ),
+                )
+                assertEquals(0, panel.findings.findingList.model.size)
+                assertTrue(
+                    descendants(panel.findings).filterIsInstance<JBTextArea>().any {
+                        it.text == "No cycles observed in the available evidence; analysis is incomplete."
+                    },
+                )
                 panel.render(
                     presentation(graph).copy(
                         phase = AnalysisPhase.CANCELLED,

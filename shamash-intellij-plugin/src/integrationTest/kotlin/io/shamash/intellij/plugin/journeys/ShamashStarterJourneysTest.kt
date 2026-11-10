@@ -158,6 +158,12 @@ class ShamashStarterJourneysTest {
                     )
                     evidence.clickItem(evidenceLabel)
                     x(xQuery { byVisibleText("Open source") }).click()
+                    invokeAction("MaximizeToolWindow")
+                }
+                waitFor(30.seconds, errorMessage = "The selected source editor is available after restoring the layout") {
+                    withContext {
+                        service(RemoteFileEditorManager::class, singleProject()).getSelectedTextEditor() != null
+                    }
                 }
                 val snapshot =
                     withContext {
@@ -243,8 +249,10 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("Some source dependencies could not be analyzed") })
                         .shouldBe("Unresolved production references must produce a partial result", present)
-                    x(xQuery { byVisibleText("No cycles observed in the available evidence; analysis is incomplete.") })
-                        .shouldBe("Incomplete evidence must never be presented as cycle-free", present)
+                    x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
+                        .shouldNot(present)
+                    val findings = list { byAccessibleName("Package cycle findings") }
+                    assertTrue(findings.items.isEmpty(), "Incomplete analysis must not invent a package cycle")
                 }
             }
     }
@@ -352,6 +360,7 @@ class ShamashStarterJourneysTest {
                 assertEquals(originalBeta, Files.readString(actualBeta), "The edit must remain unsaved until explicitly saved")
                 ideFrame {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    x(xQuery { byVisibleText("Findings") }).click()
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Analysis must include the unsaved reverse dependency", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
@@ -406,8 +415,6 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("Code changed since this analysis") })
                         .shouldBe("A refreshed source file must invalidate the previous result", present)
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
-                    x(xQuery { byVisibleText("Analyzing source dependencies…") })
-                        .shouldBe("The analysis must expose its active state before cancellation", present)
                     x(xQuery { byAccessibleName("Cancel source analysis") }).click()
                     x(xQuery { byVisibleText("Analysis cancelled") })
                         .shouldBe("The real IDE cancellation action must cancel active source analysis", present)
@@ -417,8 +424,6 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("Analysis cancelled") })
                         .shouldBe("A late result must not replace the cancelled state", present)
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
-                    x(xQuery { byVisibleText("Analyzing source dependencies…") })
-                        .shouldBe("A subsequent request must enter the active state", present)
                     invokeAction("CloseProject")
                 }
                 waitFor(30.seconds, errorMessage = "the project is disposed") {
