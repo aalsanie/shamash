@@ -158,7 +158,7 @@ class ShamashStarterJourneysTest {
                     )
                     evidence.clickItem(evidenceLabel)
                     x(xQuery { byVisibleText("Open source") }).click()
-                    invokeAction("MaximizeToolWindow")
+                    invokeAction("HideAllWindows")
                 }
                 waitFor(30.seconds, errorMessage = "The selected source editor is available after restoring the layout") {
                     withContext {
@@ -336,10 +336,18 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byVisibleText("Explore") }).click()
                     x(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                         .shouldBe("Acyclic dependencies must remain explorable", present)
+                    invokeAction("HideAllWindows")
                     invokeAction("GotoFile")
                     keyboard {
                         enterText("Beta.java")
                         enter()
+                    }
+                }
+                waitFor(30.seconds, errorMessage = "Goto File must open Beta.java") {
+                    withContext {
+                        service(RemoteFileEditorManager::class, singleProject()).getSelectedFiles().any {
+                            it.getPath().endsWith("/Beta.java")
+                        }
                     }
                 }
                 val selectedPath =
@@ -353,6 +361,8 @@ class ShamashStarterJourneysTest {
                         hotKey(KeyEvent.VK_CONTROL, KeyEvent.VK_A)
                         enterText(editedBeta)
                     }
+                    invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Code changed since this analysis") })
                         .shouldBe("An unsaved source edit must invalidate the previous result", present)
                 }
