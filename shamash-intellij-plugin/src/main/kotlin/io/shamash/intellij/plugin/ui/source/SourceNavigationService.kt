@@ -24,15 +24,23 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.psi.core.source.SourceDependencyExtractor
 
 internal class SourceNavigationService(
     private val project: Project,
 ) {
+    private data class VerifiedFile(
+        val file: VirtualFile,
+        val sourceRevision: Long,
+        val rootRevision: Long,
+    )
+
     fun open(evidence: SourceEvidence): Boolean {
         val file = verify(evidence) ?: return false
         return navigate(evidence, file)
@@ -45,16 +53,16 @@ internal class SourceNavigationService(
     ) {
         if (project.isDisposed || expired()) return
         ReadAction
-            .nonBlocking<VirtualFile?> { verify(evidence) }
+            .nonBlocking<VerifiedFile?> { verify(evidence) }
             .inSmartMode(project)
             .expireWith(project)
             .expireWhen { expired() }
-            .finishOnUiThread(ModalityState.any()) { file ->
-                if (!expired()) completed(file != null && navigate(evidence, file))
+            .finishOnUiThread(ModalityState.any()) { verified ->
+                if (!expired()) completed(verified != null && navigate(evidence, verified))
             }.submit(AppExecutorUtil.getAppExecutorService())
     }
 
-    private fun verify(evidence: SourceEvidence): VirtualFile? {
+    private fun verify(evidence: SourceEvidence): VerifiedFile? {
         if (project.isDisposed) return null
         val reference = evidence.reference
         val owner = evidence.owner
@@ -65,27 +73,28 @@ internal class SourceNavigationService(
         val file = VirtualFileManager.getInstance().findFileByUrl(reference.fileUrl) ?: return null
         if (!file.isValid || file.isDirectory) return null
 
-        val valid =
-            ReadAction.compute<Boolean, RuntimeException> {
-                if (project.isDisposed || DumbService.isDumb(project) || !file.isValid) return@compute false
+        return ReadAction.compute<VerifiedFile?, RuntimeException> {
+                if (project.isDisposed || DumbService.isDumb(project) || !file.isValid) return@compute null
+                val sourceRevision = PsiModificationTracker.getInstance(project).modificationCount
+                val rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount
                 val index = ProjectFileIndex.getInstance(project)
                 if (!index.isInSourceContent(file) ||
                     index.isInTestSourceContent(file) ||
                     index.getModuleForFile(file)?.name != owner.moduleId ||
                     index.getSourceRootForFile(file)?.url != owner.sourceRoot
                 ) {
-                    return@compute false
+                    return@compute null
                 }
 
-                val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute false
+                val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute null
                 val end = reference.offset.toLong() + reference.length.toLong()
                 if (doc.modificationStamp != reference.documentStamp ||
                     end > doc.textLength || end <= reference.offset
                 ) {
-                    return@compute false
+                    return@compute null
                 }
 
-                val psi = PsiManager.getInstance(project).findFile(file) ?: return@compute false
+                val psi = PsiManager.getInstance(project).findFile(file) ?: return@compute null
                 val location =
                     SourceDependencyExtractor.SourceLocation(
                         owner.moduleId,
@@ -103,22 +112,26 @@ internal class SourceNavigationService(
                         SourceDependencyExtractor.SourceLocation(module.name, root.url, v.url)
                     }
                 val extracted = extractor.extract(psi, location)
-                if (extracted.entities.none { it.id == owner }) return@compute false
-                extracted.references.any {
-                    it.from == owner && it.evidence == reference &&
-                        it.target == target && it.kind == kind
-                }
+                if (extracted.entities.none { it.id == owner }) return@compute null
+                if (extracted.references.none {
+                        it.from == owner && it.evidence == reference &&
+                            it.target == target && it.kind == kind
+                    }
+                ) return@compute null
+                VerifiedFile(file, sourceRevision, rootRevision)
             }
-        return file.takeIf { valid }
     }
 
     private fun navigate(
         evidence: SourceEvidence,
-        file: VirtualFile,
+        verified: VerifiedFile,
     ): Boolean {
+        val file = verified.file
         val current = ReadAction.compute<Boolean, RuntimeException> {
             val index = ProjectFileIndex.getInstance(project)
             !project.isDisposed && file.isValid && !file.isDirectory &&
+                PsiModificationTracker.getInstance(project).modificationCount == verified.sourceRevision &&
+                ProjectRootModificationTracker.getInstance(project).modificationCount == verified.rootRevision &&
                 index.isInSourceContent(file) && !index.isInTestSourceContent(file) &&
                 index.getModuleForFile(file)?.name == evidence.owner.moduleId &&
                 index.getSourceRootForFile(file)?.url == evidence.owner.sourceRoot &&
