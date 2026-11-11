@@ -22,8 +22,10 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
+import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -604,6 +606,41 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         var completed = false
         navigation.openAsync(witness, { false }) { completed = true }
         assertFalse(completed)
+    }
+
+    fun testNavigationRechecksSourceAndRootRevisionImmediatelyBeforeOpening() {
+        val witness = evidence()
+        val file = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(witness.reference.fileUrl))
+        val verified =
+            ReadAction.compute<SourceNavigationService.VerifiedFile, RuntimeException> {
+                SourceNavigationService.VerifiedFile(
+                    file,
+                    PsiModificationTracker.getInstance(project).modificationCount,
+                    ProjectRootModificationTracker.getInstance(project).modificationCount,
+                )
+            }
+        val navigation = SourceNavigationService(project)
+        assertTrue(navigation.navigate(witness, verified))
+        assertFalse(navigation.navigate(witness, verified.copy(sourceRevision = verified.sourceRevision - 1)))
+        assertFalse(navigation.navigate(witness, verified.copy(rootRevision = verified.rootRevision - 1)))
+        assertFalse(
+            navigation.navigate(
+                witness.copy(reference = witness.reference.copy(documentStamp = witness.reference.documentStamp + 1)),
+                verified,
+            ),
+        )
+    }
+
+    fun testNavigationRejectsDirectoryBeforeDocumentOrEditorAccess() {
+        val witness = evidence()
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val verified =
+            SourceNavigationService.VerifiedFile(
+                directory,
+                PsiModificationTracker.getInstance(project).modificationCount,
+                ProjectRootModificationTracker.getInstance(project).modificationCount,
+            )
+        assertFalse(SourceNavigationService(project).navigate(witness, verified))
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {

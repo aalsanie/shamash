@@ -36,7 +36,7 @@ import io.shamash.psi.core.source.SourceDependencyExtractor
 internal class SourceNavigationService(
     private val project: Project,
 ) {
-    private data class VerifiedFile(
+    internal data class VerifiedFile(
         val file: VirtualFile,
         val sourceRevision: Long,
         val rootRevision: Long,
@@ -108,7 +108,7 @@ internal class SourceNavigationService(
         }
     }
 
-    private fun navigate(
+    internal fun navigate(
         evidence: SourceEvidence,
         verified: VerifiedFile,
     ): Boolean {
