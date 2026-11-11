@@ -412,7 +412,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             open.doClick()
             assertTrue(
                 descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
-                    it.text.contains("Analyze again")
+                    it.text.contains("Checking source reference")
                 },
             )
             panel.showEvidence(emptyList(), 0L)
