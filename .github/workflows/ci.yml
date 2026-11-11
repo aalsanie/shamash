@@ -112,7 +112,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python scripts/check-coverage-diff.py build/reports/kover/report.xml "$BASE_SHA"
       - if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: coverage-reports
           path: |
@@ -164,13 +164,13 @@ jobs:
         run: python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-cli:distZip
       - name: Upload tested CLI distribution
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: packaged-cli
           path: shamash-cli/build/distributions/*.zip
           if-no-files-found: error
       - if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-reports-${{ matrix.os }}
           path: |
@@ -227,7 +227,7 @@ jobs:
             python scripts/verify-plugin-tests.py --integration
           fi
       - if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ide-journeys-${{ matrix.ide }}-${{ matrix.suite }}
           path: |
@@ -283,7 +283,7 @@ jobs:
           set -o pipefail
           python scripts/ci-gradle-retry.py ./gradlew --stacktrace :shamash-intellij-plugin:buildPlugin :shamash-intellij-plugin:verifyPlugin 2>&1 | tee plugin-verifier.log
       - if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: plugin-verification-reports
           path: |
@@ -321,7 +321,7 @@ jobs:
       - name: Verify signed candidate publications
         run: python scripts/verify-signed-publications.py
       - if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: library-verification-reports
           path: |
