@@ -17,29 +17,53 @@
  */
 package io.shamash.intellij.plugin.ui.source
 
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
+import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.psi.core.source.SourceDependencyExtractor
 
 internal class SourceNavigationService(
     private val project: Project,
 ) {
     fun open(evidence: SourceEvidence): Boolean {
-        if (project.isDisposed) return false
+        val file = verify(evidence) ?: return false
+        return navigate(evidence, file)
+    }
+
+    fun openAsync(
+        evidence: SourceEvidence,
+        expired: () -> Boolean,
+        completed: (Boolean) -> Unit,
+    ) {
+        if (project.isDisposed || expired()) return
+        ReadAction
+            .nonBlocking<VirtualFile?> { verify(evidence) }
+            .inSmartMode(project)
+            .expireWith(project)
+            .expireWhen(expired)
+            .finishOnUiThread(ModalityState.any()) { file ->
+                if (!expired()) completed(file != null && navigate(evidence, file))
+            }.submit(AppExecutorUtil.getAppExecutorService())
+    }
+
+    private fun verify(evidence: SourceEvidence): VirtualFile? {
+        if (project.isDisposed) return null
         val reference = evidence.reference
         val owner = evidence.owner
-        val target = evidence.target ?: return false
-        val kind = evidence.kind ?: return false
-        if (reference.fileUrl != owner.fileUrl || reference.offset < 0 || reference.length <= 0) return false
+        val target = evidence.target ?: return null
+        val kind = evidence.kind ?: return null
+        if (reference.fileUrl != owner.fileUrl || reference.offset < 0 || reference.length <= 0) return null
 
-        val file = VirtualFileManager.getInstance().findFileByUrl(reference.fileUrl) ?: return false
-        if (!file.isValid || file.isDirectory) return false
+        val file = VirtualFileManager.getInstance().findFileByUrl(reference.fileUrl) ?: return null
+        if (!file.isValid || file.isDirectory) return null
 
         val valid =
             ReadAction.compute<Boolean, RuntimeException> {
@@ -85,13 +109,23 @@ internal class SourceNavigationService(
                         it.target == target && it.kind == kind
                 }
             }
-        if (!valid ||
-            FileDocumentManager.getInstance().getDocument(file)?.modificationStamp != reference.documentStamp
-        ) {
-            return false
-        }
+        return file.takeIf { valid }
+    }
 
-        OpenFileDescriptor(project, file, reference.offset).navigate(true)
+    private fun navigate(
+        evidence: SourceEvidence,
+        file: VirtualFile,
+    ): Boolean {
+        val current = ReadAction.compute<Boolean, RuntimeException> {
+            val index = ProjectFileIndex.getInstance(project)
+            !project.isDisposed && file.isValid && !file.isDirectory &&
+                index.isInSourceContent(file) && !index.isInTestSourceContent(file) &&
+                index.getModuleForFile(file)?.name == evidence.owner.moduleId &&
+                index.getSourceRootForFile(file)?.url == evidence.owner.sourceRoot &&
+                FileDocumentManager.getInstance().getDocument(file)?.modificationStamp == evidence.reference.documentStamp
+        }
+        if (!current) return false
+        OpenFileDescriptor(project, file, evidence.reference.offset).navigate(true)
         return true
     }
 }

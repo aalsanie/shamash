@@ -170,5 +170,7 @@ class ShamashSourcePanel(
     override fun dispose() {
         disposed = true
         currentModel = null
+        findings.dispose()
+        explore.dispose()
     }
 }

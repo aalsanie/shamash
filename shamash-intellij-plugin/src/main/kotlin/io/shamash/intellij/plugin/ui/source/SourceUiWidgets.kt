@@ -86,6 +86,8 @@ internal class SourceEvidencePanel(
     private val count = wrappedText("Select a dependency to inspect source evidence")
     private val outcome = wrappedText("")
     private val open = JButton("Open source")
+    @Volatile private var generation = 0L
+    @Volatile private var disposed = false
 
     init {
         list.model = model
@@ -101,7 +103,10 @@ internal class SourceEvidencePanel(
         add(controls, BorderLayout.SOUTH)
         open.isEnabled = false
         open.addActionListener { openSelected() }
-        list.addListSelectionListener { open.isEnabled = list.selectedValue != null }
+        list.addListSelectionListener {
+            generation++
+            open.isEnabled = list.selectedValue != null
+        }
         list.inputMap.put(KeyStroke.getKeyStroke("ENTER"), "openSource")
         list.actionMap.put(
             "openSource",
@@ -123,6 +128,7 @@ internal class SourceEvidencePanel(
         references: List<SourceEvidence>,
         occurrences: Long,
     ) {
+        generation++
         model.clear()
         references.take(SourceUiModel.MAX_WITNESSES).forEach(model::addElement)
         open.isEnabled = false
@@ -137,13 +143,21 @@ internal class SourceEvidencePanel(
     }
 
     private fun openSelected() {
+        if (disposed || !open.isEnabled) return
         val item = list.selectedValue ?: return
-        outcome.text =
-            if (navigation.open(item)) {
-                ""
-            } else {
-                "This source location changed or is unavailable. Analyze again."
-            }
+        val request = ++generation
+        open.isEnabled = false
+        outcome.text = "Checking source reference…"
+        navigation.openAsync(item, { disposed || generation != request }) { opened ->
+            if (disposed || generation != request) return@openAsync
+            outcome.text = if (opened) "" else "This source location changed or is unavailable. Analyze again."
+            open.isEnabled = list.selectedValue != null
+        }
+    }
+
+    fun dispose() {
+        disposed = true
+        generation++
     }
 }
 

@@ -465,6 +465,10 @@ internal class SourceExplorePanel(
         renderPage()
     }
 
+    fun dispose() {
+        evidence.dispose()
+    }
+
     private fun renderPage() {
         pager.update(relations.size)
         relationEmpty.text =
