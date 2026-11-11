@@ -13,9 +13,10 @@ import kotlin.test.assertTrue
 
 class SourceTypeWitnessIndexTest {
     private val owner = SourceEntityId("module", "file:///src", "file:///src/Owner.java", SourceEntityKind.CLASS, "demo.Owner")
-    private val target = SourceTarget.Internal(
-        SourceEntityId("module", "file:///src", "file:///src/Target.java", SourceEntityKind.CLASS, "demo.Target"),
-    )
+    private val target =
+        SourceTarget.Internal(
+            SourceEntityId("module", "file:///src", "file:///src/Target.java", SourceEntityKind.CLASS, "demo.Target"),
+        )
 
     @Test
     fun `matches exact owner target and inclusive source range`() {
@@ -47,10 +48,11 @@ class SourceTypeWitnessIndexTest {
         assertFalse(index.contains(owner, target, 19_997, 19_999))
     }
 
-    private fun reference(offset: Int) = SourceDependency(
-        owner,
-        target,
-        SourceDependencyKind.TYPE,
-        SourceReference(owner.fileUrl, offset, 3, 1),
-    )
+    private fun reference(offset: Int) =
+        SourceDependency(
+            owner,
+            target,
+            SourceDependencyKind.TYPE,
+            SourceReference(owner.fileUrl, offset, 3, 1),
+        )
 }

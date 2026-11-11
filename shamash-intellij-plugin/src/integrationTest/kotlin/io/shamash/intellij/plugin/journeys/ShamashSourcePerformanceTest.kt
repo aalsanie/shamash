@@ -84,21 +84,22 @@ class ShamashSourcePerformanceTest {
         val project = projectFixture(classCount)
         val version = System.getProperty("shamash.ide.version", "2024.2.1")
         val context =
-            Starter.newContext(
-                testName = "shamash-perf-$classCount-${version.replace('.', '-')}",
-                TestCase(
-                    if (version == "2024.2.1" || version == "2025.2") IdeProductProvider.IC else IdeProductProvider.IU,
-                    LocalProjectInfo(project),
-                ).withVersion(version),
-            ).apply {
-                val zip = Path.of(requireNotNull(System.getProperty("path.to.build.plugin")))
-                require(Files.isRegularFile(zip))
-                PluginConfigurator(this).installPluginFromPath(zip)
-                applyVMOptionsPatch {
-                    addSystemProperty("idea.trust.all.projects", true)
-                    addSystemProperty("ide.show.tips.on.startup.default.value", false)
+            Starter
+                .newContext(
+                    testName = "shamash-perf-$classCount-${version.replace('.', '-')}",
+                    TestCase(
+                        if (version == "2024.2.1" || version == "2025.2") IdeProductProvider.IC else IdeProductProvider.IU,
+                        LocalProjectInfo(project),
+                    ).withVersion(version),
+                ).apply {
+                    val zip = Path.of(requireNotNull(System.getProperty("path.to.build.plugin")))
+                    require(Files.isRegularFile(zip))
+                    PluginConfigurator(this).installPluginFromPath(zip)
+                    applyVMOptionsPatch {
+                        addSystemProperty("idea.trust.all.projects", true)
+                        addSystemProperty("ide.show.tips.on.startup.default.value", false)
+                    }
                 }
-            }
 
         val startImport = System.nanoTime()
         context.runIdeWithDriver().useDriverAndCloseIde {

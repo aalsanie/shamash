@@ -86,7 +86,9 @@ internal class SourceEvidencePanel(
     private val count = wrappedText("Select a dependency to inspect source evidence")
     private val outcome = wrappedText("")
     private val open = JButton("Open source")
+
     @Volatile private var generation = 0L
+
     @Volatile private var disposed = false
 
     init {

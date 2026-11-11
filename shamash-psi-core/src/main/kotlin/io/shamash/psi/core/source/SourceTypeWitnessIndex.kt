@@ -9,7 +9,9 @@ package io.shamash.psi.core.source
 
 import java.util.TreeSet
 
-internal class SourceTypeWitnessIndex(references: Iterable<SourceDependency>) {
+internal class SourceTypeWitnessIndex(
+    references: Iterable<SourceDependency>,
+) {
     private val offsets = HashMap<Pair<SourceEntityId, SourceTarget>, TreeSet<Int>>()
 
     init {
