@@ -31,6 +31,7 @@ import com.intellij.testFramework.runInEdtAndWait
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
+import io.shamash.intellij.plugin.ui.source.CurrentSourceLocation
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityId
@@ -354,6 +355,46 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         }
         runInEdtAndWait { panel.dispose() }
         fail("Verified source evidence did not open through the panel")
+    }
+
+    fun testNavigationRevalidationRejectsEveryChangedIdentityAndRevision() {
+        val witness = evidence()
+        val accepted =
+            CurrentSourceLocation(
+                sourceRevision = 17,
+                rootRevision = 23,
+                productionSource = true,
+                testSource = false,
+                moduleId = witness.owner.moduleId,
+                sourceRoot = witness.owner.sourceRoot,
+                documentStamp = witness.reference.documentStamp,
+            )
+        assertTrue(accepted.matches(witness, 17, 23))
+        val invalid =
+            listOf(
+                accepted.copy(sourceRevision = 18),
+                accepted.copy(rootRevision = 24),
+                accepted.copy(productionSource = false),
+                accepted.copy(testSource = true),
+                accepted.copy(moduleId = "other"),
+                accepted.copy(moduleId = null),
+                accepted.copy(sourceRoot = "file:///other"),
+                accepted.copy(sourceRoot = null),
+                accepted.copy(documentStamp = witness.reference.documentStamp + 1),
+                accepted.copy(documentStamp = null),
+            )
+        invalid.forEach { assertFalse(it.matches(witness, 17, 23)) }
+        assertFalse(accepted.matches(witness, 18, 23))
+        assertFalse(accepted.matches(witness, 17, 24))
+        assertFalse(accepted.matches(witness.copy(owner = witness.owner.copy(moduleId = "other")), 17, 23))
+        assertFalse(accepted.matches(witness.copy(owner = witness.owner.copy(sourceRoot = "file:///other")), 17, 23))
+        assertFalse(
+            accepted.matches(
+                witness.copy(reference = witness.reference.copy(documentStamp = witness.reference.documentStamp + 1)),
+                17,
+                23,
+            ),
+        )
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {

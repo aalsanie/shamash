@@ -31,6 +31,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.psi.core.source.SourceDependencyExtractor
+import io.shamash.psi.core.source.SourceReference
 
 internal class SourceNavigationService(
     private val project: Project,
@@ -131,17 +132,43 @@ internal class SourceNavigationService(
         val file = verified.file
         val current =
             ReadAction.compute<Boolean, RuntimeException> {
+                if (project.isDisposed || !file.isValid || file.isDirectory) return@compute false
                 val index = ProjectFileIndex.getInstance(project)
-                !project.isDisposed && file.isValid && !file.isDirectory &&
-                    PsiModificationTracker.getInstance(project).modificationCount == verified.sourceRevision &&
-                    ProjectRootModificationTracker.getInstance(project).modificationCount == verified.rootRevision &&
-                    index.isInSourceContent(file) && !index.isInTestSourceContent(file) &&
-                    index.getModuleForFile(file)?.name == evidence.owner.moduleId &&
-                    index.getSourceRootForFile(file)?.url == evidence.owner.sourceRoot &&
-                    FileDocumentManager.getInstance().getDocument(file)?.modificationStamp == evidence.reference.documentStamp
+                CurrentSourceLocation(
+                    sourceRevision = PsiModificationTracker.getInstance(project).modificationCount,
+                    rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount,
+                    productionSource = index.isInSourceContent(file),
+                    testSource = index.isInTestSourceContent(file),
+                    moduleId = index.getModuleForFile(file)?.name,
+                    sourceRoot = index.getSourceRootForFile(file)?.url,
+                    documentStamp = FileDocumentManager.getInstance().getDocument(file)?.modificationStamp,
+                ).matches(evidence, verified.sourceRevision, verified.rootRevision)
             }
         if (!current) return false
         OpenFileDescriptor(project, file, evidence.reference.offset).navigate(true)
         return true
     }
+}
+
+internal data class CurrentSourceLocation(
+    val sourceRevision: Long,
+    val rootRevision: Long,
+    val productionSource: Boolean,
+    val testSource: Boolean,
+    val moduleId: String?,
+    val sourceRoot: String?,
+    val documentStamp: Long?,
+) {
+    fun matches(
+        evidence: SourceEvidence,
+        expectedSourceRevision: Long,
+        expectedRootRevision: Long,
+    ): Boolean =
+        sourceRevision == expectedSourceRevision &&
+            rootRevision == expectedRootRevision &&
+            productionSource &&
+            !testSource &&
+            moduleId == evidence.owner.moduleId &&
+            sourceRoot == evidence.owner.sourceRoot &&
+            documentStamp == evidence.reference.documentStamp
 }
