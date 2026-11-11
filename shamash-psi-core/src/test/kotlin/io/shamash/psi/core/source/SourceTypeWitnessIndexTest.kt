@@ -79,7 +79,6 @@ class SourceTypeWitnessIndexTest {
         assertNull(findUniqueTypeTokenOffset("List<Target2>", "Target"))
     }
 
-
     @Test
     fun `missing generic witness is added with an exact source location`() {
         val existing = mutableListOf<SourceDependency>()

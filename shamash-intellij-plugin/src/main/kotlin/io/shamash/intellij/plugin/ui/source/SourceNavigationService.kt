@@ -133,8 +133,7 @@ internal class SourceNavigationService(
         return true
     }
 
-    private fun validCandidate(file: VirtualFile): Boolean =
-        !project.isDisposed && file.isValid && !file.isDirectory
+    private fun validCandidate(file: VirtualFile): Boolean = !project.isDisposed && file.isValid && !file.isDirectory
 
     private fun currentSourceLocation(
         file: VirtualFile,

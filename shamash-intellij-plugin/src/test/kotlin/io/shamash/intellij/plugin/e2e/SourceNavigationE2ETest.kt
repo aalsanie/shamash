@@ -22,8 +22,8 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
@@ -32,8 +32,8 @@ import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.JBTextArea
 import io.shamash.intellij.plugin.ui.source.CurrentSourceLocation
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
-import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceEvidenceNavigator
+import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
@@ -462,10 +462,13 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         lateinit var expired: () -> Boolean
         lateinit var complete: (Boolean) -> Unit
         val panel =
-            SourceEvidencePanel(project, SourceEvidenceNavigator { _, isExpired, completed ->
-                expired = isExpired
-                complete = completed
-            })
+            SourceEvidencePanel(
+                project,
+                SourceEvidenceNavigator { _, isExpired, completed ->
+                    expired = isExpired
+                    complete = completed
+                },
+            )
         val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
         val open = controls.components.filterIsInstance<JButton>().single()
         val status = controls.components.filterIsInstance<JBTextArea>().single()
@@ -496,10 +499,13 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         lateinit var expired: () -> Boolean
         lateinit var complete: (Boolean) -> Unit
         val panel =
-            SourceEvidencePanel(project, SourceEvidenceNavigator { _, isExpired, completed ->
-                expired = isExpired
-                complete = completed
-            })
+            SourceEvidencePanel(
+                project,
+                SourceEvidenceNavigator { _, isExpired, completed ->
+                    expired = isExpired
+                    complete = completed
+                },
+            )
         val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
         val open = controls.components.filterIsInstance<JButton>().single()
         val status = controls.components.filterIsInstance<JBTextArea>().single()
