@@ -8,8 +8,8 @@
 package io.shamash.psi.core.source
 
 import kotlin.test.Test
-import kotlin.test.assertFalse
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -54,7 +54,6 @@ class SourceTypeWitnessIndexTest {
         assertFalse(index.contains(owner, target, 19_997, 19_999))
     }
 
-
     @Test
     fun `generic fallback locates only an exact unambiguous type token`() {
         val text = "Map<TargetExtra, demo.Target>"
@@ -76,7 +75,7 @@ class SourceTypeWitnessIndexTest {
     fun `generic fallback respects identifier boundaries`() {
         val text = "List<πTarget, _Target, Target>"
         assertEquals(text.lastIndexOf("Target"), findUniqueTypeTokenOffset(text, "Target"))
-        assertNull(findUniqueTypeTokenOffset("List<$Target>", "Target"))
+        assertNull(findUniqueTypeTokenOffset("List<\$Target>", "Target"))
         assertNull(findUniqueTypeTokenOffset("List<Target2>", "Target"))
     }
 
