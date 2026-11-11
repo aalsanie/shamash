@@ -599,11 +599,17 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             val stamp = requireNotNull(FileDocumentManager.getInstance().getDocument(file)).modificationStamp
             val sourceMissingModule = navigation.currentSourceLocation(file, missingModule, stamp)
             assertNull(sourceMissingModule.moduleId)
-            assertFalse(sourceMissingModule.matches(
-                SourceEvidence(SourceReference(file.url, 0, 1, stamp), SourceEntityId(myModule.name, root.url, file.url, SourceEntityKind.CLASS, "demo.Location"), "Location"),
-                sourceMissingModule.sourceRevision,
-                sourceMissingModule.rootRevision,
-            ))
+            assertFalse(
+                sourceMissingModule.matches(
+                    SourceEvidence(
+                        SourceReference(file.url, 0, 1, stamp),
+                        SourceEntityId(myModule.name, root.url, file.url, SourceEntityKind.CLASS, "demo.Location"),
+                        "Location",
+                    ),
+                    sourceMissingModule.sourceRevision,
+                    sourceMissingModule.rootRevision,
+                ),
+            )
             assertNull(navigation.currentSourceLocation(file, missingRoot, stamp).sourceRoot)
             assertFalse(navigation.currentSourceLocation(file, noSource, stamp).productionSource)
             assertTrue(navigation.currentSourceLocation(file, testSource, stamp).testSource)
