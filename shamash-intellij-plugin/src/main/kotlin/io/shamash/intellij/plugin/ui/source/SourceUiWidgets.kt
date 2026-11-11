@@ -77,10 +77,19 @@ internal fun <T> sourceList(
             }
     }
 
+internal fun interface SourceEvidenceNavigator {
+    fun openAsync(
+        evidence: SourceEvidence,
+        expired: () -> Boolean,
+        completed: (Boolean) -> Unit,
+    )
+}
+
 internal class SourceEvidencePanel(
     project: com.intellij.openapi.project.Project,
+    private val navigation: SourceEvidenceNavigator =
+        SourceEvidenceNavigator(SourceNavigationService(project)::openAsync),
 ) : JPanel(BorderLayout()) {
-    private val navigation = SourceNavigationService(project)
     private val model = DefaultListModel<SourceEvidence>()
     val list = sourceList<SourceEvidence>("Verified source references") { it.label }
     private val count = wrappedText("Select a dependency to inspect source evidence")
@@ -153,6 +162,7 @@ internal class SourceEvidencePanel(
         open.isEnabled = false
         outcome.text = "Checking source reference…"
         navigation.openAsync(item, { disposed || generation != request }) { opened ->
+            if (disposed || generation != request) return@openAsync
             outcome.text = if (opened) "" else "This source location changed or is unavailable. Analyze again."
             open.isEnabled = true
         }

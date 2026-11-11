@@ -33,6 +33,7 @@ import com.intellij.ui.components.JBTextArea
 import io.shamash.intellij.plugin.ui.source.CurrentSourceLocation
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
+import io.shamash.intellij.plugin.ui.source.SourceEvidenceNavigator
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
@@ -452,6 +453,70 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
                 .actionPerformed(ActionEvent(panel.list, 0, "openSource"))
             assertFalse(open.isEnabled)
             assertEquals("", result.text)
+            panel.dispose()
+        }
+    }
+
+    fun testEvidencePanelIgnoresLateCallbacksAfterSelectionOrDisposal() {
+        val witness = evidence()
+        lateinit var expired: () -> Boolean
+        lateinit var complete: (Boolean) -> Unit
+        val panel =
+            SourceEvidencePanel(project, SourceEvidenceNavigator { _, isExpired, completed ->
+                expired = isExpired
+                complete = completed
+            })
+        val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
+        val open = controls.components.filterIsInstance<JButton>().single()
+        val status = controls.components.filterIsInstance<JBTextArea>().single()
+        runInEdtAndWait {
+            panel.showEvidence(listOf(witness), 1)
+            panel.list.selectedIndex = 0
+            open.doClick()
+            assertFalse(expired())
+            panel.list.clearSelection()
+            assertTrue(expired())
+            complete(true)
+            assertEquals("", status.text)
+            assertFalse(open.isEnabled)
+
+            panel.list.selectedIndex = 0
+            open.doClick()
+            assertFalse(expired())
+            panel.dispose()
+            assertTrue(expired())
+            complete(false)
+            assertFalse(open.isEnabled)
+            assertEquals("Checking source reference…", status.text)
+        }
+    }
+
+    fun testEvidencePanelHandlesCurrentSuccessAndFailure() {
+        val witness = evidence()
+        lateinit var expired: () -> Boolean
+        lateinit var complete: (Boolean) -> Unit
+        val panel =
+            SourceEvidencePanel(project, SourceEvidenceNavigator { _, isExpired, completed ->
+                expired = isExpired
+                complete = completed
+            })
+        val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
+        val open = controls.components.filterIsInstance<JButton>().single()
+        val status = controls.components.filterIsInstance<JBTextArea>().single()
+        runInEdtAndWait {
+            panel.showEvidence(listOf(witness), 1)
+            panel.list.selectedIndex = 0
+            open.doClick()
+            assertFalse(expired())
+            complete(false)
+            assertTrue(status.text.contains("Analyze again"))
+            assertTrue(open.isEnabled)
+
+            open.doClick()
+            assertFalse(expired())
+            complete(true)
+            assertEquals("", status.text)
+            assertTrue(open.isEnabled)
             panel.dispose()
         }
     }
