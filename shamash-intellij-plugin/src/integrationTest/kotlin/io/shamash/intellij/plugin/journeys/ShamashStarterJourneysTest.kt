@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.journeys
 
 import com.intellij.driver.client.Remote
+import com.intellij.driver.model.OnDispatcher
 import com.intellij.driver.sdk.getOpenProjects
 import com.intellij.driver.sdk.invokeAction
 import com.intellij.driver.sdk.singleProject
@@ -156,8 +157,14 @@ class ShamashStarterJourneysTest {
                         evidenceLabel.contains("left.Left#dependency") || evidenceLabel.contains("right.Right#dependency"),
                         "Unexpected Java source witness: " + evidenceLabel,
                     )
-                    evidence.clickItem(evidenceLabel)
-                    x(xQuery { byVisibleText("Open source") }).click()
+                    evidence.driver.withContext(OnDispatcher.EDT) {
+                        val selection = cast(evidence.component, RemoteListSelection::class)
+                        selection.setSelectedIndex(0)
+                        assertEquals(0, selection.getSelectedIndex())
+                    }
+                    val openSource = x(xQuery { byVisibleText("Open source") })
+                    assertTrue(openSource.isEnabled(), "Selecting the source witness must enable navigation")
+                    openSource.click()
                     invokeAction("HideAllWindows")
                 }
                 val owner = evidenceLabel.substringBefore(" → ")
@@ -537,6 +544,13 @@ private data class EditorSnapshot(
     val documentText: String,
     val caretOffset: Int,
 )
+
+@Remote("javax.swing.JList")
+interface RemoteListSelection {
+    fun setSelectedIndex(index: Int)
+
+    fun getSelectedIndex(): Int
+}
 
 @Remote("com.intellij.openapi.fileEditor.FileEditorManager")
 interface RemoteFileEditorManager {
