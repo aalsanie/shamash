@@ -124,6 +124,14 @@ class ShamashSourcePerformanceTest {
                     }
                 }
                 val elapsedMs = (System.nanoTime() - start) / 1_000_000
+                val completeFiles =
+                    withContext {
+                        service(RemoteAnalysisCoordinator::class, singleProject()).state().getCurrentCompleteFileCount()
+                    }
+                assertTrue(
+                    completeFiles == classCount,
+                    "Warm source scan $iteration did not complete for all $classCount files (completed: $completeFiles)",
+                )
                 ideFrame {
                     x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
                         .shouldBe("Benchmark data must produce a complete acyclic result", present)
@@ -180,4 +188,6 @@ interface RemoteAnalysisState {
     fun getRequestGeneration(): Long
 
     fun getActive(): Boolean
+
+    fun getCurrentCompleteFileCount(): Int?
 }

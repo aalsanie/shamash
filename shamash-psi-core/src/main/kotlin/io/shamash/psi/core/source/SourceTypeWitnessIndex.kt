@@ -27,9 +27,10 @@ internal class SourceTypeWitnessIndex(
         owner: SourceEntityId,
         target: SourceTarget,
         start: Int,
-        end: Int,
+        endExclusive: Int,
     ): Boolean {
+        if (endExclusive <= start) return false
         val next = offsets[owner to target]?.ceiling(start) ?: return false
-        return next <= end
+        return next < endExclusive
     }
 }

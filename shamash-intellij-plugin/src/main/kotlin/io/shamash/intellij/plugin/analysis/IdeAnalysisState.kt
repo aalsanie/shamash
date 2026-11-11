@@ -70,6 +70,16 @@ data class IdeAnalysisState<T : Any>(
     val sourceRevision: Long = 0,
     val rootRevision: Long = 0,
 ) {
+    val currentComplete: Boolean
+        get() =
+            phase == AnalysisPhase.COMPLETED &&
+                resultRelation == ResultRelation.CURRENT &&
+                visibleResult?.completeness == Completeness.COMPLETE &&
+                visibleResult?.request?.generation == requestGeneration
+
+    val currentCompleteFileCount: Int?
+        get() = if (currentComplete) visibleResult?.coverage?.analyzedFiles else null
+
     val active: Boolean get() =
         phase == AnalysisPhase.WAITING_FOR_INDEX ||
             phase == AnalysisPhase.EXTRACTING ||
