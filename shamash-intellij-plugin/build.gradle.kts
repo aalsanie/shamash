@@ -69,8 +69,8 @@ dependencies {
 
 val pluginArchive = tasks.named<Zip>("buildPlugin")
 val journeySuite = providers.gradleProperty("shamashIdeJourneySuite").orElse("full").get()
-require(journeySuite in setOf("full", "essential")) {
-    "shamashIdeJourneySuite must be 'full' or 'essential'"
+require(journeySuite in setOf("full", "essential", "benchmark")) {
+    "shamashIdeJourneySuite must be 'full', 'essential' or 'benchmark'"
 }
 
 val integrationTest by intellijPlatformTesting.testIdeUi.registering {
@@ -87,7 +87,11 @@ val integrationTest by intellijPlatformTesting.testIdeUi.registering {
         testClassesDirs = integrationTestSourceSet.output.classesDirs
         classpath = integrationTestSourceSet.runtimeClasspath
         useJUnitPlatform {
-            if (journeySuite == "essential") includeTags("essential")
+            when (journeySuite) {
+                "essential" -> includeTags("essential")
+                "benchmark" -> includeTags("benchmark")
+                else -> excludeTags("benchmark")
+            }
         }
         maxHeapSize = "2g"
         systemProperty(
