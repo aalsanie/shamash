@@ -102,6 +102,7 @@ internal class SourceEvidencePanel(
         add(JBScrollPane(list), BorderLayout.CENTER)
         add(controls, BorderLayout.SOUTH)
         open.isEnabled = false
+        outcome.accessibleContext.accessibleName = "Source navigation result"
         open.addActionListener { openSelected() }
         list.addListSelectionListener {
             generation++
