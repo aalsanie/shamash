@@ -21,6 +21,8 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -149,6 +151,24 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             )
         val document = requireNotNull(FileDocumentManager.getInstance().getDocument(file))
         WriteCommandAction.runWriteCommandAction(project) { document.insertString(0, " ") }
+        assertFalse(SourceNavigationService(project).open(witness))
+    }
+
+    fun testChangedTargetCannotNavigateWithUnchangedOwnerDocument() {
+        val witness = evidence()
+        val target = (witness.target as SourceTarget.Internal).entity
+        val ownerFile = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(witness.reference.fileUrl))
+        val targetFile = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(target.fileUrl))
+        val ownerDocument = requireNotNull(FileDocumentManager.getInstance().getDocument(ownerFile))
+        val targetDocument = requireNotNull(FileDocumentManager.getInstance().getDocument(targetFile))
+        val originalStamp = ownerDocument.modificationStamp
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            targetDocument.setText("package demo; public class Renamed {}")
+            PsiDocumentManager.getInstance(project).commitDocument(targetDocument)
+        }
+
+        assertEquals(originalStamp, ownerDocument.modificationStamp)
         assertFalse(SourceNavigationService(project).open(witness))
     }
 
