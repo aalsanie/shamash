@@ -475,7 +475,10 @@ class SourceDependencyExtractor(
     }
 }
 
-internal fun findUniqueTypeTokenOffset(text: String, token: String): Int? {
+internal fun findUniqueTypeTokenOffset(
+    text: String,
+    token: String,
+): Int? {
     if (token.isEmpty()) return null
     var match: Int? = null
     var from = 0
