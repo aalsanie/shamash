@@ -28,10 +28,11 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.ui.components.JBTextArea
+import io.shamash.intellij.plugin.ui.source.CurrentSourceLocation
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
-import io.shamash.intellij.plugin.ui.source.CurrentSourceLocation
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityId
@@ -40,11 +41,10 @@ import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
-import javax.swing.JButton
-import javax.swing.JPanel
-import com.intellij.ui.components.JBTextArea
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
+import javax.swing.JButton
+import javax.swing.JPanel
 
 class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
     private fun evidence(): SourceEvidence {
@@ -270,10 +270,11 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         val testFile = myFixture.addFileToProject("src/test/java/demo/TestOnly.java", "package demo; class TestOnly {}")
         val navigation = SourceNavigationService(project)
         for (file in listOf(outside.virtualFile, testFile.virtualFile)) {
-            val moved = witness.copy(
-                owner = witness.owner.copy(fileUrl = file.url),
-                reference = witness.reference.copy(fileUrl = file.url),
-            )
+            val moved =
+                witness.copy(
+                    owner = witness.owner.copy(fileUrl = file.url),
+                    reference = witness.reference.copy(fileUrl = file.url),
+                )
             assertFalse(navigation.open(moved))
         }
     }
@@ -318,11 +319,15 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             panel.list.clearSelection()
             assertEquals("", outcome.text)
             open.isEnabled = true
-            panel.list.actionMap.get("openSource").actionPerformed(ActionEvent(panel.list, 0, "openSource"))
+            panel.list.actionMap
+                .get("openSource")
+                .actionPerformed(ActionEvent(panel.list, 0, "openSource"))
             assertEquals("", outcome.text)
             open.isEnabled = false
             panel.dispose()
-            panel.list.actionMap.get("openSource").actionPerformed(ActionEvent(panel.list, 0, "openSource"))
+            panel.list.actionMap
+                .get("openSource")
+                .actionPerformed(ActionEvent(panel.list, 0, "openSource"))
             assertFalse(open.isEnabled)
         }
         repeat(40) {
