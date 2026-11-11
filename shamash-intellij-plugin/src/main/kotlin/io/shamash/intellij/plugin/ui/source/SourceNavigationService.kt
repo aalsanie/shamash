@@ -48,7 +48,7 @@ internal class SourceNavigationService(
             .nonBlocking<VirtualFile?> { verify(evidence) }
             .inSmartMode(project)
             .expireWith(project)
-            .expireWhen(expired)
+            .expireWhen { expired() }
             .finishOnUiThread(ModalityState.any()) { file ->
                 if (!expired()) completed(file != null && navigate(evidence, file))
             }.submit(AppExecutorUtil.getAppExecutorService())

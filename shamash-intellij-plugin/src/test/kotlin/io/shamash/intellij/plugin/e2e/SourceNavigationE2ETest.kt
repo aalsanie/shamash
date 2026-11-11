@@ -21,7 +21,10 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
+import com.intellij.testFramework.runInEdtAndWait
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.psi.core.source.SourceDependencyExtractor
@@ -30,6 +33,8 @@ import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceTarget
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicReference
 
 class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
     private fun evidence(): SourceEvidence {
@@ -64,6 +69,53 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
                 }
             }
         return SourceEvidence(reference.evidence, reference.from, "Sample → Target", reference.target, reference.kind)
+    }
+
+    fun testBackgroundNavigationOpensOnlyVerifiedEvidence() {
+        val witness = evidence()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val complete = CountDownLatch(1)
+        val opened = AtomicReference<Boolean>()
+        runInEdtAndWait {
+            SourceNavigationService(project).openAsync(witness, { false }) {
+                opened.set(it)
+                complete.countDown()
+            }
+        }
+        repeat(500) {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            if (complete.count == 0L) {
+                assertTrue(opened.get())
+                return
+            }
+            Thread.sleep(20)
+        }
+        fail("Background navigation did not complete")
+    }
+
+    fun testBackgroundNavigationRejectsStaleDocumentStamp() {
+        val witness = evidence()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val complete = CountDownLatch(1)
+        val opened = AtomicReference<Boolean>()
+        runInEdtAndWait {
+            SourceNavigationService(project).openAsync(
+                witness.copy(reference = witness.reference.copy(documentStamp = witness.reference.documentStamp + 1)),
+                { false },
+            ) {
+                opened.set(it)
+                complete.countDown()
+            }
+        }
+        repeat(500) {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            if (complete.count == 0L) {
+                assertFalse(opened.get())
+                return
+            }
+            Thread.sleep(20)
+        }
+        fail("Stale background navigation did not complete")
     }
 
     fun testVerifiedReferenceNavigatesOnlyWhileSourceAndOwnershipAreCurrent() {
