@@ -548,8 +548,6 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             SourceDependencyExtractor.SourceLocation(myModule.name, root.url, source.virtualFile.url),
             navigationSourceLocation(source, index),
         )
-        val outside = myFixture.addFileToProject("outside/Outside.java", "class Outside {}")
-        assertNull(navigationSourceLocation(outside, index))
         val testsRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
         PsiTestUtil.addSourceRoot(myModule, testsRoot, true)
         val testFile = myFixture.addFileToProject("src/test/java/TestOnly.java", "class TestOnly {}")
@@ -590,6 +588,26 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
                 if (method.name == "getVirtualFile") null else error("Unexpected PSI method: ${method.name}")
             } as PsiFile
         assertNull(navigationSourceLocation(detached, index))
+
+        val navigation = SourceNavigationService(project)
+        val missingModule = stubIndex(null, root)
+        val missingRoot = stubIndex(myModule, null)
+        val noSource = stubIndex(myModule, root, inSource = false)
+        val testSource = stubIndex(myModule, root, inTests = true)
+        ReadAction.compute<Unit, RuntimeException> {
+            val file = source.virtualFile
+            val stamp = requireNotNull(FileDocumentManager.getInstance().getDocument(file)).modificationStamp
+            val sourceMissingModule = navigation.currentSourceLocation(file, missingModule, stamp)
+            assertNull(sourceMissingModule.moduleId)
+            assertFalse(sourceMissingModule.matches(
+                SourceEvidence(SourceReference(file.url, 0, 1, stamp), SourceEntityId(myModule.name, root.url, file.url, SourceEntityKind.CLASS, "demo.Location"), "Location"),
+                sourceMissingModule.sourceRevision,
+                sourceMissingModule.rootRevision,
+            ))
+            assertNull(navigation.currentSourceLocation(file, missingRoot, stamp).sourceRoot)
+            assertFalse(navigation.currentSourceLocation(file, noSource, stamp).productionSource)
+            assertTrue(navigation.currentSourceLocation(file, testSource, stamp).testSource)
+        }
     }
 
     fun testDisposedProjectRejectsSynchronousAndAsynchronousNavigation() {
