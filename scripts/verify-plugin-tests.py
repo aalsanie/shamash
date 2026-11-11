@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
@@ -9,11 +10,30 @@ import xml.etree.ElementTree as ET
 from verification_support import ROOT
 
 
-def expected_tests(source_root: Path) -> dict[str, set[str]]:
+def expected_tests(source_root: Path, *, junit5: bool = False, essential_only: bool = False) -> dict[str, set[str]]:
     expected = {}
     for path in source_root.rglob("*.kt"):
         source = path.read_text(encoding="utf-8")
-        methods = set(re.findall(r"^\s+fun (test\w+)\s*\(", source, re.MULTILINE))
+        if junit5:
+            methods = set()
+            annotations = re.finditer(
+                r"(?P<annotations>(?:^\s*@[\w.]+(?:\([^)]*\))?\s*\n)+)\s*fun\s+(?P<method>\w+)\s*\(",
+                source,
+                re.MULTILINE,
+            )
+            for match in annotations:
+                declared = match.group("annotations")
+                if not re.search(r"^\s*@(?:org\.junit\.jupiter\.api\.)?Test\s*$", declared, re.MULTILINE):
+                    continue
+                if essential_only and not re.search(
+                    r'^\s*@(?:org\.junit\.jupiter\.api\.)?Tag\("essential"\)\s*$',
+                    declared,
+                    re.MULTILINE,
+                ):
+                    continue
+                methods.add(match.group("method"))
+        else:
+            methods = set(re.findall(r"^\s+fun (test\w+)\s*\(", source, re.MULTILINE))
         if not methods:
             continue
         package = re.search(r"^package ([\w.]+)$", source, re.MULTILINE)
@@ -26,8 +46,14 @@ def expected_tests(source_root: Path) -> dict[str, set[str]]:
     return expected
 
 
-def verify(source_root: Path, results_root: Path) -> None:
-    expected = expected_tests(source_root)
+def verify(
+    source_root: Path,
+    results_root: Path,
+    *,
+    junit5: bool = False,
+    essential_only: bool = False,
+) -> None:
+    expected = expected_tests(source_root, junit5=junit5, essential_only=essential_only)
     reports = {}
     for path in results_root.glob("TEST-*.xml"):
         suite = ET.parse(path).getroot()
@@ -39,7 +65,10 @@ def verify(source_root: Path, results_root: Path) -> None:
         suite = reports.get(name)
         if suite is None:
             raise ValueError(f"IntelliJ test class did not run: {name}")
-        actual = {case.get("name") for case in suite.findall("testcase")}
+        actual = {
+            (case.get("name") or "").removesuffix("()") if junit5 else case.get("name")
+            for case in suite.findall("testcase")
+        }
         if actual != methods or int(suite.get("tests", "0")) != len(methods):
             raise ValueError(f"Test discovery mismatch for {name}: expected {sorted(methods)}, got {sorted(actual)}")
         for status in ("failures", "errors", "skipped"):
@@ -51,5 +80,13 @@ def verify(source_root: Path, results_root: Path) -> None:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Verify all expected IntelliJ tests actually executed")
+    parser.add_argument("--integration", action="store_true", help="Check JUnit 5 Starter/Driver IDE journeys")
+    parser.add_argument("--essential", action="store_true", help="Check only JUnit 5 tests tagged essential")
+    args = parser.parse_args()
+    if args.essential and not args.integration:
+        parser.error("--essential requires --integration")
     module = ROOT / "shamash-intellij-plugin"
-    verify(module / "src/test/kotlin", module / "build/test-results/test")
+    source_root = module / ("src/integrationTest/kotlin" if args.integration else "src/test/kotlin")
+    results_root = module / ("build/test-results/integrationTest" if args.integration else "build/test-results/test")
+    verify(source_root, results_root, junit5=args.integration, essential_only=args.essential)

@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.treeStructure.Tree
@@ -33,7 +34,6 @@ import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.JSplitPane
 import javax.swing.JTree
 import javax.swing.KeyStroke
 import javax.swing.event.DocumentEvent
@@ -199,7 +199,7 @@ internal class SourceExplorePanel(
     private val evidence = SourceEvidencePanel(project)
     private val clear = JButton("Clear search")
     private val back = JButton("Back to source tree")
-    private val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT)
+    private val split = JBSplitter(false, 0.38f)
 
     init {
         search.emptyText.text = "Search modules, packages or declarations"
@@ -277,15 +277,17 @@ internal class SourceExplorePanel(
         detail.add(evidence, BorderLayout.SOUTH)
         evidence.preferredSize = Dimension(200, 145)
 
-        split.leftComponent = left
-        split.rightComponent = detail
-        split.resizeWeight = 0.38
+        split.firstComponent = left
+        split.secondComponent = detail
         add(split, BorderLayout.CENTER)
         addComponentListener(
             object : ComponentAdapter() {
                 override fun componentResized(e: ComponentEvent?) {
-                    split.orientation = if (width < 560) JSplitPane.VERTICAL_SPLIT else JSplitPane.HORIZONTAL_SPLIT
-                    split.resizeWeight = if (width < 560) 0.45 else 0.38
+                    val vertical = width < 560
+                    if (split.orientation != vertical) {
+                        split.orientation = vertical
+                        split.proportion = if (vertical) 0.45f else 0.38f
+                    }
                 }
             },
         )
@@ -366,7 +368,7 @@ internal class SourceExplorePanel(
 
     private fun returnToTree() {
         tree.requestFocusInWindow()
-        if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
+        if (split.orientation) split.proportion = 0.65f
     }
 
     fun setGraph(next: SourceUiModel?) {

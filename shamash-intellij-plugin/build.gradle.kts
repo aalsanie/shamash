@@ -39,6 +39,68 @@ tasks.test {
     maxHeapSize = "2g"
 }
 
+kover {
+    currentProject {
+        instrumentation {
+            disabledForTestTasks.add("integrationTest")
+        }
+    }
+}
+
+// Real IDE journeys use Starter/Driver (JUnit 5), isolated from the legacy JUnit 4 fixtures.
+val integrationTestSourceSet =
+    sourceSets.create("integrationTest") {
+        compileClasspath += sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().output
+    }
+
+val integrationTestImplementation by configurations.getting {
+    extendsFrom(configurations.testImplementation.get())
+}
+
+dependencies {
+    intellijPlatform {
+        testFramework(TestFrameworkType.Starter, configurationName = "integrationTestImplementation")
+    }
+    integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    integrationTestImplementation("org.kodein.di:kodein-di-jvm:7.20.2")
+    integrationTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
+}
+
+val pluginArchive = tasks.named<Zip>("buildPlugin")
+val journeySuite = providers.gradleProperty("shamashIdeJourneySuite").orElse("full").get()
+require(journeySuite in setOf("full", "essential")) {
+    "shamashIdeJourneySuite must be 'full' or 'essential'"
+}
+
+val integrationTest by intellijPlatformTesting.testIdeUi.registering {
+    task {
+        dependsOn(pluginArchive)
+        systemProperty(
+            "path.to.build.plugin",
+            pluginArchive
+                .get()
+                .archiveFile
+                .get()
+                .asFile.absolutePath,
+        )
+        testClassesDirs = integrationTestSourceSet.output.classesDirs
+        classpath = integrationTestSourceSet.runtimeClasspath
+        useJUnitPlatform {
+            if (journeySuite == "essential") includeTags("essential")
+        }
+        maxHeapSize = "2g"
+        systemProperty(
+            "shamash.fixture.root",
+            layout.projectDirectory
+                .dir("src/integrationTest/fixtures")
+                .asFile.absolutePath,
+        )
+        systemProperty("shamash.ide.version", providers.gradleProperty("shamashIdeJourneyVersion").orElse("2024.2.1").get())
+        maxParallelForks = 1
+    }
+}
+
 tasks.jar {
     manifest {
         attributes(

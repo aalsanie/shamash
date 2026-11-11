@@ -103,6 +103,45 @@ class PluginDiscoveryVerificationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "did not run"):
             plugin_tests.verify(self.source, self.results)
 
+    def test_junit5_annotation_discovery_requires_executed_methods(self):
+        (self.source / "ExampleTest.kt").write_text(
+            "package sample\n\nclass ExampleTest {\n"
+            "    @Test\n    fun firstRun() {}\n"
+            "    fun helper() {}\n}\n",
+            encoding="utf-8",
+        )
+        self.report(method="firstRun()")
+        plugin_tests.verify(self.source, self.results, junit5=True)
+        self.report(method="helper()")
+        with self.assertRaisesRegex(ValueError, "discovery mismatch"):
+            plugin_tests.verify(self.source, self.results, junit5=True)
+
+    def test_junit5_missing_or_failed_execution_fails_closed(self):
+        (self.source / "ExampleTest.kt").write_text(
+            "package sample\nclass ExampleTest {\n    @Test\n    fun firstRun() {}\n}\n",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "did not run"):
+            plugin_tests.verify(self.source, self.results, junit5=True)
+        for status in ("<skipped/>", "<failure/>", "<error/>"):
+            self.report(method="firstRun()", status=status)
+            with self.subTest(status=status), self.assertRaises(ValueError):
+                plugin_tests.verify(self.source, self.results, junit5=True)
+
+
+    def test_junit5_essential_suite_runs_only_tagged_methods(self):
+        (self.source / "ExampleTest.kt").write_text(
+            "package sample\nclass ExampleTest {\n"
+            "    @Tag(\"essential\")\n    @Test\n    fun smoke() {}\n"
+            "    @Test\n    fun fullJourney() {}\n}\n",
+            encoding="utf-8",
+        )
+        self.report(method="smoke()")
+        plugin_tests.verify(self.source, self.results, junit5=True, essential_only=True)
+        self.report(method="fullJourney()")
+        with self.assertRaisesRegex(ValueError, "discovery mismatch"):
+            plugin_tests.verify(self.source, self.results, junit5=True, essential_only=True)
+
     def test_rejects_missing_method(self):
         self.report(method="testSomethingElse")
         with self.assertRaisesRegex(ValueError, "discovery mismatch"):

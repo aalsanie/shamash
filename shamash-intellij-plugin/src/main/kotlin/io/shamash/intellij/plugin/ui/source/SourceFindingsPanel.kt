@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.ui.source
 
 import com.intellij.openapi.project.Project
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -37,7 +38,6 @@ import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.JSplitPane
 import javax.swing.KeyStroke
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
@@ -84,7 +84,7 @@ internal class SourceFindingsPanel(
                 it.occurrences + " occurrences"
         }
     private val evidence = SourceEvidencePanel(project)
-    private val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT)
+    private val split = JBSplitter(false, 0.42f)
     private val explore = JButton("Explore dependencies")
     private val back = JButton("Back to findings")
 
@@ -135,17 +135,18 @@ internal class SourceFindingsPanel(
         val detailsScroll = JBScrollPane(right)
         detailsScroll.horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER
 
-        split.leftComponent = left
-        split.rightComponent = detailsScroll
-        split.resizeWeight = 0.42
-        split.isContinuousLayout = false
+        split.firstComponent = left
+        split.secondComponent = detailsScroll
         add(split, BorderLayout.CENTER)
 
         addComponentListener(
             object : ComponentAdapter() {
                 override fun componentResized(e: ComponentEvent?) {
-                    split.orientation = if (width < 560) JSplitPane.VERTICAL_SPLIT else JSplitPane.HORIZONTAL_SPLIT
-                    split.resizeWeight = if (width < 560) 0.48 else 0.42
+                    val vertical = width < 560
+                    if (split.orientation != vertical) {
+                        split.orientation = vertical
+                        split.proportion = if (vertical) 0.48f else 0.42f
+                    }
                 }
             },
         )
@@ -246,7 +247,7 @@ internal class SourceFindingsPanel(
 
     private fun returnToFindings() {
         findingList.requestFocusInWindow()
-        if (split.orientation == JSplitPane.VERTICAL_SPLIT) split.setDividerLocation(0.65)
+        if (split.orientation) split.proportion = 0.65f
     }
 
     fun setGraph(next: SourceUiModel?) {

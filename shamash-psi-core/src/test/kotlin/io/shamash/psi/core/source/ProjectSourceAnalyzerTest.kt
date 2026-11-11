@@ -11,6 +11,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
@@ -237,7 +238,7 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         java("Repository.java", "package demo; class Repository {}")
         var graphAssemblyCalls = 0
         val result =
-            ProjectSourceAnalyzer(project).analyze(ProgressIndicatorBase()) {
+            analyze {
                 graphAssemblyCalls++
             }
         assertEquals(1, graphAssemblyCalls)
@@ -247,15 +248,20 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
     fun testFileLimitMarksSnapshotIncomplete() {
         java("A.java", "package demo; class A {}")
         java("B.java", "package demo; class B {}")
-        val snapshot =
-            ProjectSourceAnalyzer(project, SourceAnalysisProfile(maxFiles = 1)).analyze(ProgressIndicatorBase())
+        val snapshot = analyze(SourceAnalysisProfile(maxFiles = 1))
         assertFalse(snapshot.complete)
         assertTrue(snapshot.coverage.truncated)
         assertEquals(1, snapshot.coverage.eligibleFiles)
         assertTrue(snapshot.diagnostics.any { it.phase == "limit" })
     }
 
-    private fun analyze(): ProjectSourceSnapshot = ProjectSourceAnalyzer(project).analyze(ProgressIndicatorBase())
+    private fun analyze(
+        profile: SourceAnalysisProfile = SourceAnalysisProfile(),
+        beforeGraphAssembly: () -> Unit = {},
+    ): ProjectSourceSnapshot {
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return ProjectSourceAnalyzer(project, profile).analyze(ProgressIndicatorBase(), beforeGraphAssembly)
+    }
 
     private fun java(
         name: String,

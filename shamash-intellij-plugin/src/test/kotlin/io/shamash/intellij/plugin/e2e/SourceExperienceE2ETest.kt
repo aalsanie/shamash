@@ -21,6 +21,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import io.shamash.intellij.plugin.analysis.AnalysisCoverage
@@ -53,7 +54,6 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.JComboBox
-import javax.swing.JSplitPane
 import javax.swing.tree.TreePath
 
 class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
@@ -226,6 +226,19 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     ),
                 )
                 assertEquals("Some source dependencies could not be analyzed", panel.status.text)
+                val incompleteGraph = sampleGraph(1).copy(complete = false)
+                panel.render(
+                    presentation(incompleteGraph).copy(
+                        phase = AnalysisPhase.PARTIAL,
+                        resultRelation = ResultRelation.CURRENT,
+                    ),
+                )
+                assertEquals(0, panel.findings.findingList.model.size)
+                assertTrue(
+                    descendants(panel.findings).filterIsInstance<JBTextArea>().any {
+                        it.text == "No cycles observed in the available evidence; analysis is incomplete."
+                    },
+                )
                 panel.render(
                     presentation(graph).copy(
                         phase = AnalysisPhase.CANCELLED,
@@ -316,26 +329,52 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         runInEdtAndWait {
             val panel = ShamashSourcePanel(project)
             try {
-                panel.findings.setSize(350, 700)
-                panel.findings.dispatchEvent(
-                    java.awt.event.ComponentEvent(
-                        panel.findings,
-                        java.awt.event.ComponentEvent.COMPONENT_RESIZED,
-                    ),
-                )
-                val split =
+                val findingsSplit =
                     panel.findings.components
-                        .filterIsInstance<JSplitPane>()
+                        .filterIsInstance<JBSplitter>()
                         .single()
-                assertEquals(JSplitPane.VERTICAL_SPLIT, split.orientation)
-                panel.findings.setSize(900, 320)
-                panel.findings.dispatchEvent(
-                    java.awt.event.ComponentEvent(
-                        panel.findings,
-                        java.awt.event.ComponentEvent.COMPONENT_RESIZED,
-                    ),
-                )
-                assertEquals(JSplitPane.HORIZONTAL_SPLIT, split.orientation)
+                val exploreSplit =
+                    panel.explore.components
+                        .filterIsInstance<JBSplitter>()
+                        .single()
+                val views =
+                    listOf(
+                        Triple(panel.findings, findingsSplit, 0.48f to 0.42f),
+                        Triple(panel.explore, exploreSplit, 0.45f to 0.38f),
+                    )
+                for ((view, split, proportions) in views) {
+                    assertNotNull(split.firstComponent)
+                    assertNotNull(split.secondComponent)
+                    view.setSize(350, 700)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    assertTrue(split.orientation)
+                    assertEquals(proportions.first, split.proportion)
+                    view.setSize(900, 320)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    assertFalse(split.orientation)
+                    assertEquals(proportions.second, split.proportion)
+                    split.proportion = 0.6f
+                    view.setSize(920, 360)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    assertEquals(0.6f, split.proportion)
+                    val backLabel = if (view === panel.findings) "Back to findings" else "Back to source tree"
+                    val back = descendants(view).filterIsInstance<JButton>().single { it.text == backLabel }
+                    back.doClick()
+                    assertEquals(0.6f, split.proportion)
+                    view.setSize(350, 700)
+                    view.dispatchEvent(
+                        java.awt.event.ComponentEvent(view, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    split.proportion = 0.4f
+                    back.doClick()
+                    assertEquals(0.65f, split.proportion)
+                }
             } finally {
                 Disposer.dispose(panel)
             }
