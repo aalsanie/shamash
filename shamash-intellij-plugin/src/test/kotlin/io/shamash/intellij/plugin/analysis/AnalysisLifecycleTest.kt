@@ -97,6 +97,22 @@ class AnalysisLifecycleTest {
     }
 
     @Test
+    fun `benchmark completion requires a current result from the same generation`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val request = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(request, complete("current")))
+        val good = lifecycle.snapshot()
+        assertTrue(good.currentComplete)
+        assertEquals(1, good.currentCompleteFileCount)
+        assertFalse(good.copy(phase = AnalysisPhase.PARTIAL).currentComplete)
+        assertFalse(good.copy(resultRelation = ResultRelation.PREVIOUS).currentComplete)
+        assertFalse(good.copy(visibleResult = good.visibleResult?.copy(completeness = Completeness.PARTIAL)).currentComplete)
+        assertFalse(good.copy(requestGeneration = request.generation + 1).currentComplete)
+        assertFalse(good.copy(visibleResult = null).currentComplete)
+        assertNull(good.copy(visibleResult = null).currentCompleteFileCount)
+    }
+
+    @Test
     fun `failure preserves previous evidence and retains diagnostics`() {
         val lifecycle = AnalysisLifecycle<String>()
         val a = requireNotNull(lifecycle.begin())
