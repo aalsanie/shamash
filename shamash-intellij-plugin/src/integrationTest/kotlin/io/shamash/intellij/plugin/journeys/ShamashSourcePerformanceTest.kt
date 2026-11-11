@@ -86,7 +86,10 @@ class ShamashSourcePerformanceTest {
         val context =
             Starter.newContext(
                 testName = "shamash-perf-$classCount-${version.replace('.', '-')}",
-                TestCase(IdeProductProvider.IC, LocalProjectInfo(project)).withVersion(version),
+                TestCase(
+                    if (version == "2024.2.1" || version == "2025.2") IdeProductProvider.IC else IdeProductProvider.IU,
+                    LocalProjectInfo(project),
+                ).withVersion(version),
             ).apply {
                 val zip = Path.of(requireNotNull(System.getProperty("path.to.build.plugin")))
                 require(Files.isRegularFile(zip))
