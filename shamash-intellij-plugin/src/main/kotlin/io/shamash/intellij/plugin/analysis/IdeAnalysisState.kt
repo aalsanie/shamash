@@ -78,7 +78,7 @@ data class IdeAnalysisState<T : Any>(
                 visibleResult.request.generation == requestGeneration
 
     val currentCompleteFileCount: Int?
-        get() = if (currentComplete) visibleResult?.coverage.analyzedFiles else null
+        get() = if (currentComplete) visibleResult?.coverage?.analyzedFiles else null
 
     val active: Boolean get() =
         phase == AnalysisPhase.WAITING_FOR_INDEX ||
