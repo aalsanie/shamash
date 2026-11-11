@@ -153,9 +153,8 @@ internal class SourceEvidencePanel(
         open.isEnabled = false
         outcome.text = "Checking source reference…"
         navigation.openAsync(item, { disposed || generation != request }) { opened ->
-            if (disposed || generation != request) return@openAsync
             outcome.text = if (opened) "" else "This source location changed or is unavailable. Analyze again."
-            open.isEnabled = list.selectedValue != null
+            open.isEnabled = true
         }
     }
 

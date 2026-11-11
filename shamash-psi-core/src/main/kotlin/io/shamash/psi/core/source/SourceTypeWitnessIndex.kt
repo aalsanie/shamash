@@ -33,4 +33,26 @@ internal class SourceTypeWitnessIndex(
         val next = offsets[owner to target]?.ceiling(start) ?: return false
         return next < endExclusive
     }
+
+    fun addMissing(
+        references: MutableList<SourceDependency>,
+        owner: SourceEntityId,
+        target: SourceTarget,
+        typeText: String,
+        evidenceOffset: Int,
+        token: String,
+        documentStamp: Long,
+    ): Boolean {
+        val relativeOffset = findUniqueTypeTokenOffset(typeText, token) ?: return false
+        val witness =
+            SourceDependency(
+                owner,
+                target,
+                SourceDependencyKind.TYPE,
+                SourceReference(owner.fileUrl, evidenceOffset + relativeOffset, token.length, documentStamp),
+            )
+        references += witness
+        add(witness)
+        return true
+    }
 }

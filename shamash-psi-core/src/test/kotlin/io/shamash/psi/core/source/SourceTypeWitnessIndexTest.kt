@@ -79,6 +79,36 @@ class SourceTypeWitnessIndexTest {
         assertNull(findUniqueTypeTokenOffset("List<Target2>", "Target"))
     }
 
+
+    @Test
+    fun `missing generic witness is added with an exact source location`() {
+        val existing = mutableListOf<SourceDependency>()
+        val index = SourceTypeWitnessIndex(existing)
+        val sourceText = "Map<String, demo.Target>"
+        val relativeOffset = sourceText.indexOf("Target")
+        assertTrue(index.addMissing(existing, owner, target, sourceText, 40, "Target", 37))
+        val witness = existing.single()
+        assertEquals(owner, witness.from)
+        assertEquals(target, witness.target)
+        assertEquals(SourceDependencyKind.TYPE, witness.kind)
+        assertEquals(40 + relativeOffset, witness.evidence.offset)
+        assertEquals("Target".length, witness.evidence.length)
+        assertEquals(37, witness.evidence.documentStamp)
+        assertTrue(index.contains(owner, target, 40, 40 + sourceText.length))
+        assertFalse(index.contains(owner, target, 0, 40))
+    }
+
+    @Test
+    fun `ambiguous generic witness preserves existing evidence and rejects fabricated offsets`() {
+        val existing = mutableListOf(reference(11))
+        val index = SourceTypeWitnessIndex(existing)
+        assertFalse(index.addMissing(existing, owner, target, "Map<Target, Target>", 40, "Target", 37))
+        assertFalse(index.addMissing(existing, owner, target, "List<TargetExtra>", 40, "Target", 37))
+        assertEquals(1, existing.size)
+        assertTrue(index.contains(owner, target, 11, 12))
+        assertFalse(index.contains(owner, target, 40, 60))
+    }
+
     private fun reference(offset: Int) =
         SourceDependency(
             owner,

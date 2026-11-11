@@ -188,25 +188,23 @@ class SourceDependencyExtractor(
                     continue
                 }
                 val token = resolvedClass.name ?: continue
-                val index = findUniqueTypeTokenOffset(use.evidence.text, token)
-                if (index == null) {
+                if (!typeWitnesses.addMissing(
+                        refs,
+                        source.id,
+                        target,
+                        use.evidence.text,
+                        use.evidence.textOffset,
+                        token,
+                        stamp,
+                    )
+                ) {
                     diagnostics +=
                         SourceDiagnostic(
                             location.fileUrl,
                             "type",
                             "Cannot uniquely locate generic type witness for $token",
                         )
-                    continue
                 }
-                val witness =
-                    SourceDependency(
-                        source.id,
-                        target,
-                        SourceDependencyKind.TYPE,
-                        SourceReference(location.fileUrl, use.evidence.textOffset + index, token.length, stamp),
-                    )
-                refs += witness
-                typeWitnesses.add(witness)
             }
         }
 
