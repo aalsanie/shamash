@@ -27,6 +27,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
@@ -93,16 +94,7 @@ internal class SourceNavigationService(
                     owner.sourceRoot,
                     owner.fileUrl,
                 )
-            val extractor =
-                SourceDependencyExtractor { targetFile ->
-                    val v = targetFile.virtualFile ?: return@SourceDependencyExtractor null
-                    if (!index.isInSourceContent(v) || index.isInTestSourceContent(v)) {
-                        return@SourceDependencyExtractor null
-                    }
-                    val module = index.getModuleForFile(v) ?: return@SourceDependencyExtractor null
-                    val root = index.getSourceRootForFile(v) ?: return@SourceDependencyExtractor null
-                    SourceDependencyExtractor.SourceLocation(module.name, root.url, v.url)
-                }
+            val extractor = SourceDependencyExtractor { navigationSourceLocation(it, index) }
             val extracted = extractor.extract(psi, location)
             if (extracted.entities.none { it.id == owner }) return@compute null
             if (extracted.references.none {
@@ -172,4 +164,15 @@ internal data class CurrentSourceLocation(
             moduleId == evidence.owner.moduleId &&
             sourceRoot == evidence.owner.sourceRoot &&
             documentStamp == evidence.reference.documentStamp
+}
+
+internal fun navigationSourceLocation(
+    psiFile: PsiFile,
+    index: ProjectFileIndex,
+): SourceDependencyExtractor.SourceLocation? {
+    val file = psiFile.virtualFile ?: return null
+    if (!index.isInSourceContent(file) || index.isInTestSourceContent(file)) return null
+    val module = index.getModuleForFile(file) ?: return null
+    val root = index.getSourceRootForFile(file) ?: return null
+    return SourceDependencyExtractor.SourceLocation(module.name, root.url, file.url)
 }

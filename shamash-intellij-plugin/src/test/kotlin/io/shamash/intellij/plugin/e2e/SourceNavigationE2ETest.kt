@@ -22,6 +22,10 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiFile
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
@@ -35,6 +39,7 @@ import io.shamash.intellij.plugin.ui.source.SourceEvidence
 import io.shamash.intellij.plugin.ui.source.SourceEvidenceNavigator
 import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
+import io.shamash.intellij.plugin.ui.source.navigationSourceLocation
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityId
@@ -44,6 +49,7 @@ import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
 import java.nio.file.Files
+import java.lang.reflect.Proxy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JButton
@@ -525,6 +531,79 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             assertTrue(open.isEnabled)
             panel.dispose()
         }
+    }
+
+    fun testNavigationSourceLocationRejectsUnsupportedRootsAndMissingIndexMetadata() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/demo/Location.java",
+                "package demo; class Location {}",
+            )
+        val index = ProjectFileIndex.getInstance(project)
+        assertEquals(
+            SourceDependencyExtractor.SourceLocation(myModule.name, root.url, source.virtualFile.url),
+            navigationSourceLocation(source, index),
+        )
+        val outside = myFixture.addFileToProject("outside/Outside.java", "class Outside {}")
+        assertNull(navigationSourceLocation(outside, index))
+        val testsRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
+        PsiTestUtil.addSourceRoot(myModule, testsRoot, true)
+        val testFile = myFixture.addFileToProject("src/test/java/TestOnly.java", "class TestOnly {}")
+        assertNull(navigationSourceLocation(testFile, index))
+
+        fun stubIndex(
+            module: Module?,
+            sourceRoot: VirtualFile?,
+            inSource: Boolean = true,
+            inTests: Boolean = false,
+        ): ProjectFileIndex =
+            Proxy.newProxyInstance(
+                ProjectFileIndex::class.java.classLoader,
+                arrayOf(ProjectFileIndex::class.java),
+            ) { _, method, _ ->
+                when (method.name) {
+                    "isInSourceContent" -> inSource
+                    "isInTestSourceContent" -> inTests
+                    "getModuleForFile" -> module
+                    "getSourceRootForFile" -> sourceRoot
+                    else -> error("Unexpected index method: ${method.name}")
+                }
+            } as ProjectFileIndex
+
+        assertNull(navigationSourceLocation(source, stubIndex(myModule, root, inSource = false)))
+        assertNull(navigationSourceLocation(source, stubIndex(myModule, root, inTests = true)))
+        assertNull(navigationSourceLocation(source, stubIndex(null, root)))
+        assertNull(navigationSourceLocation(source, stubIndex(myModule, null)))
+        assertEquals(
+            SourceDependencyExtractor.SourceLocation(myModule.name, root.url, source.virtualFile.url),
+            navigationSourceLocation(source, stubIndex(myModule, root)),
+        )
+        val detached =
+            Proxy.newProxyInstance(
+                PsiFile::class.java.classLoader,
+                arrayOf(PsiFile::class.java),
+            ) { _, method, _ ->
+                if (method.name == "getVirtualFile") null else error("Unexpected PSI method: ${method.name}")
+            } as PsiFile
+        assertNull(navigationSourceLocation(detached, index))
+    }
+
+    fun testDisposedProjectRejectsSynchronousAndAsynchronousNavigation() {
+        val witness = evidence()
+        val disposed =
+            Proxy.newProxyInstance(
+                Project::class.java.classLoader,
+                arrayOf(Project::class.java),
+            ) { _, method, _ ->
+                if (method.name == "isDisposed") true else error("Unexpected project method: ${method.name}")
+            } as Project
+        val navigation = SourceNavigationService(disposed)
+        assertFalse(navigation.open(witness))
+        var completed = false
+        navigation.openAsync(witness, { false }) { completed = true }
+        assertFalse(completed)
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
