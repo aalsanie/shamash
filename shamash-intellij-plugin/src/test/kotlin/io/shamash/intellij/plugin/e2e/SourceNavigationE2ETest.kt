@@ -643,6 +643,20 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         assertFalse(SourceNavigationService(project).navigate(witness, verified))
     }
 
+    fun testNavigationRejectsDeletedSourceFileBeforeOpeningEditor() {
+        val witness = evidence()
+        val file = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(witness.reference.fileUrl))
+        val verified =
+            SourceNavigationService.VerifiedFile(
+                file,
+                PsiModificationTracker.getInstance(project).modificationCount,
+                ProjectRootModificationTracker.getInstance(project).modificationCount,
+            )
+        WriteCommandAction.runWriteCommandAction(project) { file.delete(this) }
+        assertFalse(file.isValid)
+        assertFalse(SourceNavigationService(project).navigate(witness, verified))
+    }
+
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
         val witness = evidence()
         val navigation = SourceNavigationService(project)
