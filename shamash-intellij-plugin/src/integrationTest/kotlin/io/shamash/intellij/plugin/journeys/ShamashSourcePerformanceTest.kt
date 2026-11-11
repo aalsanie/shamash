@@ -103,9 +103,10 @@ class ShamashSourcePerformanceTest {
         val startImport = System.nanoTime()
         context.runIdeWithDriver().useDriverAndCloseIde {
             waitForIndicators(20.minutes)
-            val importMs = (System.nanoTime() - startImport) / 1_000_000
+            val startupAndIndexingMs = (System.nanoTime() - startImport) / 1_000_000
             val durations = ArrayList<Long>(5)
-            repeat(5) { iteration ->
+            var warmupMs = 0L
+            repeat(6) { iteration ->
                 val before =
                     withContext {
                         service(RemoteAnalysisCoordinator::class, singleProject()).state().getRequestGeneration()
@@ -126,17 +127,19 @@ class ShamashSourcePerformanceTest {
                     x(xQuery { byVisibleText("No package cycles found in the analyzed source") })
                         .shouldBe("Benchmark data must produce a complete acyclic result", present)
                 }
-                durations += elapsedMs
+                if (iteration == 0) warmupMs = elapsedMs else durations += elapsedMs
             }
             val ordered = durations.sorted()
             println(
                 "SOURCE_BENCHMARK count=$classCount ide=$version os=${System.getProperty("os.name")} " +
                     "jdk=${System.getProperty("java.version")} cpus=${Runtime.getRuntime().availableProcessors()} " +
-                    "indexing_ms=$importMs warm_ms=${durations.joinToString(",")} " +
+                    "startup_and_indexing_ms=$startupAndIndexingMs warmup_ms=$warmupMs " +
+                    "warm_ms=${durations.joinToString(",")} " +
                     "median_ms=${ordered[2]} p95_nearest_rank_ms=${ordered[4]}",
             )
             val targetMs = if (classCount == 1_000) 5_000L else 30_000L
             assertTrue(ordered[2] < targetMs, "Warm median exceeded target: ${ordered[2]} ms")
+            assertTrue(ordered[4] < targetMs, "Warm p95 exceeded target: ${ordered[4]} ms")
         }
     }
 
