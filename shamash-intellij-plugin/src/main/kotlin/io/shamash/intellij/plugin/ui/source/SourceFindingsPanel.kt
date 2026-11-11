@@ -396,6 +396,10 @@ internal class SourceFindingsPanel(
         }
     }
 
+    fun dispose() {
+        evidence.dispose()
+    }
+
     private fun clearDetails(message: String) {
         detailsTitle.text = message.ifEmpty { "Select a cycle to investigate" }
         observation.text = ""

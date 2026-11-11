@@ -51,6 +51,8 @@ class AnalysisLifecycleTest {
                 ?.generation,
         )
         assertEquals(ResultRelation.CURRENT, lifecycle.snapshot().resultRelation)
+        assertTrue(lifecycle.snapshot().currentComplete)
+        assertEquals(1, lifecycle.snapshot().currentCompleteFileCount)
     }
 
     @Test
@@ -61,6 +63,8 @@ class AnalysisLifecycleTest {
         assertFalse(lifecycle.advance(a, AnalysisPhase.EXTRACTING))
         assertFalse(lifecycle.publish(a, complete("old")))
         assertEquals(AnalysisPhase.CANCELLED, lifecycle.snapshot().phase)
+        assertFalse(lifecycle.snapshot().currentComplete)
+        assertNull(lifecycle.snapshot().currentCompleteFileCount)
         assertFalse(lifecycle.cancel())
     }
 
@@ -83,10 +87,29 @@ class AnalysisLifecycleTest {
         assertTrue(lifecycle.publish(a, complete("previous")))
         val b = requireNotNull(lifecycle.begin())
         assertEquals(ResultRelation.PREVIOUS, lifecycle.snapshot().resultRelation)
+        assertFalse(lifecycle.snapshot().currentComplete)
         assertEquals("previous", lifecycle.snapshot().visibleResult?.payload)
         assertTrue(lifecycle.publish(b, complete("current")))
         assertEquals(ResultRelation.CURRENT, lifecycle.snapshot().resultRelation)
+        assertTrue(lifecycle.snapshot().currentComplete)
+        assertEquals(1, lifecycle.snapshot().currentCompleteFileCount)
         assertEquals("current", lifecycle.snapshot().visibleResult?.payload)
+    }
+
+    @Test
+    fun `benchmark completion requires a current result from the same generation`() {
+        val lifecycle = AnalysisLifecycle<String>()
+        val request = requireNotNull(lifecycle.begin())
+        assertTrue(lifecycle.publish(request, complete("current")))
+        val good = lifecycle.snapshot()
+        assertTrue(good.currentComplete)
+        assertEquals(1, good.currentCompleteFileCount)
+        assertFalse(good.copy(phase = AnalysisPhase.PARTIAL).currentComplete)
+        assertFalse(good.copy(resultRelation = ResultRelation.PREVIOUS).currentComplete)
+        assertFalse(good.copy(visibleResult = good.visibleResult?.copy(completeness = Completeness.PARTIAL)).currentComplete)
+        assertFalse(good.copy(requestGeneration = request.generation + 1).currentComplete)
+        assertFalse(good.copy(visibleResult = null).currentComplete)
+        assertNull(good.copy(visibleResult = null).currentCompleteFileCount)
     }
 
     @Test
@@ -97,6 +120,8 @@ class AnalysisLifecycleTest {
         val b = requireNotNull(lifecycle.begin())
         assertTrue(lifecycle.fail(b, "source parser failed"))
         assertEquals(AnalysisPhase.FAILED, lifecycle.snapshot().phase)
+        assertFalse(lifecycle.snapshot().currentComplete)
+        assertNull(lifecycle.snapshot().currentCompleteFileCount)
         assertEquals(listOf("source parser failed"), lifecycle.snapshot().diagnostics)
         assertEquals(ResultRelation.PREVIOUS, lifecycle.snapshot().resultRelation)
         assertEquals("previous", lifecycle.snapshot().visibleResult?.payload)
@@ -110,6 +135,8 @@ class AnalysisLifecycleTest {
         assertTrue(lifecycle.publish(a, partial(null)))
         val state = lifecycle.snapshot()
         assertEquals(AnalysisPhase.PARTIAL, state.phase)
+        assertFalse(state.currentComplete)
+        assertNull(state.currentCompleteFileCount)
         assertEquals(Completeness.PARTIAL, state.visibleResult?.completeness)
         assertEquals(1, state.visibleResult?.coverage?.failedFiles)
         assertEquals(listOf("resolution incomplete"), state.diagnostics)
@@ -147,6 +174,8 @@ class AnalysisLifecycleTest {
         assertFalse(lifecycle.publish(b, complete("mixed revisions")))
         val state = lifecycle.snapshot()
         assertEquals(AnalysisPhase.STALE, state.phase)
+        assertFalse(state.currentComplete)
+        assertNull(state.currentCompleteFileCount)
         assertEquals(ResultRelation.STALE, state.resultRelation)
         assertEquals("previous", state.visibleResult?.payload)
         assertEquals(1, state.sourceRevision)

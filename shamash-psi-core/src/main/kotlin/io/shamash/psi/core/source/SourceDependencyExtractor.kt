@@ -157,6 +157,7 @@ class SourceDependencyExtractor(
 
         // The generic walker covers wildcard/type-variable bounds which are easy to lose in a
         // class-only UAST projection. Ordinary PSI references win because they carry exact token ranges.
+        val typeWitnesses = SourceTypeWitnessIndex(refs)
         for (use in typeUses) {
             ProgressManager.checkCanceled()
             val owner =
@@ -177,31 +178,33 @@ class SourceDependencyExtractor(
             for (resolvedClass in walked.classes) {
                 val target = resolveTargets(resolvedClass).firstOrNull() ?: continue
                 if (target is SourceTarget.Internal && target.entity == source.id) continue
-                if (refs.any {
-                        it.from == source.id && it.target == target && it.kind == SourceDependencyKind.TYPE &&
-                            it.evidence.offset in use.evidence.textRange.startOffset..use.evidence.textRange.endOffset
-                    }
+                if (typeWitnesses.contains(
+                        source.id,
+                        target,
+                        use.evidence.textRange.startOffset,
+                        use.evidence.textRange.endOffset,
+                    )
                 ) {
                     continue
                 }
                 val token = resolvedClass.name ?: continue
-                val index = use.evidence.text.indexOf(token)
-                if (index < 0) {
+                if (!typeWitnesses.addMissing(
+                        refs,
+                        source.id,
+                        target,
+                        use.evidence.text,
+                        use.evidence.textOffset,
+                        token,
+                        stamp,
+                    )
+                ) {
                     diagnostics +=
                         SourceDiagnostic(
                             location.fileUrl,
                             "type",
-                            "Cannot locate generic type witness for $token",
+                            "Cannot uniquely locate generic type witness for $token",
                         )
-                    continue
                 }
-                refs +=
-                    SourceDependency(
-                        source.id,
-                        target,
-                        SourceDependencyKind.TYPE,
-                        SourceReference(location.fileUrl, use.evidence.textOffset + index, token.length, stamp),
-                    )
             }
         }
 
@@ -467,5 +470,27 @@ class SourceDependencyExtractor(
                 }
             }
         return SourceDependency(from, target, kind, SourceReference(from.fileUrl, offset, length, stamp))
+    }
+}
+
+internal fun findUniqueTypeTokenOffset(
+    text: String,
+    token: String,
+): Int? {
+    if (token.isEmpty()) return null
+    var match: Int? = null
+    var from = 0
+    while (true) {
+        val index = text.indexOf(token, from)
+        if (index < 0) return match
+        val before = text.getOrNull(index - 1)
+        val after = text.getOrNull(index + token.length)
+        if ((before == null || !Character.isJavaIdentifierPart(before)) &&
+            (after == null || !Character.isJavaIdentifierPart(after))
+        ) {
+            if (match != null) return null
+            match = index
+        }
+        from = index + 1
     }
 }

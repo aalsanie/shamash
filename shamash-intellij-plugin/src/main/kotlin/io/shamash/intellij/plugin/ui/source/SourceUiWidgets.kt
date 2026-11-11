@@ -77,15 +77,28 @@ internal fun <T> sourceList(
             }
     }
 
+internal fun interface SourceEvidenceNavigator {
+    fun openAsync(
+        evidence: SourceEvidence,
+        expired: () -> Boolean,
+        completed: (Boolean) -> Unit,
+    )
+}
+
 internal class SourceEvidencePanel(
     project: com.intellij.openapi.project.Project,
+    private val navigation: SourceEvidenceNavigator =
+        SourceEvidenceNavigator(SourceNavigationService(project)::openAsync),
 ) : JPanel(BorderLayout()) {
-    private val navigation = SourceNavigationService(project)
     private val model = DefaultListModel<SourceEvidence>()
     val list = sourceList<SourceEvidence>("Verified source references") { it.label }
     private val count = wrappedText("Select a dependency to inspect source evidence")
     private val outcome = wrappedText("")
     private val open = JButton("Open source")
+
+    @Volatile private var generation = 0L
+
+    @Volatile private var disposed = false
 
     init {
         list.model = model
@@ -100,8 +113,13 @@ internal class SourceEvidencePanel(
         add(JBScrollPane(list), BorderLayout.CENTER)
         add(controls, BorderLayout.SOUTH)
         open.isEnabled = false
+        outcome.accessibleContext.accessibleName = "Source navigation result"
         open.addActionListener { openSelected() }
-        list.addListSelectionListener { open.isEnabled = list.selectedValue != null }
+        list.addListSelectionListener {
+            generation++
+            outcome.text = ""
+            open.isEnabled = list.selectedValue != null
+        }
         list.inputMap.put(KeyStroke.getKeyStroke("ENTER"), "openSource")
         list.actionMap.put(
             "openSource",
@@ -123,6 +141,7 @@ internal class SourceEvidencePanel(
         references: List<SourceEvidence>,
         occurrences: Long,
     ) {
+        generation++
         model.clear()
         references.take(SourceUiModel.MAX_WITNESSES).forEach(model::addElement)
         open.isEnabled = false
@@ -137,13 +156,21 @@ internal class SourceEvidencePanel(
     }
 
     private fun openSelected() {
+        if (disposed || !open.isEnabled) return
         val item = list.selectedValue ?: return
-        outcome.text =
-            if (navigation.open(item)) {
-                ""
-            } else {
-                "This source location changed or is unavailable. Analyze again."
-            }
+        val request = ++generation
+        open.isEnabled = false
+        outcome.text = "Checking source reference…"
+        navigation.openAsync(item, { disposed || generation != request }) { opened ->
+            if (disposed || generation != request) return@openAsync
+            outcome.text = if (opened) "" else "This source location changed or is unavailable. Analyze again."
+            open.isEnabled = true
+        }
+    }
+
+    fun dispose() {
+        disposed = true
+        generation++
     }
 }
 

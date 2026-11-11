@@ -15,6 +15,8 @@ import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.jps.model.java.JavaSourceRootType
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -243,6 +245,65 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
             }
         assertEquals(1, graphAssemblyCalls)
         assertEquals(1, result.coverage.analyzedFiles)
+    }
+
+    fun testGeneratedJavaAndKotlinSourceRootsAreExcluded() {
+        val generatedJava = myFixture.tempDirFixture.findOrCreateDir("generated/java")
+        val generatedKotlin = myFixture.tempDirFixture.findOrCreateDir("generated/kotlin")
+        PsiTestUtil.addSourceRoot(
+            myFixture.module,
+            generatedJava,
+            JavaSourceRootType.SOURCE,
+            JavaSourceRootProperties("", true),
+        )
+        PsiTestUtil.addSourceRoot(
+            myFixture.module,
+            generatedKotlin,
+            JavaSourceRootType.SOURCE,
+            JavaSourceRootProperties("", true),
+        )
+        myFixture.addFileToProject("generated/java/demo/JavaGenerated.java", "package demo; class JavaGenerated {}")
+        myFixture.addFileToProject("generated/kotlin/demo/KotlinGenerated.kt", "package demo\nclass KotlinGenerated")
+        java("Production.java", "package demo; class Production {}")
+        val snapshot = analyze(SourceAnalysisProfile(maxFiles = 1))
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertFalse(snapshot.coverage.truncated)
+        assertTrue(snapshot.entities.any { it.displayName.contains("Production") })
+        assertTrue(snapshot.entities.none { it.displayName.contains("Generated") })
+    }
+
+    fun testUnrepresentableGenericBoundCannotInventAReferenceOffset() {
+        java("Repository.java", "package demo; public class Repository {}")
+        java(
+            "Bounded.java",
+            "package demo; class Bounded<T extends Repository> { T value; }",
+        )
+        val snapshot = analyze()
+        assertFalse(snapshot.complete)
+        assertTrue(
+            snapshot.diagnostics.any {
+                it.phase == "type" && it.message.contains("Cannot uniquely locate generic type witness for Repository")
+            },
+            snapshot.diagnostics.toString(),
+        )
+        assertFalse(
+            snapshot.references.any {
+                it.from.signature == "demo.Bounded#value" &&
+                    (it.target as? SourceTarget.Internal)?.entity?.signature == "demo.Repository"
+            },
+        )
+    }
+
+    fun testRelationshipLimitCannotProduceACompleteResult() {
+        java("Owner.java", "package demo; class Owner { TargetOne one; TargetTwo two; }")
+        java("TargetOne.java", "package demo; class TargetOne {}")
+        java("TargetTwo.java", "package demo; class TargetTwo {}")
+        val snapshot = analyze(SourceAnalysisProfile(maxRelationships = 1))
+        assertFalse(snapshot.complete)
+        assertTrue(snapshot.coverage.truncated)
+        assertTrue(snapshot.coverage.resolvedOccurrences >= 2)
+        assertTrue(snapshot.diagnostics.any { it.phase == "limit" })
+        assertEquals(1, snapshot.relationships.size)
     }
 
     fun testFileLimitMarksSnapshotIncomplete() {

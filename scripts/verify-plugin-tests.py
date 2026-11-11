@@ -10,10 +10,14 @@ import xml.etree.ElementTree as ET
 from verification_support import ROOT
 
 
-def expected_tests(source_root: Path, *, junit5: bool = False, essential_only: bool = False) -> dict[str, set[str]]:
+def expected_tests(
+    source_root: Path, *, junit5: bool = False, essential_only: bool = False, benchmark_only: bool = False
+) -> dict[str, set[str]]:
     expected = {}
     for path in source_root.rglob("*.kt"):
         source = path.read_text(encoding="utf-8")
+        if junit5 and bool(re.search(r'^\s*@Tag\("benchmark"\)\s*$', source, re.MULTILINE)) != benchmark_only:
+            continue
         if junit5:
             methods = set()
             annotations = re.finditer(
@@ -52,8 +56,11 @@ def verify(
     *,
     junit5: bool = False,
     essential_only: bool = False,
+    benchmark_only: bool = False,
 ) -> None:
-    expected = expected_tests(source_root, junit5=junit5, essential_only=essential_only)
+    expected = expected_tests(
+        source_root, junit5=junit5, essential_only=essential_only, benchmark_only=benchmark_only
+    )
     reports = {}
     for path in results_root.glob("TEST-*.xml"):
         suite = ET.parse(path).getroot()
@@ -83,10 +90,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Verify all expected IntelliJ tests actually executed")
     parser.add_argument("--integration", action="store_true", help="Check JUnit 5 Starter/Driver IDE journeys")
     parser.add_argument("--essential", action="store_true", help="Check only JUnit 5 tests tagged essential")
+    parser.add_argument("--benchmark", action="store_true", help="Check only opt-in JUnit 5 benchmarks")
     args = parser.parse_args()
-    if args.essential and not args.integration:
-        parser.error("--essential requires --integration")
+    if (args.essential or args.benchmark) and not args.integration:
+        parser.error("--essential and --benchmark require --integration")
+    if args.essential and args.benchmark:
+        parser.error("--essential and --benchmark cannot be combined")
     module = ROOT / "shamash-intellij-plugin"
     source_root = module / ("src/integrationTest/kotlin" if args.integration else "src/test/kotlin")
     results_root = module / ("build/test-results/integrationTest" if args.integration else "build/test-results/test")
-    verify(source_root, results_root, junit5=args.integration, essential_only=args.essential)
+    verify(
+        source_root, results_root,
+        junit5=args.integration, essential_only=args.essential, benchmark_only=args.benchmark,
+    )

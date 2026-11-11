@@ -139,7 +139,13 @@ class ShamashStarterJourneysTest {
                 ideFrame {
                     invokeAction("io.shamash.open")
                     invokeAction("MaximizeToolWindow")
-                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    val analyze = x(xQuery { byAccessibleName("Analyze project source") })
+                    analyze.shouldBe("Source analysis button must be visible", present)
+                    analyze.driver.withContext(OnDispatcher.EDT) {
+                        val button = cast(analyze.component, RemoteSourceButton::class)
+                        assertTrue(button.isEnabled(), "Source analysis must be enabled")
+                        button.doClick(0)
+                    }
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Both directions of the Java package cycle must be observed", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
@@ -164,8 +170,9 @@ class ShamashStarterJourneysTest {
                     }
                     val openSource = x(xQuery { byVisibleText("Open source") })
                     assertTrue(openSource.isEnabled(), "Selecting the source witness must enable navigation")
-                    openSource.click()
-                    invokeAction("HideAllWindows")
+                    openSource.driver.withContext(OnDispatcher.EDT) {
+                        cast(openSource.component, RemoteSourceButton::class).doClick(0)
+                    }
                 }
                 val owner = evidenceLabel.substringBefore(" → ")
                 val target = evidenceLabel.substringAfter(" → ")
@@ -175,11 +182,18 @@ class ShamashStarterJourneysTest {
                         "right.Right#dependency" -> "Right.java"
                         else -> throw AssertionError("Unexpected source owner: " + owner)
                     }
-                waitFor(30.seconds, errorMessage = "The navigated source file must have an open text editor") {
+                waitFor(30.seconds, errorMessage = "Verified navigation must open $expectedFile at $target") {
                     withReadAction {
                         val manager = service(RemoteFileEditorManager::class, singleProject())
-                        manager.getOpenFiles().any { file ->
-                            file.getPath().endsWith("/" + expectedFile) && manager.getSelectedEditor(file) != null
+                        val file = manager.getOpenFiles().firstOrNull { it.getPath().endsWith("/" + expectedFile) }
+                        val editor = file?.let { manager.getSelectedEditor(it)?.getEditor() }
+                        if (editor == null) {
+                            false
+                        } else {
+                            val text = editor.getDocument().getText()
+                            val start = text.indexOf(target)
+                            val caret = editor.getCaretModel().getOffset()
+                            start >= 0 && (caret == start || caret == start + target.lastIndexOf('.') + 1)
                         }
                     }
                 }
@@ -199,6 +213,7 @@ class ShamashStarterJourneysTest {
                     "Navigation did not land on the verified reference: " + snapshot.caretOffset,
                 )
                 assertEquals(target, snapshot.documentText.substring(targetStart, targetStart + target.length))
+                ideFrame { invokeAction("HideAllWindows") }
             }
         assertFalse(Files.exists(requireNotNull(openedProject).resolve(".shamash")), "IDE analysis must not export reports")
     }
@@ -544,6 +559,13 @@ private data class EditorSnapshot(
     val documentText: String,
     val caretOffset: Int,
 )
+
+@Remote("javax.swing.JButton")
+interface RemoteSourceButton {
+    fun isEnabled(): Boolean
+
+    fun doClick(pressTime: Int)
+}
 
 @Remote("javax.swing.JList")
 interface RemoteListSelection {

@@ -382,8 +382,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     }
 
     fun testEvidencePanelNeverOpensMissingOrStaleLocations() {
+        lateinit var panel: SourceEvidencePanel
         runInEdtAndWait {
-            val panel = SourceEvidencePanel(project)
+            panel = SourceEvidencePanel(project)
             assertEquals("Source evidence", panel.accessibleContext.accessibleName)
             val id =
                 SourceEntityId(
@@ -401,7 +402,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 )
             panel.showEvidence(listOf(witness), 35L)
             val count =
-                descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().first {
+                descendants(panel).filterIsInstance<JBTextArea>().first {
                     it.text.startsWith("Showing ")
                 }
             assertEquals("Showing 1 of 35 reference occurrences (up to 20 locations)", count.text)
@@ -410,15 +411,25 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             panel.list.selectedIndex = 0
             assertTrue(open.isEnabled)
             open.doClick()
-            assertTrue(
-                descendants(panel).filterIsInstance<com.intellij.ui.components.JBTextArea>().any {
-                    it.text.contains("Analyze again")
-                },
-            )
-            panel.showEvidence(emptyList(), 0L)
             assertFalse(open.isEnabled)
-            assertEquals(0, panel.list.model.size)
+            assertTrue(descendants(panel).filterIsInstance<JBTextArea>().any { it.text.contains("Checking source reference") })
         }
+        repeat(500) {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            if (descendants(panel).filterIsInstance<JBTextArea>().any { it.text.contains("Analyze again") }) {
+                runInEdtAndWait {
+                    val open = descendants(panel).filterIsInstance<JButton>().single { it.text == "Open source" }
+                    assertTrue(open.isEnabled)
+                    panel.showEvidence(emptyList(), 0L)
+                    assertFalse(open.isEnabled)
+                    assertEquals(0, panel.list.model.size)
+                    panel.dispose()
+                }
+                return
+            }
+            Thread.sleep(20)
+        }
+        fail("Background navigation did not reject the missing source reference")
     }
 
     fun testPageControlsPreventOverflowAndDisableAtBoundaries() {
