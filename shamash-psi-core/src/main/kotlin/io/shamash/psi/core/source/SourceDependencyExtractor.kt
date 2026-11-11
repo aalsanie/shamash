@@ -157,6 +157,7 @@ class SourceDependencyExtractor(
 
         // The generic walker covers wildcard/type-variable bounds which are easy to lose in a
         // class-only UAST projection. Ordinary PSI references win because they carry exact token ranges.
+        val typeWitnesses = SourceTypeWitnessIndex(refs)
         for (use in typeUses) {
             ProgressManager.checkCanceled()
             val owner =
@@ -177,10 +178,12 @@ class SourceDependencyExtractor(
             for (resolvedClass in walked.classes) {
                 val target = resolveTargets(resolvedClass).firstOrNull() ?: continue
                 if (target is SourceTarget.Internal && target.entity == source.id) continue
-                if (refs.any {
-                        it.from == source.id && it.target == target && it.kind == SourceDependencyKind.TYPE &&
-                            it.evidence.offset in use.evidence.textRange.startOffset..use.evidence.textRange.endOffset
-                    }
+                if (typeWitnesses.contains(
+                        source.id,
+                        target,
+                        use.evidence.textRange.startOffset,
+                        use.evidence.textRange.endOffset,
+                    )
                 ) {
                     continue
                 }
@@ -195,13 +198,15 @@ class SourceDependencyExtractor(
                         )
                     continue
                 }
-                refs +=
+                val witness =
                     SourceDependency(
                         source.id,
                         target,
                         SourceDependencyKind.TYPE,
                         SourceReference(location.fileUrl, use.evidence.textOffset + index, token.length, stamp),
                     )
+                refs += witness
+                typeWitnesses.add(witness)
             }
         }
 
