@@ -127,7 +127,7 @@ internal class SourceNavigationService(
 
     private fun validCandidate(file: VirtualFile): Boolean = !project.isDisposed && file.isValid && !file.isDirectory
 
-    private fun currentSourceLocation(
+    internal fun currentSourceLocation(
         file: VirtualFile,
         index: ProjectFileIndex,
         documentStamp: Long,
