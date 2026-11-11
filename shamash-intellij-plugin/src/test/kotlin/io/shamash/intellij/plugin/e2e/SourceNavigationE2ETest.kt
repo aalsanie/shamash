@@ -71,6 +71,15 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         return SourceEvidence(reference.evidence, reference.from, "Sample → Target", reference.target, reference.kind)
     }
 
+    fun testCancelledBeforeSubmissionNeverOpensSourceOrCallsBack() {
+        val witness = evidence()
+        var called = false
+        runInEdtAndWait {
+            SourceNavigationService(project).openAsync(witness, { true }) { called = true }
+        }
+        assertFalse(called)
+    }
+
     fun testBackgroundNavigationOpensOnlyVerifiedEvidence() {
         val witness = evidence()
         IndexingTestUtil.waitUntilIndexesAreReady(project)
