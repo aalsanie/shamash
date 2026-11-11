@@ -139,7 +139,13 @@ class ShamashStarterJourneysTest {
                 ideFrame {
                     invokeAction("io.shamash.open")
                     invokeAction("MaximizeToolWindow")
-                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    val analyze = x(xQuery { byAccessibleName("Analyze project source") })
+                    analyze.shouldBe("Source analysis button must be visible", present)
+                    analyze.driver.withContext(OnDispatcher.EDT) {
+                        val button = cast(analyze.component, RemoteSourceButton::class)
+                        assertTrue(button.isEnabled(), "Source analysis must be enabled")
+                        button.doClick(0)
+                    }
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Both directions of the Java package cycle must be observed", present)
                     val findings = list { byAccessibleName("Package cycle findings") }
@@ -164,7 +170,9 @@ class ShamashStarterJourneysTest {
                     }
                     val openSource = x(xQuery { byVisibleText("Open source") })
                     assertTrue(openSource.isEnabled(), "Selecting the source witness must enable navigation")
-                    openSource.click()
+                    openSource.driver.withContext(OnDispatcher.EDT) {
+                        cast(openSource.component, RemoteSourceButton::class).doClick(0)
+                    }
                 }
                 val owner = evidenceLabel.substringBefore(" → ")
                 val target = evidenceLabel.substringAfter(" → ")
@@ -551,6 +559,13 @@ private data class EditorSnapshot(
     val documentText: String,
     val caretOffset: Int,
 )
+
+@Remote("javax.swing.JButton")
+interface RemoteSourceButton {
+    fun isEnabled(): Boolean
+
+    fun doClick(pressTime: Int)
+}
 
 @Remote("javax.swing.JList")
 interface RemoteListSelection {
