@@ -23,6 +23,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
@@ -41,6 +42,7 @@ import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
+import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JButton
@@ -404,6 +406,54 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
                 23,
             ),
         )
+    }
+
+    fun testMissingFileWithMatchingReferenceUrlDoesNotNavigate() {
+        val witness = evidence()
+        val missing = "file:///shamash-missing-source-never-created.java"
+        val altered =
+            witness.copy(
+                owner = witness.owner.copy(fileUrl = missing),
+                reference = witness.reference.copy(fileUrl = missing),
+            )
+        assertFalse(SourceNavigationService(project).open(altered))
+    }
+
+    fun testExternalSourceFileCannotBeTreatedAsProjectProductionSource() {
+        val witness = evidence()
+        val directory = Files.createTempDirectory("shamash-navigation-outside")
+        try {
+            val path = directory.resolve("External.java")
+            Files.writeString(path, "public class External {}")
+            val external = requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path))
+            val altered =
+                witness.copy(
+                    owner = witness.owner.copy(fileUrl = external.url),
+                    reference = witness.reference.copy(fileUrl = external.url, offset = 0, length = 6),
+                )
+            assertFalse(SourceNavigationService(project).open(altered))
+        } finally {
+            Files.deleteIfExists(directory.resolve("External.java"))
+            Files.deleteIfExists(directory)
+        }
+    }
+
+    fun testUnselectedEvidencePanelIgnoresOpenActionWithoutLaunchingNavigation() {
+        val witness = evidence()
+        val panel = SourceEvidencePanel(project)
+        runInEdtAndWait {
+            panel.showEvidence(listOf(witness), 1L)
+            val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
+            val open = controls.components.filterIsInstance<JButton>().single()
+            val result = controls.components.filterIsInstance<JBTextArea>().single()
+            assertFalse(open.isEnabled)
+            panel.list.actionMap
+                .get("openSource")
+                .actionPerformed(ActionEvent(panel.list, 0, "openSource"))
+            assertFalse(open.isEnabled)
+            assertEquals("", result.text)
+            panel.dispose()
+        }
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
