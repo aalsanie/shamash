@@ -272,6 +272,28 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertTrue(snapshot.entities.none { it.displayName.contains("Generated") })
     }
 
+    fun testUnrepresentableGenericBoundCannotInventAReferenceOffset() {
+        java("Repository.java", "package demo; public class Repository {}")
+        java(
+            "Bounded.java",
+            "package demo; class Bounded<T extends Repository> { T value; }",
+        )
+        val snapshot = analyze()
+        assertFalse(snapshot.complete)
+        assertTrue(
+            snapshot.diagnostics.any {
+                it.phase == "type" && it.message.contains("Cannot uniquely locate generic type witness for Repository")
+            },
+            snapshot.diagnostics.toString(),
+        )
+        assertFalse(
+            snapshot.references.any {
+                it.from.signature == "demo.Bounded#value" &&
+                    (it.target as? SourceTarget.Internal)?.entity?.signature == "demo.Repository"
+            },
+        )
+    }
+
     fun testRelationshipLimitCannotProduceACompleteResult() {
         java("Owner.java", "package demo; class Owner { TargetOne one; TargetTwo two; }")
         java("TargetOne.java", "package demo; class TargetOne {}")

@@ -178,12 +178,12 @@ class ShamashSourcePerformanceTest {
     }
 }
 
-@Remote("io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator")
+@Remote("io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator", plugin = "io.shamash")
 interface RemoteAnalysisCoordinator {
     fun state(): RemoteAnalysisState
 }
 
-@Remote("io.shamash.intellij.plugin.analysis.IdeAnalysisState")
+@Remote("io.shamash.intellij.plugin.analysis.IdeAnalysisState", plugin = "io.shamash")
 interface RemoteAnalysisState {
     fun getRequestGeneration(): Long
 

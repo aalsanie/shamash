@@ -20,6 +20,7 @@ package io.shamash.intellij.plugin.e2e
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDocumentManager
@@ -28,6 +29,7 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import io.shamash.intellij.plugin.ui.source.SourceEvidence
+import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
@@ -35,6 +37,11 @@ import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceTarget
+import java.awt.BorderLayout
+import java.awt.event.ActionEvent
+import javax.swing.JButton
+import javax.swing.JPanel
+import com.intellij.ui.components.JBTextArea
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 
@@ -252,6 +259,101 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         assertFalse(navigation.open(witness.copy(reference = witness.reference.copy(offset = witness.reference.offset + 1))))
         assertFalse(navigation.open(witness.copy(target = null)))
         assertFalse(navigation.open(witness.copy(kind = null)))
+    }
+
+    fun testEvidenceFromNonProductionOrTestRootCannotNavigate() {
+        val witness = evidence()
+        val outside = myFixture.addFileToProject("outside/Other.java", "public class Other {}")
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
+        PsiTestUtil.addSourceRoot(myModule, testRoot, true)
+        val testFile = myFixture.addFileToProject("src/test/java/demo/TestOnly.java", "package demo; class TestOnly {}")
+        val navigation = SourceNavigationService(project)
+        for (file in listOf(outside.virtualFile, testFile.virtualFile)) {
+            val moved = witness.copy(
+                owner = witness.owner.copy(fileUrl = file.url),
+                reference = witness.reference.copy(fileUrl = file.url),
+            )
+            assertFalse(navigation.open(moved))
+        }
+    }
+
+    fun testDirectoryAndOutOfDocumentRangeCannotNavigate() {
+        val witness = evidence()
+        val navigation = SourceNavigationService(project)
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        assertFalse(
+            navigation.open(
+                witness.copy(
+                    owner = witness.owner.copy(fileUrl = root.url),
+                    reference = witness.reference.copy(fileUrl = root.url),
+                ),
+            ),
+        )
+        assertFalse(
+            navigation.open(witness.copy(reference = witness.reference.copy(length = Int.MAX_VALUE))),
+        )
+        assertFalse(
+            navigation.open(witness.copy(reference = witness.reference.copy(offset = Int.MAX_VALUE))),
+        )
+        assertFalse(
+            navigation.open(
+                witness.copy(reference = witness.reference.copy(fileUrl = witness.owner.sourceRoot)),
+            ),
+        )
+    }
+
+    fun testEvidencePanelDropsPendingNavigationAfterSelectionChangesAndDisposal() {
+        val witness = evidence()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val panel = SourceEvidencePanel(project)
+        val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
+        val open = controls.components.filterIsInstance<JButton>().single()
+        val outcome = controls.components.filterIsInstance<JBTextArea>().single()
+        runInEdtAndWait {
+            panel.showEvidence(listOf(witness), 1)
+            panel.list.selectedIndex = 0
+            open.doClick()
+            assertFalse(open.isEnabled)
+            panel.list.clearSelection()
+            assertEquals("", outcome.text)
+            panel.dispose()
+            panel.list.actionMap.get("openSource").actionPerformed(ActionEvent(panel.list, 0, "openSource"))
+            assertFalse(open.isEnabled)
+        }
+        repeat(40) {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            Thread.sleep(10)
+        }
+        assertFalse(open.isEnabled)
+        assertEquals("", outcome.text)
+    }
+
+    fun testEvidencePanelOpensOnlyTheCurrentVerifiedReference() {
+        val witness = evidence()
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val panel = SourceEvidencePanel(project)
+        val controls = (panel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as JPanel
+        val open = controls.components.filterIsInstance<JButton>().single()
+        val outcome = controls.components.filterIsInstance<JBTextArea>().single()
+        runInEdtAndWait {
+            panel.showEvidence(listOf(witness), 1)
+            panel.list.selectedIndex = 0
+            open.doClick()
+            assertFalse(open.isEnabled)
+        }
+        repeat(500) {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            if (open.isEnabled &&
+                outcome.text.isEmpty() &&
+                FileEditorManager.getInstance(project).selectedFiles.any { it.url == witness.reference.fileUrl }
+            ) {
+                runInEdtAndWait { panel.dispose() }
+                return
+            }
+            Thread.sleep(20)
+        }
+        runInEdtAndWait { panel.dispose() }
+        fail("Verified source evidence did not open through the panel")
     }
 
     fun testWrongModuleRootFileOrReferenceRangeCannotNavigate() {
