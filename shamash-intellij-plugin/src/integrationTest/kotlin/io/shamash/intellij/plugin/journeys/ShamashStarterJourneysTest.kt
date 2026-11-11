@@ -165,7 +165,6 @@ class ShamashStarterJourneysTest {
                     val openSource = x(xQuery { byVisibleText("Open source") })
                     assertTrue(openSource.isEnabled(), "Selecting the source witness must enable navigation")
                     openSource.click()
-                    invokeAction("HideAllWindows")
                 }
                 val owner = evidenceLabel.substringBefore(" → ")
                 val target = evidenceLabel.substringAfter(" → ")
@@ -175,11 +174,18 @@ class ShamashStarterJourneysTest {
                         "right.Right#dependency" -> "Right.java"
                         else -> throw AssertionError("Unexpected source owner: " + owner)
                     }
-                waitFor(30.seconds, errorMessage = "The navigated source file must have an open text editor") {
+                waitFor(30.seconds, errorMessage = "Verified navigation must open $expectedFile at $target") {
                     withReadAction {
                         val manager = service(RemoteFileEditorManager::class, singleProject())
-                        manager.getOpenFiles().any { file ->
-                            file.getPath().endsWith("/" + expectedFile) && manager.getSelectedEditor(file) != null
+                        val file = manager.getOpenFiles().firstOrNull { it.getPath().endsWith("/" + expectedFile) }
+                        val editor = file?.let { manager.getSelectedEditor(it)?.getEditor() }
+                        if (editor == null) {
+                            false
+                        } else {
+                            val text = editor.getDocument().getText()
+                            val start = text.indexOf(target)
+                            val caret = editor.getCaretModel().getOffset()
+                            start >= 0 && (caret == start || caret == start + target.lastIndexOf('.') + 1)
                         }
                     }
                 }
@@ -199,6 +205,7 @@ class ShamashStarterJourneysTest {
                     "Navigation did not land on the verified reference: " + snapshot.caretOffset,
                 )
                 assertEquals(target, snapshot.documentText.substring(targetStart, targetStart + target.length))
+                ideFrame { invokeAction("HideAllWindows") }
             }
         assertFalse(Files.exists(requireNotNull(openedProject).resolve(".shamash")), "IDE analysis must not export reports")
     }
