@@ -129,6 +129,24 @@ class PluginDiscoveryVerificationTest(unittest.TestCase):
                 plugin_tests.verify(self.source, self.results, junit5=True)
 
 
+    def test_junit5_excludes_opt_in_benchmarks_from_required_discovery(self):
+        (self.source / "ExampleTest.kt").write_text(
+            "package sample\nclass ExampleTest {\n    @Test\n    fun smoke() {}\n}\n",
+            encoding="utf-8",
+        )
+        (self.source / "BenchmarkTest.kt").write_text(
+            'package sample\n@Tag("benchmark")\nclass BenchmarkTest {\n    @Test\n    fun warmScan() {}\n}\n',
+            encoding="utf-8",
+        )
+        expected = plugin_tests.expected_tests(self.source, junit5=True)
+        self.assertEqual({"sample.ExampleTest": {"smoke"}}, expected)
+        benchmarks = plugin_tests.expected_tests(self.source, junit5=True, benchmark_only=True)
+        self.assertEqual({"sample.BenchmarkTest": {"warmScan"}}, benchmarks)
+        self.report(method="smoke()")
+        plugin_tests.verify(self.source, self.results, junit5=True)
+        with self.assertRaisesRegex(ValueError, "did not run"):
+            plugin_tests.verify(self.source, self.results, junit5=True, benchmark_only=True)
+
     def test_junit5_essential_suite_runs_only_tagged_methods(self):
         (self.source / "ExampleTest.kt").write_text(
             "package sample\nclass ExampleTest {\n"
