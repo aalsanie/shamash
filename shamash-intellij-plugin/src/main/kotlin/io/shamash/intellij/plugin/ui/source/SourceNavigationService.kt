@@ -31,7 +31,6 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.psi.core.source.SourceDependencyExtractor
-import io.shamash.psi.core.source.SourceReference
 
 internal class SourceNavigationService(
     private val project: Project,

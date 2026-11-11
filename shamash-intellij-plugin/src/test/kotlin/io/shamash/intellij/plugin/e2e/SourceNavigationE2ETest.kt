@@ -317,6 +317,10 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             assertFalse(open.isEnabled)
             panel.list.clearSelection()
             assertEquals("", outcome.text)
+            open.isEnabled = true
+            panel.list.actionMap.get("openSource").actionPerformed(ActionEvent(panel.list, 0, "openSource"))
+            assertEquals("", outcome.text)
+            open.isEnabled = false
             panel.dispose()
             panel.list.actionMap.get("openSource").actionPerformed(ActionEvent(panel.list, 0, "openSource"))
             assertFalse(open.isEnabled)
