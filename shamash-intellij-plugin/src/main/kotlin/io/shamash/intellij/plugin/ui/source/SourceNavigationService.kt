@@ -71,25 +71,17 @@ internal class SourceNavigationService(
         if (reference.fileUrl != owner.fileUrl || reference.offset < 0 || reference.length <= 0) return null
 
         val file = VirtualFileManager.getInstance().findFileByUrl(reference.fileUrl) ?: return null
-        if (!file.isValid || file.isDirectory) return null
+        if (!validCandidate(file)) return null
 
         return ReadAction.compute<VerifiedFile?, RuntimeException> {
-            if (project.isDisposed || DumbService.isDumb(project) || !file.isValid) return@compute null
+            if (!validCandidate(file) || DumbService.isDumb(project)) return@compute null
             val sourceRevision = PsiModificationTracker.getInstance(project).modificationCount
             val rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount
             val index = ProjectFileIndex.getInstance(project)
-            if (!index.isInSourceContent(file) ||
-                index.isInTestSourceContent(file) ||
-                index.getModuleForFile(file)?.name != owner.moduleId ||
-                index.getSourceRootForFile(file)?.url != owner.sourceRoot
-            ) {
-                return@compute null
-            }
-
             val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute null
             val end = reference.offset.toLong() + reference.length.toLong()
-            if (doc.modificationStamp != reference.documentStamp ||
-                end > doc.textLength || end <= reference.offset
+            if (end > doc.textLength ||
+                !currentSourceLocation(file, index, doc.modificationStamp).matches(evidence, sourceRevision, rootRevision)
             ) {
                 return@compute null
             }
@@ -131,22 +123,33 @@ internal class SourceNavigationService(
         val file = verified.file
         val current =
             ReadAction.compute<Boolean, RuntimeException> {
-                if (project.isDisposed || !file.isValid || file.isDirectory) return@compute false
-                val index = ProjectFileIndex.getInstance(project)
-                CurrentSourceLocation(
-                    sourceRevision = PsiModificationTracker.getInstance(project).modificationCount,
-                    rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount,
-                    productionSource = index.isInSourceContent(file),
-                    testSource = index.isInTestSourceContent(file),
-                    moduleId = index.getModuleForFile(file)?.name,
-                    sourceRoot = index.getSourceRootForFile(file)?.url,
-                    documentStamp = FileDocumentManager.getInstance().getDocument(file)?.modificationStamp,
-                ).matches(evidence, verified.sourceRevision, verified.rootRevision)
+                if (!validCandidate(file)) return@compute false
+                val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute false
+                currentSourceLocation(file, ProjectFileIndex.getInstance(project), doc.modificationStamp)
+                    .matches(evidence, verified.sourceRevision, verified.rootRevision)
             }
         if (!current) return false
         OpenFileDescriptor(project, file, evidence.reference.offset).navigate(true)
         return true
     }
+
+    private fun validCandidate(file: VirtualFile): Boolean =
+        !project.isDisposed && file.isValid && !file.isDirectory
+
+    private fun currentSourceLocation(
+        file: VirtualFile,
+        index: ProjectFileIndex,
+        documentStamp: Long,
+    ): CurrentSourceLocation =
+        CurrentSourceLocation(
+            sourceRevision = PsiModificationTracker.getInstance(project).modificationCount,
+            rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount,
+            productionSource = index.isInSourceContent(file),
+            testSource = index.isInTestSourceContent(file),
+            moduleId = index.getModuleForFile(file)?.name,
+            sourceRoot = index.getSourceRootForFile(file)?.url,
+            documentStamp = documentStamp,
+        )
 }
 
 internal data class CurrentSourceLocation(
