@@ -293,6 +293,38 @@ class ManagedReportPublicationTest {
             assertNoTransactionDirectories(root)
         }
 
+    @Test
+    fun missingActivatedFileDuringRollbackStillRestoresOldGeneration() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(report, "old")
+            assertFailsWith<IOException> {
+                CoherentReportPublisher().publish(output, onActivated = {
+                    Files.delete(report)
+                    throw IOException("completion removed the activated output")
+                }) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "new")
+                }
+            }
+            assertEquals("old", Files.readString(report))
+            assertNoTransactionDirectories(root)
+        }
+
+    @Test
+    fun destinationChangedToUnrelatedFileDuringRenderingIsLeftUntouched() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            assertFailsWith<IllegalArgumentException> {
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "new")
+                    Files.writeString(output, "an unrelated writer now owns this path")
+                }
+            }
+            assertEquals("an unrelated writer now owns this path", Files.readString(output))
+            assertNoTransactionDirectories(root)
+        }
+
     private fun withProject(action: (Path) -> Unit) {
         val root = Files.createTempDirectory("shamash-managed-report-test-")
         try {
