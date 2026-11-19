@@ -325,6 +325,54 @@ class ManagedReportPublicationTest {
             assertNoTransactionDirectories(root)
         }
 
+    @Test
+    fun discardMoveThatThrowsAfterCompletingStillRestoresPreviousReports() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(report, "previous")
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    if (to.parent.fileName.toString().startsWith(".shamash-discarded-")) {
+                        throw IOException("discard moved before throwing")
+                    }
+                }
+            val failure =
+                assertFailsWith<IOException> {
+                    publisher.publish(output, onActivated = { throw IOException("completion failed") }) { stage ->
+                        Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                    }
+                }
+            assertEquals("previous", Files.readString(report))
+            assertTrue(failure.suppressed.any { it.message?.contains("Rollback move completed") == true })
+            assertNoTransactionDirectories(root)
+        }
+
+    @Test
+    fun restoreMoveThatThrowsAfterCompletingStillRestoresPreviousReports() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(report, "previous")
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    if (from.parent.fileName.toString().startsWith(".shamash-previous-")) {
+                        throw IOException("restored before throwing")
+                    }
+                }
+            val failure =
+                assertFailsWith<IOException> {
+                    publisher.publish(output, onActivated = { throw IOException("completion failed") }) { stage ->
+                        Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                    }
+                }
+            assertEquals("previous", Files.readString(report))
+            assertTrue(failure.suppressed.any { it.message?.contains("Rollback move completed") == true })
+            assertNoTransactionDirectories(root)
+        }
+
     private fun withProject(action: (Path) -> Unit) {
         val root = Files.createTempDirectory("shamash-managed-report-test-")
         try {
