@@ -55,7 +55,10 @@ class ManagedReportPublicationTest {
             Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "old")
             val publisher =
                 CoherentReportPublisher { from, to ->
-                    if (from.parent.fileName.toString().startsWith(".shamash-stage-")) {
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-stage-")
+                    ) {
                         Files.writeString(notes, "edited during activation")
                         Files.writeString(output.resolve("new.txt"), "new data")
                     }
@@ -81,7 +84,10 @@ class ManagedReportPublicationTest {
             Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "old")
             val publisher =
                 CoherentReportPublisher { from, to ->
-                    if (from.parent.fileName.toString().startsWith(".shamash-previous-")) {
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-previous-")
+                    ) {
                         Files.writeString(notes, "updated during rollback")
                         Files.writeString(output.resolve("new.txt"), "new data")
                     }
@@ -211,7 +217,9 @@ class ManagedReportPublicationTest {
             Files.writeString(output.resolve("sentinel.txt"), "unrelated")
             val publisher =
                 CoherentReportPublisher { from, to ->
-                    if (from.parent.fileName.toString().startsWith(".shamash-previous-") &&
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-previous-") &&
                         from.fileName.toString() == ExportOutputLayout.JSON_FILE_NAME
                     ) {
                         throw IOException("restore locked")
@@ -334,7 +342,10 @@ class ManagedReportPublicationTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    if (to.parent.fileName.toString().startsWith(".shamash-discarded-")) {
+                    if (to.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-discarded-")
+                    ) {
                         throw IOException("discard moved before throwing")
                     }
                 }
@@ -358,7 +369,10 @@ class ManagedReportPublicationTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    if (from.parent.fileName.toString().startsWith(".shamash-previous-")) {
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-previous-")
+                    ) {
                         throw IOException("restored before throwing")
                     }
                 }
@@ -382,7 +396,10 @@ class ManagedReportPublicationTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    if (to.parent.fileName.toString().startsWith(".shamash-discarded-")) {
+                    if (to.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-discarded-")
+                    ) {
                         Files.writeString(from, "concurrent managed writer")
                     }
                 }
@@ -408,7 +425,10 @@ class ManagedReportPublicationTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    if (to.parent.fileName.toString().startsWith(".shamash-discarded-")) {
+                    if (to.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-discarded-")
+                    ) {
                         Files.writeString(from, "concurrent managed writer")
                     }
                 }

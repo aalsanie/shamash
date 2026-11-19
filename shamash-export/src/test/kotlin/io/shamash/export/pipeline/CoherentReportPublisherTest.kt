@@ -394,7 +394,10 @@ class CoherentReportPublisherTest {
             Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
             val publisher =
                 CoherentReportPublisher { from, to ->
-                    if (from.parent.fileName.toString().startsWith(".shamash-stage-")) {
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-stage-")
+                    ) {
                         Files.delete(from)
                         Files.delete(from.parent)
                         throw IOException("staging disappeared before activation")
@@ -460,7 +463,10 @@ class CoherentReportPublisherTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    if (from.parent.fileName.toString().startsWith(".shamash-stage-")) {
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-stage-")
+                    ) {
                         throw IOException("activation completed before failure")
                     }
                 }
@@ -489,7 +495,7 @@ class CoherentReportPublisherTest {
                     it.fileName.toString().startsWith(".shamash-stage-") ||
                         it.fileName.toString().startsWith(".shamash-previous-") ||
                         it.fileName.toString().startsWith(".shamash-discarded-")
-                }
+                },
             )
         }
     }

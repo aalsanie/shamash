@@ -128,7 +128,11 @@ class CoherentReportPublisher(
                 }
             }
             val rollbackErrors = mutableListOf<Throwable>()
-            fun rollbackMove(from: Path, to: Path) {
+
+            fun rollbackMove(
+                from: Path,
+                to: Path,
+            ) {
                 try {
                     moveDirectory(from, to)
                 } catch (moveFailure: Throwable) {
@@ -237,15 +241,18 @@ class CoherentReportPublisher(
             "Report staging directory is missing or invalid: " + stage
         }
         return Files.list(stage).use { entries ->
-            entries.toList().map { file ->
-                val name = file.fileName.toString()
-                require(name in ExportOutputLayout.MANAGED_REPORT_FILE_NAMES &&
-                    Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
-                ) {
-                    "Staged report must be a managed regular file: " + file
-                }
-                name
-            }.sorted()
+            entries
+                .toList()
+                .map { file ->
+                    val name = file.fileName.toString()
+                    require(
+                        name in ExportOutputLayout.MANAGED_REPORT_FILE_NAMES &&
+                            Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS),
+                    ) {
+                        "Staged report must be a managed regular file: " + file
+                    }
+                    name
+                }.sorted()
         }
     }
 
