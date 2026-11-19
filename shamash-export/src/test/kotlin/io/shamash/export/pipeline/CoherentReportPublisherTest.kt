@@ -378,7 +378,6 @@ class CoherentReportPublisherTest {
             Files.writeString(output.resolve("notes.txt"), "personal")
             assertFailsWith<IOException> {
                 CoherentReportPublisher().publish(output) { stage ->
-                    Files.delete(stage.resolve("notes.txt"))
                     Files.delete(stage)
                     throw IOException("renderer discarded its staging directory")
                 }
