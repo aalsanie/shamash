@@ -127,6 +127,23 @@ class CoherentReportPublisher(
                     activated += name
                 }
             }
+            val rollbackErrors = mutableListOf<Throwable>()
+            fun rollbackMove(from: Path, to: Path) {
+                try {
+                    moveDirectory(from, to)
+                } catch (moveFailure: Throwable) {
+                    if (!Files.exists(from, LinkOption.NOFOLLOW_LINKS) &&
+                        Files.isRegularFile(to, LinkOption.NOFOLLOW_LINKS)
+                    ) {
+                        failure.addSuppressed(
+                            IllegalStateException("Rollback move completed but reported a failure: " + to, moveFailure),
+                        )
+                    } else {
+                        rollbackErrors += moveFailure
+                    }
+                }
+            }
+
             try {
                 if (activated.isNotEmpty()) {
                     discarded = Files.createTempDirectory(parent, ".shamash-discarded-")
@@ -134,7 +151,7 @@ class CoherentReportPublisher(
                     for (name in activated.asReversed()) {
                         val published = destination.resolve(name)
                         if (Files.exists(published, LinkOption.NOFOLLOW_LINKS)) {
-                            moveDirectory(published, discardedDirectory.resolve(name))
+                            rollbackMove(published, discardedDirectory.resolve(name))
                         }
                     }
                 }
@@ -142,17 +159,38 @@ class CoherentReportPublisher(
                     for (name in previouslyManaged.asReversed()) {
                         val saved = previousDirectory.resolve(name)
                         if (Files.exists(saved, LinkOption.NOFOLLOW_LINKS)) {
-                            moveDirectory(saved, destination.resolve(name))
+                            val target = destination.resolve(name)
+                            if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+                                rollbackErrors += IllegalStateException("Cannot restore occupied managed report: " + target)
+                            } else {
+                                rollbackMove(saved, target)
+                            }
                         }
                     }
                 }
+                for (name in previouslyManaged) {
+                    val original = destination.resolve(name)
+                    if (!Files.isRegularFile(original, LinkOption.NOFOLLOW_LINKS)) {
+                        rollbackErrors += IllegalStateException("Previous managed report was not restored: " + original)
+                    }
+                }
+                for (name in activated) {
+                    val published = destination.resolve(name)
+                    if (name !in previouslyManaged && Files.exists(published, LinkOption.NOFOLLOW_LINKS)) {
+                        rollbackErrors += IllegalStateException("Incomplete managed report remains: " + published)
+                    }
+                }
                 if (createdDestination && Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
-                    // An unrelated writer may have added content after the destination was created.
                     try {
                         Files.delete(destination)
                     } catch (_: java.nio.file.DirectoryNotEmptyException) {
-                        // Leave the user's entries and their enclosing directory intact.
+                        // Other files may have been created concurrently; do not delete them.
                     }
+                }
+                if (rollbackErrors.isNotEmpty()) {
+                    val cause = rollbackErrors.first()
+                    rollbackErrors.drop(1).forEach(cause::addSuppressed)
+                    throw cause
                 }
             } catch (rollbackFailure: Throwable) {
                 rollbackFailed = true
