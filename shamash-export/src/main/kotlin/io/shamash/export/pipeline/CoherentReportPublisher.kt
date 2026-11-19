@@ -102,8 +102,8 @@ class CoherentReportPublisher(
                 createdDestination = true
             }
             if (previouslyManaged.isNotEmpty()) {
-                backup = Files.createTempDirectory(parent, ".shamash-previous-")
-                val previousDirectory = requireNotNull(backup)
+                val previousDirectory = Files.createTempDirectory(parent, ".shamash-previous-")
+                backup = previousDirectory
                 for (name in previouslyManaged) {
                     moveDirectory(destination.resolve(name), previousDirectory.resolve(name))
                 }
@@ -146,8 +146,8 @@ class CoherentReportPublisher(
 
             try {
                 if (activated.isNotEmpty()) {
-                    discarded = Files.createTempDirectory(parent, ".shamash-discarded-")
-                    val discardedDirectory = requireNotNull(discarded)
+                    val discardedDirectory = Files.createTempDirectory(parent, ".shamash-discarded-")
+                    discarded = discardedDirectory
                     for (name in activated.asReversed()) {
                         val published = destination.resolve(name)
                         if (Files.exists(published, LinkOption.NOFOLLOW_LINKS)) {
