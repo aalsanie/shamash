@@ -373,6 +373,87 @@ class ManagedReportPublicationTest {
             assertNoTransactionDirectories(root)
         }
 
+    @Test
+    fun occupiedManagedPathDuringRollbackRetainsOriginalInRecovery() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
+            Files.writeString(report, "previous")
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    if (to.parent.fileName.toString().startsWith(".shamash-discarded-")) {
+                        Files.writeString(from, "concurrent managed writer")
+                    }
+                }
+            val failure =
+                assertFailsWith<IOException> {
+                    publisher.publish(output, onActivated = { throw IOException("completion failed") }) { stage ->
+                        Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                    }
+                }
+            assertTrue(failure.suppressed.any { it.message?.contains("rollback failed") == true })
+            assertEquals("concurrent managed writer", Files.readString(report))
+            val previous =
+                Files.list(root).use { paths ->
+                    paths.filter { it.fileName.toString().startsWith(".shamash-previous-") }.findFirst().orElseThrow()
+                }
+            assertEquals("previous", Files.readString(previous.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+        }
+
+    @Test
+    fun newlyCreatedManagedPathDuringRollbackIsReportedAsIncomplete() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            val publisher =
+                CoherentReportPublisher { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
+                    if (to.parent.fileName.toString().startsWith(".shamash-discarded-")) {
+                        Files.writeString(from, "concurrent managed writer")
+                    }
+                }
+            val failure =
+                assertFailsWith<IOException> {
+                    publisher.publish(output, onActivated = { throw IOException("completion failed") }) { stage ->
+                        Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                    }
+                }
+            assertTrue(failure.suppressed.any { it.message?.contains("rollback failed") == true })
+            assertEquals("concurrent managed writer", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+        }
+
+    @Test
+    fun deletedStagingDirectoryIsRejectedWithoutTouchingPublishedReports() =
+        withProject { root ->
+            val output = Files.createDirectories(root.resolve("reports"))
+            Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
+            assertFailsWith<IllegalArgumentException> {
+                CoherentReportPublisher().publish(output) { stage ->
+                    Files.delete(stage)
+                }
+            }
+            assertEquals("previous", Files.readString(output.resolve(ExportOutputLayout.JSON_FILE_NAME)))
+            assertNoTransactionDirectories(root)
+        }
+
+    @Test
+    fun destinationReplacedWithFileDuringCompletionIsNotRemoved() =
+        withProject { root ->
+            val output = root.resolve("reports")
+            assertFailsWith<IOException> {
+                CoherentReportPublisher().publish(output, onActivated = {
+                    Files.delete(output.resolve(ExportOutputLayout.JSON_FILE_NAME))
+                    Files.delete(output)
+                    Files.writeString(output, "other writer")
+                    throw IOException("completion failed")
+                }) { stage ->
+                    Files.writeString(stage.resolve(ExportOutputLayout.JSON_FILE_NAME), "replacement")
+                }
+            }
+            assertEquals("other writer", Files.readString(output))
+            assertNoTransactionDirectories(root)
+        }
+
     private fun withProject(action: (Path) -> Unit) {
         val root = Files.createTempDirectory("shamash-managed-report-test-")
         try {
