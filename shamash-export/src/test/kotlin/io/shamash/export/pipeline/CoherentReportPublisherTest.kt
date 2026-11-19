@@ -378,7 +378,6 @@ class CoherentReportPublisherTest {
             Files.writeString(output.resolve("notes.txt"), "personal")
             assertFailsWith<IOException> {
                 CoherentReportPublisher().publish(output) { stage ->
-                    Files.delete(stage.resolve("notes.txt"))
                     Files.delete(stage)
                     throw IOException("renderer discarded its staging directory")
                 }
@@ -395,9 +394,12 @@ class CoherentReportPublisherTest {
             Files.writeString(output.resolve(ExportOutputLayout.JSON_FILE_NAME), "previous")
             val publisher =
                 CoherentReportPublisher { from, to ->
-                    if (from.fileName.toString().startsWith(".shamash-stage-")) {
-                        Files.delete(from.resolve(ExportOutputLayout.JSON_FILE_NAME))
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-stage-")
+                    ) {
                         Files.delete(from)
+                        Files.delete(from.parent)
                         throw IOException("staging disappeared before activation")
                     }
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
@@ -417,8 +419,8 @@ class CoherentReportPublisherTest {
             val output = root.resolve("reports")
             val publisher =
                 CoherentReportPublisher { from, _ ->
-                    Files.delete(from.resolve(ExportOutputLayout.JSON_FILE_NAME))
                     Files.delete(from)
+                    Files.delete(from.parent)
                     throw IOException("staging disappeared")
                 }
             assertFailsWith<IOException> {
@@ -461,7 +463,10 @@ class CoherentReportPublisherTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
-                    if (from.fileName.toString().startsWith(".shamash-stage-")) {
+                    if (from.parent.fileName
+                            .toString()
+                            .startsWith(".shamash-stage-")
+                    ) {
                         throw IOException("activation completed before failure")
                     }
                 }
@@ -488,7 +493,8 @@ class CoherentReportPublisherTest {
             assertTrue(
                 entries.noneMatch {
                     it.fileName.toString().startsWith(".shamash-stage-") ||
-                        it.fileName.toString().startsWith(".shamash-previous-")
+                        it.fileName.toString().startsWith(".shamash-previous-") ||
+                        it.fileName.toString().startsWith(".shamash-discarded-")
                 },
             )
         }

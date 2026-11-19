@@ -20,8 +20,12 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
- * Renders a complete report generation away from its destination and swaps directories only on success.
- * Existing non-report files are copied into the staging directory and retained.
+ * Publishes a complete report generation by replacing only Shamash-managed report files.
+ *
+ * The destination directory and unrelated entries are never replaced. Cooperating publishers
+ * are serialized by the parent-directory lock. Individual file moves are atomic on supported
+ * filesystems; a multi-file generation is not crash-atomic or an atomic snapshot for readers
+ * that do not coordinate with the publisher lock.
  */
 class CoherentReportPublisher(
     private val moveDirectory: (Path, Path) -> Unit = { from, to ->
@@ -35,9 +39,9 @@ class CoherentReportPublisher(
     ): T = publish(outputDir, {}, render)
 
     /**
-     * Activates the reports before [onActivated], retaining the previous generation until both
-     * succeed. A failed completion restores the previous reports; separate destinations cannot
-     * offer crash-atomic visibility.
+     * Invokes [onActivated] after activating managed reports while their previous files remain
+     * available for rollback. A failure restores the previous managed generation where possible.
+     * Separate destinations and unsynchronized readers cannot have crash-atomic visibility.
      */
     fun <T> publish(
         outputDir: Path,
@@ -48,7 +52,7 @@ class CoherentReportPublisher(
         val parent = requireNotNull(destination.parent) { "Report directory has no parent" }
         Files.createDirectories(parent)
         require(!Files.isSymbolicLink(destination)) { "Report destination must not be a symbolic link" }
-        // One lock per parent also protects case-insensitive aliases of the same destination.
+        // The shared parent lock also serializes case-insensitive aliases of the destination.
         val lockFile = parent.resolve(".shamash-publish-lock")
         FileChannel
             .open(
@@ -63,7 +67,7 @@ class CoherentReportPublisher(
                     } catch (_: OverlappingFileLockException) {
                         null
                     }
-                checkNotNull(lock) { "Report destination is already being published: $destination" }
+                checkNotNull(lock) { "Report destination is already being published: " + destination }
                 lock.use {
                     return publishLocked(destination, parent, onActivated, render)
                 }
@@ -76,90 +80,192 @@ class CoherentReportPublisher(
         onActivated: () -> Unit,
         render: (Path) -> T,
     ): T {
+        requireDirectoryOrAbsent(destination)
         val stage = Files.createTempDirectory(parent, ".shamash-stage-")
         var backup: Path? = null
-        var activationAttempted = false
-        var activated = false
+        var discarded: Path? = null
+        var createdDestination = false
+        var rollbackFailed = false
+        var primaryFailure: Throwable? = null
+        val previouslyManaged = mutableListOf<String>()
+        val activated = mutableListOf<String>()
+        var pendingActivation: String? = null
+
         try {
-            if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
-                require(Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
-                    "Report destination is not a directory"
-                }
-                copyUnrelated(destination, stage)
-            }
             val result = render(stage)
-            if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
-                val reserved = Files.createTempDirectory(parent, ".shamash-previous-")
-                Files.delete(reserved)
-                backup = reserved
-                moveDirectory(destination, reserved)
+            val staged = stagedFiles(stage)
+            requireDirectoryOrAbsent(destination)
+            previouslyManaged += existingManagedFiles(destination)
+
+            if (!Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+                Files.createDirectory(destination)
+                createdDestination = true
             }
-            activationAttempted = true
-            moveDirectory(stage, destination)
-            activated = true
+            if (previouslyManaged.isNotEmpty()) {
+                val previousDirectory = Files.createTempDirectory(parent, ".shamash-previous-")
+                backup = previousDirectory
+                for (name in previouslyManaged) {
+                    moveDirectory(destination.resolve(name), previousDirectory.resolve(name))
+                }
+            }
+
+            for (name in staged) {
+                pendingActivation = name
+                moveDirectory(stage.resolve(name), destination.resolve(name))
+                activated += name
+                pendingActivation = null
+            }
             onActivated()
-            backup?.let { runCatching { deleteTree(it) } }
             return result
         } catch (failure: Throwable) {
-            // A move hook may throw after completing its move; reconcile the on-disk state.
-            if (activationAttempted && !activated && !Files.exists(stage, LinkOption.NOFOLLOW_LINKS) &&
-                Files.exists(destination, LinkOption.NOFOLLOW_LINKS)
-            ) {
-                activated = true
+            primaryFailure = failure
+            pendingActivation?.let { name ->
+                // An injected move may perform the filesystem mutation and then throw.
+                if (!Files.exists(stage.resolve(name), LinkOption.NOFOLLOW_LINKS) &&
+                    Files.exists(destination.resolve(name), LinkOption.NOFOLLOW_LINKS)
+                ) {
+                    activated += name
+                }
             }
-            var discarded: Path? = null
+            val rollbackErrors = mutableListOf<Throwable>()
+
+            fun rollbackMove(
+                from: Path,
+                to: Path,
+            ) {
+                try {
+                    moveDirectory(from, to)
+                } catch (moveFailure: Throwable) {
+                    if (!Files.exists(from, LinkOption.NOFOLLOW_LINKS) &&
+                        Files.isRegularFile(to, LinkOption.NOFOLLOW_LINKS)
+                    ) {
+                        failure.addSuppressed(
+                            IllegalStateException("Rollback move completed but reported a failure: " + to, moveFailure),
+                        )
+                    } else {
+                        rollbackErrors += moveFailure
+                    }
+                }
+            }
+
             try {
-                if (activated) {
-                    val reserved = Files.createTempDirectory(parent, ".shamash-discarded-")
-                    Files.delete(reserved)
-                    moveDirectory(destination, reserved)
-                    discarded = reserved
+                if (activated.isNotEmpty()) {
+                    val discardedDirectory = Files.createTempDirectory(parent, ".shamash-discarded-")
+                    discarded = discardedDirectory
+                    for (name in activated.asReversed()) {
+                        val published = destination.resolve(name)
+                        if (Files.exists(published, LinkOption.NOFOLLOW_LINKS)) {
+                            rollbackMove(published, discardedDirectory.resolve(name))
+                        }
+                    }
                 }
-                val previous = backup
-                if (previous != null && Files.exists(previous, LinkOption.NOFOLLOW_LINKS)) {
-                    moveDirectory(previous, destination)
+                backup?.let { previousDirectory ->
+                    for (name in previouslyManaged.asReversed()) {
+                        val saved = previousDirectory.resolve(name)
+                        if (Files.exists(saved, LinkOption.NOFOLLOW_LINKS)) {
+                            val target = destination.resolve(name)
+                            if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+                                rollbackErrors += IllegalStateException("Cannot restore occupied managed report: " + target)
+                            } else {
+                                rollbackMove(saved, target)
+                            }
+                        }
+                    }
                 }
-                discarded?.let { deleteTree(it) }
+                for (name in previouslyManaged) {
+                    val original = destination.resolve(name)
+                    if (!Files.isRegularFile(original, LinkOption.NOFOLLOW_LINKS)) {
+                        rollbackErrors += IllegalStateException("Previous managed report was not restored: " + original)
+                    }
+                }
+                for (name in activated) {
+                    val published = destination.resolve(name)
+                    if (name !in previouslyManaged && Files.exists(published, LinkOption.NOFOLLOW_LINKS)) {
+                        rollbackErrors += IllegalStateException("Incomplete managed report remains: " + published)
+                    }
+                }
+                if (createdDestination && Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
+                    try {
+                        Files.delete(destination)
+                    } catch (_: java.nio.file.DirectoryNotEmptyException) {
+                        // Other files may have been created concurrently; do not delete them.
+                    }
+                }
+                if (rollbackErrors.isNotEmpty()) {
+                    val cause = rollbackErrors.first()
+                    rollbackErrors.drop(1).forEach(cause::addSuppressed)
+                    throw cause
+                }
             } catch (rollbackFailure: Throwable) {
+                rollbackFailed = true
                 failure.addSuppressed(
-                    IllegalStateException("Report rollback failed; inspect retained generations in $parent", rollbackFailure),
+                    IllegalStateException(
+                        "Report rollback failed; inspect retained managed-file recovery data in " + parent,
+                        rollbackFailure,
+                    ),
                 )
-                // Do not delete retained generations if restoration did not complete.
             }
             throw failure
         } finally {
-            if (Files.exists(stage, LinkOption.NOFOLLOW_LINKS)) deleteTree(stage)
+            if (!rollbackFailed) {
+                cleanupOwned(stage, primaryFailure)
+                backup?.let { cleanupOwned(it, primaryFailure) }
+                discarded?.let { cleanupOwned(it, primaryFailure) }
+            }
         }
     }
 
-    private fun copyUnrelated(
-        source: Path,
-        destination: Path,
-    ) {
-        Files.walkFileTree(
-            source,
-            object : SimpleFileVisitor<Path>() {
-                override fun preVisitDirectory(
-                    dir: Path,
-                    attrs: BasicFileAttributes,
-                ): FileVisitResult {
-                    Files.createDirectories(destination.resolve(source.relativize(dir)))
-                    return FileVisitResult.CONTINUE
-                }
+    private fun requireDirectoryOrAbsent(destination: Path) {
+        if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
+            require(Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
+                "Report destination is not a directory: " + destination
+            }
+        }
+    }
 
-                override fun visitFile(
-                    file: Path,
-                    attrs: BasicFileAttributes,
-                ): FileVisitResult {
-                    if (source.relativize(file).nameCount == 1 && file.fileName.toString() in REPORT_FILES) {
-                        return FileVisitResult.CONTINUE
-                    }
-                    val target = destination.resolve(source.relativize(file))
-                    Files.copy(file, target, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES)
-                    return FileVisitResult.CONTINUE
+    private fun existingManagedFiles(destination: Path): List<String> =
+        ExportOutputLayout.MANAGED_REPORT_FILE_NAMES.sorted().filter { name ->
+            val target = destination.resolve(name)
+            if (!Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+                false
+            } else {
+                require(Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)) {
+                    "Managed report path must be a regular file: " + target
                 }
-            },
-        )
+                true
+            }
+        }
+
+    private fun stagedFiles(stage: Path): List<String> {
+        require(Files.isDirectory(stage, LinkOption.NOFOLLOW_LINKS)) {
+            "Report staging directory is missing or invalid: " + stage
+        }
+        return Files.list(stage).use { entries ->
+            entries
+                .toList()
+                .map { file ->
+                    val name = file.fileName.toString()
+                    require(
+                        name in ExportOutputLayout.MANAGED_REPORT_FILE_NAMES &&
+                            Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS),
+                    ) {
+                        "Staged report must be a managed regular file: " + file
+                    }
+                    name
+                }.sorted()
+        }
+    }
+
+    private fun cleanupOwned(
+        path: Path,
+        primaryFailure: Throwable?,
+    ) {
+        try {
+            if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) deleteTree(path)
+        } catch (cleanupFailure: Throwable) {
+            // Cleanup must not mask the original failure or turn an activated report into a failed publish.
+            primaryFailure?.addSuppressed(cleanupFailure)
+        }
     }
 
     private fun deleteTree(path: Path) {
@@ -184,9 +290,5 @@ class CoherentReportPublisher(
                 }
             },
         )
-    }
-
-    private companion object {
-        val REPORT_FILES = ExportOutputLayout.MANAGED_REPORT_FILE_NAMES
     }
 }
