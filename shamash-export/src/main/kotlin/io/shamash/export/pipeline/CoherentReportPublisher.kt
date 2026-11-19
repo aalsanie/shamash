@@ -146,10 +146,12 @@ class CoherentReportPublisher(
                         }
                     }
                 }
-                if (createdDestination && Files.exists(destination, LinkOption.NOFOLLOW_LINKS)) {
-                    // Do not remove the directory if another writer added unrelated content.
-                    Files.list(destination).use { entries ->
-                        if (entries.findAny().isEmpty) Files.delete(destination)
+                if (createdDestination && Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS)) {
+                    // An unrelated writer may have added content after the destination was created.
+                    try {
+                        Files.delete(destination)
+                    } catch (_: java.nio.file.DirectoryNotEmptyException) {
+                        // Leave the user's entries and their enclosing directory intact.
                     }
                 }
             } catch (rollbackFailure: Throwable) {
