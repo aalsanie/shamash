@@ -396,8 +396,8 @@ class CoherentReportPublisherTest {
             val publisher =
                 CoherentReportPublisher { from, to ->
                     if (from.parent.fileName.toString().startsWith(".shamash-stage-")) {
-                        Files.delete(from.resolve(ExportOutputLayout.JSON_FILE_NAME))
                         Files.delete(from)
+                        Files.delete(from.parent)
                         throw IOException("staging disappeared before activation")
                     }
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE)
