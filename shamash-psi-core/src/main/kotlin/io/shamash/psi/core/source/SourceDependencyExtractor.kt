@@ -164,7 +164,7 @@ class SourceDependencyExtractor(
                                                     "No supported target for '${element.text}' at ${element.textOffset}",
                                                 )
                                         }
-                                        refs += dependency(from.id, target, element, stamp, resolved, offset, length)
+                                        refs += dependency(from.id, target, element, stamp, declaration, offset, length)
                                     }
                                 }
                             }
