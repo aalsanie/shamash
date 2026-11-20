@@ -151,18 +151,9 @@ class SourceDependencyExtractor(
                                         continue
                                     }
                                     val evidenceRange = reference.rangeInElement
-                                    val implicit = evidenceRange.length <= 0 || evidenceRange.startOffset < 0 || evidenceRange.endOffset > element.textLength
-                                    val offset =
-                                        if (implicit) {
-                                            element.textOffset + when (element) {
-                                                is KtArrayAccessExpression -> element.text.indexOf('[').coerceAtLeast(0)
-                                                is KtCallExpression -> element.text.indexOf('(').coerceAtLeast(0)
-                                                else -> 0
-                                            }
-                                        } else {
-                                            element.textRange.startOffset + evidenceRange.startOffset
-                                        }
-                                    val length = if (implicit) 1 else evidenceRange.length
+                                    val start = evidenceRange.startOffset.coerceIn(0, element.textLength - 1)
+                                    val offset = element.textOffset + start
+                                    val length = evidenceRange.length.coerceIn(1, element.textLength - start)
                                     for (target in targets) {
                                         if (target is SourceTarget.Internal && target.entity == from.id) continue
                                         if (target is SourceTarget.Unresolved) {
