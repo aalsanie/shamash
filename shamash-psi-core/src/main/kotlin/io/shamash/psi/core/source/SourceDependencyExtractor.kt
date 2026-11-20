@@ -547,7 +547,12 @@ class SourceDependencyExtractor(
                     SourceDependencyKind.CALL
                 }
 
-                PsiTreeUtil.getParentOfType(element, PsiNewExpression::class.java)?.classReference === element ||
+                (
+                    resolved is PsiClass &&
+                        PsiTreeUtil.getParentOfType(element, PsiNewExpression::class.java)
+                            ?.classReference
+                            ?.let { reference -> reference === element || PsiTreeUtil.isAncestor(reference, element, false) } == true
+                ) ||
                     (
                         (resolved is PsiClass || resolved is KtClassOrObject) &&
                             PsiTreeUtil.getParentOfType(element, KtCallExpression::class.java)?.calleeExpression === element
