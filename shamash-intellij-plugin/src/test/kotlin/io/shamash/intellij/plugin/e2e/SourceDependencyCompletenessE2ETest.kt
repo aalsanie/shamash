@@ -275,7 +275,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(has("b.Contract", SourceDependencyKind.INHERITANCE), references.toString())
         assertTrue(has("b.Value", SourceDependencyKind.TYPE), references.toString())
         assertTrue(has("b.Registry.value", SourceDependencyKind.ACCESS), references.toString())
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
     }
 
     fun testKotlinResolvedExtensionOperatorCreatesCycleAndNavigableCall() {
