@@ -105,12 +105,7 @@ class SourceDependencyExtractor(
                     if (supportedReference(element) && !insideImport(element)) {
                         val from = owningEntity(element, location)
                         if (from == null) {
-                            diagnostics +=
-                                SourceDiagnostic(
-                                    location.fileUrl,
-                                    "owner",
-                                    "No supported declaration owns reference at ${element.textOffset}",
-                                )
+                            diagnostics += SourceDiagnostic(location.fileUrl, "owner", "No supported declaration owns reference at ${element.textOffset}")
                             return super.visitElement(element)
                         }
                         try {
@@ -191,8 +186,7 @@ class SourceDependencyExtractor(
             ProgressManager.checkCanceled()
             val source = owningEntityFrom(use.owner, location)
             if (source == null) {
-                diagnostics +=
-                    SourceDiagnostic(location.fileUrl, "owner", "No supported declaration owns type at ${use.evidence.textOffset}")
+                diagnostics += SourceDiagnostic(location.fileUrl, "owner", "No supported declaration owns type at ${use.evidence.textOffset}")
                 continue
             }
             val walked = PsiTypeClassReferences.collect(use.type)
