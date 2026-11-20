@@ -74,6 +74,22 @@ class CoverageDiffTest(unittest.TestCase):
         self.assertEqual((1, 1), result["line"])
         self.assertEqual((0, 0), result["branch"])
 
+    def test_branch_only_kotlin_line_counts_branches_but_not_instructions(self):
+        self.report_lines(entries={1: (0, 1, 0, 1), 2: (0, 0, 0, 1)})
+        result = checker.check_coverage(self.report, diff("@@ -1,2 +1,2 @@"))
+        self.assertEqual((1, 1), result["line"])
+        self.assertEqual((2, 2), result["branch"])
+
+    def test_uncovered_branch_only_line_still_fails_strict_gate(self):
+        self.report_lines(entries={1: (0, 1, 0, 2), 2: (0, 0, 1, 0)})
+        with self.assertRaisesRegex(ValueError, "branch coverage must exceed 90%"):
+            checker.check_coverage(self.report, diff("@@ -1,2 +1,2 @@"))
+
+    def test_branch_only_source_cannot_fake_line_coverage(self):
+        self.report_lines(entries={1: (0, 0, 0, 2)})
+        with self.assertRaisesRegex(ValueError, "No measurable changed source lines"):
+            checker.check_coverage(self.report, diff("@@ -1 +1 @@"))
+
     def test_partial_line_counts_as_covered(self):
         self.report_lines(entries={1: (2, 1, 0, 2)})
         self.assertEqual((1, 1), checker.check_coverage(self.report, diff("@@ -1 +1 @@"))["line"])
