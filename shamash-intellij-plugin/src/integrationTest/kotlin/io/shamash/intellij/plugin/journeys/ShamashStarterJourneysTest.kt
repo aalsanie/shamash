@@ -364,10 +364,10 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Acyclic dependencies must remain explorable", present)
                     invokeAction("HideAllWindows")
                     invokeAction("GotoFile")
-                    keyboard {
-                        enterText("Beta.java")
-                        enter()
-                    }
+                    keyboard { enterText("Beta.java") }
+                    x(xQuery { byVisibleText("Beta.java") })
+                        .shouldBe("Go to File must resolve Beta.java before opening it", present)
+                    keyboard { enter() }
                 }
                 waitFor(30.seconds, errorMessage = "Goto File must open Beta.java") {
                     withContext {
