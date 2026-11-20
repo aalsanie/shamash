@@ -296,6 +296,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                     import b.invoke
                     class Token
                     fun use(token: Token): Token = token()
+                    fun explicit(token: Token): Token = token.invoke()
                 """.trimIndent(),
             )
         myFixture.addFileToProject(
@@ -312,7 +313,13 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         val (snapshot, graph) = analyze()
         assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         assertEquals(1, graph.cycles.size)
-        assertNavigates(dependency(snapshot, "a", "b", "invoke"))
+        val calls =
+            snapshot.references.filter {
+                fromPackage(it) == "a" && targetPackage(it) == "b" &&
+                    it.target.toString().contains(".invoke(")
+            }
+        assertEquals(2, calls.size)
+        calls.forEach(::assertNavigates)
     }
 
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
