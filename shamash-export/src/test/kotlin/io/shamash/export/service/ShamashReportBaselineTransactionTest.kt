@@ -16,6 +16,9 @@ import io.shamash.artifacts.contract.FindingSeverity
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.export.pipeline.FindingPreprocessor
 import java.io.IOException
+import java.nio.channels.FileChannel
+import java.nio.channels.OverlappingFileLockException
+import java.nio.file.StandardOpenOption
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -28,6 +31,38 @@ import kotlin.test.assertTrue
 
 class ShamashReportBaselineTransactionTest {
     private val store = BaselineStore()
+
+    @Test
+    fun generatedBaselineIsWrittenWhileReportPublicationLockIsHeld() =
+        withProject { project ->
+            val lockFile = project.resolve(".shamash-publish-lock")
+            var lockObserved = false
+            val guardedStore =
+                injectedBaselineStore { from, to ->
+                    FileChannel.open(lockFile, StandardOpenOption.WRITE).use { channel ->
+                        assertFailsWith<OverlappingFileLockException> {
+                            channel.tryLock()
+                        }
+                    }
+                    lockObserved = true
+                    Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+                }
+
+            val result =
+                export(
+                    project,
+                    findings = listOf(finding(project, "RULE")),
+                    baseline = BaselineConfig(BaselineMode.GENERATE, writeMerged = true),
+                    service = ShamashReportExportService(BaselineCoordinator(guardedStore)),
+                )
+
+            assertTrue(lockObserved)
+            assertTrue(result.baselineWritten)
+            assertEquals(
+                setOf(result.report.findings.single().fingerprint),
+                store.load(result.outputDir)?.fingerprints,
+            )
+        }
 
     @Test
     fun failedBaselineDirectoryCollisionRestoresPreviouslyPublishedReports() =
@@ -238,7 +273,7 @@ class ShamashReportBaselineTransactionTest {
         }
 
     @Test
-    fun invalidBaselineInUseOrMergedGenerateFailsBeforeReplacingReports() =
+    fun invalidBaselineInUseOrMergedGeneratePreservesPreviousReports() =
         withProject { project ->
             val output = Files.createDirectories(project.resolve(".shamash"))
             val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
