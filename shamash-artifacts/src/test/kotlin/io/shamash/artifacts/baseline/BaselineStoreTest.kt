@@ -9,12 +9,138 @@ package io.shamash.artifacts.baseline
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
+import kotlin.test.assertContentEquals
 
 class BaselineStoreTest {
+    @Test
+    fun replaceFailureAfterMoveRestoresOriginalBytes() {
+        val out = Files.createTempDirectory("shamash-baseline-replace-")
+        try {
+            val original = BaselineStore()
+            original.write(out, setOf("a".repeat(64)))
+            val path = original.baselinePath(out)
+            val before = Files.readAllBytes(path)
+            val failing =
+                BaselineStore { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    throw java.io.IOException("move completed before callback failed")
+                }
+
+            assertFailsWith<java.io.IOException> { failing.write(out, setOf("b".repeat(64))) }
+
+            assertContentEquals(before, Files.readAllBytes(path))
+            Files.list(out).use { files -> assertEquals(1, files.count()) }
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun replaceFailureBeforeMovePreservesPreviousBytes() {
+        val out = Files.createTempDirectory("shamash-baseline-pre-move-")
+        try {
+            val original = BaselineStore()
+            original.write(out, setOf("a".repeat(64)))
+            val before = Files.readAllBytes(original.baselinePath(out))
+            val failing = BaselineStore { _, _ -> throw java.io.IOException("move denied") }
+
+            assertFailsWith<java.io.IOException> { failing.write(out, setOf("b".repeat(64))) }
+
+            assertContentEquals(before, Files.readAllBytes(original.baselinePath(out)))
+            Files.list(out).use { files -> assertEquals(1, files.count()) }
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun failedFirstMoveAfterActivationLeavesBaselineAbsent() {
+        val out = Files.createTempDirectory("shamash-baseline-first-move-")
+        try {
+            val failing =
+                BaselineStore { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    throw java.io.IOException("first move committed")
+                }
+
+            assertFailsWith<java.io.IOException> { failing.write(out, setOf("a".repeat(64))) }
+
+            assertFalse(Files.exists(failing.baselinePath(out)))
+            Files.list(out).use { files -> assertEquals(0, files.count()) }
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun failedRestoreRetainsOldBaselineAsRecoveryFile() {
+        val out = Files.createTempDirectory("shamash-baseline-recovery-")
+        try {
+            val initial = BaselineStore()
+            initial.write(out, setOf("a".repeat(64)))
+            val failing =
+                BaselineStore { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    Files.delete(to)
+                    Files.createDirectory(to)
+                    Files.writeString(to.resolve("user-content.txt"), "do not remove")
+                    throw java.io.IOException("replacement disrupted")
+                }
+
+            val error = assertFailsWith<java.io.IOException> { failing.write(out, setOf("b".repeat(64))) }
+
+            assertTrue(error.suppressed.any { it.message?.contains("Baseline restoration failed") == true })
+            assertEquals("do not remove", Files.readString(out.resolve("baseline.json/user-content.txt")))
+            Files.list(out).use { files ->
+                val retained =
+                    files.filter { it.fileName.toString().startsWith(".baseline.json.previous-") }.findFirst().orElseThrow()
+                assertEquals(setOf("a".repeat(64)), initial.loadFile(retained)?.fingerprints)
+            }
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun nonRegularBaselineDestinationIsRejectedWithoutMutation() {
+        val out = Files.createTempDirectory("shamash-baseline-directory-")
+        try {
+            val directory = Files.createDirectory(out.resolve("baseline.json"))
+            Files.writeString(directory.resolve("personal.txt"), "keep")
+            assertFailsWith<IllegalArgumentException> {
+                BaselineStore().write(out, setOf("a".repeat(64)))
+            }
+            assertEquals("keep", Files.readString(directory.resolve("personal.txt")))
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun symlinkBaselineDestinationIsRejectedWithoutFollowingIt() {
+        if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) return
+        val out = Files.createTempDirectory("shamash-baseline-link-")
+        try {
+            val outside = out.resolve("outside.txt")
+            Files.writeString(outside, "unrelated")
+            val link = Files.createSymbolicLink(out.resolve("baseline.json"), outside)
+            assertFailsWith<IllegalArgumentException> {
+                BaselineStore().write(out, setOf("a".repeat(64)))
+            }
+            assertTrue(Files.isSymbolicLink(link))
+            assertEquals("unrelated", Files.readString(outside))
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
     @Test
     fun load_returnsNullWhenMissing() {
         val store = BaselineStore()
