@@ -18,6 +18,7 @@ import com.intellij.psi.PsiImportStatementBase
 import com.intellij.psi.PsiJavaCodeReferenceElement
 import com.intellij.psi.PsiLocalVariable
 import com.intellij.psi.PsiParameter
+import com.intellij.psi.PsiPackageStatement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
@@ -39,6 +40,7 @@ import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
 import org.jetbrains.kotlin.psi.KtParameter
+import org.jetbrains.kotlin.psi.KtPackageDirective
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
@@ -329,7 +331,11 @@ class SourceDependencyExtractor(
     private fun insideImport(e: PsiElement): Boolean {
         var parent: PsiElement? = e.parent
         while (parent != null && parent !is PsiFile) {
-            if (parent is PsiImportStatementBase || parent is KtImportDirective) return true
+            if (parent is PsiImportStatementBase || parent is KtImportDirective ||
+                parent is PsiPackageStatement || parent is KtPackageDirective
+            ) {
+                return true
+            }
             parent = parent.parent
         }
         return false
