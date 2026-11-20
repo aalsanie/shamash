@@ -53,7 +53,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                 package a;
                 public class A {
                     Callback callback = new Callback() {
-                        @Override public void run() { b.B.ping(); }
+                        public void run() { b.B.ping(); }
                     };
                 }
             """.trimIndent(),
@@ -81,10 +81,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                 package a;
                 public class A {
                     public void call() {
+                        interface LocalCallback { void run(); }
                         class Local {
                             void work() {
-                                Runnable r = new Runnable() {
-                                    @Override public void run() { b.B.ping(); }
+                                LocalCallback r = new LocalCallback() {
+                                    public void run() { b.B.ping(); }
                                 };
                                 r.run();
                             }
@@ -115,10 +116,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             """
                 package a;
                 public class A {
+                    interface Callback { void run(); }
                     static { b.B.ping(); }
                     int count = b.B.answer();
-                    Runnable action = new Runnable() {
-                        @Override public void run() { b.B.ping(); }
+                    Callback action = new Callback() {
+                        public void run() { b.B.ping(); }
                         b.B extra;
                     };
                 }
