@@ -255,7 +255,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         val (snapshot, graph) = analyze()
         assertTrue(graph.cycles.isEmpty())
         assertTrue(snapshot.relationships.none { targetPackage(it) == "b" })
-        assertTrue(snapshot.references.none { it.target is SourceTarget.Unresolved })
+        assertTrue(
+            snapshot.references.none { it.target is SourceTarget.Unresolved },
+            "Unexpected unresolved references: ${snapshot.references.filter { it.target is SourceTarget.Unresolved }}; diagnostics: ${snapshot.diagnostics}",
+        )
         assertTrue(snapshot.entities.none { it.id.signature.contains("copy") || it.id.signature.contains("choose") })
     }
 
@@ -349,7 +352,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         val edge = dependency(snapshot, "a", "b", "ping")
         assertTrue(edge.from.signature.contains("Owner.run("), edge.from.toString())
         assertTrue(snapshot.entities.none { it.id.signature.contains("Local") })
-        assertTrue(snapshot.references.none { it.target is SourceTarget.Unresolved })
+        assertTrue(
+            snapshot.references.none { it.target is SourceTarget.Unresolved },
+            "Unexpected unresolved references: ${snapshot.references.filter { it.target is SourceTarget.Unresolved }}; diagnostics: ${snapshot.diagnostics}",
+        )
         assertNavigates(edge)
     }
 
