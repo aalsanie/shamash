@@ -363,7 +363,7 @@ class SourceDependencyExtractor(
             declaration is PsiParameter ||
             declaration is KtParameter ||
             (declaration is PsiClass && declaration.qualifiedName == null) ||
-            (declaration is PsiMember && declaration.containingClass?.qualifiedName == null) ||
+            (declaration is PsiMember && declaration !is PsiClass && declaration.containingClass?.qualifiedName == null) ||
             (declaration is KtClassOrObject && (declaration.name == null || hasLocalBoundary(declaration))) ||
             (declaration is KtProperty && (declaration.isLocal || hasLocalBoundary(declaration))) ||
             (declaration is KtNamedFunction && hasLocalBoundary(declaration))
