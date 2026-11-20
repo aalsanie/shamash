@@ -116,7 +116,6 @@ class SourceDependencyExtractor(
                             val candidates = element.references
                             if (candidates.isEmpty()) {
                                 if (element is KtNameReferenceExpression ||
-                                    element is KtOperationReferenceExpression ||
                                     element is KtArrayAccessExpression
                                 ) {
                                     diagnostics +=
@@ -315,7 +314,7 @@ class SourceDependencyExtractor(
         e is PsiJavaCodeReferenceElement ||
             e is PsiReferenceExpression ||
             e is KtNameReferenceExpression ||
-            e is KtOperationReferenceExpression ||
+            (e is KtOperationReferenceExpression && e.references.isNotEmpty()) ||
             e is KtArrayAccessExpression ||
             e is KtCallExpression
 
