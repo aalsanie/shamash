@@ -80,6 +80,23 @@ class CoverageDiffTest(unittest.TestCase):
         self.assertEqual((1, 1), result["line"])
         self.assertEqual((2, 2), result["branch"])
 
+    def test_all_zero_line_is_non_executable_and_does_not_dilute_coverage(self):
+        self.report_lines(
+            entries={
+                1: (0, 2, 0, 2),
+                2: (0, 0, 0, 0),
+                3: (0, 2, 0, 2),
+            }
+        )
+        result = checker.check_coverage(self.report, diff("@@ -1,3 +1,3 @@"))
+        self.assertEqual((2, 2), result["line"])
+        self.assertEqual((4, 4), result["branch"])
+
+    def test_all_zero_only_source_still_fails_closed(self):
+        self.report_lines(entries={1: (0, 0, 0, 0)})
+        with self.assertRaisesRegex(ValueError, "No measurable changed source lines"):
+            checker.check_coverage(self.report, diff("@@ -1 +1 @@"))
+
     def test_uncovered_branch_only_line_still_fails_strict_gate(self):
         self.report_lines(entries={1: (0, 1, 0, 2), 2: (0, 0, 1, 0)})
         with self.assertRaisesRegex(ValueError, "branch coverage must exceed 90%"):
@@ -178,7 +195,7 @@ class CoverageDiffTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid source coverage"):
             checker.check_coverage(self.report, diff("@@ -1 +1 @@"))
         self.report_lines(entries={1: (0, 0, 0, 0)})
-        with self.assertRaisesRegex(ValueError, "Invalid source coverage"):
+        with self.assertRaisesRegex(ValueError, "No measurable changed source lines"):
             checker.check_coverage(self.report, diff("@@ -1 +1 @@"))
 
     def test_each_changed_file_must_pass_even_when_global_total_passes(self):
