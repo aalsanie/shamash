@@ -31,9 +31,11 @@ import com.intellij.psi.PsiVariable
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
+import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtLambdaExpression
@@ -114,59 +116,49 @@ class SourceDependencyExtractor(
                         }
                         try {
                             val candidates = element.references
-                            if (candidates.isEmpty()) {
-                                if (element is KtNameReferenceExpression ||
-                                    element is KtOperationReferenceExpression ||
-                                    element is KtArrayAccessExpression
+                            var resolvedCandidate = false
+                            for (reference in candidates) {
+                                ProgressManager.checkCanceled()
+                                val resolved = reference.resolve()
+                                val declaration = resolved?.let(::declarationOf)
+                                if (element is KtCallExpression &&
+                                    ((declaration as? KtNamedFunction)?.name != "invoke" ||
+                                        element.calleeExpression?.text == "invoke")
                                 ) {
-                                    diagnostics +=
-                                        SourceDiagnostic(
-                                            location.fileUrl,
-                                            "resolve",
-                                            "No reference for '${element.text}' at ${element.textOffset}",
-                                        )
-                                    refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
+                                    continue
                                 }
-                            } else {
-                                for (reference in candidates) {
-                                    ProgressManager.checkCanceled()
-                                    val resolved = reference.resolve()
-                                    val declaration = resolved?.let(::declarationOf)
-                                    if (element is KtCallExpression &&
-                                        ((declaration as? KtNamedFunction)?.name != "invoke" ||
-                                            element.calleeExpression?.text == "invoke")
-                                    ) {
-                                        continue
-                                    }
-                                    if (resolved != null && (declaration == null || isLocalBinding(declaration))) continue
-                                    val targets = resolveTargets(resolved)
-                                    if (targets.isEmpty()) {
+                                if (resolved != null && (declaration == null || isLocalBinding(declaration))) {
+                                    resolvedCandidate = true
+                                    continue
+                                }
+                                val targets = resolveTargets(resolved)
+                                if (targets.isEmpty()) continue
+                                resolvedCandidate = true
+                                val evidenceRange = reference.rangeInElement
+                                val start = evidenceRange.startOffset.coerceIn(0, element.textLength - 1)
+                                val offset = element.textOffset + start
+                                val length = evidenceRange.length.coerceIn(1, element.textLength - start)
+                                for (target in targets) {
+                                    if (target is SourceTarget.Internal && target.entity == from.id) continue
+                                    if (target is SourceTarget.Unresolved) {
                                         diagnostics +=
                                             SourceDiagnostic(
                                                 location.fileUrl,
                                                 "resolve",
-                                                "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                                "No supported target for '${element.text}' at ${element.textOffset}",
                                             )
-                                        refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
-                                        continue
                                     }
-                                    val evidenceRange = reference.rangeInElement
-                                    val start = evidenceRange.startOffset.coerceIn(0, element.textLength - 1)
-                                    val offset = element.textOffset + start
-                                    val length = evidenceRange.length.coerceIn(1, element.textLength - start)
-                                    for (target in targets) {
-                                        if (target is SourceTarget.Internal && target.entity == from.id) continue
-                                        if (target is SourceTarget.Unresolved) {
-                                            diagnostics +=
-                                                SourceDiagnostic(
-                                                    location.fileUrl,
-                                                    "resolve",
-                                                    "No supported target for '${element.text}' at ${element.textOffset}",
-                                                )
-                                        }
-                                        refs += dependency(from.id, target, element, stamp, declaration, offset, length)
-                                    }
+                                    refs += dependency(from.id, target, element, stamp, declaration, offset, length)
                                 }
+                            }
+                            if (!resolvedCandidate && shouldReportUnresolved(element)) {
+                                diagnostics +=
+                                    SourceDiagnostic(
+                                        location.fileUrl,
+                                        "resolve",
+                                        "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                    )
+                                refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
                             }
                         } catch (c: ProcessCanceledException) {
                             throw c
@@ -318,6 +310,44 @@ class SourceDependencyExtractor(
             (e is KtOperationReferenceExpression && e.isConventionOperator()) ||
             e is KtArrayAccessExpression ||
             e is KtCallExpression
+
+    private fun shouldReportUnresolved(element: PsiElement): Boolean =
+        when (element) {
+            is KtNameReferenceExpression -> !isLexicalLocalReference(element)
+            is KtOperationReferenceExpression, is KtArrayAccessExpression -> true
+            else -> element is PsiJavaCodeReferenceElement || element is PsiReferenceExpression
+        }
+
+    private fun isLexicalLocalReference(reference: KtNameReferenceExpression): Boolean {
+        val name = reference.getReferencedName()
+        var scope: PsiElement? = reference.parent
+        while (scope != null && scope !is PsiFile) {
+            if (scope is KtNamedFunction && scope.valueParameters.any { it.name == name }) return true
+            if (scope is KtBlockExpression) {
+                val declarations = scope.statements.filter { it.textOffset < reference.textOffset }
+                if (declarations.any {
+                        (it is KtProperty && it.name == name) ||
+                            (it is KtNamedFunction && it.name == name) ||
+                            (it is KtClassOrObject && it.name == name)
+                    }
+                ) {
+                    return true
+                }
+                val qualified = PsiTreeUtil.getParentOfType(reference, KtDotQualifiedExpression::class.java)
+                val receiver = qualified?.receiverExpression as? KtCallExpression
+                val localClassName = (receiver?.calleeExpression as? KtNameReferenceExpression)?.getReferencedName()
+                if (localClassName != null &&
+                    declarations
+                        .filterIsInstance<KtClassOrObject>()
+                        .any { it.name == localClassName && it.declarations.any { member -> member is KtNamedFunction && member.name == name } }
+                ) {
+                    return true
+                }
+            }
+            scope = scope.parent
+        }
+        return false
+    }
 
     private fun insideImport(e: PsiElement): Boolean {
         var parent: PsiElement? = e.parent
