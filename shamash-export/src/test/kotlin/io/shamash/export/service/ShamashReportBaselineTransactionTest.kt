@@ -57,7 +57,7 @@ class ShamashReportBaselineTransactionTest {
             Files.writeString(report, "previous generation")
             store.write(output, setOf("a".repeat(64)))
             val previous = Files.readAllBytes(store.baselinePath(output))
-            val failing = BaselineStore { _, _ -> throw IOException("replacement denied") }
+            val failing = injectedBaselineStore { _, _ -> throw IOException("replacement denied") }
 
             assertFailsWith<IOException> {
                 export(
@@ -81,7 +81,7 @@ class ShamashReportBaselineTransactionTest {
             store.write(output, setOf("a".repeat(64)))
             val previous = Files.readAllBytes(store.baselinePath(output))
             val failing =
-                BaselineStore { from, to ->
+                injectedBaselineStore { from, to ->
                     Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
                     throw IOException("replacement completed before reporting failure")
                 }
@@ -106,7 +106,7 @@ class ShamashReportBaselineTransactionTest {
             val report = output.resolve(ExportOutputLayout.JSON_FILE_NAME)
             Files.writeString(report, "previous generation")
             val failing =
-                BaselineStore { from, to ->
+                injectedBaselineStore { from, to ->
                     Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
                     throw IOException("initial baseline completed before reporting failure")
                 }
@@ -336,7 +336,7 @@ class ShamashReportBaselineTransactionTest {
             Files.writeString(report, "previous generation")
             Files.writeString(notes, "before")
             val failing =
-                BaselineStore { _, _ ->
+                injectedBaselineStore { _, _ ->
                     Files.writeString(notes, "changed during activation")
                     Files.writeString(output.resolve("new-user-data.txt"), "new data")
                     throw IOException("baseline write failed")
@@ -354,6 +354,11 @@ class ShamashReportBaselineTransactionTest {
             assertEquals("changed during activation", Files.readString(notes))
             assertEquals("new data", Files.readString(output.resolve("new-user-data.txt")))
         }
+
+    private fun injectedBaselineStore(replacement: (Path, Path) -> Unit): BaselineStore {
+        val constructor = BaselineStore::class.java.getDeclaredConstructor(Function2::class.java)
+        return constructor.newInstance(replacement)
+    }
 
     private fun finding(
         project: Path,
