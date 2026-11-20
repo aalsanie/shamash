@@ -21,6 +21,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
@@ -381,6 +382,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
                 document.setText("package demo; class Caller { Repository repo; }")
             }
         }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
         fire(RunPsiScanAction())
         awaitTerminal()
         val state = IdeAnalysisCoordinator.getInstance(project).state()
