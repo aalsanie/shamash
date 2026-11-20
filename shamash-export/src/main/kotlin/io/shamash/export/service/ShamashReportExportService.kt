@@ -9,6 +9,7 @@ package io.shamash.export.service
 
 import io.shamash.artifacts.baseline.BaselineConfig
 import io.shamash.artifacts.baseline.BaselineCoordinator
+import io.shamash.artifacts.baseline.BaselineFindingPreprocessor
 import io.shamash.artifacts.baseline.BaselineMode
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.report.layout.ExportOutputLayout
@@ -46,59 +47,62 @@ class ShamashReportExportService(
                 emptySet()
             }
 
-        // Adapt the preprocessor here to keep the baseline module independent of export.
         val baselinePreprocessor: FindingPreprocessor? =
             if (baseline.mode == BaselineMode.USE && baselineFingerprints.isNotEmpty()) {
-                baselineCoordinator
-                    .createSuppressionPreprocessor(baselineFingerprints)
-                    ?.let { bp ->
-                        FindingPreprocessor { base, fs -> bp.process(base, fs) }
-                    }
+                val suppression = BaselineFindingPreprocessor(baselineFingerprints)
+                FindingPreprocessor { base, fs -> suppression.process(base, fs) }
+            } else {
+                null
+            }
+
+        val baseAbs = projectBasePath.toAbsolutePath().normalize()
+        val effectiveFindings =
+            if (exceptionsPreprocessor == null) {
+                findings
+            } else {
+                exceptionsPreprocessor.process(baseAbs, findings)
+            }
+
+        val generatedFingerprints =
+            if (baseline.mode == BaselineMode.GENERATE) {
+                baselineCoordinator.computeFingerprints(projectBasePath, effectiveFindings)
             } else {
                 null
             }
 
         val orchestrator =
             DefaultExportPipelineFactory.create(
-                exceptionsPreprocessor = exceptionsPreprocessor,
                 baselinePreprocessor = baselinePreprocessor,
             )
 
         val report =
-            CoherentReportPublisher().publish(outputDir) { staging ->
+            CoherentReportPublisher().publish(
+                outputDir = outputDir,
+                onActivated = {
+                    if (generatedFingerprints != null) {
+                        baselineCoordinator.writeBaseline(
+                            outputDir = outputDir,
+                            fingerprints = generatedFingerprints,
+                            mergeWithExisting = baseline.writeMerged,
+                        )
+                    }
+                },
+            ) { staging ->
                 orchestrator.export(
                     projectBasePath = projectBasePath,
                     projectName = projectName,
                     toolName = toolName,
                     toolVersion = toolVersion,
-                    findings = findings,
+                    findings = effectiveFindings,
                     outputDir = staging,
                     generatedAtEpochMillis = generatedAtEpochMillis,
                 )
             }
 
-        val baselineWritten =
-            if (baseline.mode == BaselineMode.GENERATE) {
-                // Generate from exception-filtered findings without suppressing the existing baseline.
-                val baseAbs = projectBasePath.toAbsolutePath().normalize()
-                val currentFindings =
-                    exceptionsPreprocessor?.process(baseAbs, findings) ?: findings
-
-                val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, currentFindings)
-                baselineCoordinator.writeBaseline(
-                    outputDir = outputDir,
-                    fingerprints = fingerprints,
-                    mergeWithExisting = baseline.writeMerged,
-                )
-                true
-            } else {
-                false
-            }
-
         return ExportResult(
             report = report,
             outputDir = outputDir,
-            baselineWritten = baselineWritten,
+            baselineWritten = generatedFingerprints != null,
         )
     }
 }

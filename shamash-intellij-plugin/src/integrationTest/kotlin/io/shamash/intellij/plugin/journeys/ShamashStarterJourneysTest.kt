@@ -232,9 +232,10 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.asm.runScan")
-                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Old Build Scan must invoke source analysis, including Kotlin", present)
+                    x(xQuery { byVisibleText("Findings") }).click()
+                    invokeAction("MaximizeToolWindow")
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Findings list must be present", present)
                     assertEquals(
@@ -363,10 +364,10 @@ class ShamashStarterJourneysTest {
                         .shouldBe("Acyclic dependencies must remain explorable", present)
                     invokeAction("HideAllWindows")
                     invokeAction("GotoFile")
-                    keyboard {
-                        enterText("Beta.java")
-                        enter()
-                    }
+                    keyboard { enterText("Beta.java") }
+                    x(xQuery { byVisibleText("Beta.java") })
+                        .shouldBe("Go to File must resolve Beta.java before opening it", present)
+                    keyboard { enter() }
                 }
                 waitFor(30.seconds, errorMessage = "Goto File must open Beta.java") {
                     withContext {
