@@ -10,6 +10,7 @@ package io.shamash.export.service
 import io.shamash.artifacts.baseline.BaselineConfig
 import io.shamash.artifacts.baseline.BaselineCoordinator
 import io.shamash.artifacts.baseline.BaselineMode
+import io.shamash.artifacts.baseline.BaselineFindingPreprocessor
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.artifacts.report.schema.v1.ExportedReport
@@ -46,25 +47,30 @@ class ShamashReportExportService(
                 emptySet()
             }
 
-        // Adapt the preprocessor here to keep the baseline module independent of export.
         val baselinePreprocessor: FindingPreprocessor? =
             if (baseline.mode == BaselineMode.USE && baselineFingerprints.isNotEmpty()) {
-                baselineCoordinator
-                    .createSuppressionPreprocessor(baselineFingerprints)
-                    ?.let { bp ->
-                        FindingPreprocessor { base, fs -> bp.process(base, fs) }
-                    }
+                val suppression = BaselineFindingPreprocessor(baselineFingerprints)
+                FindingPreprocessor { base, fs -> suppression.process(base, fs) }
             } else {
                 null
             }
 
         val baseAbs = projectBasePath.toAbsolutePath().normalize()
-        val effectiveFindings = exceptionsPreprocessor?.process(baseAbs, findings) ?: findings
+        val effectiveFindings =
+            if (exceptionsPreprocessor == null) {
+                findings
+            } else {
+                exceptionsPreprocessor.process(baseAbs, findings)
+            }
 
         val preparedBaseline =
             if (baseline.mode == BaselineMode.GENERATE) {
-                val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, effectiveFindings)
-                baselineCoordinator.prepareBaseline(outputDir, fingerprints, baseline.writeMerged)
+                val current = baselineCoordinator.computeFingerprints(projectBasePath, effectiveFindings)
+                if (baseline.writeMerged) {
+                    baselineCoordinator.loadBaselineFingerprints(outputDir) + current
+                } else {
+                    current
+                }
             } else {
                 null
             }
