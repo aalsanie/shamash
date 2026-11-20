@@ -394,7 +394,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(facts.entities.any { it.id.signature == "demo.Repository" })
         assertTrue(facts.relationships.any { it.target.signature == "demo.Repository" })
         assertTrue(facts.entities.any { it.id.signature == "demo.Service" })
-        val graph = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceGraph)
+        val graph = kotlin.test.assertNotNull(state.visibleResult.payload?.sourceGraph)
         assertEquals(facts.profile.id, graph.profileId)
         assertTrue(graph.entityRelationships.any { it.target.signature == "demo.Repository" })
         assertEquals(facts.coverage, graph.coverage)
