@@ -232,9 +232,10 @@ class ShamashStarterJourneysTest {
                 openedProject = Path.of(requireNotNull(singleProject().getPresentableUrl()))
                 ideFrame {
                     invokeAction("io.shamash.asm.runScan")
-                    invokeAction("MaximizeToolWindow")
                     x(xQuery { byVisibleText("Cyclic group of 2 packages") })
                         .shouldBe("Old Build Scan must invoke source analysis, including Kotlin", present)
+                    x(xQuery { byVisibleText("Findings") }).click()
+                    invokeAction("MaximizeToolWindow")
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Findings list must be present", present)
                     assertEquals(
