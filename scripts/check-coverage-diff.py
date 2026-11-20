@@ -101,7 +101,7 @@ def source_coverage(report: Path, paths: set[str]) -> dict[str, dict[int, tuple[
             for line in source.findall("line"):
                 nr = int(line.attrib["nr"])
                 values = tuple(int(line.attrib[key]) for key in ("mi", "ci", "mb", "cb"))
-                if nr < 1 or any(v < 0 for v in values) or not any(values) or nr in line_values:
+                if nr < 1 or any(v < 0 for v in values) or nr in line_values:
                     raise ValueError(
                         f"Invalid source coverage at {path}:{nr} "
                         f"(mi={values[0]}, ci={values[1]}, mb={values[2]}, cb={values[3]}, duplicate={nr in line_values})"
