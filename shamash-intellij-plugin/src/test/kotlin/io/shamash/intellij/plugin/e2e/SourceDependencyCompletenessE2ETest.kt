@@ -287,6 +287,34 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(2, edges.filter { it.target.toString().contains(".plus(") }.size)
     }
 
+    fun testKotlinInvokeExtensionRetainsCrossPackageCall() {
+        val source =
+            myFixture.addFileToProject(
+                "src/main/kotlin/a/Token.kt",
+                """
+                    package a
+                    import b.invoke
+                    class Token
+                    fun use(token: Token): Token = token()
+                """.trimIndent(),
+            )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Invoke.kt",
+            """
+                package b
+                operator fun a.Token.invoke(): a.Token = this
+            """.trimIndent(),
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val call = PsiTreeUtil.findChildrenOfType(source, org.jetbrains.kotlin.psi.KtCallExpression::class.java)
+            .single { it.text == "token()" }
+        assertTrue(call.references.any { it.resolve() != null }, "Fixture must expose an implicit invoke reference")
+        val (snapshot, graph) = analyze()
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+        assertEquals(1, graph.cycles.size)
+        assertNavigates(dependency(snapshot, "a", "b", "invoke"))
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
