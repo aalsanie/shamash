@@ -371,11 +371,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
 
     private fun assertNavigates(reference: SourceDependency) {
         assertTrue(reference.evidence.length > 0, reference.toString())
-        val file = assertNotNull(VirtualFileManager.getInstance().findFileByUrl(reference.evidence.fileUrl))
+        val file = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(reference.evidence.fileUrl))
         assertTrue(reference.evidence.offset >= 0)
         assertTrue(reference.evidence.offset + reference.evidence.length <= file.length)
-        val target = reference.target as? SourceTarget.Internal
-        assertNotNull(target, reference.toString())
+        requireNotNull(reference.target as? SourceTarget.Internal) { reference.toString() }
         assertTrue(
             SourceNavigationService(project).open(
                 SourceEvidence(
