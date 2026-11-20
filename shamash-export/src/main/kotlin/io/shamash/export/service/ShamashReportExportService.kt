@@ -58,47 +58,50 @@ class ShamashReportExportService(
                 null
             }
 
+        val baseAbs = projectBasePath.toAbsolutePath().normalize()
+        val effectiveFindings = exceptionsPreprocessor?.process(baseAbs, findings) ?: findings
+
+        val preparedBaseline =
+            if (baseline.mode == BaselineMode.GENERATE) {
+                val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, effectiveFindings)
+                baselineCoordinator.prepareBaseline(outputDir, fingerprints, baseline.writeMerged)
+            } else {
+                null
+            }
+
         val orchestrator =
             DefaultExportPipelineFactory.create(
-                exceptionsPreprocessor = exceptionsPreprocessor,
                 baselinePreprocessor = baselinePreprocessor,
             )
 
         val report =
-            CoherentReportPublisher().publish(outputDir) { staging ->
+            CoherentReportPublisher().publish(
+                outputDir = outputDir,
+                onActivated = {
+                    if (preparedBaseline != null) {
+                        baselineCoordinator.writeBaseline(
+                            outputDir = outputDir,
+                            fingerprints = preparedBaseline,
+                            mergeWithExisting = false,
+                        )
+                    }
+                },
+            ) { staging ->
                 orchestrator.export(
                     projectBasePath = projectBasePath,
                     projectName = projectName,
                     toolName = toolName,
                     toolVersion = toolVersion,
-                    findings = findings,
+                    findings = effectiveFindings,
                     outputDir = staging,
                     generatedAtEpochMillis = generatedAtEpochMillis,
                 )
             }
 
-        val baselineWritten =
-            if (baseline.mode == BaselineMode.GENERATE) {
-                // Generate from exception-filtered findings without suppressing the existing baseline.
-                val baseAbs = projectBasePath.toAbsolutePath().normalize()
-                val currentFindings =
-                    exceptionsPreprocessor?.process(baseAbs, findings) ?: findings
-
-                val fingerprints = baselineCoordinator.computeFingerprints(projectBasePath, currentFindings)
-                baselineCoordinator.writeBaseline(
-                    outputDir = outputDir,
-                    fingerprints = fingerprints,
-                    mergeWithExisting = baseline.writeMerged,
-                )
-                true
-            } else {
-                false
-            }
-
         return ExportResult(
             report = report,
             outputDir = outputDir,
-            baselineWritten = baselineWritten,
+            baselineWritten = preparedBaseline != null,
         )
     }
 }
