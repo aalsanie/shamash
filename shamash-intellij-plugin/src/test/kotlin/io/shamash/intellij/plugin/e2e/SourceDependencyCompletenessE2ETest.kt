@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -28,6 +29,7 @@ import io.shamash.psi.core.source.ProjectSourceAnalyzer
 import io.shamash.psi.core.source.ProjectSourceSnapshot
 import io.shamash.psi.core.source.SourceDependency
 import io.shamash.psi.core.source.SourceDependencyKind
+import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceGraphSnapshot
@@ -35,6 +37,7 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceTarget
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -275,6 +278,110 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(has("b.Contract", SourceDependencyKind.INHERITANCE), references.toString())
         assertTrue(has("b.Value", SourceDependencyKind.TYPE), references.toString())
         assertTrue(has("b.Registry.value", SourceDependencyKind.ACCESS), references.toString())
+    }
+
+    fun testJavaResolvedDeclarationsOutsideSourceScopeRemainExternal() {
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/a/Owner.java",
+                "package a; public class Owner { b.Remote field; void call() { b.Remote.ping(); } }",
+            )
+        myFixture.addFileToProject(
+            "src/main/java/b/Remote.java",
+            "package b; public class Remote { public static void ping() {} }",
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/java", source.virtualFile.url)
+        val extractor =
+            SourceDependencyExtractor { target ->
+                if (target.name == "Remote.java") null else location
+            }
+        val extracted = extractor.extract(source, location)
+        val external = extracted.references.mapNotNull { it.target as? SourceTarget.External }
+        assertTrue(external.any { it.name == "b.Remote" }, extracted.references.toString())
+        assertTrue(external.any { it.name == "b.Remote.ping" }, extracted.references.toString())
+        assertTrue(
+            extracted.references.none { it.target is SourceTarget.Unresolved },
+            "Excluding a resolved target from scope cannot make it unresolved: ${extracted.diagnostics}",
+        )
+    }
+
+    fun testKotlinResolvedDeclarationsOutsideSourceScopeRemainExternal() {
+        val source =
+            myFixture.addFileToProject(
+                "src/main/kotlin/a/Owner.kt",
+                """
+                package a
+                import b.Remote
+                import b.ping
+                class Owner {
+                    val remote: Remote? = null
+                    fun call() { ping() }
+                }
+                """.trimIndent(),
+            )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Remote.kt",
+            """
+            package b
+            class Remote
+            fun ping() {}
+            """.trimIndent(),
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/kotlin", source.virtualFile.url)
+        val extractor = SourceDependencyExtractor { if (it.name == "Remote.kt") null else location }
+        val extracted = extractor.extract(source, location)
+        val external = extracted.references.mapNotNull { it.target as? SourceTarget.External }
+        assertTrue(external.any { it.name == "b.Remote" }, extracted.references.toString())
+        assertTrue(external.any { it.name == "b.ping" }, extracted.references.toString())
+    }
+
+    fun testResolutionScopeFailureIsDiagnosedWithoutReportingCleanCoverage() {
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/a/Owner.java",
+                "package a; public class Owner { void call() { b.Remote.ping(); } }",
+            )
+        myFixture.addFileToProject(
+            "src/main/java/b/Remote.java",
+            "package b; public class Remote { public static void ping() {} }",
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/java", source.virtualFile.url)
+        val extracted =
+            SourceDependencyExtractor { target ->
+                if (target.name == "Remote.java") error("scope unavailable")
+                location
+            }.extract(source, location)
+        assertTrue(
+            extracted.diagnostics.any { it.phase == "resolve" && it.message.contains("scope unavailable") },
+            extracted.diagnostics.toString(),
+        )
+        assertTrue(
+            extracted.references.any { it.target is SourceTarget.Unresolved },
+            extracted.references.toString(),
+        )
+    }
+
+    fun testResolutionCancellationIsPropagated() {
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/a/Owner.java",
+                "package a; public class Owner { void call() { b.Remote.ping(); } }",
+            )
+        myFixture.addFileToProject(
+            "src/main/java/b/Remote.java",
+            "package b; public class Remote { public static void ping() {} }",
+        )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/java", source.virtualFile.url)
+        val extractor =
+            SourceDependencyExtractor { target ->
+                if (target.name == "Remote.java") throw ProcessCanceledException()
+                location
+            }
+        assertFailsWith<ProcessCanceledException> { extractor.extract(source, location) }
     }
 
     fun testKotlinResolvedExtensionOperatorCreatesCycleAndNavigableCall() {
