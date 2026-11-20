@@ -80,8 +80,8 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             """
                 package a;
                 public class A {
+                    interface LocalCallback { void run(); }
                     public void call() {
-                        interface LocalCallback { void run(); }
                         class Local {
                             void work() {
                                 LocalCallback r = new LocalCallback() {
