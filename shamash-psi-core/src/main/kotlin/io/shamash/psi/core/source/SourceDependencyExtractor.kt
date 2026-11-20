@@ -509,6 +509,10 @@ class SourceDependencyExtractor(
                     SourceDependencyKind.ANNOTATION
                 }
 
+                resolved is PsiMethod || resolved is KtNamedFunction -> {
+                    SourceDependencyKind.CALL
+                }
+
                 PsiTreeUtil.getParentOfType(element, PsiNewExpression::class.java) != null ||
                     (
                         PsiTreeUtil.getParentOfType(element, KtCallExpression::class.java) != null &&
@@ -531,8 +535,7 @@ class SourceDependencyExtractor(
                     SourceDependencyKind.ACCESS
                 }
 
-                resolved is PsiMethod || resolved is KtNamedFunction ||
-                    PsiTreeUtil.getParentOfType(element, PsiMethodCallExpression::class.java) != null -> {
+                PsiTreeUtil.getParentOfType(element, PsiMethodCallExpression::class.java) != null -> {
                     SourceDependencyKind.CALL
                 }
 
