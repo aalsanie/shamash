@@ -367,14 +367,15 @@ class SourceDependencyExtractor(
     }
 
     private fun isLocalBinding(declaration: PsiElement): Boolean =
-        declaration is PsiLocalVariable ||
-            declaration is PsiParameter ||
-            declaration is KtParameter ||
-            (declaration is PsiClass && declaration.qualifiedName == null) ||
-            (declaration is PsiMember && declaration !is PsiClass && declaration.containingClass?.qualifiedName == null) ||
-            (declaration is KtClassOrObject && (declaration.name == null || hasLocalBoundary(declaration))) ||
-            (declaration is KtProperty && (declaration.isLocal || hasLocalBoundary(declaration))) ||
-            (declaration is KtNamedFunction && hasLocalBoundary(declaration))
+        when (declaration) {
+            is PsiLocalVariable, is PsiParameter, is KtParameter -> true
+            is PsiClass -> declaration.qualifiedName == null
+            is PsiMember -> declaration.containingClass?.qualifiedName == null
+            is KtClassOrObject -> declaration.name == null || hasLocalBoundary(declaration)
+            is KtProperty -> declaration.isLocal || hasLocalBoundary(declaration)
+            is KtNamedFunction -> hasLocalBoundary(declaration)
+            else -> false
+        }
 
     private fun hasLocalBoundary(e: PsiElement): Boolean {
         var current = e.parent
