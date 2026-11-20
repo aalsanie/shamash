@@ -40,26 +40,25 @@ class BaselineCoordinator(
         return out
     }
 
+    fun prepareBaseline(
+        outputDir: Path,
+        fingerprints: Set<String>,
+        mergeWithExisting: Boolean,
+    ): Set<String> {
+        val existing = if (mergeWithExisting) store.load(outputDir)?.fingerprints.orEmpty() else emptySet()
+        val prepared = LinkedHashSet<String>(existing.size + fingerprints.size)
+        prepared.addAll(existing)
+        prepared.addAll(fingerprints)
+        store.serialize(prepared)
+        return prepared
+    }
+
     fun writeBaseline(
         outputDir: Path,
         fingerprints: Set<String>,
         mergeWithExisting: Boolean,
     ) {
-        if (!mergeWithExisting) {
-            store.write(outputDir, fingerprints)
-            return
-        }
-
-        val existing = store.load(outputDir)?.fingerprints ?: emptySet()
-        if (existing.isEmpty()) {
-            store.write(outputDir, fingerprints)
-            return
-        }
-
-        val merged = LinkedHashSet<String>(existing.size + fingerprints.size)
-        merged.addAll(existing)
-        merged.addAll(fingerprints)
-        store.write(outputDir, merged)
+        store.write(outputDir, prepareBaseline(outputDir, fingerprints, mergeWithExisting))
     }
 
     fun createSuppressionPreprocessor(baselineFingerprints: Set<String>): BaselineFindingPreprocessor? {
