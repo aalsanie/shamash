@@ -130,6 +130,11 @@ class SourceDependencyExtractor(
                                     ProgressManager.checkCanceled()
                                     val resolved = reference.resolve()
                                     val declaration = resolved?.let(::declarationOf)
+                                    if (element is KtCallExpression &&
+                                        declaration?.let { (it as? KtNamedFunction)?.name != "invoke" } != false
+                                    ) {
+                                        continue
+                                    }
                                     if (resolved != null && (declaration == null || isLocalBinding(declaration))) continue
                                     val targets = resolveTargets(resolved)
                                     if (targets.isEmpty()) {
@@ -306,7 +311,8 @@ class SourceDependencyExtractor(
             e is PsiReferenceExpression ||
             e is KtNameReferenceExpression ||
             e is KtOperationReferenceExpression ||
-            e is KtArrayAccessExpression
+            e is KtArrayAccessExpression ||
+            e is KtCallExpression
 
     private fun insideImport(e: PsiElement): Boolean {
         var parent: PsiElement? = e.parent
