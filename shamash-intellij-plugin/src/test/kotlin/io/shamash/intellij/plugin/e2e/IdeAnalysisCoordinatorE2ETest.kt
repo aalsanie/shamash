@@ -385,9 +385,10 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         awaitTerminal()
         val state = IdeAnalysisCoordinator.getInstance(project).state()
         val facts =
-            kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceFacts) {
-                "Source analysis produced no facts: phase=${state.phase}, relation=${state.resultRelation}, diagnostics=${state.diagnostics}"
-            }
+            kotlin.test.assertNotNull(
+                state.visibleResult?.payload?.sourceFacts,
+                "Source analysis produced no facts: phase=${state.phase}, relation=${state.resultRelation}, diagnostics=${state.diagnostics}",
+            )
         assertTrue(facts.entities.any { it.id.signature == "demo.Repository" })
         assertTrue(facts.relationships.any { it.target.signature == "demo.Repository" })
         assertTrue(facts.entities.any { it.id.signature == "demo.Service" })
