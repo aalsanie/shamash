@@ -222,6 +222,52 @@ class BaselineStoreTest {
     }
 
     @Test
+    fun successfulReplacementWithCleanupFailureKeepsPublishedBaseline() {
+        val out = Files.createTempDirectory("shamash-baseline-success-cleanup-")
+        try {
+            val store =
+                BaselineStore { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    Files.createDirectory(from)
+                    Files.writeString(from.resolve("sentinel.txt"), "locked")
+                }
+
+            store.write(out, setOf("a".repeat(64)))
+
+            assertEquals(setOf("a".repeat(64)), BaselineStore().load(out)?.fingerprints)
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun successfulReplacementWithBackupCleanupFailureDoesNotLoseBaseline() {
+        val out = Files.createTempDirectory("shamash-baseline-backup-cleanup-")
+        try {
+            BaselineStore().write(out, setOf("a".repeat(64)))
+            val store =
+                BaselineStore { from, to ->
+                    Files.move(from, to, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    Files.list(out).use { paths ->
+                        val backup =
+                            paths.filter { it.fileName.toString().startsWith(".baseline.json.previous-") }
+                                .findFirst()
+                                .orElseThrow()
+                        Files.delete(backup)
+                        Files.createDirectory(backup)
+                        Files.writeString(backup.resolve("sentinel.txt"), "locked")
+                    }
+                }
+
+            store.write(out, setOf("b".repeat(64)))
+
+            assertEquals(setOf("b".repeat(64)), BaselineStore().load(out)?.fingerprints)
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun load_returnsNullWhenMissing() {
         val store = BaselineStore()
         val dir = Files.createTempDirectory("shamash-baseline-missing")
