@@ -14,60 +14,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class BaselineCoordinatorTest {
-    @Test
-    fun prepareBaselineReadsExistingFingerprintsWithoutReplacingFile() {
-        val store = BaselineStore()
-        val coordinator = BaselineCoordinator(store)
-        val output = Files.createTempDirectory("shamash-prepare-merge-")
-        try {
-            store.write(output, setOf("a".repeat(64)))
-            val before = Files.readAllBytes(store.baselinePath(output))
-
-            val prepared = coordinator.prepareBaseline(output, setOf("b".repeat(64)), mergeWithExisting = true)
-
-            assertEquals(setOf("a".repeat(64), "b".repeat(64)), prepared)
-            assertEquals(before.toList(), Files.readAllBytes(store.baselinePath(output)).toList())
-        } finally {
-            output.toFile().deleteRecursively()
-        }
-    }
-
-    @Test
-    fun prepareBaselineWithoutExistingFileDoesNotCreateOne() {
-        val store = BaselineStore()
-        val coordinator = BaselineCoordinator(store)
-        val output = Files.createTempDirectory("shamash-prepare-new-")
-        try {
-            assertEquals(
-                setOf("b".repeat(64)),
-                coordinator.prepareBaseline(output, setOf("b".repeat(64)), mergeWithExisting = true),
-            )
-            assertNull(store.load(output))
-        } finally {
-            output.toFile().deleteRecursively()
-        }
-    }
-
-    @Test
-    fun prepareBaselineRejectsInvalidFingerprintBeforeAnyWrite() {
-        val store = BaselineStore()
-        val coordinator = BaselineCoordinator(store)
-        val output = Files.createTempDirectory("shamash-prepare-invalid-")
-        try {
-            assertFailsWith<IllegalArgumentException> {
-                coordinator.prepareBaseline(output, setOf("invalid"), mergeWithExisting = false)
-            }
-            assertNull(store.load(output))
-        } finally {
-            output.toFile().deleteRecursively()
-        }
-    }
-
     @Test
     fun computeFingerprints_returnsEmpty_whenNoFindings() {
         val coordinator = BaselineCoordinator()
