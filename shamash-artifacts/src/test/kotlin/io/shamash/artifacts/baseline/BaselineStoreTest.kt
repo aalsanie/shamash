@@ -142,6 +142,86 @@ class BaselineStoreTest {
     }
 
     @Test
+    fun mutatedOldBaselineIsRestoredAfterReplacementCallbackFails() {
+        val out = Files.createTempDirectory("shamash-baseline-mutated-")
+        try {
+            val original = BaselineStore()
+            original.write(out, setOf("a".repeat(64)))
+            val before = Files.readAllBytes(original.baselinePath(out))
+            val failing =
+                BaselineStore { _, to ->
+                    Files.writeString(to, "partially replaced")
+                    throw java.io.IOException("injected writer failure")
+                }
+
+            assertFailsWith<java.io.IOException> { failing.write(out, setOf("b".repeat(64))) }
+
+            assertContentEquals(before, Files.readAllBytes(original.baselinePath(out)))
+            Files.list(out).use { files -> assertEquals(1, files.count()) }
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun failedFirstReplacementThatCreatedPartialFileRemovesIt() {
+        val out = Files.createTempDirectory("shamash-baseline-partial-")
+        try {
+            val failing =
+                BaselineStore { _, to ->
+                    Files.writeString(to, "partial")
+                    throw java.io.IOException("injected writer failure")
+                }
+
+            assertFailsWith<java.io.IOException> { failing.write(out, setOf("a".repeat(64))) }
+
+            assertFalse(Files.exists(failing.baselinePath(out)))
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun failedFirstMoveBeforeMutationDoesNotCreateBaseline() {
+        val out = Files.createTempDirectory("shamash-baseline-no-change-")
+        try {
+            val failing = BaselineStore { _, _ -> throw java.io.IOException("move not attempted") }
+
+            assertFailsWith<java.io.IOException> { failing.write(out, setOf("a".repeat(64))) }
+
+            assertFalse(Files.exists(failing.baselinePath(out)))
+            Files.list(out).use { files -> assertEquals(0, files.count()) }
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun cleanupFailureIsSuppressedWithoutMaskingReplacementFailure() {
+        val out = Files.createTempDirectory("shamash-baseline-cleanup-")
+        try {
+            val original = BaselineStore()
+            original.write(out, setOf("a".repeat(64)))
+            val before = Files.readAllBytes(original.baselinePath(out))
+            val failing =
+                BaselineStore { from, _ ->
+                    Files.delete(from)
+                    Files.createDirectory(from)
+                    Files.writeString(from.resolve("sentinel"), "keep")
+                    throw java.io.IOException("injected replacement failure")
+                }
+
+            val failure =
+                assertFailsWith<java.io.IOException> { failing.write(out, setOf("b".repeat(64))) }
+
+            assertTrue(failure.suppressed.any { it is java.nio.file.DirectoryNotEmptyException })
+            assertContentEquals(before, Files.readAllBytes(original.baselinePath(out)))
+        } finally {
+            out.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun load_returnsNullWhenMissing() {
         val store = BaselineStore()
         val dir = Files.createTempDirectory("shamash-baseline-missing")
