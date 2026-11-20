@@ -214,6 +214,70 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(edges.none { it.from.signature.contains("null") })
     }
 
+    fun testJavaAnnotationsInheritanceConstructorsAndTypesRemainDistinct() {
+        myFixture.addFileToProject("src/main/java/b/Marker.java", "package b; public @interface Marker {}")
+        myFixture.addFileToProject("src/main/java/b/Base.java", "package b; public class Base {}")
+        myFixture.addFileToProject("src/main/java/b/Contract.java", "package b; public interface Contract {}")
+        myFixture.addFileToProject("src/main/java/b/Result.java", "package b; public class Result {}")
+        myFixture.addFileToProject(
+            "src/main/java/a/Owner.java",
+            """
+            package a;
+            @b.Marker
+            public class Owner extends b.Base implements b.Contract {
+                b.Result result = new b.Result();
+                public b.Result create() { return new b.Result(); }
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, _) = analyze()
+        val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        fun has(signature: String, kind: SourceDependencyKind): Boolean =
+            references.any {
+                (it.target as? SourceTarget.Internal)?.entity?.signature == signature && it.kind == kind
+            }
+        assertTrue(has("b.Marker", SourceDependencyKind.ANNOTATION), references.toString())
+        assertTrue(has("b.Base", SourceDependencyKind.INHERITANCE), references.toString())
+        assertTrue(has("b.Contract", SourceDependencyKind.INHERITANCE), references.toString())
+        assertTrue(has("b.Result", SourceDependencyKind.TYPE), references.toString())
+        assertTrue(has("b.Result", SourceDependencyKind.CONSTRUCTOR), references.toString())
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
+    fun testKotlinAnnotationsInheritancePropertyAccessAndTypesRemainDistinct() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Types.kt",
+            """
+            package b
+            annotation class Marker
+            interface Contract
+            class Value
+            object Registry { val value: Value? = null }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            @b.Marker
+            class Owner : b.Contract {
+                val value: b.Value? = b.Registry.value
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, _) = analyze()
+        val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        fun has(signature: String, kind: SourceDependencyKind): Boolean =
+            references.any {
+                (it.target as? SourceTarget.Internal)?.entity?.signature == signature && it.kind == kind
+            }
+        assertTrue(has("b.Marker", SourceDependencyKind.ANNOTATION), references.toString())
+        assertTrue(has("b.Contract", SourceDependencyKind.INHERITANCE), references.toString())
+        assertTrue(has("b.Value", SourceDependencyKind.TYPE), references.toString())
+        assertTrue(has("b.Registry.value", SourceDependencyKind.ACCESS), references.toString())
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
     fun testKotlinResolvedExtensionOperatorCreatesCycleAndNavigableCall() {
         val source =
             myFixture.addFileToProject(
