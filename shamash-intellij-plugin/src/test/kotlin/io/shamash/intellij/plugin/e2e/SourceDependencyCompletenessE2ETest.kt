@@ -157,6 +157,34 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertNavigates(edge)
     }
 
+    fun testAnonymousJavaMembersAndParametersStayLocal() {
+        myFixture.addFileToProject(
+            "src/main/java/a/A.java",
+            """
+            package a;
+            public class A {
+                interface Callback { void run(); }
+                Callback callback = new Callback() {
+                    public void run() { helper(); }
+                    void helper() {}
+                };
+                void use(A parameter) {
+                    A local = parameter;
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject("src/main/java/b/Unused.java", "package b; public class Unused {}")
+        val (snapshot, graph) = analyze()
+        assertTrue(
+            snapshot.references.none { it.target is SourceTarget.Unresolved },
+            "Local Java members and parameters cannot become unresolved architectural targets: ${snapshot.references}; ${snapshot.diagnostics}",
+        )
+        assertTrue(snapshot.relationships.none { targetPackage(it) == "b" })
+        assertTrue(snapshot.entities.none { it.id.signature.contains("helper(") })
+        assertTrue(graph.cycles.isEmpty())
+    }
+
     fun testJavaInitializersAndAnonymousFieldDeclarationsKeepDependencies() {
         myFixture.addFileToProject(
             "src/main/java/a/A.java",
