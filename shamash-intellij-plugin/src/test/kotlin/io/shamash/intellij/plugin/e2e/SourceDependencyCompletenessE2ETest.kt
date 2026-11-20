@@ -292,10 +292,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         val location = SourceDependencyExtractor.SourceLocation("main", "src/main/java", source.virtualFile.url)
-        val extractor =
-            SourceDependencyExtractor { target ->
-                if (target.name == "Remote.java") null else location
-            }
+        val extractor = SourceDependencyExtractor { null }
         val extracted = extractor.extract(source, location)
         val external = extracted.references.mapNotNull { it.target as? SourceTarget.External }
         assertTrue(external.any { it.name == "b.Remote" }, extracted.references.toString())
@@ -330,7 +327,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         val location = SourceDependencyExtractor.SourceLocation("main", "src/main/kotlin", source.virtualFile.url)
-        val extractor = SourceDependencyExtractor { if (it.name == "Remote.kt") null else location }
+        val extractor = SourceDependencyExtractor { null }
         val extracted = extractor.extract(source, location)
         val external = extracted.references.mapNotNull { it.target as? SourceTarget.External }
         assertTrue(external.any { it.name == "b.Remote" }, extracted.references.toString())
