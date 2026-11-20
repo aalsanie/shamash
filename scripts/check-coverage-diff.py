@@ -101,7 +101,7 @@ def source_coverage(report: Path, paths: set[str]) -> dict[str, dict[int, tuple[
             for line in source.findall("line"):
                 nr = int(line.attrib["nr"])
                 values = tuple(int(line.attrib[key]) for key in ("mi", "ci", "mb", "cb"))
-                if nr < 1 or any(v < 0 for v in values) or sum(values[:2]) == 0 or nr in line_values:
+                if nr < 1 or any(v < 0 for v in values) or not any(values) or nr in line_values:
                     raise ValueError(f"Invalid source coverage at {path}:{nr}")
                 line_values[nr] = values
             result[path] = line_values
@@ -126,8 +126,9 @@ def check_coverage(report: Path, diff: str) -> dict[str, tuple[int, int]]:
             if counters is None:
                 continue
             mi, ci, mb, cb = counters
-            per_file["line"][0] += int(ci > 0)
-            per_file["line"][1] += 1
+            if mi + ci > 0:
+                per_file["line"][0] += int(ci > 0)
+                per_file["line"][1] += 1
             per_file["branch"][0] += cb
             per_file["branch"][1] += cb + mb
         if per_file["line"][1] == 0:
