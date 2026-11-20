@@ -74,9 +74,9 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(
             snapshot.references.any {
                 (it.target as? SourceTarget.Internal)?.entity?.signature == "a.Callback" &&
-                    it.kind == SourceDependencyKind.CONSTRUCTOR
+                    it.kind == SourceDependencyKind.TYPE
             },
-            "Construction of the anonymous callback must remain a constructor dependency",
+            "An anonymous implementation must preserve the referenced interface type",
         )
         assertTrue(
             snapshot.references.none {
@@ -86,6 +86,27 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             "Nested method calls must not inherit their enclosing constructor's kind: ${snapshot.references.filter { (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("B#ping(") == true }}",
         )
         assertNavigates(edge)
+    }
+
+    fun testConcreteJavaConstructorRemainsDistinctFromMethodCall() {
+        myFixture.addFileToProject(
+            "src/main/java/a/A.java",
+            "package a; public class A { b.B instance = new b.B(); void run() { b.B.ping(); } }",
+        )
+        myFixture.addFileToProject(
+            "src/main/java/b/B.java",
+            "package b; public class B { public static void ping() {} }",
+        )
+        val (snapshot, _) = analyze()
+        val toB = snapshot.references.filter {
+            (it.target as? SourceTarget.Internal)?.entity?.signature == "b.B"
+        }
+        assertTrue(
+            toB.any { it.kind == SourceDependencyKind.CONSTRUCTOR },
+            "The concrete new-expression must retain constructor semantics: $toB",
+        )
+        val ping = dependency(snapshot, "a", "b", "ping")
+        assertEquals(SourceDependencyKind.CALL, ping.kind)
     }
 
     fun testNestedAnonymousAndLocalJavaBodiesUseNearestRepresentableOwner() {
