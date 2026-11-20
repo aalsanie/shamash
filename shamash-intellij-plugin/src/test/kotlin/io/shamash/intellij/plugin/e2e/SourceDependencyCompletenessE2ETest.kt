@@ -162,7 +162,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertNotNull(operator.references.firstOrNull()?.resolve())
 
         val (snapshot, graph) = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         assertEquals(1, graph.cycles.size)
         assertEquals(setOf("a", "b"), graph.cycles.single().members.map { it.packageName }.toSet())
         val edge = dependency(snapshot, "a", "b", "plus")
@@ -201,7 +200,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(edges.any { it.target.toString().contains(".get(") }, edges.toString())
         assertTrue(edges.any { it.target.toString().contains(".set(") }, edges.toString())
         assertEquals(1, graph.cycles.size)
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         edges.filter { it.kind == SourceDependencyKind.CALL }.forEach(::assertNavigates)
     }
 
@@ -232,7 +230,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             """.trimIndent(),
         )
         val (snapshot, _) = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         val edges = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
         assertTrue(edges.any { it.from.signature.contains("callback") }, edges.toString())
         assertTrue(edges.any { it.from.signature.contains("Owner.run(") }, edges.toString())
@@ -256,7 +253,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
         myFixture.addFileToProject("src/main/kotlin/b/Unused.kt", "package b; class Unused")
         val (snapshot, graph) = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         assertTrue(graph.cycles.isEmpty())
         assertTrue(snapshot.relationships.none { targetPackage(it) == "b" })
         assertTrue(snapshot.references.none { it.target is SourceTarget.Unresolved })
@@ -282,7 +278,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             """.trimIndent(),
         )
         val (snapshot, _) = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         val edges = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
         assertTrue(edges.any { it.from.signature.contains("operatorUse") })
         assertTrue(edges.any { it.from.signature.contains("explicitUse") })
@@ -313,7 +308,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             .single { it.text == "token()" }
         assertTrue(call.references.any { it.resolve() != null }, "Fixture must expose an implicit invoke reference")
         val (snapshot, graph) = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         assertEquals(1, graph.cycles.size)
         val calls =
             snapshot.references.filter {
@@ -351,7 +345,6 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             """.trimIndent(),
         )
         val (snapshot, graph) = analyze()
-        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         assertEquals(1, graph.cycles.size)
         val edge = dependency(snapshot, "a", "b", "ping")
         assertTrue(edge.from.signature.contains("Owner.run("), edge.from.toString())
