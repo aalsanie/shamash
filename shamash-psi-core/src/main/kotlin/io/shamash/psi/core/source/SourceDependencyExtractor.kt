@@ -342,7 +342,10 @@ class SourceDependencyExtractor(
         declaration is PsiLocalVariable ||
             declaration is PsiParameter ||
             declaration is KtParameter ||
-            (declaration is KtProperty && declaration.isLocal) ||
+            (declaration is PsiClass && (declaration.qualifiedName == null || hasLocalBoundary(declaration))) ||
+            (declaration is PsiMember && hasLocalBoundary(declaration)) ||
+            (declaration is KtClassOrObject && (declaration.name == null || hasLocalBoundary(declaration))) ||
+            (declaration is KtProperty && (declaration.isLocal || hasLocalBoundary(declaration))) ||
             (declaration is KtNamedFunction && hasLocalBoundary(declaration))
 
     private fun hasLocalBoundary(e: PsiElement): Boolean {
