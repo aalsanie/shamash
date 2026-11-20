@@ -322,6 +322,58 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         calls.forEach(::assertNavigates)
     }
 
+    fun testLocalKotlinClassMethodsRetainEnclosingFunctionAndDoNotInventTargets() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+                package a
+                import b.Remote
+                class Owner {
+                    fun run() {
+                        class Local {
+                            fun call() { Remote.ping() }
+                        }
+                        Local().call()
+                    }
+                }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Remote.kt",
+            """
+                package b
+                object Remote {
+                    val back: a.Owner? = null
+                    fun ping() {}
+                }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+        assertEquals(1, graph.cycles.size)
+        val edge = dependency(snapshot, "a", "b", "ping")
+        assertTrue(edge.from.signature.contains("Owner.run("), edge.from.toString())
+        assertTrue(snapshot.entities.none { it.id.signature.contains("Local") })
+        assertTrue(snapshot.references.none { it.target is SourceTarget.Unresolved })
+        assertNavigates(edge)
+    }
+
+    fun testUnresolvedKotlinOperatorDoesNotProduceFalseCompleteResult() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Token.kt",
+            """
+                package a
+                class Token
+                fun use(left: Token, right: Token) = left + right
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        assertFalse(snapshot.complete)
+        assertFalse(graph.cycleAbsenceEstablished)
+        assertTrue(snapshot.diagnostics.any { it.phase == "resolve" })
+        assertTrue(snapshot.references.any { it.target is SourceTarget.Unresolved })
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
