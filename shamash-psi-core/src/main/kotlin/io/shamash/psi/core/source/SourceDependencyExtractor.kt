@@ -31,11 +31,9 @@ import com.intellij.psi.PsiVariable
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
-import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtLambdaExpression
@@ -339,30 +337,6 @@ class SourceDependencyExtractor(
         var scope: PsiElement? = reference.parent
         while (scope != null && scope !is PsiFile) {
             if (scope is KtNamedFunction && scope.valueParameters.any { it.name == name }) return true
-            if (scope is KtBlockExpression) {
-                val declarations = scope.statements.filter { it.textOffset < reference.textOffset }
-                if (declarations.any {
-                        (it is KtProperty && it.name == name) ||
-                            (it is KtNamedFunction && it.name == name) ||
-                            (it is KtClassOrObject && it.name == name)
-                    }
-                ) {
-                    return true
-                }
-                val qualified = PsiTreeUtil.getParentOfType(reference, KtDotQualifiedExpression::class.java)
-                val receiver = qualified?.receiverExpression as? KtCallExpression
-                val localClassName = (receiver?.calleeExpression as? KtNameReferenceExpression)?.getReferencedName()
-                if (localClassName != null &&
-                    declarations
-                        .filterIsInstance<KtClassOrObject>()
-                        .any {
-                            it.name == localClassName &&
-                                it.declarations.any { member -> member is KtNamedFunction && member.name == name }
-                        }
-                ) {
-                    return true
-                }
-            }
             scope = scope.parent
         }
         return false
