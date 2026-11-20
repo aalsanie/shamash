@@ -441,6 +441,55 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.references.any { it.target is SourceTarget.Unresolved })
     }
 
+    fun testChainedKotlinAliasesPreserveResolvedProjectDependency() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            import b.Target
+            typealias TargetAlias = Target
+            typealias ChainedAlias = TargetAlias
+            class Owner { val dependency: ChainedAlias? = null }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Target.kt",
+            "package b\nclass Target(val owner: a.Owner? = null)",
+        )
+        val (snapshot, graph) = analyze()
+        val edges = snapshot.references.filter {
+            fromPackage(it) == "a" && targetPackage(it) == "b"
+        }
+        assertTrue(
+            edges.any { (it.target as? SourceTarget.Internal)?.entity?.signature == "b.Target" },
+            "Aliases must resolve to the real project declaration: $edges; diagnostics: ${snapshot.diagnostics}",
+        )
+        assertTrue(
+            graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") },
+            "Resolved alias dependencies must retain the package cycle: ${graph.cycles}",
+        )
+        edges.first().let(::assertNavigates)
+    }
+
+    fun testCyclicKotlinAliasesRemainIncompleteWithoutFabricatedEntities() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Aliases.kt",
+            """
+            package a
+            typealias First = Second
+            typealias Second = First
+            class Owner { val value: First? = null }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        assertFalse(snapshot.complete)
+        assertFalse(graph.cycleAbsenceEstablished)
+        assertTrue(
+            snapshot.references.any { it.target is SourceTarget.Unresolved },
+            "Cyclic aliases must not be treated as resolved: ${snapshot.references}; ${snapshot.diagnostics}",
+        )
+    }
+
     fun testUnresolvedTypeAliasCannotBeReportedAsComplete() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Aliases.kt",
