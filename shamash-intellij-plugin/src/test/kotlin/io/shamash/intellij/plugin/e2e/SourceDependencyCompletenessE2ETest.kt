@@ -35,6 +35,8 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceTarget
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
     override fun setUp() {
@@ -154,8 +156,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             """.trimIndent(),
         )
         IndexingTestUtil.waitUntilIndexesAreReady(project)
-        val operator = PsiTreeUtil.findChildOfType(source, KtOperationReferenceExpression::class.java)
-        assertNotNull(operator)
+        val operator = requireNotNull(PsiTreeUtil.findChildOfType(source, KtOperationReferenceExpression::class.java))
         assertNotNull(operator.references.firstOrNull()?.resolve())
 
         val (snapshot, graph) = analyze()
