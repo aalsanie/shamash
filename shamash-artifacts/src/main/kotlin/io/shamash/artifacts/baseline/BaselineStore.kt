@@ -20,12 +20,17 @@ import java.nio.file.StandardCopyOption
 import kotlin.io.path.name
 
 /** Persists versioned fingerprints in `<outputDir>/baseline.json`. */
-class BaselineStore(
-    private val replaceBaseline: (Path, Path) -> Unit = { from, to ->
+class BaselineStore {
+    constructor()
+
+    internal constructor(replacement: (Path, Path) -> Unit) {
+        replaceBaseline = replacement
+    }
+
+    private var replaceBaseline: (Path, Path) -> Unit = { from, to ->
         Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         Unit
-    },
-) {
+    }
     data class Baseline(
         val version: Int,
         val fingerprints: Set<String>,
@@ -82,7 +87,6 @@ class BaselineStore(
 
         val tmp = Files.createTempFile(path.parent, ".${path.name}.", ".tmp")
         var previous: Path? = null
-        var replacementAttempted = false
         var retainPrevious = false
         var failure: Throwable? = null
         try {
@@ -92,35 +96,37 @@ class BaselineStore(
                 previous = snapshot
                 Files.copy(path, snapshot, StandardCopyOption.REPLACE_EXISTING)
             }
-            replacementAttempted = true
-            replaceBaseline(tmp, path)
-        } catch (error: Throwable) {
-            failure = error
-            if (replacementAttempted) {
+            try {
+                replaceBaseline(tmp, path)
+            } catch (error: Throwable) {
+                failure = error
                 try {
                     val snapshot = previous
-                    if (snapshot != null) {
-                        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
-                            Files.mismatch(path, snapshot) != -1L
-                        ) {
-                            Files.move(
-                                snapshot,
-                                path,
-                                StandardCopyOption.REPLACE_EXISTING,
-                                StandardCopyOption.ATOMIC_MOVE,
-                            )
+                    if (snapshot == null) {
+                        if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+                            Files.delete(path)
                         }
-                    } else if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
-                        Files.delete(path)
+                    } else if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
+                        Files.mismatch(path, snapshot) != -1L
+                    ) {
+                        Files.move(
+                            snapshot,
+                            path,
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.ATOMIC_MOVE,
+                        )
                     }
                 } catch (restoreFailure: Throwable) {
                     retainPrevious = true
                     error.addSuppressed(
-                        IllegalStateException("Baseline restoration failed; inspect retained backup in ${path.parent}", restoreFailure),
+                        IllegalStateException(
+                            "Baseline restoration failed; inspect retained backup in ${path.parent}",
+                            restoreFailure,
+                        ),
                     )
                 }
+                throw error
             }
-            throw error
         } finally {
             try {
                 Files.deleteIfExists(tmp)
