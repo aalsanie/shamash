@@ -146,7 +146,7 @@ class SourceDependencyExtractor(
                                         continue
                                     }
                                     val evidenceRange = reference.rangeInElement
-                                    val implicit = evidenceRange.length <= 0 || evidenceRange.endOffset > element.textLength
+                                    val implicit = evidenceRange.length <= 0 || evidenceRange.startOffset < 0 || evidenceRange.endOffset > element.textLength
                                     val offset =
                                         if (implicit) {
                                             element.textOffset + when (element) {
