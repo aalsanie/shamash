@@ -71,6 +71,20 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(SourceEntityKind.FIELD, edge.from.declarationKind)
         assertEquals("a.A#callback", edge.from.signature)
         assertEquals(SourceDependencyKind.CALL, edge.kind)
+        assertTrue(
+            snapshot.references.any {
+                (it.target as? SourceTarget.Internal)?.entity?.signature == "a.Callback" &&
+                    it.kind == SourceDependencyKind.CONSTRUCTOR
+            },
+            "Construction of the anonymous callback must remain a constructor dependency",
+        )
+        assertTrue(
+            snapshot.references.none {
+                (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("B#ping(") == true &&
+                    it.kind == SourceDependencyKind.CONSTRUCTOR
+            },
+            "Nested method calls must not inherit their enclosing constructor's kind",
+        )
         assertNavigates(edge)
     }
 
