@@ -9,8 +9,8 @@ package io.shamash.export.service
 
 import io.shamash.artifacts.baseline.BaselineConfig
 import io.shamash.artifacts.baseline.BaselineCoordinator
-import io.shamash.artifacts.baseline.BaselineMode
 import io.shamash.artifacts.baseline.BaselineFindingPreprocessor
+import io.shamash.artifacts.baseline.BaselineMode
 import io.shamash.artifacts.contract.Finding
 import io.shamash.artifacts.report.layout.ExportOutputLayout
 import io.shamash.artifacts.report.schema.v1.ExportedReport

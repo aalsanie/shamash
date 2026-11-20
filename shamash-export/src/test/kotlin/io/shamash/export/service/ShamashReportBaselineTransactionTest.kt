@@ -18,10 +18,10 @@ import io.shamash.export.pipeline.FindingPreprocessor
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.channels.OverlappingFileLockException
-import java.nio.file.StandardOpenOption
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -59,7 +59,11 @@ class ShamashReportBaselineTransactionTest {
             assertTrue(lockObserved)
             assertTrue(result.baselineWritten)
             assertEquals(
-                setOf(result.report.findings.single().fingerprint),
+                setOf(
+                    result.report.findings
+                        .single()
+                        .fingerprint,
+                ),
                 store.load(result.outputDir)?.fingerprints,
             )
         }

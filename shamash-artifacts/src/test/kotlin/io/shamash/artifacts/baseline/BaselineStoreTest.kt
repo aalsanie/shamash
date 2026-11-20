@@ -250,7 +250,8 @@ class BaselineStoreTest {
                     Files.move(from, to, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
                     Files.list(out).use { paths ->
                         val backup =
-                            paths.filter { it.fileName.toString().startsWith(".baseline.json.previous-") }
+                            paths
+                                .filter { it.fileName.toString().startsWith(".baseline.json.previous-") }
                                 .findFirst()
                                 .orElseThrow()
                         Files.delete(backup)

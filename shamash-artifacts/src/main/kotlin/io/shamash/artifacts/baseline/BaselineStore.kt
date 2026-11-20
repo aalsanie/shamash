@@ -31,6 +31,7 @@ class BaselineStore {
         Files.move(from, to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         Unit
     }
+
     data class Baseline(
         val version: Int,
         val fingerprints: Set<String>,
