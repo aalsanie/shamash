@@ -129,20 +129,21 @@ class BaselineStore {
                 throw error
             }
         } finally {
-            try {
-                Files.deleteIfExists(tmp)
-            } catch (cleanupFailure: Throwable) {
-                failure?.addSuppressed(cleanupFailure)
-            }
+            cleanupTemporary(tmp, failure)
             if (!retainPrevious) {
-                previous?.let { snapshot ->
-                    try {
-                        Files.deleteIfExists(snapshot)
-                    } catch (cleanupFailure: Throwable) {
-                        failure?.addSuppressed(cleanupFailure)
-                    }
-                }
+                previous?.let { snapshot -> cleanupTemporary(snapshot, failure) }
             }
+        }
+    }
+
+    private fun cleanupTemporary(
+        path: Path,
+        failure: Throwable?,
+    ) {
+        try {
+            Files.deleteIfExists(path)
+        } catch (cleanupFailure: Throwable) {
+            failure?.addSuppressed(cleanupFailure)
         }
     }
 
