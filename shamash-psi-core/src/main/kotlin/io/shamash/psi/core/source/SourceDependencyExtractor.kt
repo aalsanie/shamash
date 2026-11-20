@@ -17,12 +17,12 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiImportStatementBase
 import com.intellij.psi.PsiJavaCodeReferenceElement
 import com.intellij.psi.PsiLocalVariable
-import com.intellij.psi.PsiParameter
-import com.intellij.psi.PsiPackageStatement
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.psi.PsiNewExpression
+import com.intellij.psi.PsiPackageStatement
+import com.intellij.psi.PsiParameter
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.PsiReferenceList
@@ -40,10 +40,10 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
-import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
-import org.jetbrains.kotlin.psi.KtParameter
-import org.jetbrains.kotlin.psi.KtPackageDirective
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
+import org.jetbrains.kotlin.psi.KtPackageDirective
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
 import org.jetbrains.kotlin.psi.KtTypeAlias
@@ -123,8 +123,10 @@ class SourceDependencyExtractor(
                                 val resolved = reference.resolve()
                                 val declaration = resolved?.let(::declarationOf)
                                 if (element is KtCallExpression &&
-                                    ((declaration as? KtNamedFunction)?.name != "invoke" ||
-                                        element.calleeExpression?.text == "invoke")
+                                    (
+                                        (declaration as? KtNamedFunction)?.name != "invoke" ||
+                                            element.calleeExpression?.text == "invoke"
+                                    )
                                 ) {
                                     continue
                                 }
@@ -155,11 +157,11 @@ class SourceDependencyExtractor(
                             if (!resolvedCandidate && shouldReportUnresolved(element)) {
                                 pendingUnresolved +=
                                     dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp) to
-                                        SourceDiagnostic(
-                                            location.fileUrl,
-                                            "resolve",
-                                            "Cannot resolve '${element.text}' at ${element.textOffset}",
-                                        )
+                                    SourceDiagnostic(
+                                        location.fileUrl,
+                                        "resolve",
+                                        "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                    )
                             }
                         } catch (c: ProcessCanceledException) {
                             throw c
@@ -191,7 +193,8 @@ class SourceDependencyExtractor(
             ProgressManager.checkCanceled()
             val source = owningEntityFrom(use.owner, location)
             if (source == null) {
-                diagnostics += SourceDiagnostic(location.fileUrl, "owner", "No supported declaration owns type at ${use.evidence.textOffset}")
+                diagnostics +=
+                    SourceDiagnostic(location.fileUrl, "owner", "No supported declaration owns type at ${use.evidence.textOffset}")
                 continue
             }
             val walked = PsiTypeClassReferences.collect(use.type)
@@ -352,7 +355,10 @@ class SourceDependencyExtractor(
                 if (localClassName != null &&
                     declarations
                         .filterIsInstance<KtClassOrObject>()
-                        .any { it.name == localClassName && it.declarations.any { member -> member is KtNamedFunction && member.name == name } }
+                        .any {
+                            it.name == localClassName &&
+                                it.declarations.any { member -> member is KtNamedFunction && member.name == name }
+                        }
                 ) {
                     return true
                 }
@@ -562,7 +568,8 @@ class SourceDependencyExtractor(
 
                 (
                     resolved is PsiClass &&
-                        PsiTreeUtil.getParentOfType(element, PsiNewExpression::class.java)
+                        PsiTreeUtil
+                            .getParentOfType(element, PsiNewExpression::class.java)
                             ?.classReference
                             ?.let { reference -> reference === element || PsiTreeUtil.isAncestor(reference, element, false) } == true
                 ) ||

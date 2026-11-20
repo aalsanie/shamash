@@ -355,38 +355,38 @@ class ShamashStarterJourneysTest {
         Files.writeString(
             java.resolve("callback/CallbackOwner.java"),
             """
-                package callback;
-                public class CallbackOwner {
-                    Runnable task = new Runnable() {
-                        @Override public void run() { receiver.Receiver.ping(); }
-                    };
-                }
+            package callback;
+            public class CallbackOwner {
+                Runnable task = new Runnable() {
+                    @Override public void run() { receiver.Receiver.ping(); }
+                };
+            }
             """.trimIndent(),
         )
         Files.writeString(
             java.resolve("receiver/Receiver.java"),
             """
-                package receiver;
-                public class Receiver {
-                    callback.CallbackOwner back;
-                    public static void ping() {}
-                }
+            package receiver;
+            public class Receiver {
+                callback.CallbackOwner back;
+                public static void ping() {}
+            }
             """.trimIndent(),
         )
         Files.writeString(
             kotlin.resolve("token/Token.kt"),
             """
-                package token
-                import operators.plus
-                class Token
-                fun use(left: Token, right: Token) = left + right
+            package token
+            import operators.plus
+            class Token
+            fun use(left: Token, right: Token) = left + right
             """.trimIndent(),
         )
         Files.writeString(
             kotlin.resolve("operators/Operators.kt"),
             """
-                package operators
-                operator fun token.Token.plus(other: token.Token): token.Token = this
+            package operators
+            operator fun token.Token.plus(other: token.Token): token.Token = this
             """.trimIndent(),
         )
         val oldReport = project.resolve(".shamash/reports/previous.json")

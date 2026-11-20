@@ -50,12 +50,12 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/java/a/A.java",
             """
-                package a;
-                public class A {
-                    Callback callback = new Callback() {
-                        public void run() { b.B.ping(); }
-                    };
-                }
+            package a;
+            public class A {
+                Callback callback = new Callback() {
+                    public void run() { b.B.ping(); }
+                };
+            }
             """.trimIndent(),
         )
         myFixture.addFileToProject(
@@ -66,7 +66,14 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.complete, snapshot.diagnostics.toString())
         assertTrue(graph.complete, graph.diagnostics.toString())
         assertEquals(1, graph.cycles.size)
-        assertEquals(setOf("a", "b"), graph.cycles.single().members.map { it.packageName }.toSet())
+        assertEquals(
+            setOf("a", "b"),
+            graph.cycles
+                .single()
+                .members
+                .map { it.packageName }
+                .toSet(),
+        )
         val edge = dependency(snapshot, "a", "b", "ping")
         assertEquals(SourceEntityKind.FIELD, edge.from.declarationKind)
         assertEquals("a.A#callback", edge.from.signature)
@@ -83,7 +90,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                 (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("B#ping(") == true &&
                     it.kind == SourceDependencyKind.CONSTRUCTOR
             },
-            "Nested method calls must not inherit their enclosing constructor's kind: ${snapshot.references.filter { (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("B#ping(") == true }}",
+            "Nested method calls must not inherit their enclosing constructor's kind: ${snapshot.references.filter {
+                (it.target as? SourceTarget.Internal)?.entity?.signature?.contains(
+                    "B#ping(",
+                ) == true
+            }}",
         )
         assertNavigates(edge)
     }
@@ -98,9 +109,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             "package b; public class B { public static void ping() {} }",
         )
         val (snapshot, _) = analyze()
-        val toB = snapshot.references.filter {
-            (it.target as? SourceTarget.Internal)?.entity?.signature == "b.B"
-        }
+        val toB =
+            snapshot.references.filter {
+                (it.target as? SourceTarget.Internal)?.entity?.signature == "b.B"
+            }
         assertTrue(
             toB.any { it.kind == SourceDependencyKind.CONSTRUCTOR },
             "The concrete new-expression must retain constructor semantics: $toB",
@@ -113,22 +125,22 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/java/a/A.java",
             """
-                package a;
-                public class A {
-                    interface LocalCallback { void run(); }
-                    public void call() {
-                        class Local {
-                            void work() {
-                                LocalCallback r = new LocalCallback() {
-                                    public void run() { b.B.ping(); }
-                                };
-                                r.run();
-                            }
+            package a;
+            public class A {
+                interface LocalCallback { void run(); }
+                public void call() {
+                    class Local {
+                        void work() {
+                            LocalCallback r = new LocalCallback() {
+                                public void run() { b.B.ping(); }
+                            };
+                            r.run();
                         }
-                        new Local().work();
                     }
-                    public void unrelated() { int x = 1; }
+                    new Local().work();
                 }
+                public void unrelated() { int x = 1; }
+            }
             """.trimIndent(),
         )
         myFixture.addFileToProject(
@@ -149,16 +161,16 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/java/a/A.java",
             """
-                package a;
-                public class A {
-                    interface Callback { void run(); }
-                    static { b.B.ping(); }
-                    int count = b.B.answer();
-                    Callback action = new Callback() {
-                        public void run() { b.B.ping(); }
-                        b.B extra;
-                    };
-                }
+            package a;
+            public class A {
+                interface Callback { void run(); }
+                static { b.B.ping(); }
+                int count = b.B.answer();
+                Callback action = new Callback() {
+                    public void run() { b.B.ping(); }
+                    b.B extra;
+                };
+            }
             """.trimIndent(),
         )
         myFixture.addFileToProject(
@@ -179,17 +191,17 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             myFixture.addFileToProject(
                 "src/main/kotlin/a/Token.kt",
                 """
-                    package a
-                    import b.plus
-                    class Token
-                    fun use(left: Token, right: Token): Token = left + right
+                package a
+                import b.plus
+                class Token
+                fun use(left: Token, right: Token): Token = left + right
                 """.trimIndent(),
             )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Operators.kt",
             """
-                package b
-                operator fun a.Token.plus(other: a.Token): a.Token = this
+            package b
+            operator fun a.Token.plus(other: a.Token): a.Token = this
             """.trimIndent(),
         )
         IndexingTestUtil.waitUntilIndexesAreReady(project)
@@ -198,7 +210,14 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
 
         val (snapshot, graph) = analyze()
         assertEquals(1, graph.cycles.size)
-        assertEquals(setOf("a", "b"), graph.cycles.single().members.map { it.packageName }.toSet())
+        assertEquals(
+            setOf("a", "b"),
+            graph.cycles
+                .single()
+                .members
+                .map { it.packageName }
+                .toSet(),
+        )
         val edge = dependency(snapshot, "a", "b", "plus")
         assertEquals(SourceDependencyKind.CALL, edge.kind)
         assertNavigates(edge)
@@ -209,20 +228,20 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             myFixture.addFileToProject(
                 "src/main/kotlin/a/Token.kt",
                 """
-                    package a
-                    import b.get
-                    import b.set
-                    class Token
-                    fun inspect(token: Token): Token = token[0]
-                    fun update(token: Token) { token[0] = token }
+                package a
+                import b.get
+                import b.set
+                class Token
+                fun inspect(token: Token): Token = token[0]
+                fun update(token: Token) { token[0] = token }
                 """.trimIndent(),
             )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Operators.kt",
             """
-                package b
-                operator fun a.Token.get(index: Int): a.Token = this
-                operator fun a.Token.set(index: Int, value: a.Token) {}
+            package b
+            operator fun a.Token.get(index: Int): a.Token = this
+            operator fun a.Token.set(index: Int, value: a.Token) {}
             """.trimIndent(),
         )
         IndexingTestUtil.waitUntilIndexesAreReady(project)
@@ -242,26 +261,26 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Owner.kt",
             """
-                package a
-                import b.Remote
-                class Owner {
-                    val callback = object {
-                        fun execute() { Remote.ping() }
-                    }
-                    fun run() {
-                        fun local() { Remote.ping() }
-                        val action = { Remote.ping() }
-                        local()
-                        action()
-                    }
+            package a
+            import b.Remote
+            class Owner {
+                val callback = object {
+                    fun execute() { Remote.ping() }
                 }
+                fun run() {
+                    fun local() { Remote.ping() }
+                    val action = { Remote.ping() }
+                    local()
+                    action()
+                }
+            }
             """.trimIndent(),
         )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Remote.kt",
             """
-                package b
-                object Remote { fun ping() {} }
+            package b
+            object Remote { fun ping() {} }
             """.trimIndent(),
         )
         val (snapshot, _) = analyze()
@@ -276,14 +295,14 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Local.kt",
             """
-                package a
-                import b.Unused
-                class Local
-                fun apply(value: Local): Local {
-                    val copy = value
-                    fun choose(parameter: Local): Local = parameter
-                    return choose(copy)
-                }
+            package a
+            import b.Unused
+            class Local
+            fun apply(value: Local): Local {
+                val copy = value
+                fun choose(parameter: Local): Local = parameter
+                return choose(copy)
+            }
             """.trimIndent(),
         )
         myFixture.addFileToProject("src/main/kotlin/b/Unused.kt", "package b; class Unused")
@@ -292,7 +311,9 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.relationships.none { targetPackage(it) == "b" })
         assertTrue(
             snapshot.references.none { it.target is SourceTarget.Unresolved },
-            "Unexpected unresolved references: ${snapshot.references.filter { it.target is SourceTarget.Unresolved }}; diagnostics: ${snapshot.diagnostics}",
+            "Unexpected unresolved references: ${snapshot.references.filter {
+                it.target is SourceTarget.Unresolved
+            }}; diagnostics: ${snapshot.diagnostics}",
         )
         assertTrue(
             snapshot.entities.none { it.id.signature.contains("copy") || it.id.signature.contains("choose") },
@@ -304,18 +325,18 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Token.kt",
             """
-                package a
-                import b.plus
-                class Token
-                fun operatorUse(left: Token, right: Token) = left + right
-                fun explicitUse(left: Token, right: Token) = left.plus(right)
+            package a
+            import b.plus
+            class Token
+            fun operatorUse(left: Token, right: Token) = left + right
+            fun explicitUse(left: Token, right: Token) = left.plus(right)
             """.trimIndent(),
         )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Operators.kt",
             """
-                package b
-                operator fun a.Token.plus(other: a.Token): a.Token = this
+            package b
+            operator fun a.Token.plus(other: a.Token): a.Token = this
             """.trimIndent(),
         )
         val (snapshot, _) = analyze()
@@ -330,23 +351,25 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             myFixture.addFileToProject(
                 "src/main/kotlin/a/Token.kt",
                 """
-                    package a
-                    import b.invoke
-                    class Token
-                    fun use(token: Token): Token = token()
-                    fun explicit(token: Token): Token = token.invoke()
+                package a
+                import b.invoke
+                class Token
+                fun use(token: Token): Token = token()
+                fun explicit(token: Token): Token = token.invoke()
                 """.trimIndent(),
             )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Invoke.kt",
             """
-                package b
-                operator fun a.Token.invoke(): a.Token = this
+            package b
+            operator fun a.Token.invoke(): a.Token = this
             """.trimIndent(),
         )
         IndexingTestUtil.waitUntilIndexesAreReady(project)
-        val call = PsiTreeUtil.findChildrenOfType(source, org.jetbrains.kotlin.psi.KtCallExpression::class.java)
-            .single { it.text == "token()" }
+        val call =
+            PsiTreeUtil
+                .findChildrenOfType(source, org.jetbrains.kotlin.psi.KtCallExpression::class.java)
+                .single { it.text == "token()" }
         assertTrue(call.references.any { it.resolve() != null }, "Fixture must expose an implicit invoke reference")
         val (snapshot, graph) = analyze()
         assertEquals(1, graph.cycles.size)
@@ -363,26 +386,26 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Owner.kt",
             """
-                package a
-                import b.Remote
-                class Owner {
-                    fun run() {
-                        class Local {
-                            fun call() { Remote.ping() }
-                        }
-                        Local().call()
+            package a
+            import b.Remote
+            class Owner {
+                fun run() {
+                    class Local {
+                        fun call() { Remote.ping() }
                     }
+                    Local().call()
                 }
+            }
             """.trimIndent(),
         )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Remote.kt",
             """
-                package b
-                object Remote {
-                    val back: a.Owner? = null
-                    fun ping() {}
-                }
+            package b
+            object Remote {
+                val back: a.Owner? = null
+                fun ping() {}
+            }
             """.trimIndent(),
         )
         val (snapshot, graph) = analyze()
@@ -395,7 +418,9 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
         assertTrue(
             snapshot.references.none { it.target is SourceTarget.Unresolved },
-            "Unexpected unresolved references: ${snapshot.references.filter { it.target is SourceTarget.Unresolved }}; diagnostics: ${snapshot.diagnostics}",
+            "Unexpected unresolved references: ${snapshot.references.filter {
+                it.target is SourceTarget.Unresolved
+            }}; diagnostics: ${snapshot.diagnostics}",
         )
         assertNavigates(edge)
     }
@@ -404,9 +429,9 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Token.kt",
             """
-                package a
-                class Token
-                fun use(left: Token, right: Token) = left + right
+            package a
+            class Token
+            fun use(left: Token, right: Token) = left + right
             """.trimIndent(),
         )
         val (snapshot, graph) = analyze()
@@ -420,9 +445,9 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject(
             "src/main/kotlin/a/Aliases.kt",
             """
-                package a
-                typealias Alias = MissingType
-                class UsesAlias { val value: Alias? = null }
+            package a
+            typealias Alias = MissingType
+            class UsesAlias { val value: Alias? = null }
             """.trimIndent(),
         )
         val (snapshot, graph) = analyze()
@@ -471,13 +496,16 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         }
 
     private fun targetPackage(reference: SourceDependency): String =
-        (reference.target as? SourceTarget.Internal)?.entity?.fileUrl?.let { url ->
-            when {
-                url.contains("/a/") -> "a"
-                url.contains("/b/") -> "b"
-                else -> ""
-            }
-        }.orEmpty()
+        (reference.target as? SourceTarget.Internal)
+            ?.entity
+            ?.fileUrl
+            ?.let { url ->
+                when {
+                    url.contains("/a/") -> "a"
+                    url.contains("/b/") -> "b"
+                    else -> ""
+                }
+            }.orEmpty()
 
     private fun targetPackage(relationship: io.shamash.psi.core.source.SourceRelationship): String =
         when {
