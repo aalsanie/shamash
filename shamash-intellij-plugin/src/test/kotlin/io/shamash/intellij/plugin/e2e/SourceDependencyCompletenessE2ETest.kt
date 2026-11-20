@@ -485,9 +485,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             "package b\nclass Target(val owner: a.Owner? = null)",
         )
         val (snapshot, graph) = analyze()
-        val edges = snapshot.references.filter {
-            fromPackage(it) == "a" && targetPackage(it) == "b"
-        }
+        val edges =
+            snapshot.references.filter {
+                fromPackage(it) == "a" && targetPackage(it) == "b"
+            }
         assertTrue(
             edges.any { (it.target as? SourceTarget.Internal)?.entity?.signature == "b.Target" },
             "Aliases must resolve to the real project declaration: $edges; diagnostics: ${snapshot.diagnostics}",
