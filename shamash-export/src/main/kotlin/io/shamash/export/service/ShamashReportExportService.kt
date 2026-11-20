@@ -63,14 +63,9 @@ class ShamashReportExportService(
                 exceptionsPreprocessor.process(baseAbs, findings)
             }
 
-        val preparedBaseline =
+        val generatedFingerprints =
             if (baseline.mode == BaselineMode.GENERATE) {
-                val current = baselineCoordinator.computeFingerprints(projectBasePath, effectiveFindings)
-                if (baseline.writeMerged) {
-                    baselineCoordinator.loadBaselineFingerprints(outputDir) + current
-                } else {
-                    current
-                }
+                baselineCoordinator.computeFingerprints(projectBasePath, effectiveFindings)
             } else {
                 null
             }
@@ -84,11 +79,11 @@ class ShamashReportExportService(
             CoherentReportPublisher().publish(
                 outputDir = outputDir,
                 onActivated = {
-                    if (preparedBaseline != null) {
+                    if (generatedFingerprints != null) {
                         baselineCoordinator.writeBaseline(
                             outputDir = outputDir,
-                            fingerprints = preparedBaseline,
-                            mergeWithExisting = false,
+                            fingerprints = generatedFingerprints,
+                            mergeWithExisting = baseline.writeMerged,
                         )
                     }
                 },
@@ -107,7 +102,7 @@ class ShamashReportExportService(
         return ExportResult(
             report = report,
             outputDir = outputDir,
-            baselineWritten = preparedBaseline != null,
+            baselineWritten = generatedFingerprints != null,
         )
     }
 }
