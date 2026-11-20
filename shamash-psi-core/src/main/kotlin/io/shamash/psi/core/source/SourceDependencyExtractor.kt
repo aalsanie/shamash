@@ -130,7 +130,10 @@ class SourceDependencyExtractor(
                                     ProgressManager.checkCanceled()
                                     val resolved = reference.resolve()
                                     val declaration = resolved?.let(::declarationOf)
-                                    if (element is KtCallExpression && (declaration as? KtNamedFunction)?.name != "invoke") {
+                                    if (element is KtCallExpression &&
+                                        ((declaration as? KtNamedFunction)?.name != "invoke" ||
+                                            element.calleeExpression?.text == "invoke")
+                                    ) {
                                         continue
                                     }
                                     if (resolved != null && (declaration == null || isLocalBinding(declaration))) continue
