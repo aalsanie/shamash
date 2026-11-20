@@ -83,7 +83,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                 (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("B#ping(") == true &&
                     it.kind == SourceDependencyKind.CONSTRUCTOR
             },
-            "Nested method calls must not inherit their enclosing constructor's kind",
+            "Nested method calls must not inherit their enclosing constructor's kind: ${snapshot.references.filter { (it.target as? SourceTarget.Internal)?.entity?.signature?.contains("B#ping(") == true }}",
         )
         assertNavigates(edge)
     }
@@ -273,7 +273,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             snapshot.references.none { it.target is SourceTarget.Unresolved },
             "Unexpected unresolved references: ${snapshot.references.filter { it.target is SourceTarget.Unresolved }}; diagnostics: ${snapshot.diagnostics}",
         )
-        assertTrue(snapshot.entities.none { it.id.signature.contains("copy") || it.id.signature.contains("choose") })
+        assertTrue(
+            snapshot.entities.none { it.id.signature.contains("copy") || it.id.signature.contains("choose") },
+            "Local declarations appeared as graph entities: ${snapshot.entities.map { it.id.signature }}",
+        )
     }
 
     fun testKotlinExplicitCallAndOperatorSyntaxHaveSamePackageDirection() {
@@ -365,7 +368,10 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(1, graph.cycles.size)
         val edge = dependency(snapshot, "a", "b", "ping")
         assertTrue(edge.from.signature.contains("Owner.run("), edge.from.toString())
-        assertTrue(snapshot.entities.none { it.id.signature.contains("Local") })
+        assertTrue(
+            snapshot.entities.none { it.id.signature.contains("Local") },
+            "Local class declarations appeared as graph entities: ${snapshot.entities.map { it.id.signature }}",
+        )
         assertTrue(
             snapshot.references.none { it.target is SourceTarget.Unresolved },
             "Unexpected unresolved references: ${snapshot.references.filter { it.target is SourceTarget.Unresolved }}; diagnostics: ${snapshot.diagnostics}",
