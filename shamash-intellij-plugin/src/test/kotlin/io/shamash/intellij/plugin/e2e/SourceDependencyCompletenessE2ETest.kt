@@ -28,8 +28,8 @@ import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
 import io.shamash.psi.core.source.ProjectSourceSnapshot
 import io.shamash.psi.core.source.SourceDependency
-import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceDependencyExtractor
+import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceGraphSnapshot
@@ -235,7 +235,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
         val (snapshot, _) = analyze()
         val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
-        fun has(signature: String, kind: SourceDependencyKind): Boolean =
+
+        fun has(
+            signature: String,
+            kind: SourceDependencyKind,
+        ): Boolean =
             references.any {
                 (it.target as? SourceTarget.Internal)?.entity?.signature == signature && it.kind == kind
             }
@@ -270,7 +274,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
         val (snapshot, _) = analyze()
         val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
-        fun has(signature: String, kind: SourceDependencyKind): Boolean =
+
+        fun has(
+            signature: String,
+            kind: SourceDependencyKind,
+        ): Boolean =
             references.any {
                 (it.target as? SourceTarget.Internal)?.entity?.signature == signature && it.kind == kind
             }
