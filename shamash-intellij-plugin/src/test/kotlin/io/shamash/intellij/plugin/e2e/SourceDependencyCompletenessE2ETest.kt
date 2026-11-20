@@ -369,6 +369,22 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.references.any { it.target is SourceTarget.Unresolved })
     }
 
+    fun testUnresolvedTypeAliasCannotBeReportedAsComplete() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Aliases.kt",
+            """
+                package a
+                typealias Alias = MissingType
+                class UsesAlias { val value: Alias? = null }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        assertFalse(snapshot.complete)
+        assertFalse(graph.cycleAbsenceEstablished)
+        assertTrue(snapshot.references.any { it.target is SourceTarget.Unresolved })
+        assertTrue(snapshot.diagnostics.any { it.phase == "resolve" })
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
