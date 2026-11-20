@@ -147,7 +147,9 @@ class ShamashReportBaselineTransactionTest {
             assertTrue(result.baselineWritten)
             assertEquals(listOf("KEEP"), result.report.findings.map { it.ruleId })
             assertEquals(
-                result.report.findings.map { it.fingerprint }.toSet(),
+                result.report.findings
+                    .map { it.fingerprint }
+                    .toSet(),
                 store.load(result.outputDir)?.fingerprints,
             )
         }
@@ -168,7 +170,15 @@ class ShamashReportBaselineTransactionTest {
 
             assertTrue(result.baselineWritten)
             assertEquals(1, result.report.findings.size)
-            assertEquals(setOf(previous, result.report.findings.single().fingerprint), store.load(output)?.fingerprints)
+            assertEquals(
+                setOf(
+                    previous,
+                    result.report.findings
+                        .single()
+                        .fingerprint,
+                ),
+                store.load(output)?.fingerprints,
+            )
         }
 
     @Test
@@ -184,7 +194,14 @@ class ShamashReportBaselineTransactionTest {
                 )
 
             assertTrue(result.baselineWritten)
-            assertEquals(setOf(result.report.findings.single().fingerprint), store.load(output)?.fingerprints)
+            assertEquals(
+                setOf(
+                    result.report.findings
+                        .single()
+                        .fingerprint,
+                ),
+                store.load(output)?.fingerprints,
+            )
         }
 
     @Test
@@ -252,7 +269,14 @@ class ShamashReportBaselineTransactionTest {
                     baseline = BaselineConfig(BaselineMode.GENERATE, writeMerged = false),
                 )
             assertTrue(result.baselineWritten)
-            assertEquals(setOf(result.report.findings.single().fingerprint), store.load(output)?.fingerprints)
+            assertEquals(
+                setOf(
+                    result.report.findings
+                        .single()
+                        .fingerprint,
+                ),
+                store.load(output)?.fingerprints,
+            )
         }
 
     @Test
