@@ -74,6 +74,7 @@ class SourceDependencyExtractor(
         val entities = LinkedHashMap<SourceEntityId, SourceEntity>()
         val refs = ArrayList<SourceDependency>()
         val diagnostics = ArrayList<SourceDiagnostic>()
+        val pendingUnresolved = ArrayList<Pair<SourceDependency, SourceDiagnostic>>()
 
         data class TypeUse(
             val owner: PsiElement,
@@ -152,13 +153,13 @@ class SourceDependencyExtractor(
                                 }
                             }
                             if (!resolvedCandidate && shouldReportUnresolved(element)) {
-                                diagnostics +=
-                                    SourceDiagnostic(
-                                        location.fileUrl,
-                                        "resolve",
-                                        "Cannot resolve '${element.text}' at ${element.textOffset}",
-                                    )
-                                refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
+                                pendingUnresolved +=
+                                    dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp) to
+                                        SourceDiagnostic(
+                                            location.fileUrl,
+                                            "resolve",
+                                            "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                        )
                             }
                         } catch (c: ProcessCanceledException) {
                             throw c
@@ -232,6 +233,18 @@ class SourceDependencyExtractor(
                             "Cannot uniquely locate generic type witness for $token",
                         )
                 }
+            }
+        }
+
+        for ((unresolved, diagnostic) in pendingUnresolved) {
+            if (refs.none {
+                    it.from == unresolved.from &&
+                        it.target !is SourceTarget.Unresolved &&
+                        it.evidence.offset == unresolved.evidence.offset
+                }
+            ) {
+                refs += unresolved
+                diagnostics += diagnostic
             }
         }
 
