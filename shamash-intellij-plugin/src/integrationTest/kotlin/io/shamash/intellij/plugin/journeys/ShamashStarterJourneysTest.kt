@@ -399,8 +399,8 @@ class ShamashStarterJourneysTest {
                     invokeAction("io.shamash.open")
                     invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
-                    x(xQuery { byVisibleText("Cyclic group of 2 packages") })
-                        .shouldBe("Anonymous Java and Kotlin operator dependencies must both close package cycles", present)
+                    x(xQuery { byVisibleText("Source analysis complete") })
+                        .shouldBe("Both source-reference families must analyze successfully", present)
                     x(xQuery { byVisibleText("Findings") }).click()
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Both supported package cycles must be visible", present)
