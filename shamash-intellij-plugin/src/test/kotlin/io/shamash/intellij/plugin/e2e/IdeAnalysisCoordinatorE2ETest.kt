@@ -432,6 +432,188 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
+
+    fun testDirectoryRenameStalesCompletedSnapshotWithoutStartingAnotherScan() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+        val before = coordinator.state().sourceRevision
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+        assertEquals(before + 1, coordinator.state().sourceRevision)
+    }
+
+    fun testDeletingContainingDirectoryStalesPreviousResult() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.delete(this) }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+    }
+
+    fun testMovingDirectoryOutAndBackIntoSourceRootStalesBothGenerations() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        val outside = myFixture.tempDirFixture.findOrCreateDir("elsewhere")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val first = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.move(this, outside) }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(first, coordinator.state().visibleResult)
+
+        val second = completeInjected(coordinator)
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.move(this, root) }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(second, coordinator.state().visibleResult)
+    }
+
+    fun testRenamingAncestorOfSourceRootInvalidatesSnapshot() {
+        val ancestor = myFixture.tempDirFixture.findOrCreateDir("src/main")
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { ancestor.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+    }
+
+    fun testUnrelatedReportAndTestDirectoryChangesRemainCurrent() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        PsiTestUtil.addSourceRoot(myModule, testRoot, true)
+        myFixture.addFileToProject("src/main/java/Main.java", "class Main {}")
+        val testDirectory = myFixture.tempDirFixture.findOrCreateDir("src/test/java/sample")
+        val reportDirectory = myFixture.tempDirFixture.findOrCreateDir(".shamash/reports")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+        val revision = coordinator.state().sourceRevision
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                testDirectory.rename(this, "renamed")
+                reportDirectory.rename(this, "archived")
+            }
+        }
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+        assertEquals(revision, coordinator.state().sourceRevision)
+    }
+
+    fun testDirectoryRenameCancelsBlockedGenerationAndRejectsLateCompletion() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val returned = CountDownLatch(1)
+        val request =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { attempt, _ ->
+                    coordinator.graphStarted(attempt)
+                    started.countDown()
+                    try {
+                        release.await(10, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    } finally {
+                        returned.countDown()
+                    }
+                    AnalysisOutcome.Complete(
+                        IdeAnalysisCoordinator.SourcePresentation(),
+                        AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                    )
+                },
+            )
+        try {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            assertTrue(started.await(10, TimeUnit.SECONDS))
+            runInEdtAndWait {
+                WriteCommandAction.runWriteCommandAction(project) { directory.rename(this, "renamed") }
+            }
+            assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+            assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+            assertEquals(previous, coordinator.state().visibleResult)
+            assertTrue(!coordinator.state().active)
+            assertTrue(!coordinator.state().currentComplete)
+            assertTrue(coordinator.state().requestGeneration > request.generation)
+        } finally {
+            release.countDown()
+        }
+        assertTrue(returned.await(10, TimeUnit.SECONDS))
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
+    fun testDisposedCoordinatorIgnoresLaterDirectoryChanges() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        val coordinator = IdeAnalysisCoordinator(project)
+        Disposer.dispose(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.CANCELLED, coordinator.state().phase)
+        assertEquals(null, coordinator.analyze { _, _ -> error("Disposed coordinator started work") })
+    }
+
+    private fun completeInjected(
+        coordinator: IdeAnalysisCoordinator,
+    ): io.shamash.intellij.plugin.analysis.AnalysisSnapshot<IdeAnalysisCoordinator.SourcePresentation> {
+        val finished = CountDownLatch(1)
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                finished.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(finished.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        return kotlin.test.assertNotNull(coordinator.state().visibleResult)
+    }
+
     private fun awaitTerminal() {
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         repeat(500) {
