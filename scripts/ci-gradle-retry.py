@@ -65,7 +65,9 @@ def run(command: list[str]) -> int:
         ) as process:
             assert process.stdout is not None
             for line in process.stdout:
-                print(line, end="", flush=True)
+                encoding = sys.stdout.encoding or "ascii"
+                safe_line = line.encode(encoding, errors="backslashreplace").decode(encoding)
+                print(safe_line, end="", flush=True)
                 lines.append(line)
                 if len(lines) > 10_000:
                     del lines[:5_000]
