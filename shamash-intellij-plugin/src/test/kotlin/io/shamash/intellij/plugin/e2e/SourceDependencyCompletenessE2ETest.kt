@@ -38,6 +38,7 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceTarget
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
+import org.jetbrains.kotlin.psi.KtTypeAlias
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -1050,6 +1051,30 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             snapshot.references.toString(),
         )
         assertTrue(snapshot.diagnostics.any { it.phase == "resolve" }, snapshot.diagnostics.toString())
+    }
+
+    fun testLocalKotlinTypeAliasDoesNotBecomeArchitecturalTarget() {
+        val source =
+            myFixture.addFileToProject(
+                "src/main/kotlin/a/Owner.kt",
+                """
+                package a
+                class Owner {
+                    fun use() {
+                        typealias LocalAlias = Owner
+                        val copy: LocalAlias? = null
+                    }
+                }
+                """.trimIndent(),
+            )
+        assertNotNull(PsiTreeUtil.findChildOfType(source, KtTypeAlias::class.java))
+        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/kotlin", source.virtualFile.url)
+        val extracted = SourceDependencyExtractor { location }.extract(source, location)
+        assertTrue(extracted.entities.any { it.id.signature == "a.Owner" }, extracted.entities.toString())
+        assertTrue(
+            extracted.entities.none { it.id.signature.contains("LocalAlias") },
+            "A typealias nested in a function cannot become a project declaration: DUMMY",
+        )
     }
 
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
