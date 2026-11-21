@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.e2e
 
 import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.util.PsiTreeUtil
@@ -336,8 +337,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         val location = SourceDependencyExtractor.SourceLocation("main", "src/main/kotlin", source.virtualFile.url)
         val extractor = SourceDependencyExtractor { null }
-        val extracted = extractor.extract(source, location)
-        val external = extracted.references.mapNotNull { it.target as? SourceTarget.External }
+        var extracted: SourceDependencyExtractor.FileResult? = null
+        DumbService.getInstance(project).runReadActionInSmartMode {
+            extracted = extractor.extract(source, location)
+        }
+        val external = requireNotNull(extracted).references.mapNotNull { it.target as? SourceTarget.External }
         assertTrue(external.any { it.name == "b.Remote" }, extracted.references.toString())
         assertTrue(external.any { it.name == "b.ping" }, extracted.references.toString())
     }
