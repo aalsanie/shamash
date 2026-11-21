@@ -30,6 +30,7 @@ import io.shamash.intellij.plugin.analysis.AnalysisOutcome
 import io.shamash.intellij.plugin.analysis.AnalysisPhase
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.ResultRelation
+import io.shamash.intellij.plugin.analysis.SourceVfsScope
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.psi.core.config.SchemaResources
 import java.nio.file.Files
@@ -516,6 +517,9 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val testDirectory = myFixture.tempDirFixture.findOrCreateDir("src/test/java/sample")
         val reportDirectory = myFixture.tempDirFixture.findOrCreateDir(".shamash/reports")
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val scope = SourceVfsScope.capture(project)
+        assertFalse("Test root incorrectly classified as production source", scope.affects(testDirectory.path, directory = true))
+        assertFalse("Report directory incorrectly classified as production source", scope.affects(reportDirectory.path, directory = true))
         val prior = completeInjected(coordinator)
         val revision = coordinator.state().sourceRevision
 
@@ -576,6 +580,10 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         PsiTestUtil.addExcludedRoot(myModule, excluded)
         val child = myFixture.tempDirFixture.findOrCreateDir("src/main/java/excluded/child")
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        assertFalse(
+            "Excluded child incorrectly classified as production source",
+            SourceVfsScope.capture(project).affects(child.path, directory = true),
+        )
         val previous = completeInjected(coordinator)
         val revision = coordinator.state().sourceRevision
 
