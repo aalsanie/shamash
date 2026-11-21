@@ -92,16 +92,22 @@ internal class SourceVfsScope(
                         .getInstance(module)
                         .contentEntries
                         .flatMap { entry ->
-                            entry.sourceFolders.mapNotNull { folder ->
-                                val root = folder.file ?: return@mapNotNull null
-                                val inSource = index.isInSourceContent(root)
-                                val inTest = index.isInTestSourceContent(root)
-                                if (!inSource && !inTest) return@mapNotNull null
-                                val properties = folder.jpsElement.properties
-                                val generated =
-                                    properties is JavaSourceRootProperties && properties.isForGeneratedSources
-                                Root(root.path, inSource && !inTest && !generated)
-                            }
+                            val sourceRoots =
+                                entry.sourceFolders.mapNotNull { folder ->
+                                    val root = folder.file ?: return@mapNotNull null
+                                    val inSource = index.isInSourceContent(root)
+                                    val inTest = index.isInTestSourceContent(root)
+                                    if (!inSource && !inTest) return@mapNotNull null
+                                    val properties = folder.jpsElement.properties
+                                    val generated =
+                                        properties is JavaSourceRootProperties && properties.isForGeneratedSources
+                                    Root(root.path, inSource && !inTest && !generated)
+                                }
+                            val excludedRoots =
+                                entry.excludeFolders.mapNotNull { folder ->
+                                    folder.file?.let { Root(it.path, false) }
+                                }
+                            sourceRoots + excludedRoots
                         }
                 }
             return SourceVfsScope(roots)
