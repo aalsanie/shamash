@@ -291,7 +291,7 @@ class SourceDependencyExtractor(
         }
     }
 
-    private fun declarationOf(element: PsiElement): PsiElement? {
+    internal fun declarationOf(element: PsiElement): PsiElement? {
         val nav = element.navigationElement.takeIf { it !== element && it.containingFile != null } ?: element
         return when (nav) {
             is PsiLocalVariable, is PsiParameter, is KtParameter,
