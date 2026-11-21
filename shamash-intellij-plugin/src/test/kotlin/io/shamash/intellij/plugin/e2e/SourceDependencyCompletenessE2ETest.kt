@@ -1013,7 +1013,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.diagnostics.any { it.phase == "resolve" }, snapshot.diagnostics.toString())
     }
 
-    fun testJavaPackageAnnotationWithoutDeclarationOwnerIsDiagnosed() {
+    fun testJavaPackageAnnotationIsExcludedFromSourceDependencies() {
         myFixture.addFileToProject(
             "src/main/java/b/Marker.java",
             "package b; public @interface Marker {}",
@@ -1026,11 +1026,8 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         val location = SourceDependencyExtractor.SourceLocation("main", "src/main/java", source.virtualFile.url)
         val extracted = SourceDependencyExtractor { location }.extract(source, location)
-        assertTrue(
-            extracted.diagnostics.any { it.phase == "owner" && it.message.contains("No supported declaration owns reference") },
-            extracted.diagnostics.toString(),
-        )
-        assertTrue(extracted.references.none { it.target is SourceTarget.Internal }, extracted.references.toString())
+        assertTrue(extracted.references.isEmpty(), extracted.references.toString())
+        assertTrue(extracted.diagnostics.none { it.phase == "owner" }, extracted.diagnostics.toString())
     }
 
     fun testUnresolvedKotlinIndexedAccessCannotEstablishCycleAbsence() {
