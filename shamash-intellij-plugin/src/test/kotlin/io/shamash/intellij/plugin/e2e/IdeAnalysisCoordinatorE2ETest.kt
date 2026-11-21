@@ -531,6 +531,35 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(revision, coordinator.state().sourceRevision)
     }
 
+    fun testCreatingDirectoryWithinSourceRootInvalidatesCompletedResult() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { root.createChildDirectory(this, "added") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
+    fun testCopyingDirectoryIntoSourceRootInvalidatesCompletedResult() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val outside = myFixture.tempDirFixture.findOrCreateDir("elsewhere/copied")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { outside.copy(this, root, "copied") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
     fun testDirectoryRenameCancelsBlockedGenerationAndRejectsLateCompletion() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)
