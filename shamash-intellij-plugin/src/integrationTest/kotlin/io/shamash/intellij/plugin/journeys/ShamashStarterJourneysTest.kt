@@ -399,8 +399,16 @@ class ShamashStarterJourneysTest {
                     invokeAction("io.shamash.open")
                     invokeAction("MaximizeToolWindow")
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
-                    x(xQuery { byVisibleText("Source analysis complete") })
-                        .shouldBe("Both source-reference families must analyze successfully", present)
+                    try {
+                        x(xQuery { byVisibleText("Source analysis complete") })
+                            .shouldBe("Both source-reference families must analyze successfully", present)
+                    } catch (failure: com.intellij.driver.sdk.WaitForException) {
+                        val diagnostics = x(xQuery { byAccessibleName("Analysis scope and diagnostics") })
+                        val detail = diagnostics.driver.withContext(OnDispatcher.EDT) {
+                            cast(diagnostics.component, RemoteSourceDetails::class).getText()
+                        }
+                        throw AssertionError("Source analysis did not complete: $detail", failure)
+                    }
                     x(xQuery { byVisibleText("Findings") }).click()
                     val findings = list { byAccessibleName("Package cycle findings") }
                     findings.shouldBe("Both supported package cycles must be visible", present)
@@ -635,6 +643,11 @@ private data class EditorSnapshot(
     val documentText: String,
     val caretOffset: Int,
 )
+
+@Remote("javax.swing.JTextArea")
+interface RemoteSourceDetails {
+    fun getText(): String
+}
 
 @Remote("javax.swing.JButton")
 interface RemoteSourceButton {
