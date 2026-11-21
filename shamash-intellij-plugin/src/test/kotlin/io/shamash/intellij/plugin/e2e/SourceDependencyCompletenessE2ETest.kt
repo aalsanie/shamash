@@ -1012,6 +1012,46 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.diagnostics.any { it.phase == "resolve" }, snapshot.diagnostics.toString())
     }
 
+    fun testJavaPackageAnnotationWithoutDeclarationOwnerIsDiagnosed() {
+        myFixture.addFileToProject(
+            "src/main/java/b/Marker.java",
+            "package b; public @interface Marker {}",
+        )
+        val source =
+            myFixture.addFileToProject(
+                "src/main/java/a/package-info.java",
+                "@b.Marker\npackage a;",
+            )
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/java", source.virtualFile.url)
+        val extracted = SourceDependencyExtractor { location }.extract(source, location)
+        assertTrue(
+            extracted.diagnostics.any { it.phase == "owner" && it.message.contains("No supported declaration owns reference") },
+            extracted.diagnostics.toString(),
+        )
+        assertTrue(extracted.references.none { it.target is SourceTarget.Internal }, extracted.references.toString())
+    }
+
+    fun testUnresolvedKotlinIndexedAccessCannotEstablishCycleAbsence() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            class Token
+            fun read(token: Token): Token = token[token]
+            fun update(token: Token) { token[token] = token }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        assertTrue(!snapshot.complete, snapshot.diagnostics.toString())
+        assertTrue(!graph.cycleAbsenceEstablished)
+        assertTrue(
+            snapshot.references.any { it.target is SourceTarget.Unresolved },
+            snapshot.references.toString(),
+        )
+        assertTrue(snapshot.diagnostics.any { it.phase == "resolve" }, snapshot.diagnostics.toString())
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
