@@ -33,15 +33,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.Computable
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
-import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
-import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.artifacts.contract.Finding
@@ -83,6 +79,8 @@ class IdeAnalysisCoordinator(
         AppExecutorUtil.createBoundedApplicationPoolExecutor("Shamash source analysis", 1)
     private val callbacks = CopyOnWriteArrayList<(IdeAnalysisState<SourcePresentation>) -> Unit>()
     private val gate = Any()
+    @Volatile
+    private var sourceScope = SourceVfsScope.capture(project)
     private var activeTask: Future<*>? = null
     private var indicator: ProgressIndicatorBase? = null
 
@@ -111,32 +109,19 @@ class IdeAnalysisCoordinator(
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(
             VirtualFileManager.VFS_CHANGES,
             object : BulkFileListener {
+                private var invalidatedBefore = false
+
+                override fun before(events: List<VFileEvent>) {
+                    if (disposed || project.isDisposed) return
+                    invalidatedBefore = sourceScope.affects(events)
+                    if (invalidatedBefore) sourceChanged()
+                }
+
                 override fun after(events: List<VFileEvent>) {
                     if (disposed || project.isDisposed) return
-                    val contentRoots =
-                        ProjectRootManager.getInstance(project).contentRoots.map { it.path.trimEnd('/') + "/" }
-                    if (events.any { change ->
-                            val path = change.path.replace('\\', '/')
-                            val previousNameWasSource =
-                                change is VFilePropertyChangeEvent &&
-                                    change.propertyName == VirtualFile.PROP_NAME &&
-                                    (change.oldValue as? String)?.let {
-                                        it.endsWith(".java") || it.endsWith(".kt")
-                                    } == true
-                            val sourceFile = path.endsWith(".java") || path.endsWith(".kt") || previousNameWasSource
-                            val insideProject =
-                                contentRoots.any { root -> path.startsWith(root) } ||
-                                    (
-                                        change is VFileMoveEvent &&
-                                            contentRoots.any { root ->
-                                                (change.oldParent.path.trimEnd('/') + "/").startsWith(root)
-                                            }
-                                    )
-                            sourceFile && insideProject
-                        }
-                    ) {
-                        sourceChanged()
-                    }
+                    val invalidatedAfter = !invalidatedBefore && sourceScope.affects(events)
+                    invalidatedBefore = false
+                    if (invalidatedAfter) sourceChanged()
                 }
             },
         )
@@ -245,7 +230,10 @@ class IdeAnalysisCoordinator(
     }
 
     private fun rootsChanged() {
+        if (disposed || project.isDisposed) return
+        val updatedScope = SourceVfsScope.capture(project)
         synchronized(gate) {
+            sourceScope = updatedScope
             lifecycle.rootsChanged()
             cancelWork()
         }
