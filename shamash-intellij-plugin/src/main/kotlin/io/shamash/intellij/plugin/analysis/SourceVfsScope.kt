@@ -75,7 +75,7 @@ internal class SourceVfsScope(
                     affects(parent + "/" + event.oldValue, directory) ||
                         affects(parent + "/" + event.newValue, directory)
                 } else {
-                    !directory && affects(event.path, directory = false)
+                    false
                 }
             }
 
@@ -107,7 +107,6 @@ internal class SourceVfsScope(
                                     val root = folder.file ?: return@mapNotNull null
                                     val inSource = index.isInSourceContent(root)
                                     val inTest = index.isInTestSourceContent(root)
-                                    if (!inSource && !inTest) return@mapNotNull null
                                     val properties = folder.jpsElement.properties
                                     val generated =
                                         properties is JavaSourceRootProperties && properties.isForGeneratedSources
@@ -131,5 +130,22 @@ internal class SourceVfsScope(
         ): Boolean = path == parent || path.startsWith("$parent/")
 
         private fun sourceFile(path: String): Boolean = path.endsWith(".java") || path.endsWith(".kt")
+    }
+}
+
+internal class SourceVfsBatch(
+    private val invalidate: () -> Unit,
+) {
+    private var matchedBefore = false
+
+    fun before(relevant: Boolean) {
+        matchedBefore = relevant
+        if (relevant) invalidate()
+    }
+
+    fun after(relevant: Boolean) {
+        val changed = !matchedBefore && relevant
+        matchedBefore = false
+        if (changed) invalidate()
     }
 }
