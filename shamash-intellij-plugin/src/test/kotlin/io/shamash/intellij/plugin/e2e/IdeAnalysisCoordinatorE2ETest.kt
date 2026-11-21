@@ -515,6 +515,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         myFixture.addFileToProject("src/main/java/Main.java", "class Main {}")
         val testDirectory = myFixture.tempDirFixture.findOrCreateDir("src/test/java/sample")
         val reportDirectory = myFixture.tempDirFixture.findOrCreateDir(".shamash/reports")
+        PsiTestUtil.addExcludedRoot(myModule, reportDirectory)
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val scope = SourceVfsScope.capture(project)
         assertFalse("Test root incorrectly classified as production source", scope.affects(testDirectory.path, directory = true))
