@@ -20,6 +20,11 @@ package io.shamash.intellij.plugin.e2e
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
@@ -662,6 +667,76 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         }
         assertEquals(AnalysisPhase.CANCELLED, coordinator.state().phase)
         assertEquals(null, coordinator.analyze { _, _ -> error("Disposed coordinator started work") })
+    }
+
+    fun testSourceEventMatchingHandlesMovesInBothDirections() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val outside = myFixture.tempDirFixture.findOrCreateDir("elsewhere")
+        val otherOutside = myFixture.tempDirFixture.findOrCreateDir("other")
+        val insideFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
+        val outsideFile = myFixture.addFileToProject("elsewhere/Outside.java", "class Outside {}").virtualFile
+        val scope = SourceVfsScope.capture(project)
+
+        assertTrue(scope.affects(listOf(VFileMoveEvent(this, outsideFile, root))))
+        assertTrue(scope.affects(listOf(VFileMoveEvent(this, insideFile, outside))))
+        val unrelated = VFileMoveEvent(this, outsideFile, otherOutside)
+        assertFalse(scope.affects(listOf(unrelated)))
+        assertTrue(scope.affects(listOf(unrelated, VFileMoveEvent(this, outsideFile, root))))
+        assertFalse(scope.affects(emptyList()))
+    }
+
+    fun testSourceEventMatchingHandlesRenamesAndMetadataChanges() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val javaFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
+        val textFile = myFixture.addFileToProject("src/main/java/notes.txt", "notes").virtualFile
+        val outsideFile = myFixture.addFileToProject("other/Outside.java", "class Outside {}").virtualFile
+        val scope = SourceVfsScope.capture(project)
+
+        assertTrue(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, javaFile, VirtualFile.PROP_NAME, "Inside.java", "Inside.txt", false)),
+            ),
+        )
+        assertTrue(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, textFile, VirtualFile.PROP_NAME, "notes.txt", "Added.kt", false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, textFile, VirtualFile.PROP_NAME, "notes.txt", "notes.md", false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, outsideFile, VirtualFile.PROP_NAME, "Outside.java", "Next.java", false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, javaFile, VirtualFile.PROP_WRITABLE, true, false, false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, root, VirtualFile.PROP_WRITABLE, true, false, false)),
+            ),
+        )
+    }
+
+    fun testSourceEventMatchingHandlesDeletionAndContentChanges() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val javaFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
+        val outside = myFixture.addFileToProject("elsewhere/Outside.java", "class Outside {}").virtualFile
+        val scope = SourceVfsScope.capture(project)
+
+        assertTrue(scope.affects(listOf(VFileDeleteEvent(this, javaFile, false))))
+        assertFalse(scope.affects(listOf(VFileDeleteEvent(this, outside, false))))
+        assertTrue(scope.affects(listOf(VFileContentChangeEvent(this, javaFile, 1L, 2L, false))))
+        assertFalse(scope.affects(listOf(VFileContentChangeEvent(this, outside, 1L, 2L, false))))
     }
 
     private fun completeInjected(
