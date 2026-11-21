@@ -82,7 +82,7 @@ class CiGradleRetryTest(unittest.TestCase):
                 patch.object(
                     retry.subprocess,
                     "Popen",
-                    return_value=FakeProcess(1, "\u2588 spotless formatting failed\\n"),
+                    return_value=FakeProcess(1, "\u2588 spotless formatting failed\n"),
                 ) as popen,
                 patch.object(retry.time, "sleep") as sleep,
             ):
