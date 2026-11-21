@@ -22,6 +22,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileCopyEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
@@ -113,8 +114,8 @@ internal class SourceVfsScope(
                                     Root(root.path, inSource && !inTest && !generated)
                                 }
                             val excludedRoots =
-                                entry.excludeFolders.mapNotNull { folder ->
-                                    folder.file?.let { Root(it.path, false) }
+                                entry.excludeFolders.map { folder ->
+                                    Root(VirtualFileManager.extractPath(folder.url), false)
                                 }
                             sourceRoots + excludedRoots
                         }
