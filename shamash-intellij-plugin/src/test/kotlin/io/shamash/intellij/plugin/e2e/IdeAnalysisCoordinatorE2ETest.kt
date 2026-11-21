@@ -39,12 +39,12 @@ import io.shamash.intellij.plugin.analysis.ResultRelation
 import io.shamash.intellij.plugin.analysis.SourceVfsScope
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.psi.core.config.SchemaResources
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
 class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testInjectedBackendCompletesAndDoesNotActivateToolWindow() {
