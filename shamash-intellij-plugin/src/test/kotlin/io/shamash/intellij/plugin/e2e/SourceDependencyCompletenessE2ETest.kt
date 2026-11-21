@@ -1138,7 +1138,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                     it.kind == SourceDependencyKind.CALL &&
                     it.target.toString().contains("Callable.invoke(")
             }
-        assertEquals(2, calls.size, calls.toString())
+        assertEquals(calls.toString(), 2, calls.size)
         assertTrue(
             graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") },
             graph.cycles.toString(),
