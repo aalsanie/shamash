@@ -520,12 +520,21 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val revision = coordinator.state().sourceRevision
 
         runInEdtAndWait {
-            WriteCommandAction.runWriteCommandAction(project) {
-                testDirectory.rename(this, "renamed")
-                reportDirectory.rename(this, "archived")
-            }
+            WriteCommandAction.runWriteCommandAction(project) { testDirectory.rename(this, "renamed") }
         }
-        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        assertEquals(
+            "Test-directory rename: ${coordinator.state()}",
+            AnalysisPhase.COMPLETED,
+            coordinator.state().phase,
+        )
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { reportDirectory.rename(this, "archived") }
+        }
+        assertEquals(
+            "Report-directory rename: ${coordinator.state()}",
+            AnalysisPhase.COMPLETED,
+            coordinator.state().phase,
+        )
         assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
         assertEquals(prior, coordinator.state().visibleResult)
         assertEquals(revision, coordinator.state().sourceRevision)
@@ -565,14 +574,19 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         PsiTestUtil.addSourceRoot(myModule, root)
         val excluded = myFixture.tempDirFixture.findOrCreateDir("src/main/java/excluded")
         PsiTestUtil.addExcludedRoot(myModule, excluded)
+        val child = myFixture.tempDirFixture.findOrCreateDir("src/main/java/excluded/child")
         val coordinator = IdeAnalysisCoordinator.getInstance(project)
         val previous = completeInjected(coordinator)
         val revision = coordinator.state().sourceRevision
 
         runInEdtAndWait {
-            WriteCommandAction.runWriteCommandAction(project) { excluded.rename(this, "renamed") }
+            WriteCommandAction.runWriteCommandAction(project) { child.rename(this, "renamed") }
         }
-        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        assertEquals(
+            "Nested excluded-directory rename: ${coordinator.state()}",
+            AnalysisPhase.COMPLETED,
+            coordinator.state().phase,
+        )
         assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
         assertEquals(previous, coordinator.state().visibleResult)
         assertEquals(revision, coordinator.state().sourceRevision)
