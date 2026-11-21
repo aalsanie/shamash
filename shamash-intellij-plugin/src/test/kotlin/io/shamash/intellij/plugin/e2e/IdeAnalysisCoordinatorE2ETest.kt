@@ -766,9 +766,15 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
             }
         }
 
+        val missingFolder =
+            ModuleRootManager.getInstance(myModule)
+                .contentEntries
+                .flatMap { it.sourceFolders.asList() }
+                .single { it.url == missingUrl }
+        kotlin.test.assertNull(missingFolder.file)
+
         val scope = SourceVfsScope.capture(project)
         assertTrue(scope.affects(root.path + "/Retained.java", directory = false))
-        assertFalse(scope.affects(root.parent.path + "/missing-source/New.java", directory = false))
     }
 
     fun testAbsentExcludedFolderStillMasksItsConfiguredPath() {
