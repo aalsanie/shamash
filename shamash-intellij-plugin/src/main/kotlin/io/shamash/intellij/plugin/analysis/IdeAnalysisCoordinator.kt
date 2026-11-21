@@ -110,19 +110,14 @@ class IdeAnalysisCoordinator(
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(
             VirtualFileManager.VFS_CHANGES,
             object : BulkFileListener {
-                private var invalidatedBefore = false
+                private val batch = SourceVfsBatch { sourceChanged() }
 
                 override fun before(events: List<VFileEvent>) {
-                    if (disposed || project.isDisposed) return
-                    invalidatedBefore = sourceScope.affects(events)
-                    if (invalidatedBefore) sourceChanged()
+                    batch.before(sourceScope.affects(events))
                 }
 
                 override fun after(events: List<VFileEvent>) {
-                    if (disposed || project.isDisposed) return
-                    val invalidatedAfter = !invalidatedBefore && sourceScope.affects(events)
-                    invalidatedBefore = false
-                    if (invalidatedAfter) sourceChanged()
+                    batch.after(sourceScope.affects(events))
                 }
             },
         )
