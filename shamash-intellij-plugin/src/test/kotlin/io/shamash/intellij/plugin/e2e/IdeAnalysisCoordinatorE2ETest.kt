@@ -19,6 +19,7 @@ package io.shamash.intellij.plugin.e2e
 
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
@@ -43,6 +44,7 @@ import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
 class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
     fun testInjectedBackendCompletesAndDoesNotActivateToolWindow() {
@@ -724,6 +726,26 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
                 listOf(VFilePropertyChangeEvent(this, root, VirtualFile.PROP_WRITABLE, true, false, false)),
             ),
         )
+    }
+
+    fun testGeneratedJavaSourceRootIsExcludedFromProductionScope() {
+        val generated = myFixture.tempDirFixture.findOrCreateDir("src/main/generated")
+        PsiTestUtil.addSourceRoot(myModule, generated)
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                val model = ModuleRootManager.getInstance(myModule).modifiableModel
+                val folder =
+                    model.contentEntries
+                        .flatMap { it.sourceFolders.asList() }
+                        .single { it.file == generated }
+                val properties = folder.jpsElement.properties as JavaSourceRootProperties
+                properties.isForGeneratedSources = true
+                model.commit()
+            }
+        }
+        val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(generated.path, directory = true))
+        assertFalse(scope.affects(generated.path + "/Generated.java", directory = false))
     }
 
     fun testSourceEventMatchingHandlesDeletionAndContentChanges() {
