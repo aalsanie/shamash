@@ -560,6 +560,24 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(previous, coordinator.state().visibleResult)
     }
 
+    fun testExcludedDirectoryChangeDoesNotInvalidateSourceResults() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val excluded = myFixture.tempDirFixture.findOrCreateDir("src/main/java/excluded")
+        PsiTestUtil.addExcludedRoot(myModule, excluded)
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+        val revision = coordinator.state().sourceRevision
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { excluded.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+        assertEquals(revision, coordinator.state().sourceRevision)
+    }
+
     fun testDirectoryRenameCancelsBlockedGenerationAndRejectsLateCompletion() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)
