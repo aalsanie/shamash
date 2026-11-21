@@ -18,6 +18,7 @@
 package io.shamash.intellij.plugin.analysis
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -111,6 +112,33 @@ class SourceVfsScopeTest {
         assertTrue(windows.affects("C:\\workspace\\src\\main\\java\\Demo.java", directory = false))
         assertFalse(windows.affects("C:\\workspace\\src\\main\\java2", directory = true))
         assertFalse(windows.affects("C:\\workspace\\src\\test\\java\\Demo.java", directory = false))
+    }
+
+    @Test
+    fun `source event batches invalidate once and reset for the next batch`() {
+        var changes = 0
+        val batch = SourceVfsBatch { changes++ }
+
+        batch.before(false)
+        batch.after(false)
+        assertEquals(0, changes)
+
+        batch.before(true)
+        assertEquals(1, changes)
+        batch.after(true)
+        assertEquals(1, changes)
+
+        batch.before(false)
+        batch.after(true)
+        assertEquals(2, changes)
+
+        batch.before(true)
+        batch.after(false)
+        assertEquals(3, changes)
+
+        batch.before(false)
+        batch.after(false)
+        assertEquals(3, changes)
     }
 
     @Test
