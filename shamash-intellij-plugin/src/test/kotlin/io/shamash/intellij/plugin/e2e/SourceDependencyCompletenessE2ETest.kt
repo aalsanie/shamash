@@ -1077,6 +1077,76 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
+    fun testNestedJavaClassConstructionPreservesConstructorVersusType() {
+        myFixture.addFileToProject(
+            "src/main/java/b/Outer.java",
+            """
+            package b;
+            public class Outer {
+                public static class Inner {
+                    public Inner() {}
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/java/a/Owner.java",
+            """
+            package a;
+            public class Owner {
+                b.Outer.Inner field;
+                b.Outer.Inner create() { return new b.Outer.Inner(); }
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, _) = analyze()
+        val references =
+            snapshot.references.filter {
+                fromPackage(it) == "a" &&
+                    (it.target as? SourceTarget.Internal)?.entity?.signature == "b.Outer.Inner"
+            }
+        assertTrue(references.any { it.kind == SourceDependencyKind.CONSTRUCTOR }, references.toString())
+        assertTrue(references.any { it.kind == SourceDependencyKind.TYPE }, references.toString())
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
+    fun testKotlinMemberInvokeRetainsImplicitAndExplicitCalls() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            class Owner {
+                fun use(callable: b.Callable): b.Callable {
+                    val implicit = callable()
+                    return callable.invoke()
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Callable.kt",
+            """
+            package b
+            class Callable(val owner: a.Owner? = null) {
+                operator fun invoke(): Callable = this
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        val calls =
+            snapshot.references.filter {
+                fromPackage(it) == "a" && targetPackage(it) == "b" &&
+                    it.kind == SourceDependencyKind.CALL &&
+                    it.target.toString().contains("Callable.invoke(")
+            }
+        assertEquals(2, calls.size, calls.toString())
+        assertTrue(
+            graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") },
+            graph.cycles.toString(),
+        )
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
