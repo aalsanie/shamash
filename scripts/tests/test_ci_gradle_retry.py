@@ -87,7 +87,7 @@ class CiGradleRetryTest(unittest.TestCase):
                 patch.object(retry.time, "sleep") as sleep,
             ):
                 self.assertEqual(1, retry.run(["./gradlew", "spotlessCheck"]))
-            self.assertIn(b"\\\\u2588 spotless formatting failed", output.getvalue())
+            self.assertIn(b"\\u2588 spotless formatting failed", output.getvalue())
         popen.assert_called_once()
         sleep.assert_not_called()
 
