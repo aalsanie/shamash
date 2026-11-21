@@ -767,7 +767,8 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         }
 
         val missingFolder =
-            ModuleRootManager.getInstance(myModule)
+            ModuleRootManager
+                .getInstance(myModule)
                 .contentEntries
                 .flatMap { it.sourceFolders.asList() }
                 .single { it.url == missingUrl }
