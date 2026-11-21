@@ -754,6 +754,23 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertFalse(scope.affects(generated.path + "/Generated.java", directory = false))
     }
 
+    fun testSourceScopeSkipsMissingSourceFolder() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val missingUrl = root.parent.url + "/missing-source"
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                val model = ModuleRootManager.getInstance(myModule).modifiableModel
+                model.contentEntries.first().addSourceFolder(missingUrl, false)
+                model.commit()
+            }
+        }
+
+        val scope = SourceVfsScope.capture(project)
+        assertTrue(scope.affects(root.path + "/Retained.java", directory = false))
+        assertFalse(scope.affects(root.parent.path + "/missing-source/New.java", directory = false))
+    }
+
     fun testAbsentExcludedFolderStillMasksItsConfiguredPath() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)
