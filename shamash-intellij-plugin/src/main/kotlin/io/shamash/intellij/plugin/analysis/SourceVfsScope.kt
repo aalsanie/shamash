@@ -74,7 +74,7 @@ internal class SourceVfsScope(
                     affects(parent + "/" + event.oldValue, directory) ||
                         affects(parent + "/" + event.newValue, directory)
                 } else {
-                    affects(event.path, directory)
+                    !directory && affects(event.path, directory = false)
                 }
 
             is VFileCopyEvent -> affects(event.newParent.path + "/" + event.newChildName, directory)
