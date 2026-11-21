@@ -678,7 +678,11 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val otherOutside = myFixture.tempDirFixture.findOrCreateDir("other")
         val insideFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
         val outsideFile = myFixture.addFileToProject("elsewhere/Outside.java", "class Outside {}").virtualFile
+        PsiTestUtil.addExcludedRoot(myModule, outside)
+        PsiTestUtil.addExcludedRoot(myModule, otherOutside)
         val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(outsideFile.path, directory = false))
+        assertFalse(scope.affects(otherOutside.path, directory = true))
 
         assertTrue(scope.affects(listOf(VFileMoveEvent(this, outsideFile, root))))
         assertTrue(scope.affects(listOf(VFileMoveEvent(this, insideFile, outside))))
@@ -694,7 +698,9 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val javaFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
         val textFile = myFixture.addFileToProject("src/main/java/notes.txt", "notes").virtualFile
         val outsideFile = myFixture.addFileToProject("other/Outside.java", "class Outside {}").virtualFile
+        PsiTestUtil.addExcludedRoot(myModule, outsideFile.parent)
         val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(outsideFile.path, directory = false))
 
         assertTrue(
             scope.affects(
@@ -770,7 +776,9 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         PsiTestUtil.addSourceRoot(myModule, root)
         val javaFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
         val outside = myFixture.addFileToProject("elsewhere/Outside.java", "class Outside {}").virtualFile
+        PsiTestUtil.addExcludedRoot(myModule, outside.parent)
         val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(outside.path, directory = false))
 
         assertTrue(scope.affects(listOf(VFileDeleteEvent(this, javaFile, false))))
         assertFalse(scope.affects(listOf(VFileDeleteEvent(this, outside, false))))
