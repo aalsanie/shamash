@@ -357,8 +357,9 @@ class ShamashStarterJourneysTest {
             """
             package callback;
             public class CallbackOwner {
-                Runnable task = new Runnable() {
-                    @Override public void run() { receiver.Receiver.ping(); }
+                interface Task { void run(); }
+                Task task = new Task() {
+                    public void run() { receiver.Receiver.ping(); }
                 };
             }
             """.trimIndent(),
