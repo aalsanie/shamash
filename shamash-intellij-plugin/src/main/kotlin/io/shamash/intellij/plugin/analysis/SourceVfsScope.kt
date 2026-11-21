@@ -70,7 +70,7 @@ internal class SourceVfsScope(
 
             is VFilePropertyChangeEvent ->
                 if (event.propertyName == VirtualFile.PROP_NAME) {
-                    val parent = event.file?.parent?.path ?: event.path.substringBeforeLast('/')
+                    val parent = event.file.parent?.path ?: event.path.substringBeforeLast('/')
                     affects(parent + "/" + event.oldValue, directory) ||
                         affects(parent + "/" + event.newValue, directory)
                 } else {
