@@ -754,14 +754,14 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
             package a
             import b.flag
             class Owner
-            fun read(owner: Owner): Boolean = owner.flag
+            fun read(owner: Owner): Owner = owner.flag
             """.trimIndent(),
         )
         myFixture.addFileToProject(
             "src/main/kotlin/b/Extensions.kt",
             """
             package b
-            val a.Owner.flag: Boolean get() = true
+            val a.Owner.flag: a.Owner get() = this
             """.trimIndent(),
         )
         val (snapshot, graph) = analyze()
