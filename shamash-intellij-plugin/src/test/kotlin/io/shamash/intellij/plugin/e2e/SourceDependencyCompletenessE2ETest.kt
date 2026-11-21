@@ -1068,12 +1068,11 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
                 """.trimIndent(),
             )
         assertNotNull(PsiTreeUtil.findChildOfType(source, KtTypeAlias::class.java))
-        val location = SourceDependencyExtractor.SourceLocation("main", "src/main/kotlin", source.virtualFile.url)
-        val extracted = SourceDependencyExtractor { location }.extract(source, location)
-        assertTrue(extracted.entities.any { it.id.signature == "a.Owner" }, extracted.entities.toString())
+        val (snapshot, _) = analyze()
+        assertTrue(snapshot.entities.any { it.id.signature == "a.Owner" }, snapshot.entities.toString())
         assertTrue(
-            extracted.entities.none { it.id.signature.contains("LocalAlias") },
-            "A typealias nested in a function cannot become a project declaration: ${extracted.entities}",
+            snapshot.entities.none { it.id.signature.contains("LocalAlias") },
+            "A typealias nested in a function cannot become a project declaration: ${snapshot.entities}",
         )
     }
 
