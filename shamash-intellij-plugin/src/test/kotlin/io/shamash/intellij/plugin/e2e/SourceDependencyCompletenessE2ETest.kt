@@ -808,6 +808,210 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(graph.cycles.isEmpty())
     }
 
+    fun testJavaExplicitSuperConstructorAndStaticCallRetainKinds() {
+        myFixture.addFileToProject(
+            "src/main/java/b/Base.java",
+            """
+            package b;
+            public class Base {
+                public Base() {}
+                public static void ping() {}
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/java/a/Derived.java",
+            """
+            package a;
+            public class Derived extends b.Base {
+                public Derived() { super(); }
+                void use() { b.Base.ping(); }
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, _) = analyze()
+        val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        assertTrue(
+            references.any {
+                (it.target as? SourceTarget.Internal)?.entity?.signature == "b.Base" &&
+                    it.kind == SourceDependencyKind.INHERITANCE
+            },
+            references.toString(),
+        )
+        assertTrue(
+            references.any {
+                it.target.toString().contains("Base#Base(") &&
+                    it.kind == SourceDependencyKind.CONSTRUCTOR
+            },
+            references.toString(),
+        )
+        assertTrue(
+            references.any {
+                it.target.toString().contains("Base#ping(") &&
+                    it.kind == SourceDependencyKind.CALL
+            },
+            references.toString(),
+        )
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
+    fun testJavaLocalClassInsideAnonymousCallbackUsesFieldOwner() {
+        myFixture.addFileToProject(
+            "src/main/java/a/Owner.java",
+            """
+            package a;
+            public class Owner {
+                interface Task { void run(); }
+                Task task = new Task() {
+                    public void run() {
+                        class Local {
+                            b.Remote remote;
+                            void execute() { b.Remote.ping(); }
+                        }
+                        new Local().execute();
+                    }
+                };
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/java/b/Remote.java",
+            """
+            package b;
+            public class Remote {
+                public a.Owner owner;
+                public static void ping() {}
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        val edges = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        assertTrue(edges.any { it.from.signature == "a.Owner#task" && it.kind == SourceDependencyKind.TYPE }, edges.toString())
+        assertTrue(edges.any { it.from.signature == "a.Owner#task" && it.kind == SourceDependencyKind.CALL }, edges.toString())
+        assertTrue(snapshot.entities.none { it.id.signature.contains("Local") })
+        assertTrue(graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") })
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
+    fun testKotlinLocalClassesAndObjectsInsideLambdasUseMethodOwner() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            class Owner {
+                fun execute() {
+                    val first = {
+                        class Local {
+                            fun run() { b.Remote.ping() }
+                        }
+                        Local().run()
+                    }
+                    val second = {
+                        object {
+                            fun run() { b.Remote.ping() }
+                        }.run()
+                    }
+                    first()
+                    second()
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Remote.kt",
+            "package b\nobject Remote { val back: a.Owner? = null; fun ping() {} }",
+        )
+        val (snapshot, graph) = analyze()
+        val edges = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        assertTrue(edges.count { it.kind == SourceDependencyKind.CALL } >= 2, edges.toString())
+        assertTrue(edges.all { it.from.signature.contains("a.Owner.execute(") }, edges.toString())
+        assertTrue(snapshot.entities.none { it.id.signature.contains("Local") || it.id.signature.contains(".run(") })
+        assertTrue(graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") })
+    }
+
+    fun testKotlinNestedMembersOfAnonymousObjectRemainLexical() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            class Owner {
+                val handler = object {
+                    class Local {
+                        fun execute() { b.Remote.ping() }
+                    }
+                    val member: Local = Local()
+                    fun run() { member.execute() }
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Remote.kt",
+            "package b\nobject Remote { val back: a.Owner? = null; fun ping() {} }",
+        )
+        val (snapshot, graph) = analyze()
+        val edges = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        assertTrue(edges.any { it.from.signature == "a.Owner.handler" && it.kind == SourceDependencyKind.CALL }, edges.toString())
+        assertTrue(snapshot.entities.none { it.id.signature.contains("Local") || it.id.signature.contains("handler.run(") })
+        assertTrue(graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") })
+    }
+
+    fun testKotlinShadowedParametersAndLocalFunctionsDoNotInventTargets() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            class Owner(val value: b.Target) {
+                fun apply(value: b.Target): b.Target {
+                    val local = value
+                    fun choose(value: b.Target): b.Target = value
+                    return choose(local)
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Target.kt",
+            "package b\nclass Target(val owner: a.Owner? = null)",
+        )
+        val (snapshot, graph) = analyze()
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+        assertTrue(snapshot.references.none { it.target is SourceTarget.Unresolved }, snapshot.references.toString())
+        assertTrue(snapshot.entities.none { it.id.signature.contains(".choose(") || it.id.signature.contains(".local") })
+        assertTrue(
+            snapshot.references.any { fromPackage(it) == "a" && targetPackage(it) == "b" },
+            snapshot.references.toString(),
+        )
+        assertTrue(graph.cycles.any { it.members.map { member -> member.packageName }.toSet() == setOf("a", "b") })
+    }
+
+    fun testUnresolvedJavaReferenceWithinLocalClassCannotProduceCompleteGraph() {
+        myFixture.addFileToProject(
+            "src/main/java/a/Owner.java",
+            """
+            package a;
+            public class Owner {
+                void execute() {
+                    class Local {
+                        void run() { missing.Remote.ping(); }
+                    }
+                    new Local().run();
+                }
+            }
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        assertTrue(!snapshot.complete)
+        assertTrue(!graph.cycleAbsenceEstablished)
+        assertTrue(
+            snapshot.references.any {
+                it.from.signature.contains("a.Owner#execute(") && it.target is SourceTarget.Unresolved
+            },
+            snapshot.references.toString(),
+        )
+        assertTrue(snapshot.diagnostics.any { it.phase == "resolve" }, snapshot.diagnostics.toString())
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
