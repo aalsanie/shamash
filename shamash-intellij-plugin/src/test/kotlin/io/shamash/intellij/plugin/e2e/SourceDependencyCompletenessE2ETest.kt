@@ -710,6 +710,100 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(snapshot.diagnostics.any { it.phase == "resolve" })
     }
 
+    fun testKotlinConstructorAndMemberCallHaveDistinctKinds() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            class Owner {
+                fun create(): b.Target {
+                    val target = b.Target()
+                    target.ping()
+                    return target
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Target.kt",
+            "package b\nclass Target { fun ping() {} }",
+        )
+        val (snapshot, _) = analyze()
+        val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        assertTrue(
+            references.any {
+                (it.target as? SourceTarget.Internal)?.entity?.signature == "b.Target" &&
+                    it.kind == SourceDependencyKind.CONSTRUCTOR
+            },
+            references.toString(),
+        )
+        assertTrue(
+            references.any {
+                it.target.toString().contains("Target.ping(") &&
+                    it.kind == SourceDependencyKind.CALL
+            },
+            references.toString(),
+        )
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
+    fun testKotlinExtensionPropertyPreservesReceiverAndAccess() {
+        myFixture.addFileToProject(
+            "src/main/kotlin/a/Owner.kt",
+            """
+            package a
+            import b.flag
+            class Owner
+            fun read(owner: Owner): Boolean = owner.flag
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "src/main/kotlin/b/Extensions.kt",
+            """
+            package b
+            val a.Owner.flag: Boolean get() = true
+            """.trimIndent(),
+        )
+        val (snapshot, graph) = analyze()
+        val references = snapshot.references.filter { fromPackage(it) == "a" && targetPackage(it) == "b" }
+        assertTrue(
+            references.any {
+                it.target.toString().contains("flag") &&
+                    it.kind == SourceDependencyKind.ACCESS
+            },
+            references.toString(),
+        )
+        assertTrue(
+            graph.cycles.any { cycle ->
+                cycle.members.map { it.packageName }.toSet() == setOf("a", "b")
+            },
+            graph.cycles.toString(),
+        )
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+    }
+
+    fun testJavaLocalBindingsAndUnusedImportsDoNotManufactureDependencies() {
+        myFixture.addFileToProject(
+            "src/main/java/a/Owner.java",
+            """
+            package a;
+            import b.Unused;
+            public class Owner {
+                void use(Owner argument) {
+                    Owner local = argument;
+                    Owner copy = local;
+                }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject("src/main/java/b/Unused.java", "package b; public class Unused {}")
+        val (snapshot, graph) = analyze()
+        assertTrue(snapshot.complete, snapshot.diagnostics.toString())
+        assertTrue(snapshot.relationships.none { targetPackage(it) == "b" })
+        assertTrue(snapshot.references.none { it.target is SourceTarget.Unresolved })
+        assertTrue(graph.cycles.isEmpty())
+    }
+
     fun testGenuineMissingJavaTypeLeavesIncompleteCoverage() {
         myFixture.addFileToProject(
             "src/main/java/a/Owner.java",
