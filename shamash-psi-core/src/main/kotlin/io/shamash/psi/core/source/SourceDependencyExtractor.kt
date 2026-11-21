@@ -386,11 +386,9 @@ class SourceDependencyExtractor(
     private fun hasLocalBoundary(e: PsiElement): Boolean {
         var current = e.parent
         while (current != null && current !is PsiFile) {
-            if (current is PsiMethod ||
-                current is KtNamedFunction ||
+            if (current is KtNamedFunction ||
                 current is KtLambdaExpression ||
-                (current is KtClassOrObject && current.name == null) ||
-                (current is PsiClass && current.qualifiedName == null)
+                (current is KtClassOrObject && current.name == null)
             ) {
                 return true
             }
