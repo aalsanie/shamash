@@ -1073,7 +1073,7 @@ class SourceDependencyCompletenessE2ETest : ShamashPluginE2eTestBase() {
         assertTrue(extracted.entities.any { it.id.signature == "a.Owner" }, extracted.entities.toString())
         assertTrue(
             extracted.entities.none { it.id.signature.contains("LocalAlias") },
-            "A typealias nested in a function cannot become a project declaration: DUMMY",
+            "A typealias nested in a function cannot become a project declaration: ${extracted.entities}",
         )
     }
 
