@@ -18,8 +18,8 @@
 package io.shamash.intellij.plugin.e2e
 
 import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.IndexingTestUtil
