@@ -226,7 +226,6 @@ class IdeAnalysisCoordinator(
     }
 
     private fun rootsChanged() {
-        if (disposed || project.isDisposed) return
         val updatedScope = SourceVfsScope.capture(project)
         synchronized(gate) {
             sourceScope = updatedScope
