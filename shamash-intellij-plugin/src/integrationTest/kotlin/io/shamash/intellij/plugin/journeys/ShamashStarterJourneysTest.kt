@@ -342,6 +342,91 @@ class ShamashStarterJourneysTest {
     }
 
     @Test
+    fun anonymousJavaAndKotlinOperatorEdgesProduceIndependentCycles() {
+        val project = fixture("mixed")
+        Files.writeString(project.resolve("src/main/java/left/JavaOwner.java"), "package left; public class JavaOwner {}")
+        Files.writeString(project.resolve("src/main/kotlin/right/KotlinPeer.kt"), "package right\nclass KotlinPeer\n")
+        val java = project.resolve("src/main/java")
+        val kotlin = project.resolve("src/main/kotlin")
+        Files.createDirectories(java.resolve("callback"))
+        Files.createDirectories(java.resolve("receiver"))
+        Files.createDirectories(kotlin.resolve("token"))
+        Files.createDirectories(kotlin.resolve("operators"))
+        Files.writeString(
+            java.resolve("callback/CallbackOwner.java"),
+            """
+            package callback;
+            public class CallbackOwner {
+                interface Task { void run(); }
+                Task task = new Task() {
+                    public void run() { receiver.Receiver.ping(); }
+                };
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            java.resolve("receiver/Receiver.java"),
+            """
+            package receiver;
+            public class Receiver {
+                callback.CallbackOwner back;
+                public static void ping() {}
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            kotlin.resolve("token/Token.kt"),
+            """
+            package token
+            import operators.plus
+            class Token
+            fun use(left: Token, right: Token) = left + right
+            """.trimIndent(),
+        )
+        Files.writeString(
+            kotlin.resolve("operators/Operators.kt"),
+            """
+            package operators
+            operator fun token.Token.plus(other: token.Token): token.Token = this
+            """.trimIndent(),
+        )
+        val oldReport = project.resolve(".shamash/reports/previous.json")
+        val reportBytes = Files.readAllBytes(oldReport)
+        context("source-references", project)
+            .runIdeWithDriver()
+            .useDriverAndCloseIde {
+                waitForIndicators(5.minutes)
+                ideFrame {
+                    invokeAction("io.shamash.open")
+                    invokeAction("MaximizeToolWindow")
+                    x(xQuery { byAccessibleName("Analyze project source") }).click()
+                    try {
+                        x(xQuery { byVisibleText("Source analysis complete") })
+                            .shouldBe("Both source-reference families must analyze successfully", present)
+                    } catch (failure: com.intellij.driver.sdk.WaitForException) {
+                        val diagnostics = x(xQuery { byAccessibleName("Analysis scope and diagnostics") })
+                        val detail =
+                            diagnostics.driver.withContext(OnDispatcher.EDT) {
+                                cast(diagnostics.component, RemoteSourceDetails::class).getText()
+                            }
+                        throw AssertionError("Source analysis did not complete: $detail", failure)
+                    }
+                    x(xQuery { byVisibleText("Findings") }).click()
+                    val findings = list { byAccessibleName("Package cycle findings") }
+                    findings.shouldBe("Both supported package cycles must be visible", present)
+                    assertEquals(2, findings.items.size, "Each semantic reference family must preserve its own cycle")
+                    x(xQuery { byVisibleText("Explore") }).click()
+                    val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
+                    tree.expandAll(30.seconds)
+                    val paths = tree.collectExpandedPaths().map { it.path }
+                    assertTrue(paths.any { path -> path.any { it.contains("CallbackOwner") } })
+                    assertTrue(paths.any { path -> path.any { it.contains("Token") } })
+                }
+            }
+        assertArrayEquals(reportBytes, Files.readAllBytes(oldReport))
+    }
+
+    @Test
     fun acyclicProductionSourceCanBeExploredAndReanalyzedFromUnsavedEdits() {
         val project = fixture("acyclic")
         val beta = project.resolve("src/main/java/beta/Beta.java")
@@ -560,6 +645,11 @@ private data class EditorSnapshot(
     val documentText: String,
     val caretOffset: Int,
 )
+
+@Remote("javax.swing.JTextArea")
+interface RemoteSourceDetails {
+    fun getText(): String
+}
 
 @Remote("javax.swing.JButton")
 interface RemoteSourceButton {

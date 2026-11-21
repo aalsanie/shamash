@@ -21,6 +21,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
@@ -381,14 +382,19 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
                 document.setText("package demo; class Caller { Repository repo; }")
             }
         }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
         fire(RunPsiScanAction())
         awaitTerminal()
         val state = IdeAnalysisCoordinator.getInstance(project).state()
-        val facts = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceFacts)
+        val facts =
+            kotlin.test.assertNotNull(
+                state.visibleResult?.payload?.sourceFacts,
+                "Source analysis produced no facts: phase=${state.phase}, relation=${state.resultRelation}, diagnostics=${state.diagnostics}",
+            )
         assertTrue(facts.entities.any { it.id.signature == "demo.Repository" })
         assertTrue(facts.relationships.any { it.target.signature == "demo.Repository" })
         assertTrue(facts.entities.any { it.id.signature == "demo.Service" })
-        val graph = kotlin.test.assertNotNull(state.visibleResult?.payload?.sourceGraph)
+        val graph = kotlin.test.assertNotNull(state.visibleResult.payload.sourceGraph)
         assertEquals(facts.profile.id, graph.profileId)
         assertTrue(graph.entityRelationships.any { it.target.signature == "demo.Repository" })
         assertEquals(facts.coverage, graph.coverage)

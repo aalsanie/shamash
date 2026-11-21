@@ -16,10 +16,13 @@ import com.intellij.psi.PsiField
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiImportStatementBase
 import com.intellij.psi.PsiJavaCodeReferenceElement
+import com.intellij.psi.PsiLocalVariable
 import com.intellij.psi.PsiMember
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.psi.PsiNewExpression
+import com.intellij.psi.PsiPackageStatement
+import com.intellij.psi.PsiParameter
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.PsiReferenceList
@@ -27,13 +30,18 @@ import com.intellij.psi.PsiType
 import com.intellij.psi.PsiVariable
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
+import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
+import org.jetbrains.kotlin.psi.KtLambdaExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
+import org.jetbrains.kotlin.psi.KtPackageDirective
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
 import org.jetbrains.kotlin.psi.KtTypeAlias
@@ -64,6 +72,7 @@ class SourceDependencyExtractor(
         val entities = LinkedHashMap<SourceEntityId, SourceEntity>()
         val refs = ArrayList<SourceDependency>()
         val diagnostics = ArrayList<SourceDiagnostic>()
+        val pendingUnresolved = ArrayList<Pair<SourceDependency, SourceDiagnostic>>()
 
         data class TypeUse(
             val owner: PsiElement,
@@ -94,43 +103,63 @@ class SourceDependencyExtractor(
                         }
                     }
                     if (supportedReference(element) && !insideImport(element)) {
-                        val owner = owningDeclaration(element) ?: return super.visitElement(element)
-                        val from = entity(owner, location) ?: return super.visitElement(element)
+                        val from = owningEntity(element, location)
+                        if (from == null) {
+                            diagnostics +=
+                                SourceDiagnostic(
+                                    location.fileUrl,
+                                    "owner",
+                                    "No supported declaration owns reference at ${element.textOffset}",
+                                )
+                            return super.visitElement(element)
+                        }
                         try {
                             val candidates = element.references
-                            if (candidates.isEmpty()) {
-                                if (element is KtNameReferenceExpression) {
-                                    diagnostics +=
-                                        SourceDiagnostic(
-                                            location.fileUrl,
-                                            "resolve",
-                                            "No reference for '${element.text}' at ${element.textOffset}",
-                                        )
-                                    refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
+                            var resolvedCandidate = false
+                            for (reference in candidates) {
+                                ProgressManager.checkCanceled()
+                                val resolved = reference.resolve()
+                                val declaration = resolved?.let(::declarationOf)
+                                if (element is KtCallExpression &&
+                                    (
+                                        (declaration as? KtNamedFunction)?.name != "invoke" ||
+                                            element.calleeExpression?.text == "invoke"
+                                    )
+                                ) {
+                                    continue
                                 }
-                            } else {
-                                for (reference in candidates) {
-                                    ProgressManager.checkCanceled()
-                                    val resolved = reference.resolve()
-                                    if (resolved != null && declarationOf(resolved) == null) continue
-                                    val targets = resolveTargets(resolved)
-                                    if (targets.isEmpty()) {
+                                if (resolved != null && (declaration == null || isLocalBinding(declaration))) {
+                                    resolvedCandidate = true
+                                    continue
+                                }
+                                val targets = resolveTargets(resolved)
+                                if (targets.isEmpty()) continue
+                                resolvedCandidate = true
+                                val evidenceRange = reference.rangeInElement
+                                val start = evidenceRange.startOffset.coerceIn(0, element.textLength - 1)
+                                val offset = element.textOffset + start
+                                val length = evidenceRange.length.coerceIn(1, element.textLength - start)
+                                for (target in targets) {
+                                    if (target is SourceTarget.Internal && target.entity == from.id) continue
+                                    if (target is SourceTarget.Unresolved) {
                                         diagnostics +=
                                             SourceDiagnostic(
                                                 location.fileUrl,
                                                 "resolve",
-                                                "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                                "No supported target for '${element.text}' at ${element.textOffset}",
                                             )
-                                        refs += dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp)
-                                        continue
                                     }
-                                    val offset = element.textRange.startOffset + reference.rangeInElement.startOffset
-                                    val length = reference.rangeInElement.length
-                                    for (target in targets) {
-                                        if (target is SourceTarget.Internal && target.entity == from.id) continue
-                                        refs += dependency(from.id, target, element, stamp, resolved, offset, length)
-                                    }
+                                    refs += dependency(from.id, target, element, stamp, declaration, offset, length)
                                 }
+                            }
+                            if (!resolvedCandidate && shouldReportUnresolved(element)) {
+                                pendingUnresolved +=
+                                    dependency(from.id, SourceTarget.Unresolved(element.text), element, stamp) to
+                                    SourceDiagnostic(
+                                        location.fileUrl,
+                                        "resolve",
+                                        "Cannot resolve '${element.text}' at ${element.textOffset}",
+                                    )
                             }
                         } catch (c: ProcessCanceledException) {
                             throw c
@@ -160,12 +189,12 @@ class SourceDependencyExtractor(
         val typeWitnesses = SourceTypeWitnessIndex(refs)
         for (use in typeUses) {
             ProgressManager.checkCanceled()
-            val owner =
-                (use.owner as? PsiField)
-                    ?: (use.owner as? PsiMethod)
-                    ?: owningDeclaration(use.owner)
-                    ?: continue
-            val source = entity(owner, location) ?: continue
+            val source = owningEntityFrom(use.owner, location)
+            if (source == null) {
+                diagnostics +=
+                    SourceDiagnostic(location.fileUrl, "owner", "No supported declaration owns type at ${use.evidence.textOffset}")
+                continue
+            }
             val walked = PsiTypeClassReferences.collect(use.type)
             if (walked.truncated) {
                 diagnostics +=
@@ -208,6 +237,18 @@ class SourceDependencyExtractor(
             }
         }
 
+        for ((unresolved, diagnostic) in pendingUnresolved) {
+            if (refs.none {
+                    it.from == unresolved.from &&
+                        it.target !is SourceTarget.Unresolved &&
+                        it.evidence.offset == unresolved.evidence.offset
+                }
+            ) {
+                refs += unresolved
+                diagnostics += diagnostic
+            }
+        }
+
         return FileResult(
             entities.values.sortedWith(compareBy({ it.id.fileUrl }, { it.offset }, { it.id.signature })),
             refs.distinct().sortedWith(
@@ -223,6 +264,7 @@ class SourceDependencyExtractor(
     ): List<SourceTarget> {
         if (resolved == null || !visited.add(resolved)) return emptyList()
         val declaration = declarationOf(resolved) ?: return emptyList()
+        if (isLocalBinding(declaration)) return emptyList()
         if (declaration is KtTypeAlias) {
             val ref = declaration.getTypeReference() ?: return listOf(SourceTarget.Unresolved(declaration.name.orEmpty()))
             val names = PsiTreeUtil.findChildrenOfType(ref, KtNameReferenceExpression::class.java)
@@ -242,13 +284,17 @@ class SourceDependencyExtractor(
         return if (location == null) {
             listOf(SourceTarget.External(declarationName(declaration)))
         } else {
-            listOfNotNull(entity(declaration, location)?.let { SourceTarget.Internal(it.id) })
+            listOf(
+                entity(declaration, location)?.let { SourceTarget.Internal(it.id) }
+                    ?: SourceTarget.Unresolved(declarationName(declaration)),
+            )
         }
     }
 
-    private fun declarationOf(element: PsiElement): PsiElement? {
+    internal fun declarationOf(element: PsiElement): PsiElement? {
         val nav = element.navigationElement.takeIf { it !== element && it.containingFile != null } ?: element
         return when (nav) {
+            is PsiLocalVariable, is PsiParameter, is KtParameter,
             is PsiClass, is PsiMethod, is PsiField,
             is KtClassOrObject, is KtNamedFunction, is KtProperty, is KtTypeAlias,
             -> {
@@ -259,7 +305,7 @@ class SourceDependencyExtractor(
                 // Kotlin light elements may navigate to a name identifier rather than the declaration.
                 var parent: PsiElement? = nav.parent
                 while (parent != null && parent !is PsiFile) {
-                    if (parent is KtClassOrObject || parent is KtNamedFunction ||
+                    if (parent is KtParameter || parent is KtClassOrObject || parent is KtNamedFunction ||
                         parent is KtProperty || parent is KtTypeAlias
                     ) {
                         return parent
@@ -274,35 +320,81 @@ class SourceDependencyExtractor(
     private fun supportedReference(e: PsiElement): Boolean =
         e is PsiJavaCodeReferenceElement ||
             e is PsiReferenceExpression ||
-            e is KtNameReferenceExpression
+            e is KtNameReferenceExpression ||
+            (e is KtOperationReferenceExpression && e.isConventionOperator()) ||
+            e is KtArrayAccessExpression ||
+            e is KtCallExpression
+
+    private fun shouldReportUnresolved(element: PsiElement): Boolean =
+        when (element) {
+            is KtNameReferenceExpression -> !isLexicalLocalReference(element)
+            is KtOperationReferenceExpression, is KtArrayAccessExpression -> true
+            else -> element is PsiJavaCodeReferenceElement || element is PsiReferenceExpression
+        }
+
+    private fun isLexicalLocalReference(reference: KtNameReferenceExpression): Boolean {
+        val name = reference.getReferencedName()
+        var scope: PsiElement? = reference.parent
+        while (scope != null && scope !is PsiFile) {
+            if (scope is KtNamedFunction && scope.valueParameters.any { it.name == name }) return true
+            scope = scope.parent
+        }
+        return false
+    }
 
     private fun insideImport(e: PsiElement): Boolean {
         var parent: PsiElement? = e.parent
         while (parent != null && parent !is PsiFile) {
-            if (parent is PsiImportStatementBase || parent is KtImportDirective) return true
+            if (parent is PsiImportStatementBase || parent is KtImportDirective ||
+                parent is PsiPackageStatement || parent is KtPackageDirective
+            ) {
+                return true
+            }
             parent = parent.parent
         }
         return false
     }
 
-    private fun owningDeclaration(e: PsiElement): PsiElement? {
-        var parent: PsiElement? = e.parent
-        var fallback: PsiElement? = null
-        while (parent != null && parent !is PsiFile) {
-            if (parent is PsiClass || parent is KtClassOrObject) {
-                if (fallback == null) fallback = parent
-            }
-            if (parent is PsiMethod || parent is PsiField ||
-                parent is KtNamedFunction || parent is KtTypeAlias
-            ) {
-                return parent
-            }
-            if (parent is KtProperty) {
-                if (PsiTreeUtil.getParentOfType(parent, KtNamedFunction::class.java) == null) return parent
-            }
-            parent = parent.parent
+    private fun owningEntity(
+        reference: PsiElement,
+        location: SourceLocation,
+    ): SourceEntity? = owningEntityFrom(reference.parent, location)
+
+    private fun owningEntityFrom(
+        start: PsiElement?,
+        location: SourceLocation,
+    ): SourceEntity? {
+        var current = start
+        while (current != null && current !is PsiFile) {
+            entity(current, location)?.let { return it }
+            current = current.parent
         }
-        return fallback
+        return null
+    }
+
+    private fun isLocalBinding(declaration: PsiElement): Boolean =
+        when (declaration) {
+            is PsiLocalVariable, is PsiParameter, is KtParameter -> true
+            is PsiClass -> declaration.qualifiedName == null
+            is PsiMember -> declaration.containingClass?.qualifiedName == null
+            is KtClassOrObject -> declaration.name == null || hasLocalBoundary(declaration)
+            is KtProperty -> declaration.isLocal || hasLocalBoundary(declaration)
+            is KtNamedFunction -> hasLocalBoundary(declaration)
+            else -> false
+        }
+
+    private fun hasLocalBoundary(e: PsiElement): Boolean {
+        var current = e.parent
+        while (current != null && current !is PsiFile) {
+            if (current is KtNamedFunction ||
+                current is KtLambdaExpression ||
+                (current is KtClassOrObject && current.name == null)
+            ) {
+                return true
+            }
+            current = current.parent
+        }
+        return false
     }
 
     private fun entity(
@@ -334,7 +426,7 @@ class SourceDependencyExtractor(
             }
 
             is KtClassOrObject -> {
-                if (element.name == null) return null // Anonymous objects are not named declarations.
+                if (element.name == null || hasLocalBoundary(element)) return null
                 name = qualifiedKotlinName(element)
                 kind =
                     when {
@@ -346,7 +438,7 @@ class SourceDependencyExtractor(
             }
 
             is KtNamedFunction -> {
-                if (PsiTreeUtil.getParentOfType(element, KtNamedFunction::class.java) != null) return null
+                if (hasLocalBoundary(element)) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.FUNCTION
                 val receiver =
@@ -359,7 +451,7 @@ class SourceDependencyExtractor(
             }
 
             is KtProperty -> {
-                if (PsiTreeUtil.getParentOfType(element, KtNamedFunction::class.java) != null) return null
+                if (element.isLocal || hasLocalBoundary(element)) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.PROPERTY
                 signature = element.receiverTypeReference
@@ -369,6 +461,7 @@ class SourceDependencyExtractor(
             }
 
             is KtTypeAlias -> {
+                if (hasLocalBoundary(element)) return null
                 name = element.name ?: return null
                 kind = SourceEntityKind.TYPE_ALIAS
                 signature = qualifiedKotlinName(element)
@@ -438,10 +531,24 @@ class SourceDependencyExtractor(
                     SourceDependencyKind.ANNOTATION
                 }
 
-                PsiTreeUtil.getParentOfType(element, PsiNewExpression::class.java) != null ||
+                resolved is PsiMethod && resolved.isConstructor -> {
+                    SourceDependencyKind.CONSTRUCTOR
+                }
+
+                resolved is PsiMethod || resolved is KtNamedFunction -> {
+                    SourceDependencyKind.CALL
+                }
+
+                (
+                    resolved is PsiClass &&
+                        PsiTreeUtil
+                            .getParentOfType(element, PsiNewExpression::class.java)
+                            ?.classReference
+                            ?.let { reference -> reference === element || PsiTreeUtil.isAncestor(reference, element, false) } == true
+                ) ||
                     (
-                        PsiTreeUtil.getParentOfType(element, KtCallExpression::class.java) != null &&
-                            (resolved is PsiClass || resolved is KtClassOrObject)
+                        (resolved is PsiClass || resolved is KtClassOrObject) &&
+                            PsiTreeUtil.getParentOfType(element, KtCallExpression::class.java)?.calleeExpression === element
                     ) -> {
                     SourceDependencyKind.CONSTRUCTOR
                 }
@@ -460,8 +567,7 @@ class SourceDependencyExtractor(
                     SourceDependencyKind.ACCESS
                 }
 
-                resolved is PsiMethod || resolved is KtNamedFunction ||
-                    PsiTreeUtil.getParentOfType(element, PsiMethodCallExpression::class.java) != null -> {
+                PsiTreeUtil.getParentOfType(element, PsiMethodCallExpression::class.java) != null -> {
                     SourceDependencyKind.CALL
                 }
 
