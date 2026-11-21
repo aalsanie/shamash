@@ -74,6 +74,23 @@ class CiGradleRetryTest(unittest.TestCase):
         popen.assert_called_once()
         sleep.assert_not_called()
 
+    def test_unrepresentable_output_keeps_the_real_build_failure(self):
+        output = io.BytesIO()
+        with io.TextIOWrapper(output, encoding="cp1252", write_through=True) as console:
+            with (
+                patch.object(retry.sys, "stdout", console),
+                patch.object(
+                    retry.subprocess,
+                    "Popen",
+                    return_value=FakeProcess(1, "\u2588 spotless formatting failed\\n"),
+                ) as popen,
+                patch.object(retry.time, "sleep") as sleep,
+            ):
+                self.assertEqual(1, retry.run(["./gradlew", "spotlessCheck"]))
+            self.assertIn(b"\\\\u2588 spotless formatting failed", output.getvalue())
+        popen.assert_called_once()
+        sleep.assert_not_called()
+
     def test_fails_if_every_download_attempt_fails(self):
         with patch.object(retry.subprocess, "Popen", side_effect=[FakeProcess(1, self.KOTLIN_504) for _ in range(4)]) as popen, patch.object(retry.time, "sleep") as sleep, patch("builtins.print"):
             self.assertEqual(1, retry.run(["./gradlew", "test"]))
