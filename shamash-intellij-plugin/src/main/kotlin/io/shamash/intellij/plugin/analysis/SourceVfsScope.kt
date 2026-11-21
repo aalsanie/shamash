@@ -112,7 +112,7 @@ internal class SourceVfsScope(
         private fun within(
             path: String,
             parent: String,
-        ): Boolean = path == parent || path.startsWith("$" + "{parent}/")
+        ): Boolean = path == parent || path.startsWith("${parent}/")
 
         private fun sourceFile(path: String): Boolean = path.endsWith(".java") || path.endsWith(".kt")
     }
