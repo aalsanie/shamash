@@ -28,6 +28,7 @@ class SourceVfsScopeTest {
                 SourceVfsScope.Root("/workspace/src/main/java", true),
                 SourceVfsScope.Root("/workspace/src/main/kotlin", true),
                 SourceVfsScope.Root("/workspace/src/main/java/generated", false),
+                SourceVfsScope.Root("/workspace/src/main/java/excluded", false),
                 SourceVfsScope.Root("/workspace/src/test/java", false),
                 SourceVfsScope.Root("/workspace/src/test/kotlin", false),
             ),
@@ -66,6 +67,7 @@ class SourceVfsScopeTest {
                 "/workspace/src/test/java/a",
                 "/workspace/src/test/kotlin/a",
                 "/workspace/src/main/java/generated/a",
+                "/workspace/src/main/java/excluded/a",
             )) {
             assertFalse(scope.affects(path, directory = true), path)
             assertFalse(scope.affects("${path}/Nested.java", directory = false), path)
