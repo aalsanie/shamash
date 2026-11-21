@@ -405,9 +405,10 @@ class ShamashStarterJourneysTest {
                             .shouldBe("Both source-reference families must analyze successfully", present)
                     } catch (failure: com.intellij.driver.sdk.WaitForException) {
                         val diagnostics = x(xQuery { byAccessibleName("Analysis scope and diagnostics") })
-                        val detail = diagnostics.driver.withContext(OnDispatcher.EDT) {
-                            cast(diagnostics.component, RemoteSourceDetails::class).getText()
-                        }
+                        val detail =
+                            diagnostics.driver.withContext(OnDispatcher.EDT) {
+                                cast(diagnostics.component, RemoteSourceDetails::class).getText()
+                            }
                         throw AssertionError("Source analysis did not complete: $detail", failure)
                     }
                     x(xQuery { byVisibleText("Findings") }).click()
