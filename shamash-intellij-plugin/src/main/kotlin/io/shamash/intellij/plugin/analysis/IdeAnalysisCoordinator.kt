@@ -79,6 +79,7 @@ class IdeAnalysisCoordinator(
         AppExecutorUtil.createBoundedApplicationPoolExecutor("Shamash source analysis", 1)
     private val callbacks = CopyOnWriteArrayList<(IdeAnalysisState<SourcePresentation>) -> Unit>()
     private val gate = Any()
+
     @Volatile
     private var sourceScope = SourceVfsScope.capture(project)
     private var activeTask: Future<*>? = null

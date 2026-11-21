@@ -37,13 +37,13 @@ class SourceVfsScopeTest {
     @Test
     fun `directory changes intersecting production roots are relevant`() {
         for (path in listOf(
-                "/workspace",
-                "/workspace/src",
-                "/workspace/src/main",
-                "/workspace/src/main/java",
-                "/workspace/src/main/java/a",
-                "/workspace/src/main/kotlin/a/b",
-            )) {
+            "/workspace",
+            "/workspace/src",
+            "/workspace/src/main",
+            "/workspace/src/main/java",
+            "/workspace/src/main/java/a",
+            "/workspace/src/main/kotlin/a/b",
+        )) {
             assertTrue(scope.affects(path, directory = true), path)
         }
     }
@@ -51,12 +51,12 @@ class SourceVfsScopeTest {
     @Test
     fun `source root siblings and unrelated project directories are excluded`() {
         for (path in listOf(
-                "/workspace/src/main/java2",
-                "/workspace/src/main/kotlin2",
-                "/workspace/reports",
-                "/other-project/src/main/java",
-                "/workspace2",
-            )) {
+            "/workspace/src/main/java2",
+            "/workspace/src/main/kotlin2",
+            "/workspace/reports",
+            "/other-project/src/main/java",
+            "/workspace2",
+        )) {
             assertFalse(scope.affects(path, directory = true), path)
         }
     }
@@ -64,13 +64,13 @@ class SourceVfsScopeTest {
     @Test
     fun `test and generated directories do not invalidate production results`() {
         for (path in listOf(
-                "/workspace/src/test/java/a",
-                "/workspace/src/test/kotlin/a",
-                "/workspace/src/main/java/generated/a",
-                "/workspace/src/main/java/excluded/a",
-            )) {
+            "/workspace/src/test/java/a",
+            "/workspace/src/test/kotlin/a",
+            "/workspace/src/main/java/generated/a",
+            "/workspace/src/main/java/excluded/a",
+        )) {
             assertFalse(scope.affects(path, directory = true), path)
-            assertFalse(scope.affects("${path}/Nested.java", directory = false), path)
+            assertFalse(scope.affects("$path/Nested.java", directory = false), path)
         }
     }
 

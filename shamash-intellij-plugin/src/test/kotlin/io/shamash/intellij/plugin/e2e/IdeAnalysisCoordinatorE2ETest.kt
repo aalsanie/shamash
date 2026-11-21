@@ -433,7 +433,6 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
-
     fun testDirectoryRenameStalesCompletedSnapshotWithoutStartingAnotherScan() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)

@@ -64,11 +64,12 @@ internal class SourceVfsScope(
                 else -> event.file?.isDirectory == true
             }
         return when (event) {
-            is VFileMoveEvent ->
+            is VFileMoveEvent -> {
                 affects(event.oldParent.path + "/" + event.file.name, directory) ||
                     affects(event.newParent.path + "/" + event.file.name, directory)
+            }
 
-            is VFilePropertyChangeEvent ->
+            is VFilePropertyChangeEvent -> {
                 if (event.propertyName == VirtualFile.PROP_NAME) {
                     val parent = event.file.parent?.path ?: event.path.substringBeforeLast('/')
                     affects(parent + "/" + event.oldValue, directory) ||
@@ -76,10 +77,19 @@ internal class SourceVfsScope(
                 } else {
                     !directory && affects(event.path, directory = false)
                 }
+            }
 
-            is VFileCopyEvent -> affects(event.newParent.path + "/" + event.newChildName, directory)
-            is VFileCreateEvent, is VFileDeleteEvent, is VFileContentChangeEvent -> affects(event.path, directory)
-            else -> false
+            is VFileCopyEvent -> {
+                affects(event.newParent.path + "/" + event.newChildName, directory)
+            }
+
+            is VFileCreateEvent, is VFileDeleteEvent, is VFileContentChangeEvent -> {
+                affects(event.path, directory)
+            }
+
+            else -> {
+                false
+            }
         }
     }
 
@@ -118,7 +128,7 @@ internal class SourceVfsScope(
         private fun within(
             path: String,
             parent: String,
-        ): Boolean = path == parent || path.startsWith("${parent}/")
+        ): Boolean = path == parent || path.startsWith("$parent/")
 
         private fun sourceFile(path: String): Boolean = path.endsWith(".java") || path.endsWith(".kt")
     }
