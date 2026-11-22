@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.analysis
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
@@ -95,7 +96,10 @@ internal class SourceVfsScope(
     }
 
     companion object {
-        fun capture(project: Project): SourceVfsScope {
+        fun capture(project: Project): SourceVfsScope =
+            ReadAction.compute<SourceVfsScope, RuntimeException> { captureWithReadAccess(project) }
+
+        private fun captureWithReadAccess(project: Project): SourceVfsScope {
             val index = ProjectRootManager.getInstance(project).fileIndex
             val roots =
                 ModuleManager.getInstance(project).modules.flatMap { module ->

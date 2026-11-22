@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.roots.ModuleRootManager
@@ -27,6 +28,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -47,6 +49,17 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
+    fun testSourceScopeCaptureAcquiresReadActionOffEdt() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val scope =
+            AppExecutorUtil.getAppExecutorService().submit {
+                assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+                SourceVfsScope.capture(project)
+            }.get(10, TimeUnit.SECONDS)
+        assertTrue(scope.affects(root.path + "/Inside.java", directory = false))
+    }
+
     fun testInjectedBackendCompletesAndDoesNotActivateToolWindow() {
         val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash")
         val wasVisible = window?.isVisible
