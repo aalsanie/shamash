@@ -53,7 +53,7 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)
         val scope =
-            AppExecutorUtil.getAppExecutorService().submit {
+            AppExecutorUtil.getAppExecutorService().submit<SourceVfsScope> {
                 assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
                 SourceVfsScope.capture(project)
             }.get(10, TimeUnit.SECONDS)
