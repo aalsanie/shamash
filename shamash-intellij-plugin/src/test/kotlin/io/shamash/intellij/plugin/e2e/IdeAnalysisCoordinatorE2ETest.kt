@@ -17,21 +17,31 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.intellij.plugin.analysis.AnalysisCoverage
 import io.shamash.intellij.plugin.analysis.AnalysisOutcome
 import io.shamash.intellij.plugin.analysis.AnalysisPhase
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.ResultRelation
+import io.shamash.intellij.plugin.analysis.SourceVfsScope
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.psi.core.config.SchemaResources
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -39,6 +49,19 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
+    fun testSourceScopeCaptureAcquiresReadActionOffEdt() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val scope =
+            AppExecutorUtil
+                .getAppExecutorService()
+                .submit<SourceVfsScope> {
+                    assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+                    SourceVfsScope.capture(project)
+                }.get(10, TimeUnit.SECONDS)
+        assertTrue(scope.affects(root.path + "/Inside.java", directory = false))
+    }
+
     fun testInjectedBackendCompletesAndDoesNotActivateToolWindow() {
         val window = ToolWindowManager.getInstance(project).getToolWindow("Shamash")
         val wasVisible = window?.isVisible
@@ -430,6 +453,396 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
                 edge.witnesses.all { it.reference.fileUrl == it.from.fileUrl }
             },
         )
+    }
+
+    fun testDirectoryRenameStalesCompletedSnapshotWithoutStartingAnotherScan() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+        val before = coordinator.state().sourceRevision
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+        assertEquals(before + 1, coordinator.state().sourceRevision)
+    }
+
+    fun testDeletingContainingDirectoryStalesPreviousResult() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.delete(this) }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+    }
+
+    fun testMovingDirectoryOutAndBackIntoSourceRootStalesBothGenerations() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        val outside = myFixture.tempDirFixture.findOrCreateDir("elsewhere")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val first = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.move(this, outside) }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(first, coordinator.state().visibleResult)
+
+        val second = completeInjected(coordinator)
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.move(this, root) }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(second, coordinator.state().visibleResult)
+    }
+
+    fun testRenamingAncestorOfSourceRootInvalidatesSnapshot() {
+        val ancestor = myFixture.tempDirFixture.findOrCreateDir("src/main")
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val prior = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { ancestor.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+    }
+
+    fun testUnrelatedReportAndTestDirectoryChangesRemainCurrent() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        PsiTestUtil.addSourceRoot(myModule, testRoot, true)
+        myFixture.addFileToProject("src/main/java/Main.java", "class Main {}")
+        val testDirectory = myFixture.tempDirFixture.findOrCreateDir("src/test/java/sample")
+        val reportRoot = myFixture.tempDirFixture.findOrCreateDir(".shamash")
+        PsiTestUtil.addExcludedRoot(myModule, reportRoot)
+        val reportDirectory = myFixture.tempDirFixture.findOrCreateDir(".shamash/reports")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val scope = SourceVfsScope.capture(project)
+        assertFalse("Test root incorrectly classified as production source", scope.affects(testDirectory.path, directory = true))
+        assertFalse("Report directory incorrectly classified as production source", scope.affects(reportDirectory.path, directory = true))
+        val prior = completeInjected(coordinator)
+        val revision = coordinator.state().sourceRevision
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { testDirectory.rename(this, "renamed") }
+        }
+        assertEquals(
+            "Test-directory rename: ${coordinator.state()}",
+            AnalysisPhase.COMPLETED,
+            coordinator.state().phase,
+        )
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { reportDirectory.rename(this, "archived") }
+        }
+        assertEquals(
+            "Report-directory rename: ${coordinator.state()}",
+            AnalysisPhase.COMPLETED,
+            coordinator.state().phase,
+        )
+        assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
+        assertEquals(prior, coordinator.state().visibleResult)
+        assertEquals(revision, coordinator.state().sourceRevision)
+    }
+
+    fun testCreatingDirectoryWithinSourceRootInvalidatesCompletedResult() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { root.createChildDirectory(this, "added") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
+    fun testCopyingDirectoryIntoSourceRootInvalidatesCompletedResult() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val outside = myFixture.tempDirFixture.findOrCreateDir("elsewhere/copied")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { outside.copy(this, root, "copied") }
+        }
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
+    fun testExcludedDirectoryChangeDoesNotInvalidateSourceResults() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val excluded = myFixture.tempDirFixture.findOrCreateDir("src/main/java/excluded")
+        PsiTestUtil.addExcludedRoot(myModule, excluded)
+        val child = myFixture.tempDirFixture.findOrCreateDir("src/main/java/excluded/child")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        assertFalse(
+            "Excluded child incorrectly classified as production source",
+            SourceVfsScope.capture(project).affects(child.path, directory = true),
+        )
+        val previous = completeInjected(coordinator)
+        val revision = coordinator.state().sourceRevision
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { child.rename(this, "renamed") }
+        }
+        assertEquals(
+            "Nested excluded-directory rename: ${coordinator.state()}",
+            AnalysisPhase.COMPLETED,
+            coordinator.state().phase,
+        )
+        assertEquals(ResultRelation.CURRENT, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+        assertEquals(revision, coordinator.state().sourceRevision)
+    }
+
+    fun testDirectoryRenameCancelsBlockedGenerationAndRejectsLateCompletion() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        myFixture.addFileToProject("src/main/java/feature/Original.java", "package feature; class Original {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val previous = completeInjected(coordinator)
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val returned = CountDownLatch(1)
+        val request =
+            kotlin.test.assertNotNull(
+                coordinator.analyze { attempt, _ ->
+                    coordinator.graphStarted(attempt)
+                    started.countDown()
+                    try {
+                        release.await(10, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                    } finally {
+                        returned.countDown()
+                    }
+                    AnalysisOutcome.Complete(
+                        IdeAnalysisCoordinator.SourcePresentation(),
+                        AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                    )
+                },
+            )
+        try {
+            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            assertTrue(started.await(10, TimeUnit.SECONDS))
+            runInEdtAndWait {
+                WriteCommandAction.runWriteCommandAction(project) { directory.rename(this, "renamed") }
+            }
+            assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+            assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+            assertEquals(previous, coordinator.state().visibleResult)
+            assertTrue(!coordinator.state().active)
+            assertTrue(!coordinator.state().currentComplete)
+            assertTrue(coordinator.state().requestGeneration > request.generation)
+        } finally {
+            release.countDown()
+        }
+        assertTrue(returned.await(10, TimeUnit.SECONDS))
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(previous, coordinator.state().visibleResult)
+    }
+
+    fun testDisposedCoordinatorIgnoresLaterDirectoryChanges() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/feature")
+        val coordinator = IdeAnalysisCoordinator(project)
+        Disposer.dispose(coordinator)
+
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) { directory.rename(this, "renamed") }
+        }
+        assertEquals(AnalysisPhase.CANCELLED, coordinator.state().phase)
+        assertEquals(null, coordinator.analyze { _, _ -> error("Disposed coordinator started work") })
+    }
+
+    fun testSourceEventMatchingHandlesMovesInBothDirections() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val outside = myFixture.tempDirFixture.findOrCreateDir("elsewhere")
+        val otherOutside = myFixture.tempDirFixture.findOrCreateDir("other")
+        val insideFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
+        val outsideFile = myFixture.addFileToProject("elsewhere/Outside.java", "class Outside {}").virtualFile
+        PsiTestUtil.addExcludedRoot(myModule, outside)
+        PsiTestUtil.addExcludedRoot(myModule, otherOutside)
+        val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(outsideFile.path, directory = false))
+        assertFalse(scope.affects(otherOutside.path, directory = true))
+
+        assertTrue(scope.affects(listOf(VFileMoveEvent(this, outsideFile, root))))
+        assertTrue(scope.affects(listOf(VFileMoveEvent(this, insideFile, outside))))
+        val unrelated = VFileMoveEvent(this, outsideFile, otherOutside)
+        assertFalse(scope.affects(listOf(unrelated)))
+        assertTrue(scope.affects(listOf(unrelated, VFileMoveEvent(this, outsideFile, root))))
+        assertFalse(scope.affects(emptyList()))
+    }
+
+    fun testSourceEventMatchingHandlesRenamesAndMetadataChanges() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val javaFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
+        val textFile = myFixture.addFileToProject("src/main/java/notes.txt", "notes").virtualFile
+        val outsideFile = myFixture.addFileToProject("other/Outside.java", "class Outside {}").virtualFile
+        PsiTestUtil.addExcludedRoot(myModule, outsideFile.parent)
+        val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(outsideFile.path, directory = false))
+
+        assertTrue(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, javaFile, VirtualFile.PROP_NAME, "Inside.java", "Inside.txt", false)),
+            ),
+        )
+        assertTrue(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, textFile, VirtualFile.PROP_NAME, "notes.txt", "Added.kt", false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, textFile, VirtualFile.PROP_NAME, "notes.txt", "notes.md", false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, outsideFile, VirtualFile.PROP_NAME, "Outside.java", "Next.java", false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, javaFile, VirtualFile.PROP_WRITABLE, true, false, false)),
+            ),
+        )
+        assertFalse(
+            scope.affects(
+                listOf(VFilePropertyChangeEvent(this, root, VirtualFile.PROP_WRITABLE, true, false, false)),
+            ),
+        )
+    }
+
+    fun testGeneratedJavaSourceRootIsExcludedFromProductionScope() {
+        val generated = myFixture.tempDirFixture.findOrCreateDir("src/main/generated")
+        PsiTestUtil.addSourceRoot(myModule, generated)
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                val model = ModuleRootManager.getInstance(myModule).modifiableModel
+                val folder =
+                    model.contentEntries
+                        .flatMap { it.sourceFolders.asList() }
+                        .single { it.file == generated }
+                val properties = folder.jpsElement.properties as JavaSourceRootProperties
+                properties.isForGeneratedSources = true
+                model.commit()
+            }
+        }
+        val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(generated.path, directory = true))
+        assertFalse(scope.affects(generated.path + "/Generated.java", directory = false))
+    }
+
+    fun testSourceScopeSkipsMissingSourceFolder() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val missingUrl = root.parent.url + "/missing-source"
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                val model = ModuleRootManager.getInstance(myModule).modifiableModel
+                model.contentEntries.first().addSourceFolder(missingUrl, false)
+                model.commit()
+            }
+        }
+
+        val missingFolder =
+            ModuleRootManager
+                .getInstance(myModule)
+                .contentEntries
+                .flatMap { it.sourceFolders.asList() }
+                .single { it.url == missingUrl }
+        kotlin.test.assertNull(missingFolder.file)
+
+        val scope = SourceVfsScope.capture(project)
+        assertTrue(scope.affects(root.path + "/Retained.java", directory = false))
+    }
+
+    fun testAbsentExcludedFolderStillMasksItsConfiguredPath() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val missingUrl = root.url + "/not-created"
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                val model = ModuleRootManager.getInstance(myModule).modifiableModel
+                model.contentEntries.first().addExcludeFolder(missingUrl)
+                model.commit()
+            }
+        }
+        val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(root.path + "/not-created", directory = true))
+        assertFalse(scope.affects(root.path + "/not-created/Excluded.java", directory = false))
+        assertTrue(scope.affects(root.path + "/Other.java", directory = false))
+    }
+
+    fun testSourceEventMatchingHandlesDeletionAndContentChanges() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        val javaFile = myFixture.addFileToProject("src/main/java/Inside.java", "class Inside {}").virtualFile
+        val outside = myFixture.addFileToProject("elsewhere/Outside.java", "class Outside {}").virtualFile
+        PsiTestUtil.addExcludedRoot(myModule, outside.parent)
+        val scope = SourceVfsScope.capture(project)
+        assertFalse(scope.affects(outside.path, directory = false))
+
+        assertTrue(scope.affects(listOf(VFileDeleteEvent(this, javaFile, false))))
+        assertFalse(scope.affects(listOf(VFileDeleteEvent(this, outside, false))))
+        assertTrue(scope.affects(listOf(VFileContentChangeEvent(this, javaFile, 1L, 2L, false))))
+        assertFalse(scope.affects(listOf(VFileContentChangeEvent(this, outside, 1L, 2L, false))))
+    }
+
+    private fun completeInjected(
+        coordinator: IdeAnalysisCoordinator,
+    ): io.shamash.intellij.plugin.analysis.AnalysisSnapshot<IdeAnalysisCoordinator.SourcePresentation> {
+        val finished = CountDownLatch(1)
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                finished.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(finished.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        return kotlin.test.assertNotNull(coordinator.state().visibleResult)
     }
 
     private fun awaitTerminal() {
