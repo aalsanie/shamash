@@ -28,11 +28,11 @@ import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.intellij.plugin.analysis.AnalysisCoverage
 import io.shamash.intellij.plugin.analysis.AnalysisOutcome
 import io.shamash.intellij.plugin.analysis.AnalysisPhase
