@@ -107,7 +107,8 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     runInEdtAndWait {
                         rendered =
                             panel.findings.findingList.model.size == 1 &&
-                            panel.explore.tree.model.getChildCount(panel.explore.tree.model.root) > 0 &&
+                            panel.explore.tree.model
+                                .getChildCount(panel.explore.tree.model.root) > 0 &&
                             panel.analyze.text == "Analyze again"
                     }
                     if (rendered) break
