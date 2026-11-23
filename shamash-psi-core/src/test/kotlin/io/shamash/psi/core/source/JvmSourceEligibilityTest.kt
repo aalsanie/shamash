@@ -13,7 +13,6 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
@@ -37,6 +36,14 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
     override fun setUp() {
         super.setUp()
         PsiTestUtil.addSourceRoot(myModule, myFixture.tempDirFixture.findOrCreateDir("src/main/java"))
+    }
+
+    fun testEligibilityRecordRequiresCompleteIndexedOwnership() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        assertFalse(SourceEligibility().included)
+        assertFalse(SourceEligibility(module = myModule).included)
+        assertFalse(SourceEligibility(module = myModule, root = root, exclusion = SourceExclusion.TEST).included)
+        assertTrue(SourceEligibility(module = myModule, root = root).included)
     }
 
     fun testOrdinaryJavaAndMixedKotlinOnJavaRootRequireNoFacet() {
