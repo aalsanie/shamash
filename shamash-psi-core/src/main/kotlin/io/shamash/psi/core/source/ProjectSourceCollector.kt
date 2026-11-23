@@ -10,12 +10,13 @@ package io.shamash.psi.core.source
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
 
 class ProjectSourceCollector(
     project: Project,
-    private val index: com.intellij.openapi.roots.ProjectFileIndex = ProjectRootManager.getInstance(project).fileIndex,
+    private val index: ProjectFileIndex = ProjectRootManager.getInstance(project).fileIndex,
 ) {
     data class SourceFile(
         val file: VirtualFile,
@@ -44,19 +45,23 @@ class ProjectSourceCollector(
             if (file.isDirectory || file.extension !in setOf("java", "kt")) {
                 return@iterateContent true
             }
-            val decision = eligibility.evaluate(file)
-            if (!decision.included) {
-                excluded++
-                val reason = requireNotNull(decision.exclusion).name
-                reasons[reason] = (reasons[reason] ?: 0) + 1
-                return@iterateContent true
+            when (val decision = eligibility.evaluate(file)) {
+                is SourceEligibility.Excluded -> {
+                    excluded++
+                    val reason = decision.exclusion.name
+                    reasons[reason] = (reasons[reason] ?: 0) + 1
+                    true
+                }
+
+                is SourceEligibility.Included -> {
+                    if (file.url !in selected && selected.size == maxFiles) {
+                        truncated = true
+                        return@iterateContent false
+                    }
+                    selected.putIfAbsent(file.url, SourceFile(file, decision.module, decision.root))
+                    true
+                }
             }
-            if (file.url !in selected && selected.size == maxFiles) {
-                truncated = true
-                return@iterateContent false
-            }
-            selected.putIfAbsent(file.url, SourceFile(file, requireNotNull(decision.module), requireNotNull(decision.root)))
-            true
         }
         return Selection(selected.values.sortedBy { it.file.url }, excluded, truncated, reasons.toSortedMap())
     }
