@@ -474,15 +474,15 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     fun testDetailScrollerRemainsUsableWithSmallViewports() {
         runInEdtAndWait {
             val details = io.shamash.intellij.plugin.ui.source.ScrollableSourceDetailsPanel()
-        val rect = java.awt.Rectangle(0, 0, 100, 100)
-        assertTrue(details.getScrollableTracksViewportWidth())
-        assertFalse(details.getScrollableTracksViewportHeight())
-        assertTrue(details.getScrollableUnitIncrement(rect, 1, 1) > 0)
-        assertTrue(details.getScrollableBlockIncrement(rect, 1, 1) > 0)
-        assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 1, 1), 1, 1) > 0)
-        val pager = PageControls()
-        pager.update(123)
-        assertTrue(pager.previous.parent?.parent === pager)
+            val rect = java.awt.Rectangle(0, 0, 100, 100)
+            assertTrue(details.getScrollableTracksViewportWidth())
+            assertFalse(details.getScrollableTracksViewportHeight())
+            assertTrue(details.getScrollableUnitIncrement(rect, 1, 1) > 0)
+            assertTrue(details.getScrollableBlockIncrement(rect, 1, 1) > 0)
+            assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 1, 1), 1, 1) > 0)
+            val pager = PageControls()
+            pager.update(123)
+            assertTrue(pager.previous.parent?.parent === pager)
             assertTrue(pager.next.parent?.parent === pager)
         }
     }
