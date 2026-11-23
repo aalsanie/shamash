@@ -818,7 +818,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
     ) {
         val viewport = component.parent as? JViewport ?: throw AssertionError(label + " must have a scrollable viewport")
         val ancestry =
-            generateSequence(viewport as Component?) { it.parent }
+            generateSequence(viewport as Component?) { it?.parent }
                 .take(7)
                 .joinToString(" <- ") { it.javaClass.simpleName + it.bounds }
         assertTrue(label + " must show a readable row; height=" + viewport.height + "; " + ancestry, viewport.height >= 24)
