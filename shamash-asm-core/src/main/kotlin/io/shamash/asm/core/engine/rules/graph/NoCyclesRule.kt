@@ -56,7 +56,7 @@ class NoCyclesRule : Rule {
         val repCycles =
             RuleUtil.representativeCyclesBounded(
                 nodes = g.nodes.sorted(),
-                outgoing = { n -> g.outgoing[n].orEmpty() },
+                outgoing = { n -> g.successors(n).sorted() },
                 maxCycles = limit,
                 maxCycleNodes = 120,
             )
@@ -90,7 +90,7 @@ class NoCyclesRule : Rule {
                             put("cycleIndex", (idx + 1).toString())
                             put("cycleCount", cycleCount.toString()) // SCC count, from full sweep
                             put("cycle", cycleStr)
-                            if (cycleCount > limit) put("cyclesTruncated", "true")
+                            if (cycleCount > limit || cyclesToReport.size < cycleCount) put("cyclesTruncated", "true")
                         },
                 )
         }

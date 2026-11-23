@@ -99,16 +99,24 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         try {
             val coordinator = IdeAnalysisCoordinator.getInstance(project)
             var done = false
+            var rendered = false
             for (attempt in 0 until 500) {
                 PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-                if (!coordinator.state().active) {
-                    done = true
-                    break
+                done = !coordinator.state().active
+                if (done) {
+                    runInEdtAndWait {
+                        rendered =
+                            panel.findings.findingList.model.size == 1 &&
+                            panel.explore.tree.model
+                                .getChildCount(panel.explore.tree.model.root) > 0 &&
+                            panel.analyze.text == "Analyze again"
+                    }
+                    if (rendered) break
                 }
                 Thread.sleep(20)
             }
             assertTrue("Source analysis did not terminate", done)
-            PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+            assertTrue("Source analysis result was not rendered in both tabs", rendered)
             runInEdtAndWait {
                 val current = kotlin.test.assertNotNull(coordinator.state().visibleResult?.payload)
                 val graph = kotlin.test.assertNotNull(current.sourceGraph)
