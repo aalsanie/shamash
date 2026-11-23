@@ -43,6 +43,7 @@ import io.shamash.intellij.plugin.analysis.SourceVfsScope
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.psi.core.config.SchemaResources
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.kotlin.config.SourceKotlinRootType
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.platform.js.JsPlatforms
 import java.nio.file.Files
@@ -466,6 +467,30 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(disk, Files.readAllBytes(Path.of(source.virtualFile.path)).toList())
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
+    }
+
+    fun testKnownJvmSourceWithUnknownKotlinTargetIsPartialNotClean() {
+        val javaRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, javaRoot)
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("src/main/java/demo/JvmService.java", "package demo; public class JvmService {}")
+        myFixture.addFileToProject("src/main/kotlin/demo/Unknown.kt", "package demo\nclass Unknown")
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+
+        fire(RunPsiScanAction())
+        awaitTerminal()
+        val state = IdeAnalysisCoordinator.getInstance(project).state()
+        assertEquals(AnalysisPhase.PARTIAL, state.phase)
+        val result = kotlin.test.assertNotNull(state.visibleResult)
+        val facts = kotlin.test.assertNotNull(result.payload?.sourceFacts)
+        assertEquals(1, facts.coverage.eligibleFiles)
+        assertEquals(1, facts.coverage.uncertainFiles)
+        assertTrue(facts.entities.any { it.id.signature == "demo.JvmService" })
+        assertTrue(facts.entities.none { it.id.signature == "demo.Unknown" })
+        assertTrue(state.attemptCoverage?.reason?.contains("unknown") == true)
+        assertEquals(1, state.attemptCoverage?.excludedReasons?.get("UNKNOWN_PLATFORM"))
+        assertTrue(state.diagnostics.any { it.contains("unknown") })
     }
 
     fun testJavaAndKotlinPackagesWithMutualReferencesProduceOneVerifiedCycle() {
