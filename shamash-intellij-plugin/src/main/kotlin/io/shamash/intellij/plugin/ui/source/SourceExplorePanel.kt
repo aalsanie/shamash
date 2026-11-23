@@ -535,6 +535,7 @@ internal class SourceExplorePanel(
 
     private fun renderPage() {
         pager.update(relations.size)
+        pager.isVisible = relations.size > SourceUiModel.PAGE_SIZE
         relationEmpty.text =
             when {
                 source == null || selection == null -> ""
@@ -542,6 +543,7 @@ internal class SourceExplorePanel(
                 relationSearch.text.isNotBlank() -> "No results match these filters"
                 else -> "No observed relationships in this direction"
             }
+        relationEmpty.isVisible = relationEmpty.text.isNotEmpty()
         relationModel.clear()
         SourceUiModel.page(relations, pager.page).forEach(relationModel::addElement)
         if (relationModel.isEmpty) evidence.showEvidence(emptyList(), 0)
