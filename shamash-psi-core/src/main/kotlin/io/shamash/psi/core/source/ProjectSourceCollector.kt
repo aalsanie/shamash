@@ -14,7 +14,8 @@ import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
 
 class ProjectSourceCollector(
-    private val project: Project,
+    project: Project,
+    private val index: com.intellij.openapi.roots.ProjectFileIndex = ProjectRootManager.getInstance(project).fileIndex,
 ) {
     data class SourceFile(
         val file: VirtualFile,
@@ -33,7 +34,6 @@ class ProjectSourceCollector(
 
     fun collect(maxFiles: Int): Selection {
         require(maxFiles > 0)
-        val index = ProjectRootManager.getInstance(project).fileIndex
         val eligibility = JvmSourceEligibility(index)
         val selected = LinkedHashMap<String, SourceFile>()
         val reasons = LinkedHashMap<String, Int>()
