@@ -212,6 +212,48 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         assertEquals(listOf(first.url), limited.files.map { it.file.url })
     }
 
+    fun testCollectorCountsRepeatedExclusionsWithoutAdmittingUnsupportedFiles() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val first = myFixture.addFileToProject("src/main/java/First.java", "class First {}").virtualFile
+        val second = myFixture.addFileToProject("src/main/java/Second.java", "class Second {}").virtualFile
+        val third = myFixture.addFileToProject("src/main/java/Third.java", "class Third {}").virtualFile
+        val testOne = myFixture.addFileToProject("src/main/java/TestOne.java", "class TestOne {}").virtualFile
+        val testTwo = myFixture.addFileToProject("src/main/java/TestTwo.java", "class TestTwo {}").virtualFile
+        val notSourceOne = myFixture.addFileToProject("src/main/java/OutsideOne.kt", "class OutsideOne").virtualFile
+        val notSourceTwo = myFixture.addFileToProject("src/main/java/OutsideTwo.kt", "class OutsideTwo").virtualFile
+        val ignored = myFixture.addFileToProject("src/main/java/notes.txt", "not source").virtualFile
+        val entries = listOf(ignored, first, testOne, testTwo, notSourceOne, notSourceTwo, first, second, third)
+        val index =
+            Proxy.newProxyInstance(
+                ProjectFileIndex::class.java.classLoader,
+                arrayOf(ProjectFileIndex::class.java),
+            ) { _, method, args ->
+                val file = args?.firstOrNull() as? com.intellij.openapi.vfs.VirtualFile
+                when (method.name) {
+                    "iterateContent" -> {
+                        val iterator = args!![0] as ContentIterator
+                        entries.all { iterator.processFile(it) }
+                    }
+                    "isInLibraryClasses", "isInLibrarySource" -> false
+                    "isInTestSourceContent" -> file == testOne || file == testTwo
+                    "isInSourceContent" -> file != notSourceOne && file != notSourceTwo
+                    "getModuleForFile" -> myModule
+                    "getSourceRootForFile" -> root
+                    else -> error("Unexpected index method: ${method.name}")
+                }
+            } as ProjectFileIndex
+        val result =
+            ReadAction.compute<ProjectSourceCollector.Selection, RuntimeException> {
+                ProjectSourceCollector(project, index).collect(2)
+            }
+        assertTrue(result.truncated)
+        assertEquals(setOf(first.url, second.url), result.files.map { it.file.url }.toSet())
+        assertEquals(4, result.excluded)
+        assertEquals(2, result.excludedReasons[SourceExclusion.TEST.name])
+        assertEquals(2, result.excludedReasons[SourceExclusion.NOT_SOURCE.name])
+        assertEquals(0, result.uncertainFiles)
+    }
+
     fun testFacetRevisionChangesOnConfigurationAndRemoval() {
         myFixture.addFileToProject("src/main/java/demo/App.kt", "package demo\nclass App")
         val revisions = JvmSourceScopeRevision.getInstance(project)
