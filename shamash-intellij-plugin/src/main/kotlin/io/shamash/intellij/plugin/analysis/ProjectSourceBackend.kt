@@ -22,6 +22,7 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.source.ProjectSourceAnalyzer
+import io.shamash.psi.core.source.SourceCoverage
 import io.shamash.psi.core.source.SourceGraphAnalyzer
 import io.shamash.psi.core.source.SourceRevisionChangedException
 
@@ -62,21 +63,7 @@ internal class ProjectSourceBackend(
         }
         val graph = SourceGraphAnalyzer().analyze(snapshot, indicator::checkCanceled)
         indicator.checkCanceled()
-        val coverage =
-            AnalysisCoverage(
-                eligibleFiles = snapshot.coverage.eligibleFiles,
-                analyzedFiles = snapshot.coverage.analyzedFiles,
-                failedFiles = snapshot.coverage.failedFiles,
-                resolvedOccurrences = snapshot.coverage.resolvedOccurrences,
-                unresolvedOccurrences = snapshot.coverage.unresolvedOccurrences,
-                excludedFiles = snapshot.coverage.excludedFiles,
-                excludedReasons = snapshot.coverage.excludedReasons,
-                reason = when {
-                    snapshot.coverage.truncated -> "Internal limit or revision change"
-                    snapshot.coverage.uncertainFiles > 0 -> "Kotlin target platform is unknown for some source files"
-                    else -> null
-                },
-            )
+        val coverage = snapshot.coverage.toAnalysisCoverage()
         val payload =
             IdeAnalysisCoordinator.SourcePresentation(
                 sourceFacts = snapshot,
@@ -91,3 +78,19 @@ internal class ProjectSourceBackend(
         }
     }
 }
+
+internal fun SourceCoverage.toAnalysisCoverage(): AnalysisCoverage =
+    AnalysisCoverage(
+        eligibleFiles = eligibleFiles,
+        analyzedFiles = analyzedFiles,
+        failedFiles = failedFiles,
+        resolvedOccurrences = resolvedOccurrences,
+        unresolvedOccurrences = unresolvedOccurrences,
+        excludedFiles = excludedFiles,
+        excludedReasons = excludedReasons,
+        reason = when {
+            truncated -> "Internal limit or revision change"
+            uncertainFiles > 0 -> "Kotlin target platform is unknown for some source files"
+            else -> null
+        },
+    )
