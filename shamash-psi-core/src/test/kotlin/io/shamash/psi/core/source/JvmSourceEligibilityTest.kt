@@ -131,13 +131,18 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         facet(jvm, JvmPlatforms.defaultJvmPlatform)
         facet(js, JsPlatforms.defaultJsPlatform)
         facet(common, CommonPlatforms.defaultCommonPlatform)
-        myFixture.addFileToProject("platform-jvm/Jvm.kt", "class Jvm")
-        myFixture.addFileToProject("platform-js/Js.kt", "class Js")
-        myFixture.addFileToProject("platform-common/Common.kt", "class Common")
+        val jvmSource = myFixture.addFileToProject("platform-jvm/Jvm.kt", "class Jvm")
+        val jsSource = myFixture.addFileToProject("platform-js/Js.kt", "class Js")
+        val commonSource = myFixture.addFileToProject("platform-common/Common.kt", "class Common")
         val result = collect()
         assertEquals(1, result.files.size)
-        assertEquals("Jvm.kt", result.files.single().file.name)
-        assertEquals(2, result.excludedReasons[SourceExclusion.NON_JVM.name])
+        assertEquals(jvmSource.virtualFile.url, result.files.single().file.url)
+        val sourceEligibility = JvmSourceEligibility(ProjectFileIndex.getInstance(project))
+        ReadAction.compute<Unit, RuntimeException> {
+            assertEquals(SourceExclusion.NON_JVM, sourceEligibility.evaluate(jsSource.virtualFile).exclusion)
+            assertEquals(SourceExclusion.NON_JVM, sourceEligibility.evaluate(commonSource.virtualFile).exclusion)
+            assertTrue(sourceEligibility.evaluate(jvmSource.virtualFile).included)
+        }
     }
 
     fun testFacetRevisionChangesOnConfigurationAndRemoval() {
