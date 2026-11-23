@@ -114,10 +114,10 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
             ReadAction.compute<SourceEligibility, RuntimeException> {
                 JvmSourceEligibility(ProjectFileIndex.getInstance(project)).evaluate(testFile.virtualFile)
             }
-        assertFalse("Test root was admitted as production source: $classification", classification.included)
+        assertFalse(classification.included, "Test root was admitted as production source: $classification")
         assertTrue(
-            "Unexpected test-root classification: $classification",
             classification.exclusion == SourceExclusion.TEST || classification.exclusion == SourceExclusion.NOT_SOURCE,
+            "Unexpected test-root classification: $classification",
         )
     }
 
