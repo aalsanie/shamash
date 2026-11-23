@@ -247,6 +247,51 @@ class AsmGraphTraversalTest {
         }
     }
 
+    @Test
+    fun crossEdgesToFinishedNodesAndEmptyGraphsAreHandled() {
+        val empty = graph(emptyList(), emptyList())
+        assertTrue(RuleUtil.stronglyConnectedComponents(empty).isEmpty())
+        assertTrue(RuleUtil.cyclicComponents(empty).isEmpty())
+
+        val dag =
+            graph(
+                listOf("a", "b", "c"),
+                listOf("a" to "b", "a" to "c", "b" to "c"),
+            )
+        assertEquals(3, RuleUtil.stronglyConnectedComponents(dag).size)
+        assertTrue(RuleUtil.representativeCyclesBounded(dag.nodes.sorted(), { dag.successors(it).sorted() }).isEmpty())
+    }
+
+    @Test
+    fun sccPartitionAgreesWithIndependentReachabilityOracle() {
+        for (seed in 0 until 100) {
+            val nodes = names(9)
+            val random = java.util.Random(seed.toLong())
+            val edges =
+                nodes.flatMap { from ->
+                    nodes.mapNotNull { to -> if (random.nextInt(4) == 0) from to to else null }
+                }
+            val graph = graph(nodes, edges)
+            val components = RuleUtil.stronglyConnectedComponents(graph)
+            assertEquals(nodes.toSet(), components.flatten().toSet())
+            assertEquals(nodes.size, components.sumOf { it.size })
+
+            val group = components.flatMapIndexed { id, members -> members.map { it to id } }.toMap()
+            val reachable = nodes.associateWith { RuleUtil.reachable(graph, it) }
+            for (from in nodes) {
+                for (to in nodes) {
+                    val mutuallyReachable =
+                        from == to ||
+                            (to in reachable.getValue(from) && from in reachable.getValue(to))
+                    assertEquals(mutuallyReachable, group.getValue(from) == group.getValue(to))
+                }
+            }
+            val expectedCyclic =
+                components.filter { it.size > 1 || it.single() in graph.successors(it.single()) }
+            assertEquals(expectedCyclic, RuleUtil.cyclicComponents(graph))
+        }
+    }
+
     private fun names(size: Int): List<String> = (0 until size).map { "pkg.N" + it.toString().padStart(5, '0') }
 
     private fun graph(
