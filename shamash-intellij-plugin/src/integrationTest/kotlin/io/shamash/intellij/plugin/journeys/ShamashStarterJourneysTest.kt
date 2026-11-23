@@ -413,6 +413,8 @@ class ShamashStarterJourneysTest {
                         x(xQuery { byVisibleText("Source analysis complete") })
                             .shouldBe("Both source-reference families must analyze successfully", present)
                     } catch (failure: com.intellij.driver.sdk.WaitForException) {
+                        x(xQuery { byAccessibleName("Help and advanced architecture enforcement") }).click()
+                        x(xQuery { byVisibleText("Analysis scope and diagnostics") }).click()
                         val diagnostics = x(xQuery { byAccessibleName("Analysis scope and diagnostics") })
                         val detail =
                             diagnostics.driver.withContext(OnDispatcher.EDT) {
