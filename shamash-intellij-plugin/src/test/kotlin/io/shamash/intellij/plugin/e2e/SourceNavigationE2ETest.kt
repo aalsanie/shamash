@@ -54,8 +54,11 @@ import java.awt.BorderLayout
 import java.awt.event.ActionEvent
 import java.lang.reflect.Proxy
 import java.nio.file.Files
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.kotlin.config.SourceKotlinRootType
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JButton
@@ -537,6 +540,36 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
             assertTrue(open.isEnabled)
             panel.dispose()
         }
+    }
+
+    fun testGeneratedKotlinSourceIsNotNavigable() {
+        val generated = myFixture.tempDirFixture.findOrCreateDir("generated/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, generated, SourceKotlinRootType, JavaSourceRootProperties("", true))
+        val source = myFixture.addFileToProject("generated/kotlin/demo/Generated.kt", "package demo\nclass Generated")
+        val index = ProjectFileIndex.getInstance(project)
+        assertNull(navigationSourceLocation(source, index))
+        val file = source.virtualFile
+        val stamp = requireNotNull(FileDocumentManager.getInstance().getDocument(file)).modificationStamp
+        assertFalse(SourceNavigationService(project).currentSourceLocation(file, index, stamp).eligibleSource)
+    }
+
+    fun testExplicitJvmKotlinFacetAllowsNavigationScope() {
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        val source = myFixture.addFileToProject("src/main/kotlin/demo/Supported.kt", "package demo\nclass Supported")
+        assertNull(navigationSourceLocation(source, ProjectFileIndex.getInstance(project)))
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        assertNotNull(navigationSourceLocation(source, ProjectFileIndex.getInstance(project)))
     }
 
     fun testFacetChangeInvalidatesNavigationAndExcludesTargets() {
