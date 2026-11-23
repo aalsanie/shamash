@@ -175,6 +175,56 @@ class SourceGuidanceTest {
     }
 
     @Test
+    fun exclusionSummaryPrefersCurrentAttemptButFallsBackToStoredEvidence() {
+        val facts =
+            io.shamash.psi.core.source.ProjectSourceSnapshot(
+                io.shamash.psi.core.source.SourceAnalysisProfile(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                io.shamash.psi.core.source.SourceCoverage(
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    1,
+                    false,
+                    mapOf("NON_JVM" to 1),
+                ),
+                true,
+            )
+        val result =
+            AnalysisSnapshot(
+                AnalysisRequest(1, 0, 0),
+                Completeness.COMPLETE,
+                AnalysisCoverage(1, 1),
+                IdeAnalysisCoordinator.SourcePresentation(sourceFacts = facts),
+                emptyList(),
+            )
+        val fallback =
+            state(AnalysisPhase.COMPLETED).copy(
+                visibleResult = result,
+                resultRelation = ResultRelation.CURRENT,
+                attemptCoverage = AnalysisCoverage(excludedReasons = emptyMap()),
+            )
+        assertTrue(SourceGuidance.detailStatus(fallback).contains("1 non jvm source files"))
+
+        val current =
+            fallback.copy(
+                attemptCoverage = AnalysisCoverage(excludedReasons = mapOf("GENERATED" to 2)),
+            )
+        val currentDetails = SourceGuidance.detailStatus(current)
+        assertTrue(currentDetails.contains("2 generated source files"))
+        assertTrue(!currentDetails.contains("1 non jvm source files"))
+
+        val missingFacts = fallback.copy(visibleResult = result.copy(payload = null))
+        assertTrue(!SourceGuidance.detailStatus(missingFacts).contains("Outside this JVM scope"))
+        assertTrue(!SourceGuidance.detailStatus(state(AnalysisPhase.COMPLETED)).contains("Outside this JVM scope"))
+    }
+
+    @Test
     fun firstUseHelpIsOfflineAndExplainsLimitsAndAdvancedCapabilities() {
         val copy = SourceGuidance.detailStatus(state(AnalysisPhase.IDLE))
         assertTrue(copy.contains("Analyze project"))
