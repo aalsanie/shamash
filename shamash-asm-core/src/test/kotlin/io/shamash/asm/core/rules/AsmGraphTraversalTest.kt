@@ -203,6 +203,37 @@ class AsmGraphTraversalTest {
     }
 
     @Test
+    fun sampledCycleFindingsMarkUnrepresentedComponents() {
+        val longRing = names(130)
+        val shortCycle = listOf("extra.A", "extra.B")
+        val nodes = longRing + shortCycle
+        val edges =
+            longRing.zipWithNext() +
+                (longRing.last() to longRing.first()) +
+                listOf(shortCycle[0] to shortCycle[1], shortCycle[1] to shortCycle[0])
+        val config = referenceConfig().let { it.copy(analysis = analysisWithGraph(it, false)) }
+        val findings = NoCyclesRule().evaluate(facts(nodes, edges), noCyclesRule(), config)
+        assertEquals(1, findings.size)
+        assertEquals("2", findings.single().data["cycleCount"])
+        assertEquals("true", findings.single().data["cyclesTruncated"])
+        val witness = assertNotNull(findings.single().data["cycle"])
+        assertTrue(witness.startsWith("extra.A -> extra.B -> extra.A"))
+    }
+
+    @Test
+    fun manyCyclicComponentsAreCountedBeyondSampleLimit() {
+        val nodes = names(24)
+        val edges = nodes.chunked(2).flatMap { pair -> listOf(pair[0] to pair[1], pair[1] to pair[0]) }
+        val config = referenceConfig().let { it.copy(analysis = analysisWithGraph(it, false)) }
+        val findings = NoCyclesRule().evaluate(facts(nodes, edges), noCyclesRule(), config)
+        assertEquals(10, findings.size)
+        assertEquals("12", findings.first().data["cycleCount"])
+        assertTrue(findings.all { it.data["cyclesTruncated"] == "true" })
+        val threshold = MaxCyclesRule().evaluate(facts(nodes, edges), maxCyclesRule(10), config).single()
+        assertEquals("12", threshold.data["count"])
+    }
+
+    @Test
     fun enginePublishesLargeGraphFindingsAndAnalysisWithoutErrors() {
         val nodes = names(12_000)
         val edges = nodes.zipWithNext() + (nodes.last() to nodes.first())
