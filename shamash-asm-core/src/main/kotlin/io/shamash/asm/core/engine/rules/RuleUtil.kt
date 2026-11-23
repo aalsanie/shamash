@@ -273,51 +273,57 @@ internal object RuleUtil {
 
     /** Tarjan SCC traversal with sorted nodes/successors; components are ordered by smallest node. */
     fun stronglyConnectedComponents(g: DirectedGraph): List<Set<String>> {
-        val nodes = g.nodes.toList().sorted()
+        data class Frame(val node: String, val successors: Iterator<String>)
 
+        val nodes = g.nodes.sorted()
         val index = HashMap<String, Int>(nodes.size)
         val lowlink = HashMap<String, Int>(nodes.size)
         val onStack = HashSet<String>(nodes.size)
         val stack = ArrayDeque<String>()
+        val frames = ArrayDeque<Frame>()
+        val components = ArrayList<Set<String>>()
         var nextIndex = 0
 
-        val sccs = mutableListOf<Set<String>>()
+        fun enter(node: String) {
+            index[node] = nextIndex
+            lowlink[node] = nextIndex++
+            stack.push(node)
+            onStack.add(node)
+            frames.addLast(Frame(node, g.successors(node).sorted().iterator()))
+        }
 
-        fun strongConnect(v: String) {
-            index[v] = nextIndex
-            lowlink[v] = nextIndex
-            nextIndex++
-
-            stack.push(v)
-            onStack.add(v)
-
-            val succ = g.successors(v).toList().sorted()
-            for (w in succ) {
-                if (w !in index) {
-                    strongConnect(w)
-                    lowlink[v] = minOf(lowlink.getValue(v), lowlink.getValue(w))
-                } else if (w in onStack) {
-                    lowlink[v] = minOf(lowlink.getValue(v), index.getValue(w))
+        for (node in nodes) {
+            if (node in index) continue
+            enter(node)
+            while (frames.isNotEmpty()) {
+                val frame = frames.peekLast()
+                if (frame.successors.hasNext()) {
+                    val next = frame.successors.next()
+                    if (next !in index) {
+                        enter(next)
+                    } else if (next in onStack) {
+                        lowlink[frame.node] = minOf(lowlink.getValue(frame.node), index.getValue(next))
+                    }
+                } else {
+                    frames.removeLast()
+                    if (lowlink.getValue(frame.node) == index.getValue(frame.node)) {
+                        val component = LinkedHashSet<String>()
+                        do {
+                            val member = stack.pop()
+                            onStack.remove(member)
+                            component.add(member)
+                        } while (member != frame.node)
+                        components.add(component)
+                    }
+                    if (frames.isNotEmpty()) {
+                        val parent = frames.peekLast().node
+                        lowlink[parent] = minOf(lowlink.getValue(parent), lowlink.getValue(frame.node))
+                    }
                 }
-            }
-
-            if (lowlink.getValue(v) == index.getValue(v)) {
-                val comp = LinkedHashSet<String>()
-                while (true) {
-                    val w = stack.pop()
-                    onStack.remove(w)
-                    comp.add(w)
-                    if (w == v) break
-                }
-                sccs += comp.toSet()
             }
         }
 
-        for (v in nodes) {
-            if (v !in index) strongConnect(v)
-        }
-
-        return sccs.sortedBy { it.minOrNull().orEmpty() }
+        return components.sortedBy { it.minOrNull().orEmpty() }
     }
 
     fun cyclicComponents(g: DirectedGraph): List<Set<String>> {
@@ -342,7 +348,7 @@ internal object RuleUtil {
 
     /**
      * Samples DFS back-edge cycles, bounded by [maxCycles] and [maxCycleNodes].
-     * Paths may be truncated; this does not enumerate all cycles or prove their absence.
+     * Only complete, closed paths are returned; cycles exceeding the length bound are omitted.
      */
     internal fun <N> representativeCyclesBounded(
         nodes: Iterable<N>,
@@ -350,71 +356,51 @@ internal object RuleUtil {
         maxCycles: Int = 3,
         maxCycleNodes: Int = 120,
     ): List<List<N>> {
-        if (maxCycles <= 0) return emptyList()
-        if (maxCycleNodes <= 0) return emptyList()
+        if (maxCycles <= 0 || maxCycleNodes < 2) return emptyList()
 
-        // 0=unvisited, 1=visiting (on stack), 2=done
-        val state = HashMap<N, Int>(16_384)
-        val stack = ArrayList<N>(256)
-        val indexInStack = HashMap<N, Int>(16_384)
+        data class Frame<N>(val node: N, val successors: Iterator<N>)
 
+        val state = HashMap<N, Int>()
+        val indexInPath = HashMap<N, Int>()
+        val path = ArrayList<N>()
+        val frames = ArrayDeque<Frame<N>>()
         val cycles = ArrayList<List<N>>(minOf(maxCycles, 8))
 
-        fun captureCycle(
-            fromIndex: Int,
-            closingNode: N,
-        ) {
-            if (cycles.size >= maxCycles) return
-
-            // Bound the output length to avoid memory blowups.
-            val raw = ArrayList<N>(minOf(maxCycleNodes + 1, (stack.size - fromIndex) + 1))
-            var count = 0
-
-            for (i in fromIndex until stack.size) {
-                if (count >= maxCycleNodes) break
-                raw.add(stack[i])
-                count++
-            }
-            if (count < maxCycleNodes) raw.add(closingNode)
-
-            cycles.add(raw)
+        fun enter(node: N) {
+            state[node] = 1
+            indexInPath[node] = path.size
+            path.add(node)
+            frames.addLast(Frame(node, outgoing(node).iterator()))
         }
 
-        fun dfs(u: N) {
-            if (cycles.size >= maxCycles) return
-
-            state[u] = 1
-            indexInStack[u] = stack.size
-            stack.add(u)
-
-            for (v in outgoing(u)) {
-                if (cycles.size >= maxCycles) break
-
-                val sv = state[v] ?: 0
-                when (sv) {
-                    0 -> {
-                        dfs(v)
+        for (node in nodes) {
+            if (cycles.size >= maxCycles) break
+            if (node in state) continue
+            enter(node)
+            while (frames.isNotEmpty() && cycles.size < maxCycles) {
+                val frame = frames.peekLast()
+                if (frame.successors.hasNext()) {
+                    val next = frame.successors.next()
+                    when (state[next] ?: 0) {
+                        0 -> enter(next)
+                        1 -> {
+                            val start = indexInPath.getValue(next)
+                            val length = path.size - start + 1
+                            if (length <= maxCycleNodes) {
+                                val cycle = ArrayList<N>(length)
+                                for (i in start until path.size) cycle.add(path[i])
+                                cycle.add(next)
+                                cycles.add(cycle)
+                            }
+                        }
                     }
-
-                    1 -> {
-                        val start = indexInStack[v]
-                        if (start != null) captureCycle(start, v)
-                    }
-
-                    else -> {
-                        Unit
-                    }
+                } else {
+                    frames.removeLast()
+                    val last = path.removeAt(path.lastIndex)
+                    indexInPath.remove(last)
+                    state[last] = 2
                 }
             }
-
-            stack.removeAt(stack.size - 1)
-            indexInStack.remove(u)
-            state[u] = 2
-        }
-
-        for (n in nodes) {
-            if (cycles.size >= maxCycles) break
-            if ((state[n] ?: 0) == 0) dfs(n)
         }
 
         return cycles
