@@ -44,10 +44,11 @@ internal data class SourceEligibility(
 internal class JvmSourceEligibility(
     private val index: ProjectFileIndex,
 ) {
-    private enum class Platform { JVM, NON_JVM, UNKNOWN }
+    private enum class Platform { JVM, NON_JVM, UNKNOWN, IMPLICIT }
+    private enum class RootKind { JAVA, KOTLIN, GENERATED, UNSUPPORTED }
 
     private val platforms = HashMap<Module, Platform>()
-    private val roots = HashMap<Pair<Module, VirtualFile>, SourceExclusion?>()
+    private val roots = HashMap<Pair<Module, VirtualFile>, RootKind>()
 
     fun evaluate(file: VirtualFile): SourceEligibility {
         if (file.isDirectory || file.extension !in setOf("java", "kt") || file.name.endsWith(".kts")) {
@@ -61,39 +62,39 @@ internal class JvmSourceEligibility(
 
         val module = index.getModuleForFile(file) ?: return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
         val root = index.getSourceRootForFile(file) ?: return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
-        val reason = roots.getOrPut(module to root) { rootExclusion(module, root) }
-        if (reason != null) return SourceEligibility(exclusion = reason)
-        return when (platforms.getOrPut(module) { modulePlatform(module, root) }) {
+        val rootKind = roots.getOrPut(module to root) { rootKind(module, root) }
+        if (rootKind == RootKind.GENERATED) return SourceEligibility(exclusion = SourceExclusion.GENERATED)
+        if (rootKind == RootKind.UNSUPPORTED) return SourceEligibility(exclusion = SourceExclusion.UNSUPPORTED_ROOT)
+        return when (platforms.getOrPut(module) { modulePlatform(module) }) {
             Platform.JVM -> SourceEligibility(module, root)
             Platform.NON_JVM -> SourceEligibility(exclusion = SourceExclusion.NON_JVM)
             Platform.UNKNOWN -> SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+            Platform.IMPLICIT -> {
+                if (rootKind == RootKind.JAVA) SourceEligibility(module, root)
+                else SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+            }
         }
     }
 
-    private fun rootExclusion(module: Module, root: VirtualFile): SourceExclusion? {
+    private fun rootKind(module: Module, root: VirtualFile): RootKind {
         val folders =
             ModuleRootManager.getInstance(module).contentEntries
                 .flatMap { it.sourceFolders.toList() }
                 .filter { it.file == root }
-        if (folders.isEmpty()) return SourceExclusion.UNSUPPORTED_ROOT
-        if (folders.any { it.jpsElement.properties is JavaSourceRootProperties &&
-                (it.jpsElement.properties as JavaSourceRootProperties).isForGeneratedSources
+        if (folders.isEmpty()) return RootKind.UNSUPPORTED
+        if (folders.any {
+                (it.jpsElement.properties as? JavaSourceRootProperties)?.isForGeneratedSources == true
             }
-        ) return SourceExclusion.GENERATED
-        return if (folders.any {
-                it.rootType == JavaSourceRootType.SOURCE || it.rootType == SourceKotlinRootType
-            }
-        ) null else SourceExclusion.UNSUPPORTED_ROOT
+        ) return RootKind.GENERATED
+        return when {
+            folders.any { it.rootType == JavaSourceRootType.SOURCE } -> RootKind.JAVA
+            folders.any { it.rootType == SourceKotlinRootType } -> RootKind.KOTLIN
+            else -> RootKind.UNSUPPORTED
+        }
     }
 
-    private fun modulePlatform(module: Module, root: VirtualFile): Platform {
-        val facet = KotlinFacet.get(module)
-        if (facet == null) {
-            val javaRoot = ModuleRootManager.getInstance(module).contentEntries
-                .flatMap { it.sourceFolders.toList() }
-                .any { it.file == root && it.rootType == JavaSourceRootType.SOURCE }
-            return if (javaRoot) Platform.JVM else Platform.UNKNOWN
-        }
+    private fun modulePlatform(module: Module): Platform {
+        val facet = KotlinFacet.get(module) ?: return Platform.IMPLICIT
         val target = facet.configuration.settings.targetPlatform ?: return Platform.UNKNOWN
         return if (target.componentPlatforms.singleOrNull() is JvmPlatform) {
             Platform.JVM
