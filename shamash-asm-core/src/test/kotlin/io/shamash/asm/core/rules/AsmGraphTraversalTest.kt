@@ -49,10 +49,11 @@ class AsmGraphTraversalTest {
             assertEquals(size, RuleUtil.stronglyConnectedComponents(graph).size)
             assertTrue(RuleUtil.cyclicComponents(graph).isEmpty())
             assertTrue(
-                RuleUtil.representativeCyclesBounded(
-                    nodes = nodes,
-                    outgoing = { graph.successors(it) },
-                ).isEmpty(),
+                RuleUtil
+                    .representativeCyclesBounded(
+                        nodes = nodes,
+                        outgoing = { graph.successors(it) },
+                    ).isEmpty(),
             )
         }
     }

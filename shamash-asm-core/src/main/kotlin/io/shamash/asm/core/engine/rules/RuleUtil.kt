@@ -273,7 +273,10 @@ internal object RuleUtil {
 
     /** Tarjan SCC traversal with sorted nodes/successors; components are ordered by smallest node. */
     fun stronglyConnectedComponents(g: DirectedGraph): List<Set<String>> {
-        data class Frame(val node: String, val successors: Iterator<String>)
+        data class Frame(
+            val node: String,
+            val successors: Iterator<String>,
+        )
 
         val nodes = g.nodes.sorted()
         val index = HashMap<String, Int>(nodes.size)
@@ -358,7 +361,10 @@ internal object RuleUtil {
     ): List<List<N>> {
         if (maxCycles <= 0 || maxCycleNodes < 2) return emptyList()
 
-        data class Frame<N>(val node: N, val successors: Iterator<N>)
+        data class Frame<N>(
+            val node: N,
+            val successors: Iterator<N>,
+        )
 
         val state = HashMap<N, Int>()
         val indexInPath = HashMap<N, Int>()
@@ -382,7 +388,10 @@ internal object RuleUtil {
                 if (frame.successors.hasNext()) {
                     val next = frame.successors.next()
                     when (state[next] ?: 0) {
-                        0 -> enter(next)
+                        0 -> {
+                            enter(next)
+                        }
+
                         1 -> {
                             val start = indexInPath.getValue(next)
                             val length = path.size - start + 1
