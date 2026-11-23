@@ -138,6 +138,24 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         assertTrue(revisions.revision > initial)
     }
 
+    fun testRemovingPlatformFacetInvalidatesScopeRevision() {
+        myFixture.addFileToProject("src/main/java/demo/Plain.kt", "package demo\nclass Plain")
+        val scope = JvmSourceScopeRevision.getInstance(project)
+        facet(myModule, JsPlatforms.defaultJsPlatform)
+        val beforeRemoval = scope.revision
+        assertEquals(0, collect().files.size)
+        val manager = FacetManager.getInstance(myModule)
+        val current = requireNotNull(KotlinFacet.get(myModule))
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                removeFacet(current)
+                commit()
+            }
+        }
+        assertTrue(scope.revision > beforeRemoval)
+        assertEquals(1, collect().files.size)
+    }
+
     private fun collect(): ProjectSourceCollector.Selection {
         IndexingTestUtil.waitUntilIndexesAreReady(project)
         return ReadAction.compute<ProjectSourceCollector.Selection, RuntimeException> {
