@@ -115,7 +115,11 @@ internal class SourceFindingsPanel(
         choices.add(JLabel("Package"))
         choices.add(packages)
         filterPopup.add(choices)
-        moreFilters.addActionListener { filterPopup.show(moreFilters, 0, moreFilters.height) }
+        filterPopup.accessibleContext.accessibleName = "Module and package filters"
+        moreFilters.addActionListener {
+            filterPopup.show(moreFilters, 0, moreFilters.height)
+            modules.requestFocusInWindow()
+        }
 
         val left = JPanel(BorderLayout(0, 4))
         val leftTop = JPanel(BorderLayout())
