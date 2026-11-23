@@ -368,6 +368,30 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         }
     }
 
+    fun testFacetRevisionAloneRejectsInFlightSnapshot() {
+        java("Original.java", "package demo; class Original {}")
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        val scopeRevision = JvmSourceScopeRevision.getInstance(project)
+        val revisionBefore = scopeRevision.revision
+        val psiRevision = com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount
+        val rootRevision = com.intellij.openapi.roots.ProjectRootModificationTracker.getInstance(project).modificationCount
+
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                project.messageBus.syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(facet)
+                assertTrue(scopeRevision.revision > revisionBefore)
+                assertEquals(psiRevision, com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount)
+                assertEquals(
+                    rootRevision,
+                    com.intellij.openapi.roots.ProjectRootModificationTracker.getInstance(project).modificationCount,
+                )
+            }
+        }
+    }
+
     fun testFacetMutationDuringAssemblyCannotPublishStaleJvmAnalysis() {
         java("Original.java", "package demo; class Original {}")
         val service = JvmSourceScopeRevision.getInstance(project)
