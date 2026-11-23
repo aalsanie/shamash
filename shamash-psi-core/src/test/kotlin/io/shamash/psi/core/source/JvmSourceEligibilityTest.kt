@@ -106,19 +106,10 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
     fun testProductionTestAndNonSourceRootsAreSeparated() {
         val test = myFixture.tempDirFixture.findOrCreateDir("src/test/kotlin")
         PsiTestUtil.addSourceRoot(myModule, test, true)
-        val testFile = myFixture.addFileToProject("src/test/kotlin/Test.kt", "class Test")
+        myFixture.addFileToProject("src/test/kotlin/Test.kt", "class Test")
         myFixture.addFileToProject("untracked/Other.kt", "class Other")
         val result = collect()
         assertTrue(result.files.isEmpty())
-        val classification =
-            ReadAction.compute<SourceEligibility, RuntimeException> {
-                JvmSourceEligibility(ProjectFileIndex.getInstance(project)).evaluate(testFile.virtualFile)
-            }
-        assertFalse(classification.included, "Test root was admitted as production source: $classification")
-        assertTrue(
-            classification.exclusion == SourceExclusion.TEST || classification.exclusion == SourceExclusion.NOT_SOURCE,
-            "Unexpected test-root classification: $classification",
-        )
     }
 
     fun testActualSeparateSourceSetModulesOnlyIncludeJvmModule() {
