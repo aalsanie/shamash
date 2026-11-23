@@ -33,12 +33,23 @@ enum class SourceExclusion {
     UNKNOWN_PLATFORM,
 }
 
-data class SourceEligibility(
-    val module: Module? = null,
-    val root: VirtualFile? = null,
-    val exclusion: SourceExclusion? = null,
-) {
-    val included: Boolean get() = module != null && root != null && exclusion == null
+sealed interface SourceEligibility {
+    val included: Boolean
+    val exclusion: SourceExclusion?
+
+    data class Included(
+        val module: Module,
+        val root: VirtualFile,
+    ) : SourceEligibility {
+        override val included = true
+        override val exclusion: SourceExclusion? = null
+    }
+
+    data class Excluded(
+        override val exclusion: SourceExclusion,
+    ) : SourceEligibility {
+        override val included = false
+    }
 }
 
 class JvmSourceEligibility(
@@ -53,37 +64,37 @@ class JvmSourceEligibility(
 
     fun evaluate(file: VirtualFile): SourceEligibility {
         if (file.isDirectory || file.extension !in setOf("java", "kt")) {
-            return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
+            return SourceEligibility.Excluded(SourceExclusion.NOT_SOURCE)
         }
         if (index.isInLibraryClasses(file) || index.isInLibrarySource(file)) {
-            return SourceEligibility(exclusion = SourceExclusion.LIBRARY)
+            return SourceEligibility.Excluded(SourceExclusion.LIBRARY)
         }
-        if (index.isInTestSourceContent(file)) return SourceEligibility(exclusion = SourceExclusion.TEST)
-        if (!index.isInSourceContent(file)) return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
+        if (index.isInTestSourceContent(file)) return SourceEligibility.Excluded(SourceExclusion.TEST)
+        if (!index.isInSourceContent(file)) return SourceEligibility.Excluded(SourceExclusion.NOT_SOURCE)
 
-        val module = index.getModuleForFile(file) ?: return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
-        val root = index.getSourceRootForFile(file) ?: return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
+        val module = index.getModuleForFile(file) ?: return SourceEligibility.Excluded(SourceExclusion.NOT_SOURCE)
+        val root = index.getSourceRootForFile(file) ?: return SourceEligibility.Excluded(SourceExclusion.NOT_SOURCE)
         val rootKind = roots.getOrPut(module to root) { rootKind(module, root) }
-        if (rootKind == RootKind.GENERATED) return SourceEligibility(exclusion = SourceExclusion.GENERATED)
-        if (rootKind == RootKind.UNSUPPORTED) return SourceEligibility(exclusion = SourceExclusion.UNSUPPORTED_ROOT)
+        if (rootKind == RootKind.GENERATED) return SourceEligibility.Excluded(SourceExclusion.GENERATED)
+        if (rootKind == RootKind.UNSUPPORTED) return SourceEligibility.Excluded(SourceExclusion.UNSUPPORTED_ROOT)
         return when (platforms.getOrPut(module) { modulePlatform(module) }) {
             Platform.JVM -> {
-                SourceEligibility(module, root)
+                SourceEligibility.Included(module, root)
             }
 
             Platform.NON_JVM -> {
-                SourceEligibility(exclusion = SourceExclusion.NON_JVM)
+                SourceEligibility.Excluded(SourceExclusion.NON_JVM)
             }
 
             Platform.UNKNOWN -> {
-                SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+                SourceEligibility.Excluded(SourceExclusion.UNKNOWN_PLATFORM)
             }
 
             Platform.IMPLICIT -> {
                 if (rootKind == RootKind.JAVA) {
-                    SourceEligibility(module, root)
+                    SourceEligibility.Included(module, root)
                 } else {
-                    SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+                    SourceEligibility.Excluded(SourceExclusion.UNKNOWN_PLATFORM)
                 }
             }
         }
