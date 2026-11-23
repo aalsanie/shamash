@@ -345,6 +345,29 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         )
     }
 
+    fun testPsiModificationDuringAssemblyCannotPublishStaleSource() {
+        val source = java("Original.java", "package demo; class Original {}")
+        val document = requireNotNull(FileDocumentManager.getInstance().getDocument(source.virtualFile))
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                WriteCommandAction.runWriteCommandAction(project) {
+                    document.insertString(document.textLength, "\n// changed during graph assembly")
+                    PsiDocumentManager.getInstance(project).commitDocument(document)
+                }
+            }
+        }
+    }
+
+    fun testRootModificationDuringAssemblyCannotPublishStaleSource() {
+        java("Original.java", "package demo; class Original {}")
+        val otherRoot = myFixture.tempDirFixture.findOrCreateDir("other-production")
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                PsiTestUtil.addSourceRoot(myModule, otherRoot)
+            }
+        }
+    }
+
     fun testFacetMutationDuringAssemblyCannotPublishStaleJvmAnalysis() {
         java("Original.java", "package demo; class Original {}")
         val service = JvmSourceScopeRevision.getInstance(project)
