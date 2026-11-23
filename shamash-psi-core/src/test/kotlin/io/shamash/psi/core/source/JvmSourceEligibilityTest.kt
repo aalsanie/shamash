@@ -156,6 +156,7 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         val first = myFixture.addFileToProject("src/main/java/One.java", "class One {}").virtualFile
         val second = myFixture.addFileToProject("src/main/java/Two.java", "class Two {}").virtualFile
         val ignored = myFixture.addFileToProject("src/main/java/notes.txt", "not source").virtualFile
+        val directory = myFixture.tempDirFixture.findOrCreateDir("src/main/java/nested")
 
         fun duplicateIndex(files: List<com.intellij.openapi.vfs.VirtualFile>): ProjectFileIndex =
             Proxy.newProxyInstance(
@@ -177,7 +178,7 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
 
         val deduplicated =
             ReadAction.compute<ProjectSourceCollector.Selection, RuntimeException> {
-                ProjectSourceCollector(project, duplicateIndex(listOf(ignored, first, first))).collect(1)
+                ProjectSourceCollector(project, duplicateIndex(listOf(directory, ignored, first, first))).collect(1)
             }
         assertEquals(1, deduplicated.files.size)
         assertEquals(first.url, deduplicated.files.single().file.url)
