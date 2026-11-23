@@ -12,11 +12,13 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
+import java.lang.reflect.Proxy
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.kotlin.config.SourceKotlinRootType
@@ -136,6 +138,50 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         facet(myModule, JvmPlatforms.defaultJvmPlatform)
         assertEquals(1, collect().files.size)
         assertTrue(revisions.revision > initial)
+    }
+
+    fun testIndexedNonJvmBoundariesCannotBePromotedToProjectSource() {
+        val source = myFixture.addFileToProject("src/main/java/demo/Target.java", "package demo; class Target {}")
+        val file = source.virtualFile
+        val sourceRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val unrelatedRoot = myFixture.tempDirFixture.findOrCreateDir("untracked")
+        val notSource = myFixture.addFileToProject("untracked/README.md", "not a source file")
+        val fake =
+            { classes: Boolean, librarySources: Boolean, test: Boolean, inSource: Boolean, owner: Module?, root: com.intellij.openapi.vfs.VirtualFile? ->
+                Proxy.newProxyInstance(
+                    ProjectFileIndex::class.java.classLoader,
+                    arrayOf(ProjectFileIndex::class.java),
+                ) { _, method, _ ->
+                    when (method.name) {
+                        "isInLibraryClasses" -> classes
+                        "isInLibrarySource" -> librarySources
+                        "isInTestSourceContent" -> test
+                        "isInSourceContent" -> inSource
+                        "getModuleForFile" -> owner
+                        "getSourceRootForFile" -> root
+                        else -> error("Unexpected source index call: " + method.name)
+                    }
+                } as ProjectFileIndex
+            }
+        fun decision(
+            classes: Boolean = false,
+            librarySources: Boolean = false,
+            test: Boolean = false,
+            inSource: Boolean = true,
+            owner: Module? = myModule,
+            root: com.intellij.openapi.vfs.VirtualFile? = sourceRoot,
+        ) = JvmSourceEligibility(fake(classes, librarySources, test, inSource, owner, root)).evaluate(file)
+
+        assertEquals(SourceExclusion.LIBRARY, decision(classes = true).exclusion)
+        assertEquals(SourceExclusion.LIBRARY, decision(librarySources = true).exclusion)
+        assertEquals(SourceExclusion.TEST, decision(test = true).exclusion)
+        assertEquals(SourceExclusion.NOT_SOURCE, decision(inSource = false).exclusion)
+        assertEquals(SourceExclusion.NOT_SOURCE, decision(owner = null).exclusion)
+        assertEquals(SourceExclusion.NOT_SOURCE, decision(root = null).exclusion)
+        assertEquals(SourceExclusion.UNSUPPORTED_ROOT, decision(root = unrelatedRoot).exclusion)
+        assertTrue(decision().included)
+        assertEquals(SourceExclusion.NOT_SOURCE, JvmSourceEligibility(fake(false, false, false, true, myModule, sourceRoot)).evaluate(notSource.virtualFile).exclusion)
+        assertEquals(SourceExclusion.NOT_SOURCE, JvmSourceEligibility(fake(false, false, false, true, myModule, sourceRoot)).evaluate(sourceRoot).exclusion)
     }
 
     fun testRemovingPlatformFacetInvalidatesScopeRevision() {
