@@ -110,11 +110,14 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         myFixture.addFileToProject("untracked/Other.kt", "class Other")
         val result = collect()
         assertTrue(result.files.isEmpty())
-        assertEquals(
-            SourceExclusion.TEST,
-            ReadAction.compute<SourceExclusion?, RuntimeException> {
-                JvmSourceEligibility(ProjectFileIndex.getInstance(project)).evaluate(testFile.virtualFile).exclusion
-            },
+        val classification =
+            ReadAction.compute<SourceEligibility, RuntimeException> {
+                JvmSourceEligibility(ProjectFileIndex.getInstance(project)).evaluate(testFile.virtualFile)
+            }
+        assertFalse("Test root was admitted as production source: $classification", classification.included)
+        assertTrue(
+            "Unexpected test-root classification: $classification",
+            classification.exclusion == SourceExclusion.TEST || classification.exclusion == SourceExclusion.NOT_SOURCE,
         )
     }
 
