@@ -86,6 +86,7 @@ class ShamashSourcePanel(
         val detailsScroll = JBScrollPane(detailsContent)
         detailsScroll.preferredSize = Dimension(JBUI.scale(360), JBUI.scale(180))
         detailsPopup.add(detailsScroll)
+        detailsPopup.accessibleContext.accessibleName = "Analysis scope and diagnostics"
         detailsContent.text = SourceGuidance.FIRST_RUN + "\n\n" + scope.text
         val header = JPanel(BorderLayout(0, JBUI.scale(2)))
         header.add(toolbarScroll, BorderLayout.NORTH)
@@ -106,6 +107,7 @@ class ShamashSourcePanel(
         cancel.accessibleContext.accessibleName = "Cancel source analysis"
         help.accessibleContext.accessibleName = "Help and advanced architecture enforcement"
         getAccessibleContext().accessibleName = "Shamash source analysis"
+        helpMenu.accessibleContext.accessibleName = "Shamash Help"
 
         fun helpItem(label: String, action: () -> Unit) {
             helpMenu.add(JMenuItem(label).apply { addActionListener { action() } })
