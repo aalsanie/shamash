@@ -147,7 +147,7 @@ internal object SourceGuidance {
             details += "Import a Java/Kotlin JVM module and mark its production source roots in IntelliJ."
         }
         if (state.phase == AnalysisPhase.UNAVAILABLE && attempt?.reason == "UNKNOWN_PLATFORM") {
-            details += "Kotlin source platform metadata is unavailable; import or configure the JVM target in IntelliJ."
+            details += "Kotlin target platform metadata is unavailable; import or configure the JVM target in IntelliJ."
         }
         val scopeExclusions =
             attempt?.excludedReasons?.takeIf { it.isNotEmpty() }
