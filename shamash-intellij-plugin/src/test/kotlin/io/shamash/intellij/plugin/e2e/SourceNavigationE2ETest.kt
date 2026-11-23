@@ -426,17 +426,18 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
 
     fun testExactNavigationEvidenceRejectsIneligibleSourceAndFacetRevision() {
         val witness = evidence()
-        val source = CurrentSourceLocation(
-            sourceRevision = 17,
-            rootRevision = 23,
-            facetRevision = 31,
-            productionSource = true,
-            testSource = false,
-            eligibleSource = true,
-            moduleId = witness.owner.moduleId,
-            sourceRoot = witness.owner.sourceRoot,
-            documentStamp = witness.reference.documentStamp,
-        )
+        val source =
+            CurrentSourceLocation(
+                sourceRevision = 17,
+                rootRevision = 23,
+                facetRevision = 31,
+                productionSource = true,
+                testSource = false,
+                eligibleSource = true,
+                moduleId = witness.owner.moduleId,
+                sourceRoot = witness.owner.sourceRoot,
+                documentStamp = witness.reference.documentStamp,
+            )
         assertTrue(source.matches(witness, 17, 23, 31))
         assertFalse(source.copy(eligibleSource = false).matches(witness, 17, 23, 31))
         assertFalse(source.copy(facetRevision = 32).matches(witness, 17, 23, 31))

@@ -234,12 +234,30 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
                         val iterator = args!![0] as ContentIterator
                         entries.all { iterator.processFile(it) }
                     }
-                    "isInLibraryClasses", "isInLibrarySource" -> false
-                    "isInTestSourceContent" -> file == testOne || file == testTwo
-                    "isInSourceContent" -> file != notSourceOne && file != notSourceTwo
-                    "getModuleForFile" -> myModule
-                    "getSourceRootForFile" -> root
-                    else -> error("Unexpected index method: ${method.name}")
+
+                    "isInLibraryClasses", "isInLibrarySource" -> {
+                        false
+                    }
+
+                    "isInTestSourceContent" -> {
+                        file == testOne || file == testTwo
+                    }
+
+                    "isInSourceContent" -> {
+                        file != notSourceOne && file != notSourceTwo
+                    }
+
+                    "getModuleForFile" -> {
+                        myModule
+                    }
+
+                    "getSourceRootForFile" -> {
+                        root
+                    }
+
+                    else -> {
+                        error("Unexpected index method: ${method.name}")
+                    }
                 }
             } as ProjectFileIndex
         val result =

@@ -379,14 +379,27 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
 
         assertFailsWith<SourceRevisionChangedException> {
             analyze {
-                val psiRevision = com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount
-                val rootRevision = com.intellij.openapi.roots.ProjectRootModificationTracker.getInstance(project).modificationCount
+                val psiRevision =
+                    com.intellij.psi.util.PsiModificationTracker
+                        .getInstance(project)
+                        .modificationCount
+                val rootRevision =
+                    com.intellij.openapi.roots.ProjectRootModificationTracker
+                        .getInstance(project)
+                        .modificationCount
                 project.messageBus.syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(facet)
                 assertTrue(scopeRevision.revision > revisionBefore)
-                assertEquals(psiRevision, com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount)
+                assertEquals(
+                    psiRevision,
+                    com.intellij.psi.util.PsiModificationTracker
+                        .getInstance(project)
+                        .modificationCount,
+                )
                 assertEquals(
                     rootRevision,
-                    com.intellij.openapi.roots.ProjectRootModificationTracker.getInstance(project).modificationCount,
+                    com.intellij.openapi.roots.ProjectRootModificationTracker
+                        .getInstance(project)
+                        .modificationCount,
                 )
             }
         }
