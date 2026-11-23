@@ -1,0 +1,168 @@
+/*
+ * Copyright © 2025-2026 | Shamash
+ *
+ * Author: @aalsanie
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+package io.shamash.psi.core.source
+
+import com.intellij.facet.FacetManager
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.PsiTestUtil
+import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
+import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.kotlin.config.SourceKotlinRootType
+import org.jetbrains.kotlin.idea.facet.KotlinFacet
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.CommonPlatforms
+import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
+import org.jetbrains.kotlin.platform.konan.NativePlatforms
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder<*>>() {
+    override fun setUp() {
+        super.setUp()
+        PsiTestUtil.addSourceRoot(myModule, myFixture.tempDirFixture.findOrCreateDir("src/main/java"))
+    }
+
+    fun testOrdinaryJavaAndMixedKotlinOnJavaRootRequireNoFacet() {
+        myFixture.addFileToProject("src/main/java/demo/Service.java", "package demo; class Service {}")
+        myFixture.addFileToProject("src/main/java/demo/KotlinService.kt", "package demo\nclass KotlinService")
+        val selected = collect()
+        assertEquals(2, selected.files.size)
+        assertEquals(0, selected.uncertainFiles)
+        assertTrue(selected.excludedReasons.isEmpty())
+    }
+
+    fun testKotlinFacetJVMIncludesRegisteredKotlinRoots() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, root, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("src/main/kotlin/demo/App.kt", "package demo\nclass App")
+        assertEquals(1, collect().uncertainFiles)
+        facet(myModule, JvmPlatforms.defaultJvmPlatform)
+        val result = collect()
+        assertEquals(1, result.files.size)
+        assertEquals(0, result.uncertainFiles)
+    }
+
+    fun testFacetExcludesJsNativeAndCommonWithoutGuessingFromPaths() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, root, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("src/main/kotlin/demo/Platform.kt", "package demo\nclass Platform")
+        myFixture.addFileToProject("src/main/java/demo/JavaFile.java", "package demo; class JavaFile {}")
+        for (platform in listOf(JsPlatforms.defaultJsPlatform, NativePlatforms.unspecifiedNativePlatform, CommonPlatforms.defaultCommonPlatform)) {
+            facet(myModule, platform)
+            val result = collect()
+            assertEquals(0, result.files.size, platform.toString())
+            assertEquals(2, result.excludedReasons[SourceExclusion.NON_JVM.name], platform.toString())
+            assertEquals(0, result.uncertainFiles)
+        }
+        facet(myModule, JvmPlatforms.defaultJvmPlatform)
+        assertEquals(2, collect().files.size)
+    }
+
+    fun testMissingFacetTargetIsUncertainNotJVM() {
+        myFixture.addFileToProject("src/main/java/demo/Maybe.kt", "package demo\nclass Maybe")
+        facet(myModule, null)
+        val result = collect()
+        assertEquals(0, result.files.size)
+        assertEquals(1, result.uncertainFiles)
+        assertEquals(1, result.excludedReasons[SourceExclusion.UNKNOWN_PLATFORM.name])
+    }
+
+    fun testGeneratedKotlinAndJavaRootMetadataIsExcluded() {
+        val generatedKotlin = myFixture.tempDirFixture.findOrCreateDir("generated/kotlin")
+        val generatedJava = myFixture.tempDirFixture.findOrCreateDir("generated/java")
+        PsiTestUtil.addSourceRoot(myModule, generatedKotlin, SourceKotlinRootType, JavaSourceRootProperties("", true))
+        PsiTestUtil.addSourceRoot(myModule, generatedJava, JavaSourceRootType.SOURCE, JavaSourceRootProperties("", true))
+        myFixture.addFileToProject("generated/kotlin/demo/Generated.kt", "package demo\nclass Generated")
+        myFixture.addFileToProject("generated/java/demo/GeneratedJava.java", "package demo; class GeneratedJava {}")
+        val result = collect()
+        assertEquals(0, result.files.size)
+        assertEquals(2, result.excludedReasons[SourceExclusion.GENERATED.name])
+    }
+
+    fun testProductionTestAndNonSourceRootsAreSeparated() {
+        val test = myFixture.tempDirFixture.findOrCreateDir("src/test/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, test, true)
+        myFixture.addFileToProject("src/test/kotlin/Test.kt", "class Test")
+        myFixture.addFileToProject("untracked/Other.kt", "class Other")
+        val result = collect()
+        assertTrue(result.files.isEmpty())
+        assertEquals(1, result.excludedReasons[SourceExclusion.TEST.name])
+    }
+
+    fun testActualSeparateSourceSetModulesOnlyIncludeJvmModule() {
+        val jsRoot = myFixture.tempDirFixture.findOrCreateDir("platform-js")
+        val commonRoot = myFixture.tempDirFixture.findOrCreateDir("platform-common")
+        val jvmRoot = myFixture.tempDirFixture.findOrCreateDir("platform-jvm")
+        val jvm = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), "app-jvm", jvmRoot)
+        val js = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), "app-js", jsRoot)
+        val common = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), "app-common", commonRoot)
+        for ((module, root) in listOf(jvm to jvmRoot, js to jsRoot, common to commonRoot)) {
+            PsiTestUtil.addSourceRoot(module, root, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        }
+        facet(jvm, JvmPlatforms.defaultJvmPlatform)
+        facet(js, JsPlatforms.defaultJsPlatform)
+        facet(common, CommonPlatforms.defaultCommonPlatform)
+        myFixture.addFileToProject("platform-jvm/Jvm.kt", "class Jvm")
+        myFixture.addFileToProject("platform-js/Js.kt", "class Js")
+        myFixture.addFileToProject("platform-common/Common.kt", "class Common")
+        val result = collect()
+        assertEquals(1, result.files.size)
+        assertEquals("Jvm.kt", result.files.single().file.name)
+        assertEquals(2, result.excludedReasons[SourceExclusion.NON_JVM.name])
+    }
+
+    fun testFacetRevisionChangesOnConfigurationAndRemoval() {
+        myFixture.addFileToProject("src/main/java/demo/App.kt", "package demo\nclass App")
+        val revisions = JvmSourceScopeRevision.getInstance(project)
+        val initial = revisions.revision
+        facet(myModule, JsPlatforms.defaultJsPlatform)
+        assertTrue(revisions.revision > initial)
+        assertEquals(0, collect().files.size)
+        facet(myModule, JvmPlatforms.defaultJvmPlatform)
+        assertEquals(1, collect().files.size)
+        assertTrue(revisions.revision > initial)
+    }
+
+    private fun collect(): ProjectSourceCollector.Selection {
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        return ReadAction.compute<ProjectSourceCollector.Selection, RuntimeException> {
+            ProjectSourceCollector(project).collect(50_000)
+        }
+    }
+
+    private fun facet(module: Module, target: TargetPlatform?) {
+        val existing = KotlinFacet.get(module)
+        if (existing != null) {
+            WriteCommandAction.runWriteCommandAction(project) {
+                existing.configuration.settings.targetPlatform = target
+                project.messageBus.syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(existing)
+            }
+            return
+        }
+        val manager = FacetManager.getInstance(module)
+        val configuration = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        configuration.settings.targetPlatform = target
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", configuration, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+    }
+}
