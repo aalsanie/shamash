@@ -139,8 +139,10 @@ internal class SourceEvidencePanel(
     private val model = DefaultListModel<SourceEvidence>()
     val list = sourceList<SourceEvidence>("Verified source references") { it.label }
     private val count = wrappedText("Select a dependency to inspect source evidence")
+    private val countScroll = compactMessageScroll(count)
     private val outcome = wrappedText("")
     private val open = JButton("Open source")
+    private val controls = JPanel(BorderLayout(JBUI.scale(6), 0))
 
     @Volatile private var generation = 0L
 
@@ -148,14 +150,14 @@ internal class SourceEvidencePanel(
 
     init {
         list.model = model
-        val controls = JPanel(BorderLayout(JBUI.scale(6), 0))
-        val countScroll = compactMessageScroll(count)
+        list.accessibleContext.accessibleDescription = count.text
+        list.toolTipText = count.text
         outcome.rows = 1
         outcome.toolTipText = outcome.text
         controls.add(open, BorderLayout.WEST)
         controls.add(outcome, BorderLayout.CENTER)
         add(countScroll, BorderLayout.NORTH)
-        add(JBScrollPane(list), BorderLayout.CENTER)
+        add(JBScrollPane(list).apply { border = JBUI.Borders.empty() }, BorderLayout.CENTER)
         add(controls, BorderLayout.SOUTH)
         open.isEnabled = false
         outcome.accessibleContext.accessibleName = "Source navigation result"
@@ -201,6 +203,14 @@ internal class SourceEvidencePanel(
                     " reference occurrences (up to " + SourceUiModel.MAX_WITNESSES + " locations)"
             }
         count.toolTipText = count.text
+        list.toolTipText = count.text
+        list.accessibleContext.accessibleDescription = count.text
+    }
+
+    override fun doLayout() {
+        countScroll.isVisible =
+            height >= controls.preferredSize.height + countScroll.preferredSize.height + JBUI.scale(28)
+        super.doLayout()
     }
 
     private fun openSelected() {
