@@ -402,6 +402,19 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 val states =
                     listOf(
                         IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            requestGeneration = 1,
+                            phase = AnalysisPhase.WAITING_FOR_INDEX,
+                        ),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            requestGeneration = 1,
+                            phase = AnalysisPhase.EXTRACTING,
+                        ),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            requestGeneration = 1,
+                            phase = AnalysisPhase.BUILDING_GRAPH,
+                        ),
+                        presentation(sampleGraph(1)),
                         presentation(sampleGraph(2)).copy(
                             phase = AnalysisPhase.STALE,
                             resultRelation = ResultRelation.STALE,
@@ -446,7 +459,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             val panel = ShamashSourcePanel(project)
             try {
                 panel.render(presentation(sampleGraph(101)))
-                panel.status.font = panel.status.font.deriveFont(panel.status.font.size2D * 1.7f)
+                panel.status.font = panel.status.font.deriveFont(panel.status.font.size2D * 2f)
                 panel.status.text = "A very long localized source analysis status ".repeat(20)
                 panel.status.toolTipText = panel.status.text
                 panel.detailsContent.text = "An extended analysis explanation ".repeat(100)
