@@ -32,6 +32,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.psi.core.source.JvmSourceEligibility
+import io.shamash.psi.core.source.JvmSourceScopeRevision
 import io.shamash.psi.core.source.SourceDependencyExtractor
 
 internal class SourceNavigationService(
@@ -41,6 +42,7 @@ internal class SourceNavigationService(
         val file: VirtualFile,
         val sourceRevision: Long,
         val rootRevision: Long,
+        val facetRevision: Long = 0L,
     )
 
     fun open(evidence: SourceEvidence): Boolean {
@@ -79,12 +81,14 @@ internal class SourceNavigationService(
             if (!validCandidate(file) || DumbService.isDumb(project)) return@compute null
             val sourceRevision = PsiModificationTracker.getInstance(project).modificationCount
             val rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount
+            val facetRevision = JvmSourceScopeRevision.getInstance(project).revision
             val index = ProjectFileIndex.getInstance(project)
             val eligibility = JvmSourceEligibility(index)
             val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute null
             val end = reference.offset.toLong() + reference.length.toLong()
             if (end > doc.textLength ||
-                !currentSourceLocation(file, index, doc.modificationStamp, eligibility).matches(evidence, sourceRevision, rootRevision)
+                !currentSourceLocation(file, index, doc.modificationStamp, eligibility)
+                    .matches(evidence, sourceRevision, rootRevision, facetRevision)
             ) {
                 return@compute null
             }
@@ -106,7 +110,7 @@ internal class SourceNavigationService(
             ) {
                 return@compute null
             }
-            VerifiedFile(file, sourceRevision, rootRevision)
+            VerifiedFile(file, sourceRevision, rootRevision, facetRevision)
         }
     }
 
@@ -122,7 +126,7 @@ internal class SourceNavigationService(
                 val index = ProjectFileIndex.getInstance(project)
                 val scope = JvmSourceEligibility(index)
                 currentSourceLocation(file, index, doc.modificationStamp, scope)
-                    .matches(evidence, verified.sourceRevision, verified.rootRevision)
+                    .matches(evidence, verified.sourceRevision, verified.rootRevision, verified.facetRevision)
             }
         if (!current) return false
         OpenFileDescriptor(project, file, evidence.reference.offset).navigate(true)
@@ -140,6 +144,7 @@ internal class SourceNavigationService(
         CurrentSourceLocation(
             sourceRevision = PsiModificationTracker.getInstance(project).modificationCount,
             rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount,
+            facetRevision = JvmSourceScopeRevision.getInstance(project).revision,
             productionSource = index.isInSourceContent(file),
             testSource = index.isInTestSourceContent(file),
             eligibleSource = eligibility.evaluate(file).included,
@@ -158,14 +163,17 @@ internal data class CurrentSourceLocation(
     val sourceRoot: String?,
     val documentStamp: Long?,
     val eligibleSource: Boolean = true,
+    val facetRevision: Long = 0L,
 ) {
     fun matches(
         evidence: SourceEvidence,
         expectedSourceRevision: Long,
         expectedRootRevision: Long,
+        expectedFacetRevision: Long = facetRevision,
     ): Boolean =
         sourceRevision == expectedSourceRevision &&
             rootRevision == expectedRootRevision &&
+            facetRevision == expectedFacetRevision &&
             productionSource &&
             !testSource &&
             eligibleSource &&
