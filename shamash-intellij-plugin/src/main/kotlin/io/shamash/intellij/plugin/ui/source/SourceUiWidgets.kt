@@ -160,6 +160,7 @@ internal class SourceEvidencePanel(
         list.addListSelectionListener {
             generation++
             outcome.text = ""
+            outcome.toolTipText = outcome.text
             open.isEnabled = list.selectedValue != null
         }
         list.inputMap.put(KeyStroke.getKeyStroke("ENTER"), "openSource")
