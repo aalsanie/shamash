@@ -129,9 +129,10 @@ class ShamashSourcePanel(
         analyze.isEnabled = !state.active
         analyze.text = if (state.requestGeneration == 0L) "Analyze project" else "Analyze again"
         cancel.isEnabled = state.active
-        status.text = SourceGuidance.status(state)
-        status.accessibleContext.accessibleDescription = SourceGuidance.status(state)
-        status.toolTipText = SourceGuidance.status(state)
+        val currentStatus = SourceGuidance.status(state)
+        if (status.text != currentStatus) status.text = currentStatus
+        status.accessibleContext.accessibleDescription = currentStatus
+        status.toolTipText = currentStatus
         val relation =
             when (state.resultRelation) {
                 ResultRelation.PREVIOUS -> " · Previous result"
@@ -149,7 +150,8 @@ class ShamashSourcePanel(
             }
         details.text = SourceGuidance.detailStatus(state) + counts
         scope.text = SourceGuidance.SCOPE_LINE
-        detailsContent.text = status.text + "\n\n" + details.text + "\n\n" + scope.text
+        val description = status.text + "\n\n" + details.text + "\n\n" + scope.text
+        if (detailsContent.text != description) detailsContent.text = description
         val next = state.visibleResult?.payload?.uiModel
         if (next !== currentModel) {
             currentModel = next
