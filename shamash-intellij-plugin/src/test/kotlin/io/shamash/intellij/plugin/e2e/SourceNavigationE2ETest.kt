@@ -604,6 +604,8 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         assertFalse(navigation.open(witness))
         val next = navigation.currentSourceLocation(sourceFile, index, stamp)
         assertFalse(next.eligibleSource)
+        assertTrue(previous.matches(witness, previous.sourceRevision, previous.rootRevision, previous.facetRevision))
+        assertFalse(next.matches(witness, next.sourceRevision, next.rootRevision, next.facetRevision))
         assertFalse(next.matches(witness, previous.sourceRevision, previous.rootRevision, previous.facetRevision))
         assertFalse(previous.matches(witness, previous.sourceRevision, previous.rootRevision, next.facetRevision))
     }
