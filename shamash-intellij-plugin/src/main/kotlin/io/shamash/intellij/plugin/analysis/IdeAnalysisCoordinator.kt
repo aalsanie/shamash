@@ -49,7 +49,6 @@ import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.source.ProjectSourceSnapshot
 import io.shamash.psi.core.source.SourceGraphSnapshot
-import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future
@@ -114,11 +113,11 @@ class IdeAnalysisCoordinator(
         connection.subscribe(
             FacetManager.FACETS_TOPIC,
             object : FacetManagerListener {
-                override fun facetAdded(facet: Facet<*>) = kotlinFacetChanged(facet)
+                override fun facetAdded(facet: Facet<*>) = rootsChanged()
 
-                override fun facetRemoved(facet: Facet<*>) = kotlinFacetChanged(facet)
+                override fun facetRemoved(facet: Facet<*>) = rootsChanged()
 
-                override fun facetConfigurationChanged(facet: Facet<*>) = kotlinFacetChanged(facet)
+                override fun facetConfigurationChanged(facet: Facet<*>) = rootsChanged()
             },
         )
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(
@@ -237,10 +236,6 @@ class IdeAnalysisCoordinator(
             cancelWork()
         }
         publishState()
-    }
-
-    private fun kotlinFacetChanged(facet: Facet<*>) {
-        if (facet is KotlinFacet) rootsChanged()
     }
 
     private fun rootsChanged() {
