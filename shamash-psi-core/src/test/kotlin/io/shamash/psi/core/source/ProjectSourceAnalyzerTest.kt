@@ -376,11 +376,11 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
         val scopeRevision = JvmSourceScopeRevision.getInstance(project)
         val revisionBefore = scopeRevision.revision
-        val psiRevision = com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount
-        val rootRevision = com.intellij.openapi.roots.ProjectRootModificationTracker.getInstance(project).modificationCount
 
         assertFailsWith<SourceRevisionChangedException> {
             analyze {
+                val psiRevision = com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount
+                val rootRevision = com.intellij.openapi.roots.ProjectRootModificationTracker.getInstance(project).modificationCount
                 project.messageBus.syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(facet)
                 assertTrue(scopeRevision.revision > revisionBefore)
                 assertEquals(psiRevision, com.intellij.psi.util.PsiModificationTracker.getInstance(project).modificationCount)
