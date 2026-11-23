@@ -9,6 +9,8 @@ package io.shamash.psi.core.source
 
 import com.intellij.facet.FacetManager
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
 import com.intellij.psi.PsiDocumentManager
@@ -312,6 +314,35 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertEquals(1, snapshot.coverage.eligibleFiles)
         assertEquals(0, snapshot.coverage.uncertainFiles)
         assertTrue(snapshot.entities.any { it.displayName.contains("Included") })
+    }
+
+    fun testJvmReferenceToUnsupportedModuleCannotBecomeInternal() {
+        val jsRoot = myFixture.tempDirFixture.findOrCreateDir("js-module")
+        val js = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), "js-module", jsRoot)
+        PsiTestUtil.addSourceRoot(js, jsRoot)
+        ModuleRootModificationUtil.addDependency(myModule, js)
+        val manager = FacetManager.getInstance(js)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        myFixture.addFileToProject("js-module/external/External.java", "package external; public class External {}")
+        java("Caller.java", "package demo; class Caller { external.External target; }")
+        val snapshot = analyze()
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertEquals(1, snapshot.coverage.excludedReasons[SourceExclusion.NON_JVM.name])
+        assertTrue(snapshot.entities.none { it.id.moduleId == js.name })
+        assertTrue(snapshot.relationships.none { it.target.moduleId == js.name })
+        assertTrue(snapshot.references.none { (it.target as? SourceTarget.Internal)?.entity?.moduleId == js.name })
+        assertTrue(
+            snapshot.references.any { it.from.signature.contains("Caller") && it.target is SourceTarget.External },
+            snapshot.references.toString(),
+        )
     }
 
     fun testFacetMutationDuringAssemblyCannotPublishStaleJvmAnalysis() {
