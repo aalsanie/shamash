@@ -54,6 +54,8 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JMenuItem
+import javax.swing.JViewport
 import javax.swing.tree.TreePath
 
 class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
@@ -122,6 +124,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 val graph = kotlin.test.assertNotNull(current.sourceGraph)
                 assertEquals(1, graph.cycles.size)
                 assertEquals(1, panel.findings.findingList.model.size)
+                panel.setSize(900, 300)
+                repeat(4) { layoutTree(panel) }
+                assertViewport("Real Java cycle in bottom dock", panel.findings.findingList)
                 panel.tabs.selectedIndex = 1
                 assertTrue(
                     panel.explore.tree.model
@@ -330,6 +335,155 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             } finally {
                 Disposer.dispose(panel)
             }
+        }
+    }
+
+    fun testCompactDocksKeepFindingsAndEvidenceUsable() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(sampleGraph(2)))
+                for ((width, height) in listOf(900 to 300, 360 to 700)) {
+                    panel.setSize(width, height)
+                    panel.tabs.selectedIndex = 0
+                    repeat(4) { layoutTree(panel) }
+                    panel.findings.dispatchEvent(
+                        java.awt.event.ComponentEvent(panel.findings, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    repeat(4) { layoutTree(panel) }
+                    assertTrue(panel.findings.findingList.model.size > 0)
+                    assertViewport("Findings", panel.findings.findingList)
+                    val findingsEvidence = descendants(panel.findings).filterIsInstance<SourceEvidencePanel>().single()
+                    assertTrue(findingsEvidence.list.model.size > 0)
+
+                    panel.tabs.selectedIndex = 1
+                    repeat(4) { layoutTree(panel) }
+                    panel.explore.dispatchEvent(
+                        java.awt.event.ComponentEvent(panel.explore, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    repeat(4) { layoutTree(panel) }
+                    assertViewport("Explore tree", panel.explore.tree)
+                    val relationshipSearch =
+                        descendants(panel.explore).filterIsInstance<JBTextField>().single {
+                            it.accessibleContext?.accessibleName == "Search all relationships for selected source"
+                        }
+                    assertTrue("Explore relationship search must remain usable", relationshipSearch.width >= 100)
+                    val tree = panel.explore.tree
+                    val module = tree.model.getChild(tree.model.root, 0)
+                    val pkg = tree.model.getChild(module, 0)
+                    tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
+                    panel.explore.detailTabs.selectedIndex = 0
+                    repeat(4) { layoutTree(panel) }
+                    assertViewport("Relationships", panel.explore.relationList)
+                    panel.explore.relationList.selectedIndex = 0
+                    val evidence = descendants(panel.explore).filterIsInstance<SourceEvidencePanel>().single()
+                    assertTrue(evidence.list.model.size > 0)
+                    panel.explore.detailTabs.selectedIndex = 1
+                    repeat(4) { layoutTree(panel) }
+                    assertViewport("Source evidence", evidence.list)
+                }
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testFirstRunAndErrorStatesKeepHelpActionsAndResultSpace() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                val labels = panel.helpMenu.components.filterIsInstance<JMenuItem>().map { it.text }
+                assertTrue(labels.contains("Architecture enforcement and CLI — GitHub"))
+                assertTrue(labels.contains("Analysis scope and diagnostics"))
+                assertTrue(labels.contains("About these checks"))
+                assertTrue(panel.detailsPopup.components.any { it is com.intellij.ui.components.JBScrollPane })
+                val states =
+                    listOf(
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.STALE,
+                            resultRelation = ResultRelation.STALE,
+                        ),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.PARTIAL,
+                            resultRelation = ResultRelation.CURRENT,
+                            diagnostics = listOf("Long source analysis diagnostic ".repeat(20)),
+                        ),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.FAILED,
+                            resultRelation = ResultRelation.PREVIOUS,
+                            diagnostics = listOf("Long failure explanation ".repeat(20)),
+                        ),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            phase = AnalysisPhase.UNAVAILABLE,
+                            attemptCoverage = AnalysisCoverage(0, reason = "NO_SOURCE"),
+                        ),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.CANCELLED,
+                            resultRelation = ResultRelation.PREVIOUS,
+                        ),
+                    )
+                for (state in states) {
+                    panel.render(state)
+                    panel.setSize(360, 700)
+                    repeat(4) { layoutTree(panel) }
+                    assertTrue(panel.status.text.isNotEmpty())
+                    assertEquals(panel.status.text, panel.status.toolTipText)
+                    assertTrue(panel.detailsContent.text.contains(panel.scope.text))
+                    assertTrue(panel.scope.text.contains("Project rules not evaluated"))
+                    assertViewport("State " + state.phase, panel.findings.findingList)
+                }
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testLargeFontsAndLongExplanationsStayScrollable() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(sampleGraph(101)))
+                panel.status.font = panel.status.font.deriveFont(panel.status.font.size2D * 1.7f)
+                panel.status.text = "A very long localized source analysis status ".repeat(20)
+                panel.status.toolTipText = panel.status.text
+                panel.detailsContent.text = "An extended analysis explanation ".repeat(100)
+                panel.setSize(360, 700)
+                repeat(4) { layoutTree(panel) }
+                assertViewport("Large-font findings", panel.findings.findingList)
+                assertEquals(panel.status.text, panel.status.toolTipText)
+                val toolbar =
+                    descendants(panel).filterIsInstance<com.intellij.ui.components.JBScrollPane>().single {
+                        it.accessibleContext?.accessibleName == "Source analysis actions"
+                    }
+                toolbar.horizontalScrollBar.value = toolbar.horizontalScrollBar.maximum
+                assertTrue("Help must remain reachable through the toolbar", toolbar.viewport.viewRect.intersects(panel.help.bounds))
+                assertTrue(panel.detailsContent.lineWrap)
+                val scroll = panel.detailsPopup.components.filterIsInstance<com.intellij.ui.components.JBScrollPane>().single()
+                assertTrue(scroll.preferredSize.height > 0)
+                assertTrue(panel.findings.findingList.model.size > 0)
+                val filterPopup = panel.findings.filterPopup
+                assertEquals(1, filterPopup.componentCount)
+                assertEquals(2, descendants(filterPopup).filterIsInstance<JComboBox<*>>().size)
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testDetailScrollerRemainsUsableWithSmallViewports() {
+        runInEdtAndWait {
+            val details = io.shamash.intellij.plugin.ui.source.ScrollableSourceDetailsPanel()
+        val rect = java.awt.Rectangle(0, 0, 100, 100)
+        assertTrue(details.getScrollableTracksViewportWidth())
+        assertFalse(details.getScrollableTracksViewportHeight())
+        assertTrue(details.getScrollableUnitIncrement(rect, 1, 1) > 0)
+        assertTrue(details.getScrollableBlockIncrement(rect, 1, 1) > 0)
+        assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 1, 1), 1, 1) > 0)
+        val pager = PageControls()
+        pager.update(123)
+        assertTrue(pager.previous.parent?.parent === pager)
+            assertTrue(pager.next.parent?.parent === pager)
         }
     }
 
@@ -565,6 +719,16 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 true,
             )
         return SourceGraphAnalyzer().analyze(snapshot)
+    }
+
+    private fun layoutTree(parent: Container) {
+        parent.doLayout()
+        parent.components.filterIsInstance<Container>().forEach(::layoutTree)
+    }
+
+    private fun assertViewport(label: String, component: Component) {
+        val viewport = component.parent as? JViewport ?: throw AssertionError(label + " must have a scrollable viewport")
+        assertTrue(label + " must show a readable row; height=" + viewport.height, viewport.height >= 24)
     }
 
     private fun descendants(container: Container): List<Component> =

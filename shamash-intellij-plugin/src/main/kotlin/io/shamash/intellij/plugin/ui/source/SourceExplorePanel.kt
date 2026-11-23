@@ -21,10 +21,13 @@ import com.intellij.openapi.project.Project
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.ui.components.JBTabbedPane
+import com.intellij.util.ui.JBUI
 import com.intellij.ui.treeStructure.Tree
 import java.awt.BorderLayout
-import java.awt.Dimension
-import java.awt.FlowLayout
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Insets
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.util.Locale
@@ -33,6 +36,7 @@ import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
+import javax.swing.JPopupMenu
 import javax.swing.JPanel
 import javax.swing.JTree
 import javax.swing.KeyStroke
@@ -200,6 +204,12 @@ internal class SourceExplorePanel(
     private val clear = JButton("Clear search")
     private val back = JButton("Back to source tree")
     private val split = JBSplitter(false, 0.38f)
+    internal val detailTabs = JBTabbedPane()
+    private val summaryButton = JButton("About selection")
+    internal val summaryPopup = JPopupMenu()
+    internal val summaryContent = wrappedText()
+    private var horizontalProportion = 0.38f
+    private var verticalProportion = 0.45f
 
     init {
         search.emptyText.text = "Search modules, packages or declarations"
@@ -247,35 +257,62 @@ internal class SourceExplorePanel(
                 }
             }
         left.add(JBScrollPane(tree), BorderLayout.CENTER)
-        empty.rows = 2
-        left.add(empty, BorderLayout.SOUTH)
+        empty.rows = 1
+        left.add(compactMessageScroll(empty), BorderLayout.SOUTH)
 
-        val detail = JPanel(BorderLayout(0, 5))
-        val top = JPanel()
-        top.layout = javax.swing.BoxLayout(top, javax.swing.BoxLayout.Y_AXIS)
-        top.add(back)
-        top.add(summary)
-        top.add(related)
-        val switches = JPanel(FlowLayout(FlowLayout.LEFT, 5, 0))
+        val detail = JPanel(BorderLayout(0, JBUI.scale(4)))
+        val toolbar = JPanel(BorderLayout(JBUI.scale(4), 0))
+        toolbar.add(back, BorderLayout.WEST)
+        toolbar.add(summaryButton, BorderLayout.EAST)
+        summaryButton.isEnabled = false
+        summaryContent.accessibleContext.accessibleName = "Selected source summary and related cycles"
+        val summaryScroll = JBScrollPane(summaryContent)
+        summaryScroll.preferredSize = java.awt.Dimension(JBUI.scale(360), JBUI.scale(180))
+        summaryPopup.add(summaryScroll)
+        summaryButton.accessibleContext.accessibleName = "Show selected source summary"
+        summaryButton.addActionListener { showSummary() }
+
         direction.accessibleContext.accessibleName = "Dependency direction"
-        switches.add(direction)
-        switches.add(sort)
-        top.add(switches)
+        val switches = JPanel(BorderLayout(JBUI.scale(4), 0))
+        switches.add(direction, BorderLayout.CENTER)
+        switches.add(sort, BorderLayout.EAST)
         relationSearch.emptyText.text = "Search the selected relationship list"
         relationSearch.accessibleContext.accessibleName = "Search all relationships for selected source"
-        top.add(relationSearch)
+        val top = JPanel(BorderLayout(0, JBUI.scale(4)))
+        val fieldsLayout = GridBagLayout()
+        val fields = JPanel(fieldsLayout)
+        val switchConstraints =
+            GridBagConstraints().apply {
+                gridx = 0
+                gridy = 0
+                fill = GridBagConstraints.HORIZONTAL
+                insets = Insets(0, 0, 0, JBUI.scale(4))
+            }
+        val searchConstraints =
+            GridBagConstraints().apply {
+                gridx = 1
+                gridy = 0
+                weightx = 1.0
+                fill = GridBagConstraints.HORIZONTAL
+            }
+        fields.add(switches, switchConstraints)
+        fields.add(relationSearch, searchConstraints)
+        top.add(toolbar, BorderLayout.NORTH)
+        top.add(fields, BorderLayout.SOUTH)
         detail.add(top, BorderLayout.NORTH)
+
         relationList.model = relationModel
-        val center = JPanel(BorderLayout(0, 4))
-        center.add(JBScrollPane(relationList), BorderLayout.CENTER)
-        val footer = JPanel(BorderLayout())
-        relationEmpty.rows = 2
+        val relationships = JPanel(BorderLayout(0, JBUI.scale(4)))
+        relationships.add(JBScrollPane(relationList), BorderLayout.CENTER)
+        val footer = JPanel(BorderLayout(0, JBUI.scale(2)))
+        relationEmpty.rows = 1
         footer.add(relationEmpty, BorderLayout.NORTH)
         footer.add(pager, BorderLayout.SOUTH)
-        center.add(footer, BorderLayout.SOUTH)
-        detail.add(center, BorderLayout.CENTER)
-        detail.add(evidence, BorderLayout.SOUTH)
-        evidence.preferredSize = Dimension(200, 145)
+        relationships.add(footer, BorderLayout.SOUTH)
+        detailTabs.addTab("Relationships", relationships)
+        detailTabs.addTab("Source evidence", evidence)
+        detailTabs.accessibleContext.accessibleName = "Explore relationship and evidence views"
+        detail.add(detailTabs, BorderLayout.CENTER)
 
         split.firstComponent = left
         split.secondComponent = detail
@@ -285,8 +322,22 @@ internal class SourceExplorePanel(
                 override fun componentResized(e: ComponentEvent?) {
                     val vertical = width < 560
                     if (split.orientation != vertical) {
+                        switchConstraints.weightx = if (vertical) 1.0 else 0.0
+                        switchConstraints.insets = Insets(0, 0, 0, if (vertical) 0 else JBUI.scale(4))
+                        searchConstraints.gridx = if (vertical) 0 else 1
+                        searchConstraints.gridy = if (vertical) 1 else 0
+                        searchConstraints.weightx = 1.0
+                        searchConstraints.insets = Insets(if (vertical) JBUI.scale(4) else 0, 0, 0, 0)
+                        fieldsLayout.setConstraints(switches, switchConstraints)
+                        fieldsLayout.setConstraints(relationSearch, searchConstraints)
+                        fields.revalidate()
+                        if (split.orientation) {
+                            verticalProportion = split.proportion
+                        } else {
+                            horizontalProportion = split.proportion
+                        }
                         split.orientation = vertical
-                        split.proportion = if (vertical) 0.45f else 0.38f
+                        split.proportion = if (vertical) verticalProportion else horizontalProportion
                     }
                 }
             },
@@ -321,7 +372,9 @@ internal class SourceExplorePanel(
         direction.addActionListener { renderRelationships() }
         sort.addActionListener {
             mostDependencies = !mostDependencies
-            sort.text = if (mostDependencies) "Sort: most dependencies" else "Sort: name"
+            sort.text = if (mostDependencies) "Sort: most" else "Sort: name"
+            sort.accessibleContext.accessibleDescription =
+                if (mostDependencies) "Sorted by most dependencies" else "Sorted by name"
             renderRelationships()
         }
         pager.previous.addActionListener {
@@ -375,6 +428,7 @@ internal class SourceExplorePanel(
         source = next
         refreshTree()
         if (selection != null && tree.selectionPath == null) {
+            summaryButton.isEnabled = false
             summary.text = "This declaration or package no longer appears. Analyze again."
             related.text = ""
             relations = emptyList()
@@ -392,12 +446,14 @@ internal class SourceExplorePanel(
                 next.isEmpty() -> "No supported declarations in this result"
                 else -> source?.moduleIds?.size.toString() + " IDE modules · expand a module to inspect packages"
             }
+        if (selection == null) summaryButton.isEnabled = false
         if (!next.isEmpty()) tree.expandRow(0)
         val path = selection?.let(next::pathFor)
         if (path != null) {
             tree.selectionPath = path
             tree.scrollPathToVisible(path)
         } else if (selection != null) {
+            summaryButton.isEnabled = false
             summary.text = "This package or declaration is not in the current view."
             related.text = ""
             relations = emptyList()
@@ -405,9 +461,15 @@ internal class SourceExplorePanel(
         }
     }
 
+    private fun showSummary() {
+        summaryPopup.show(summaryButton, 0, summaryButton.height)
+        summaryContent.requestFocusInWindow()
+    }
+
     private fun showSelection() {
         val source = source ?: return
         val selected = selection ?: return
+        summaryButton.isEnabled = true
         summary.text = source.scopeLabel(selected) + "\n" + source.summary(selected)
         val cycles = source.relatedCycles(selected)
         related.text =
@@ -427,6 +489,7 @@ internal class SourceExplorePanel(
                             }
                     } + if (cycles.size > 3) "\nShowing 3 of " + cycles.size else ""
             }
+        summaryContent.text = summary.text + "\n\n" + related.text
         renderRelationships()
     }
 
