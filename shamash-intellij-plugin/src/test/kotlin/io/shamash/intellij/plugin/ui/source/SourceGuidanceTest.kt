@@ -117,6 +117,57 @@ class SourceGuidanceTest {
     }
 
     @Test
+    fun unknownKotlinPlatformIsUnavailableWithScopeExplanation() {
+        val unavailable =
+            state(AnalysisPhase.UNAVAILABLE).copy(
+                attemptCoverage =
+                    AnalysisCoverage(
+                        eligibleFiles = 0,
+                        reason = "UNKNOWN_PLATFORM",
+                        excludedFiles = 3,
+                        excludedReasons = mapOf("UNKNOWN_PLATFORM" to 1, "NON_JVM" to 2),
+                    ),
+            )
+        assertEquals("Source analysis is unavailable for this project", SourceGuidance.status(unavailable))
+        val details = SourceGuidance.detailStatus(unavailable)
+        assertTrue(details.contains("target platform metadata is unavailable"))
+        assertTrue(details.contains("1 unknown platform source files"))
+        assertTrue(details.contains("2 non jvm source files"))
+    }
+
+    @Test
+    fun completedJvmSubsetExplainsExplicitlyExcludedPlatforms() {
+        val facts =
+            io.shamash.psi.core.source.ProjectSourceSnapshot(
+                io.shamash.psi.core.source.SourceAnalysisProfile(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                io.shamash.psi.core.source.SourceCoverage(
+                    1, 1, 0, 0, 0, 3, false,
+                    mapOf("NON_JVM" to 2, "TEST" to 1),
+                ),
+                true,
+            )
+        val current =
+            AnalysisSnapshot(
+                AnalysisRequest(1, 0, 0),
+                Completeness.COMPLETE,
+                AnalysisCoverage(1, 1),
+                IdeAnalysisCoordinator.SourcePresentation(sourceFacts = facts),
+                emptyList(),
+            )
+        val completed =
+            state(AnalysisPhase.COMPLETED).copy(
+                visibleResult = current,
+                resultRelation = ResultRelation.CURRENT,
+            )
+        assertTrue(SourceGuidance.detailStatus(completed).contains("2 non jvm source files"))
+        assertTrue(SourceGuidance.detailStatus(completed).contains("1 test source files"))
+    }
+
+    @Test
     fun firstUseHelpIsOfflineAndExplainsLimitsAndAdvancedCapabilities() {
         val copy = SourceGuidance.detailStatus(state(AnalysisPhase.IDLE))
         assertTrue(copy.contains("Analyze project"))
