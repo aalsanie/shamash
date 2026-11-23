@@ -559,8 +559,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             val evidence = SourceEvidencePanel(project)
             try {
                 evidence.showEvidence(emptyList(), 0)
-                val count = (evidence.layout as java.awt.BorderLayout)
-                    .getLayoutComponent(java.awt.BorderLayout.NORTH) as javax.swing.JScrollPane
+                val count =
+                    (evidence.layout as java.awt.BorderLayout)
+                        .getLayoutComponent(java.awt.BorderLayout.NORTH) as javax.swing.JScrollPane
 
                 evidence.setSize(360, 70)
                 repeat(3) { layoutTree(evidence) }
