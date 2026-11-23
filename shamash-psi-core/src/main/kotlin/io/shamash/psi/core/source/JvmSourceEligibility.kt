@@ -23,7 +23,7 @@ import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import org.jetbrains.kotlin.platform.jvm.JvmPlatform
 import java.util.concurrent.atomic.AtomicLong
 
-internal enum class SourceExclusion {
+enum class SourceExclusion {
     NOT_SOURCE,
     TEST,
     LIBRARY,
@@ -33,7 +33,7 @@ internal enum class SourceExclusion {
     UNKNOWN_PLATFORM,
 }
 
-internal data class SourceEligibility(
+data class SourceEligibility(
     val module: Module? = null,
     val root: VirtualFile? = null,
     val exclusion: SourceExclusion? = null,
@@ -41,7 +41,7 @@ internal data class SourceEligibility(
     val included: Boolean get() = module != null && root != null && exclusion == null
 }
 
-internal class JvmSourceEligibility(
+class JvmSourceEligibility(
     private val index: ProjectFileIndex,
 ) {
     private enum class Platform { JVM, NON_JVM, UNKNOWN, IMPLICIT }
