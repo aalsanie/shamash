@@ -31,6 +31,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
+import io.shamash.psi.core.source.JvmSourceEligibility
 import io.shamash.psi.core.source.SourceDependencyExtractor
 
 internal class SourceNavigationService(
@@ -79,10 +80,11 @@ internal class SourceNavigationService(
             val sourceRevision = PsiModificationTracker.getInstance(project).modificationCount
             val rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount
             val index = ProjectFileIndex.getInstance(project)
+            val eligibility = JvmSourceEligibility(index)
             val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute null
             val end = reference.offset.toLong() + reference.length.toLong()
             if (end > doc.textLength ||
-                !currentSourceLocation(file, index, doc.modificationStamp).matches(evidence, sourceRevision, rootRevision)
+                !currentSourceLocation(file, index, doc.modificationStamp, eligibility).matches(evidence, sourceRevision, rootRevision)
             ) {
                 return@compute null
             }
@@ -94,7 +96,7 @@ internal class SourceNavigationService(
                     owner.sourceRoot,
                     owner.fileUrl,
                 )
-            val extractor = SourceDependencyExtractor { navigationSourceLocation(it, index) }
+            val extractor = SourceDependencyExtractor { navigationSourceLocation(it, index, eligibility) }
             val extracted = extractor.extract(psi, location)
             if (extracted.entities.none { it.id == owner }) return@compute null
             if (extracted.references.none {
@@ -117,7 +119,9 @@ internal class SourceNavigationService(
             ReadAction.compute<Boolean, RuntimeException> {
                 if (!validCandidate(file)) return@compute false
                 val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute false
-                currentSourceLocation(file, ProjectFileIndex.getInstance(project), doc.modificationStamp)
+                val index = ProjectFileIndex.getInstance(project)
+                val scope = JvmSourceEligibility(index)
+                currentSourceLocation(file, index, doc.modificationStamp, scope)
                     .matches(evidence, verified.sourceRevision, verified.rootRevision)
             }
         if (!current) return false
@@ -131,12 +135,14 @@ internal class SourceNavigationService(
         file: VirtualFile,
         index: ProjectFileIndex,
         documentStamp: Long,
+        eligibility: JvmSourceEligibility = JvmSourceEligibility(index),
     ): CurrentSourceLocation =
         CurrentSourceLocation(
             sourceRevision = PsiModificationTracker.getInstance(project).modificationCount,
             rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount,
             productionSource = index.isInSourceContent(file),
             testSource = index.isInTestSourceContent(file),
+            eligibleSource = eligibility.evaluate(file).included,
             moduleId = index.getModuleForFile(file)?.name,
             sourceRoot = index.getSourceRootForFile(file)?.url,
             documentStamp = documentStamp,
@@ -151,6 +157,7 @@ internal data class CurrentSourceLocation(
     val moduleId: String?,
     val sourceRoot: String?,
     val documentStamp: Long?,
+    val eligibleSource: Boolean = true,
 ) {
     fun matches(
         evidence: SourceEvidence,
@@ -161,6 +168,7 @@ internal data class CurrentSourceLocation(
             rootRevision == expectedRootRevision &&
             productionSource &&
             !testSource &&
+            eligibleSource &&
             moduleId == evidence.owner.moduleId &&
             sourceRoot == evidence.owner.sourceRoot &&
             documentStamp == evidence.reference.documentStamp
@@ -169,10 +177,14 @@ internal data class CurrentSourceLocation(
 internal fun navigationSourceLocation(
     psiFile: PsiFile,
     index: ProjectFileIndex,
+    eligibility: JvmSourceEligibility = JvmSourceEligibility(index),
 ): SourceDependencyExtractor.SourceLocation? {
     val file = psiFile.virtualFile ?: return null
-    if (!index.isInSourceContent(file) || index.isInTestSourceContent(file)) return null
-    val module = index.getModuleForFile(file) ?: return null
-    val root = index.getSourceRootForFile(file) ?: return null
-    return SourceDependencyExtractor.SourceLocation(module.name, root.url, file.url)
+    val result = eligibility.evaluate(file)
+    if (!result.included) return null
+    return SourceDependencyExtractor.SourceLocation(
+        requireNotNull(result.module).name,
+        requireNotNull(result.root).url,
+        file.url,
+    )
 }
