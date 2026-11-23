@@ -51,7 +51,7 @@ class JvmSourceEligibility(
     private val roots = HashMap<Pair<Module, VirtualFile>, RootKind>()
 
     fun evaluate(file: VirtualFile): SourceEligibility {
-        if (file.isDirectory || file.extension !in setOf("java", "kt") || file.name.endsWith(".kts")) {
+        if (file.isDirectory || file.extension !in setOf("java", "kt")) {
             return SourceEligibility(exclusion = SourceExclusion.NOT_SOURCE)
         }
         if (index.isInLibraryClasses(file) || index.isInLibrarySource(file)) {
