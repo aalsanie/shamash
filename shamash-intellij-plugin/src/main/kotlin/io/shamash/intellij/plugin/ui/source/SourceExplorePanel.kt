@@ -269,6 +269,7 @@ internal class SourceExplorePanel(
         val summaryScroll = JBScrollPane(summaryContent)
         summaryScroll.preferredSize = java.awt.Dimension(JBUI.scale(360), JBUI.scale(180))
         summaryPopup.add(summaryScroll)
+        summaryPopup.accessibleContext.accessibleName = "Selected source summary"
         summaryButton.accessibleContext.accessibleName = "Show selected source summary"
         summaryButton.addActionListener { showSummary() }
 
