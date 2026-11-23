@@ -349,7 +349,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 val module = tree.model.getChild(tree.model.root, 0)
                 val pkg = tree.model.getChild(module, 0)
                 tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
-                assertTrue(panel.explore.summaryContent.text.isNotEmpty())
+                assertTrue(
+                    panel.explore.summaryContent.text
+                        .isNotEmpty(),
+                )
                 val pager = descendants(panel.explore).filterIsInstance<PageControls>().single()
                 assertTrue(pager.isVisible)
                 assertTrue(pager.next.isEnabled)
@@ -363,14 +366,18 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 sort.doClick()
                 assertEquals("Sort: name", sort.text)
 
-                val search = descendants(panel.explore).filterIsInstance<JBTextField>().single {
-                    it.accessibleContext?.accessibleName == "Search all production source declarations"
-                }
+                val search =
+                    descendants(panel.explore).filterIsInstance<JBTextField>().single {
+                        it.accessibleContext?.accessibleName == "Search all production source declarations"
+                    }
                 search.text = "not a real declaration"
                 assertEquals(0, tree.model.getChildCount(tree.model.root))
                 search.text = ""
                 assertTrue(tree.model.getChildCount(tree.model.root) > 0)
-                assertTrue(panel.explore.summaryContent.text.isNotEmpty())
+                assertTrue(
+                    panel.explore.summaryContent.text
+                        .isNotEmpty(),
+                )
 
                 panel.render(presentation(sampleGraph(1)))
                 assertFalse(pager.isVisible)
@@ -558,7 +565,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             assertTrue(details.getScrollableUnitIncrement(rect, 1, 1) > 0)
             assertTrue(details.getScrollableBlockIncrement(rect, 1, 1) > 0)
             assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 1, 1), 1, 1) > 0)
-            assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 100, 250), 1, 1) > details.getScrollableUnitIncrement(rect, 1, 1))
+            assertTrue(
+                details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 100, 250), 1, 1) >
+                    details.getScrollableUnitIncrement(rect, 1, 1),
+            )
             val pager = PageControls()
             pager.update(123)
             assertTrue(pager.previous.parent?.parent === pager)
@@ -770,11 +780,12 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 } else {
                     listOf(a to b, b to a)
                 }
-            } + if (fanOutFromFirst) {
-                nodes.drop(2).map { nodes.first().id to it.id }
-            } else {
-                emptyList()
-            }
+            } +
+                if (fanOutFromFirst) {
+                    nodes.drop(2).map { nodes.first().id to it.id }
+                } else {
+                    emptyList()
+                }
         val relationships =
             edges.map { (from, to) ->
                 SourceRelationship(
