@@ -372,6 +372,8 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     val module = tree.model.getChild(tree.model.root, 0)
                     val pkg = tree.model.getChild(module, 0)
                     tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
+                    assertTrue(panel.explore.summaryContent.text.isNotEmpty())
+                    assertEquals(1, panel.explore.summaryPopup.componentCount)
                     panel.explore.detailTabs.selectedIndex = 0
                     repeat(4) { layoutTree(panel) }
                     assertViewport("Relationships", panel.explore.relationList)
