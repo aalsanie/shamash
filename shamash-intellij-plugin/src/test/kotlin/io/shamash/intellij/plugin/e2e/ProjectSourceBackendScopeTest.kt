@@ -38,7 +38,7 @@ class ProjectSourceBackendScopeTest : ShamashPluginE2eTestBase() {
 
         val outcome = analyze()
         assertTrue(outcome is AnalysisOutcome.Unavailable, outcome.toString())
-        val coverage = outcome.coverage
+        val coverage = (outcome as AnalysisOutcome.Unavailable).coverage
         assertEquals("UNKNOWN_PLATFORM", coverage.reason)
         assertEquals(0, coverage.eligibleFiles)
         assertEquals(1, coverage.excludedFiles)
@@ -48,7 +48,7 @@ class ProjectSourceBackendScopeTest : ShamashPluginE2eTestBase() {
     fun testNoProductionSourceRemainsExplicitlyUnavailable() {
         val outcome = analyze()
         assertTrue(outcome is AnalysisOutcome.Unavailable, outcome.toString())
-        val coverage = outcome.coverage
+        val coverage = (outcome as AnalysisOutcome.Unavailable).coverage
         assertEquals("NO_SOURCE", coverage.reason)
         assertEquals(0, coverage.eligibleFiles)
         assertTrue(coverage.excludedReasons.isEmpty())
