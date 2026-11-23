@@ -107,13 +107,15 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         assertEquals(2, result.excludedReasons[SourceExclusion.GENERATED.name])
     }
 
-    fun testProductionTestAndNonSourceRootsAreSeparated() {
-        val test = myFixture.tempDirFixture.findOrCreateDir("src/test/kotlin")
-        PsiTestUtil.addSourceRoot(myModule, test, true)
+    fun testProductionTestAndExcludedRootsAreSeparated() {
+        val testRoot = myFixture.tempDirFixture.findOrCreateDir("src/test/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, testRoot, true)
+        val excludedRoot = myFixture.tempDirFixture.findOrCreateDir("excluded")
+        PsiTestUtil.addExcludedRoot(myModule, excludedRoot)
         myFixture.addFileToProject("src/test/kotlin/Test.kt", "class Test")
-        myFixture.addFileToProject("untracked/Other.kt", "class Other")
+        myFixture.addFileToProject("excluded/Other.kt", "class Other")
         val result = collect()
-        assertTrue(result.files.isEmpty())
+        assertTrue(result.files.isEmpty(), "Unexpected production files: ${result.files.map { it.file.url }}")
     }
 
     fun testActualSeparateSourceSetModulesOnlyIncludeJvmModule() {
