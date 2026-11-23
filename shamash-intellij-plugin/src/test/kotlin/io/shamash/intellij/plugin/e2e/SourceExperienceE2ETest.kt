@@ -554,6 +554,31 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
+    fun testEvidenceCountCollapsesWhenTheSourceListNeedsSpace() {
+        runInEdtAndWait {
+            val evidence = SourceEvidencePanel(project)
+            try {
+                evidence.showEvidence(emptyList(), 0)
+                val count = (evidence.layout as java.awt.BorderLayout)
+                    .getLayoutComponent(java.awt.BorderLayout.NORTH) as javax.swing.JScrollPane
+
+                evidence.setSize(360, 70)
+                repeat(3) { layoutTree(evidence) }
+                assertFalse(count.isVisible)
+                assertEquals("No retained source references", evidence.list.accessibleContext.accessibleDescription)
+                assertEquals("No retained source references", evidence.list.toolTipText)
+                assertViewport("Compact source evidence", evidence.list)
+
+                evidence.setSize(360, 260)
+                repeat(3) { layoutTree(evidence) }
+                assertTrue(count.isVisible)
+                assertViewport("Expanded source evidence", evidence.list)
+            } finally {
+                evidence.dispose()
+            }
+        }
+    }
+
     fun testDetailScrollerRemainsUsableWithSmallViewports() {
         runInEdtAndWait {
             val details =
