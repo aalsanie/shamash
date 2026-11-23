@@ -47,13 +47,14 @@ internal class ProjectSourceBackend(
             }
         indicator.checkCanceled()
         if (snapshot.coverage.eligibleFiles == 0 && !snapshot.coverage.truncated) {
+            val uncertain = snapshot.coverage.uncertainFiles > 0
             return AnalysisOutcome.Unavailable(
-                "No supported production Java/Kotlin source files",
+                if (uncertain) "Kotlin target platform cannot be verified" else "No supported production Java/Kotlin source files",
                 AnalysisCoverage(
                     eligibleFiles = 0,
                     analyzedFiles = 0,
                     failedFiles = 0,
-                    reason = "NO_SOURCE",
+                    reason = if (uncertain) "UNKNOWN_PLATFORM" else "NO_SOURCE",
                 ),
             )
         }
@@ -66,7 +67,11 @@ internal class ProjectSourceBackend(
                 failedFiles = snapshot.coverage.failedFiles,
                 resolvedOccurrences = snapshot.coverage.resolvedOccurrences,
                 unresolvedOccurrences = snapshot.coverage.unresolvedOccurrences,
-                reason = if (snapshot.coverage.truncated) "Internal limit or revision change" else null,
+                reason = when {
+                    snapshot.coverage.truncated -> "Internal limit or revision change"
+                    snapshot.coverage.uncertainFiles > 0 -> "Kotlin target platform is unknown for some source files"
+                    else -> null
+                },
             )
         val payload =
             IdeAnalysisCoordinator.SourcePresentation(
