@@ -39,12 +39,16 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         PsiTestUtil.addSourceRoot(myModule, myFixture.tempDirFixture.findOrCreateDir("src/main/java"))
     }
 
-    fun testEligibilityRecordRequiresCompleteIndexedOwnership() {
+    fun testEligibilityDecisionRequiresCompleteIndexedOwnershipOrExplicitExclusion() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
-        assertFalse(SourceEligibility().included)
-        assertFalse(SourceEligibility(module = myModule).included)
-        assertFalse(SourceEligibility(module = myModule, root = root, exclusion = SourceExclusion.TEST).included)
-        assertTrue(SourceEligibility(module = myModule, root = root).included)
+        val accepted = SourceEligibility.Included(myModule, root)
+        val excluded = SourceEligibility.Excluded(SourceExclusion.TEST)
+        assertTrue(accepted.included)
+        assertEquals(myModule, accepted.module)
+        assertEquals(root, accepted.root)
+        assertEquals(null, accepted.exclusion)
+        assertFalse(excluded.included)
+        assertEquals(SourceExclusion.TEST, excluded.exclusion)
     }
 
     fun testOrdinaryJavaAndMixedKotlinOnJavaRootRequireNoFacet() {
