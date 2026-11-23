@@ -338,6 +338,55 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
+    fun testExplorePreservesSelectionAndPagesLargeRelationshipResults() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                val graph = sampleGraph(30, fanOutFromFirst = true)
+                panel.render(presentation(graph))
+                panel.tabs.selectedIndex = 1
+                val tree = panel.explore.tree
+                val module = tree.model.getChild(tree.model.root, 0)
+                val pkg = tree.model.getChild(module, 0)
+                tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
+                assertTrue(panel.explore.summaryContent.text.isNotEmpty())
+                val pager = descendants(panel.explore).filterIsInstance<PageControls>().single()
+                assertTrue(pager.isVisible)
+                assertTrue(pager.next.isEnabled)
+                assertEquals(50, panel.explore.relationList.model.size)
+                pager.next.doClick()
+                assertTrue(panel.explore.relationList.model.size in 1..50)
+
+                val sort = descendants(panel.explore).filterIsInstance<JButton>().single { it.text == "Sort: name" }
+                sort.doClick()
+                assertEquals("Sort: most", sort.text)
+                sort.doClick()
+                assertEquals("Sort: name", sort.text)
+
+                val search = descendants(panel.explore).filterIsInstance<JBTextField>().single {
+                    it.accessibleContext?.accessibleName == "Search all production source declarations"
+                }
+                search.text = "not a real declaration"
+                assertEquals(0, tree.model.getChildCount(tree.model.root))
+                search.text = ""
+                assertTrue(tree.model.getChildCount(tree.model.root) > 0)
+                assertTrue(panel.explore.summaryContent.text.isNotEmpty())
+
+                panel.render(presentation(sampleGraph(1)))
+                assertFalse(pager.isVisible)
+                panel.render(
+                    IdeAnalysisState(
+                        phase = AnalysisPhase.UNAVAILABLE,
+                        attemptCoverage = AnalysisCoverage(0, reason = "NO_SOURCE"),
+                    ),
+                )
+                assertEquals(0, tree.model.getChildCount(tree.model.root))
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
     fun testCompactDocksKeepFindingsAndEvidenceUsable() {
         runInEdtAndWait {
             val panel = ShamashSourcePanel(project)
@@ -696,7 +745,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
-    private fun sampleGraph(cyclePairs: Int): io.shamash.psi.core.source.SourceGraphSnapshot {
+    private fun sampleGraph(
+        cyclePairs: Int,
+        fanOutFromFirst: Boolean = false,
+    ): io.shamash.psi.core.source.SourceGraphSnapshot {
         val nodes =
             (0 until cyclePairs * 2).map { index ->
                 val id =
@@ -718,6 +770,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 } else {
                     listOf(a to b, b to a)
                 }
+            } + if (fanOutFromFirst) {
+                nodes.drop(2).map { nodes.first().id to it.id }
+            } else {
+                emptyList()
             }
         val relationships =
             edges.map { (from, to) ->
