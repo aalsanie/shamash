@@ -150,9 +150,10 @@ internal class SourceEvidencePanel(
         list.model = model
         val controls = JPanel(BorderLayout(JBUI.scale(6), 0))
         val countScroll = compactMessageScroll(count)
-        val outcomeScroll = compactMessageScroll(outcome)
+        outcome.rows = 1
+        outcome.toolTipText = outcome.text
         controls.add(open, BorderLayout.WEST)
-        controls.add(outcomeScroll, BorderLayout.CENTER)
+        controls.add(outcome, BorderLayout.CENTER)
         add(countScroll, BorderLayout.NORTH)
         add(JBScrollPane(list), BorderLayout.CENTER)
         add(controls, BorderLayout.SOUTH)
