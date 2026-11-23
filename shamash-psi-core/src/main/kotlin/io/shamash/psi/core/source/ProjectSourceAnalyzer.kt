@@ -55,8 +55,8 @@ class ProjectSourceAnalyzer(
         var truncated = scope.truncated
 
         fun revisionsMatch(): Boolean =
-            initialPsi == psiTracker.modificationCount &&
-                initialRoots == rootTracker.modificationCount &&
+            initialRoots == rootTracker.modificationCount &&
+                initialPsi == psiTracker.modificationCount &&
                 initialFacets == facetTracker.revision
 
         val extractor =
