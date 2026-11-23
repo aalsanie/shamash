@@ -167,7 +167,7 @@ internal object SourceGuidance {
         if (attempt?.failedFiles != null && attempt.failedFiles > 0) {
             details += attempt.failedFiles.toString() + " files could not be analyzed"
         }
-        if (attempt?.reason != null && attempt.reason != "NO_SOURCE") details += attempt.reason
+        if (attempt?.reason != null && attempt.reason !in setOf("NO_SOURCE", "UNKNOWN_PLATFORM")) details += attempt.reason
         if (state.diagnostics.isNotEmpty()) {
             details += state.diagnostics.take(10)
             if (state.diagnostics.size > 10) {
