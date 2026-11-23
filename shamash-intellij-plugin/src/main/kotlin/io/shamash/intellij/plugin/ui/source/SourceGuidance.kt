@@ -51,6 +51,7 @@ internal object SourceGuidance {
     const val SCOPE_DETAILS =
         "Analyzes Java and Kotlin JVM production source roots in the imported IntelliJ project. " +
             "Tests, generated and excluded sources, libraries, scripts, and non-JVM roots are excluded. " +
+            "Kotlin target metadata that cannot be established is reported as incomplete, not as a clean JVM scan. " +
             "This is static source evidence, not runtime behavior, architecture enforcement, or a scan of project YAML."
     const val FIRST_RUN =
         "Understand your project's dependencies\n\n" +
@@ -144,6 +145,15 @@ internal object SourceGuidance {
         if (state.phase == AnalysisPhase.IDLE) details += FIRST_RUN
         if (state.phase == AnalysisPhase.UNAVAILABLE && attempt?.reason == "NO_SOURCE") {
             details += "Import a Java/Kotlin JVM module and mark its production source roots in IntelliJ."
+        }
+        if (state.phase == AnalysisPhase.UNAVAILABLE && attempt?.reason == "UNKNOWN_PLATFORM") {
+            details += "Kotlin source platform metadata is unavailable; import or configure the JVM target in IntelliJ."
+        }
+        result?.payload?.sourceFacts?.coverage?.excludedReasons?.takeIf { it.isNotEmpty() }?.let { reasons ->
+            val summary = reasons.entries.joinToString(", ") { (reason, count) ->
+                count.toString() + " " + reason.lowercase().replace('_', ' ') + " source files"
+            }
+            details += "Outside this JVM scope: " + summary
         }
         if (attempt?.eligibleFiles != null) {
             details += "Analyzed " + (attempt.analyzedFiles ?: 0) + " of " + attempt.eligibleFiles +
