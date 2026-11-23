@@ -28,6 +28,7 @@ import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.GridLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import javax.swing.AbstractAction
@@ -36,10 +37,9 @@ import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
-import javax.swing.JPopupMenu
 import javax.swing.JLabel
-import java.awt.GridLayout
 import javax.swing.JPanel
+import javax.swing.JPopupMenu
 import javax.swing.KeyStroke
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener

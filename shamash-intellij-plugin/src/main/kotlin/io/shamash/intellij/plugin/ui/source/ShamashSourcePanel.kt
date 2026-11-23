@@ -22,12 +22,12 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTabbedPane
+import com.intellij.util.ui.JBUI
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
 import io.shamash.intellij.plugin.settings.ShamashSourceMigrationState
 import java.awt.BorderLayout
-import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import javax.swing.Box
 import javax.swing.BoxLayout
@@ -109,7 +109,10 @@ class ShamashSourcePanel(
         getAccessibleContext().accessibleName = "Shamash source analysis"
         helpMenu.accessibleContext.accessibleName = "Shamash Help"
 
-        fun helpItem(label: String, action: () -> Unit) {
+        fun helpItem(
+            label: String,
+            action: () -> Unit,
+        ) {
             helpMenu.add(JMenuItem(label).apply { addActionListener { action() } })
         }
         helpItem("Analysis scope and diagnostics") { showDetails() }

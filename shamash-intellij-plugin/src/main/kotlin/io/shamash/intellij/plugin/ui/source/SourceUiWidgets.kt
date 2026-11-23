@@ -34,9 +34,9 @@ import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JPanel
-import javax.swing.Scrollable
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
+import javax.swing.Scrollable
 
 internal fun compactMessageScroll(
     text: JBTextArea,
@@ -53,7 +53,9 @@ internal fun compactMessageScroll(
     }
 }
 
-internal class ScrollableSourceDetailsPanel : JPanel(), Scrollable {
+internal class ScrollableSourceDetailsPanel :
+    JPanel(),
+    Scrollable {
     init {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
     }

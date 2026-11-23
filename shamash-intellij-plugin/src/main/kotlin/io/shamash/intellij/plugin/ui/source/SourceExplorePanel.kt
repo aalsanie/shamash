@@ -20,10 +20,10 @@ package io.shamash.intellij.plugin.ui.source
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextField
 import com.intellij.ui.components.JBTabbedPane
-import com.intellij.util.ui.JBUI
+import com.intellij.ui.components.JBTextField
 import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
@@ -36,8 +36,8 @@ import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
-import javax.swing.JPopupMenu
 import javax.swing.JPanel
+import javax.swing.JPopupMenu
 import javax.swing.JTree
 import javax.swing.KeyStroke
 import javax.swing.event.DocumentEvent

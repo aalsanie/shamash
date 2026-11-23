@@ -372,7 +372,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     val module = tree.model.getChild(tree.model.root, 0)
                     val pkg = tree.model.getChild(module, 0)
                     tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
-                    assertTrue(panel.explore.summaryContent.text.isNotEmpty())
+                    assertTrue(
+                        panel.explore.summaryContent.text
+                            .isNotEmpty(),
+                    )
                     assertEquals(1, panel.explore.summaryPopup.componentCount)
                     panel.explore.detailTabs.selectedIndex = 0
                     repeat(4) { layoutTree(panel) }
@@ -394,7 +397,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         runInEdtAndWait {
             val panel = ShamashSourcePanel(project)
             try {
-                val labels = panel.helpMenu.components.filterIsInstance<JMenuItem>().map { it.text }
+                val labels =
+                    panel.helpMenu.components
+                        .filterIsInstance<JMenuItem>()
+                        .map { it.text }
                 assertTrue(labels.contains("Architecture enforcement and CLI — GitHub"))
                 assertTrue(labels.contains("Analysis scope and diagnostics"))
                 assertTrue(labels.contains("About these checks"))
@@ -474,7 +480,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 toolbar.horizontalScrollBar.value = toolbar.horizontalScrollBar.maximum
                 assertTrue("Help must remain reachable through the toolbar", toolbar.viewport.viewRect.intersects(panel.help.bounds))
                 assertTrue(panel.detailsContent.lineWrap)
-                val scroll = panel.detailsPopup.components.filterIsInstance<com.intellij.ui.components.JBScrollPane>().single()
+                val scroll =
+                    panel.detailsPopup.components
+                        .filterIsInstance<com.intellij.ui.components.JBScrollPane>()
+                        .single()
                 assertTrue(scroll.preferredSize.height > 0)
                 assertTrue(panel.findings.findingList.model.size > 0)
                 val filterPopup = panel.findings.filterPopup
@@ -488,7 +497,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
 
     fun testDetailScrollerRemainsUsableWithSmallViewports() {
         runInEdtAndWait {
-            val details = io.shamash.intellij.plugin.ui.source.ScrollableSourceDetailsPanel()
+            val details =
+                io.shamash.intellij.plugin.ui.source
+                    .ScrollableSourceDetailsPanel()
             val rect = java.awt.Rectangle(0, 0, 100, 100)
             assertTrue(details.getScrollableTracksViewportWidth())
             assertFalse(details.getScrollableTracksViewportHeight())
@@ -741,7 +752,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         parent.components.filterIsInstance<Container>().forEach(::layoutTree)
     }
 
-    private fun assertViewport(label: String, component: Component) {
+    private fun assertViewport(
+        label: String,
+        component: Component,
+    ) {
         val viewport = component.parent as? JViewport ?: throw AssertionError(label + " must have a scrollable viewport")
         assertTrue(label + " must show a readable row; height=" + viewport.height, viewport.height >= 24)
     }
