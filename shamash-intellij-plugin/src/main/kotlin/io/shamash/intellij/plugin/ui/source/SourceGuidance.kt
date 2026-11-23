@@ -149,7 +149,9 @@ internal object SourceGuidance {
         if (state.phase == AnalysisPhase.UNAVAILABLE && attempt?.reason == "UNKNOWN_PLATFORM") {
             details += "Kotlin source platform metadata is unavailable; import or configure the JVM target in IntelliJ."
         }
-        result?.payload?.sourceFacts?.coverage?.excludedReasons?.takeIf { it.isNotEmpty() }?.let { reasons ->
+        val scopeExclusions = attempt?.excludedReasons?.takeIf { it.isNotEmpty() }
+            ?: result?.payload?.sourceFacts?.coverage?.excludedReasons.orEmpty()
+        scopeExclusions.takeIf { it.isNotEmpty() }?.let { reasons ->
             val summary = reasons.entries.joinToString(", ") { (reason, count) ->
                 count.toString() + " " + reason.lowercase().replace('_', ' ') + " source files"
             }
