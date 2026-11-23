@@ -80,7 +80,7 @@ class ShamashSourcePanel(
 
         status.accessibleContext.accessibleName = "Source analysis status"
         status.toolTipText = status.text
-        val statusScroll = compactMessageScroll(status, 2)
+        val statusScroll = compactMessageScroll(status)
         details.accessibleContext.accessibleName = "Analysis scope and diagnostics"
         detailsContent.accessibleContext.accessibleName = "Analysis scope and diagnostics"
         val detailsScroll = JBScrollPane(detailsContent)
