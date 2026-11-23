@@ -10,12 +10,9 @@ package io.shamash.psi.core.source
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.vfs.VirtualFile
-import org.jetbrains.jps.model.java.JavaSourceRootProperties
 
-/** The indexed production-source scope, not a recursive walk of arbitrary project directories. */
 class ProjectSourceCollector(
     private val project: Project,
 ) {
@@ -29,55 +26,38 @@ class ProjectSourceCollector(
         val files: List<SourceFile>,
         val excluded: Int,
         val truncated: Boolean,
-    )
+        val excludedReasons: Map<String, Int> = emptyMap(),
+    ) {
+        val uncertainFiles: Int get() = excludedReasons[SourceExclusion.UNKNOWN_PLATFORM.name] ?: 0
+    }
 
     fun collect(maxFiles: Int): Selection {
         require(maxFiles > 0)
         val index = ProjectRootManager.getInstance(project).fileIndex
+        val eligibility = JvmSourceEligibility(index)
         val selected = LinkedHashMap<String, SourceFile>()
-        val generatedRoots = HashMap<Pair<Module, VirtualFile>, Boolean>()
+        val reasons = LinkedHashMap<String, Int>()
         var excluded = 0
         var truncated = false
         index.iterateContent { file ->
             ProgressManager.checkCanceled()
-            if (file.isDirectory) return@iterateContent true
-            if (file.extension !in setOf("java", "kt") || file.name.endsWith(".kts")) return@iterateContent true
-            val module = index.getModuleForFile(file)
-            val root = index.getSourceRootForFile(file)
-            val eligible =
-                index.isInSourceContent(file) &&
-                    !index.isInTestSourceContent(file) &&
-                    !index.isInLibraryClasses(file) &&
-                    !index.isInLibrarySource(file) &&
-                    module != null &&
-                    root != null &&
-                    !generatedRoots.getOrPut(module to root) { generated(module, root) }
-            if (!eligible) {
+            if (file.isDirectory || file.extension !in setOf("java", "kt") || file.name.endsWith(".kts")) {
+                return@iterateContent true
+            }
+            val decision = eligibility.evaluate(file)
+            if (!decision.included) {
                 excluded++
+                val reason = requireNotNull(decision.exclusion).name
+                reasons[reason] = (reasons[reason] ?: 0) + 1
                 return@iterateContent true
             }
             if (file.url !in selected && selected.size == maxFiles) {
                 truncated = true
                 return@iterateContent false
             }
-            selected.putIfAbsent(file.url, SourceFile(file, module!!, root!!))
+            selected.putIfAbsent(file.url, SourceFile(file, requireNotNull(decision.module), requireNotNull(decision.root)))
             true
         }
-        return Selection(selected.values.sortedBy { it.file.url }, excluded, truncated)
+        return Selection(selected.values.sortedBy { it.file.url }, excluded, truncated, reasons.toSortedMap())
     }
-
-    private fun generated(
-        module: Module,
-        root: VirtualFile,
-    ): Boolean =
-        ModuleRootManager
-            .getInstance(module)
-            .contentEntries
-            .asSequence()
-            .flatMap { it.sourceFolders.asSequence() }
-            .filter { it.file == root }
-            .any { folder ->
-                val props = folder.jpsElement.properties
-                props is JavaSourceRootProperties && props.isForGeneratedSources
-            }
 }
