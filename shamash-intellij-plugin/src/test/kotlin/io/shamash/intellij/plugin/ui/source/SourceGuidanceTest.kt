@@ -139,13 +139,20 @@ class SourceGuidanceTest {
     fun completedJvmSubsetExplainsExplicitlyExcludedPlatforms() {
         val facts =
             io.shamash.psi.core.source.ProjectSourceSnapshot(
-                io.shamash.psi.core.source.SourceAnalysisProfile(),
+                io.shamash.psi.core.source
+                    .SourceAnalysisProfile(),
                 emptyList(),
                 emptyList(),
                 emptyList(),
                 emptyList(),
                 io.shamash.psi.core.source.SourceCoverage(
-                    1, 1, 0, 0, 0, 3, false,
+                    1,
+                    1,
+                    0,
+                    0,
+                    0,
+                    3,
+                    false,
                     mapOf("NON_JVM" to 2, "TEST" to 1),
                 ),
                 true,

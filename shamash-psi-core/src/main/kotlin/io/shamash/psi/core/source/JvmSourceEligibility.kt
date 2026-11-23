@@ -45,6 +45,7 @@ class JvmSourceEligibility(
     private val index: ProjectFileIndex,
 ) {
     private enum class Platform { JVM, NON_JVM, UNKNOWN, IMPLICIT }
+
     private enum class RootKind { JAVA, KOTLIN, GENERATED, UNSUPPORTED }
 
     private val platforms = HashMap<Module, Platform>()
@@ -66,26 +67,45 @@ class JvmSourceEligibility(
         if (rootKind == RootKind.GENERATED) return SourceEligibility(exclusion = SourceExclusion.GENERATED)
         if (rootKind == RootKind.UNSUPPORTED) return SourceEligibility(exclusion = SourceExclusion.UNSUPPORTED_ROOT)
         return when (platforms.getOrPut(module) { modulePlatform(module) }) {
-            Platform.JVM -> SourceEligibility(module, root)
-            Platform.NON_JVM -> SourceEligibility(exclusion = SourceExclusion.NON_JVM)
-            Platform.UNKNOWN -> SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+            Platform.JVM -> {
+                SourceEligibility(module, root)
+            }
+
+            Platform.NON_JVM -> {
+                SourceEligibility(exclusion = SourceExclusion.NON_JVM)
+            }
+
+            Platform.UNKNOWN -> {
+                SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+            }
+
             Platform.IMPLICIT -> {
-                if (rootKind == RootKind.JAVA) SourceEligibility(module, root)
-                else SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+                if (rootKind == RootKind.JAVA) {
+                    SourceEligibility(module, root)
+                } else {
+                    SourceEligibility(exclusion = SourceExclusion.UNKNOWN_PLATFORM)
+                }
             }
         }
     }
 
-    private fun rootKind(module: Module, root: VirtualFile): RootKind {
+    private fun rootKind(
+        module: Module,
+        root: VirtualFile,
+    ): RootKind {
         val folders =
-            ModuleRootManager.getInstance(module).contentEntries
+            ModuleRootManager
+                .getInstance(module)
+                .contentEntries
                 .flatMap { it.sourceFolders.toList() }
                 .filter { it.file == root }
         if (folders.isEmpty()) return RootKind.UNSUPPORTED
         if (folders.any {
                 (it.jpsElement.properties as? JavaSourceRootProperties)?.isForGeneratedSources == true
             }
-        ) return RootKind.GENERATED
+        ) {
+            return RootKind.GENERATED
+        }
         return when {
             folders.any { it.rootType == JavaSourceRootType.SOURCE } -> RootKind.JAVA
             folders.any { it.rootType == SourceKotlinRootType } -> RootKind.KOTLIN
@@ -105,7 +125,9 @@ class JvmSourceEligibility(
 }
 
 @Service(Service.Level.PROJECT)
-class JvmSourceScopeRevision(private val project: Project) {
+class JvmSourceScopeRevision(
+    private val project: Project,
+) {
     private val changes = AtomicLong()
     val revision: Long get() = changes.get()
 
@@ -129,7 +151,6 @@ class JvmSourceScopeRevision(private val project: Project) {
     }
 
     companion object {
-        fun getInstance(project: Project): JvmSourceScopeRevision =
-            project.getService(JvmSourceScopeRevision::class.java)
+        fun getInstance(project: Project): JvmSourceScopeRevision = project.getService(JvmSourceScopeRevision::class.java)
     }
 }

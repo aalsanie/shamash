@@ -10,14 +10,13 @@ package io.shamash.psi.core.source
 import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.JavaModuleType
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
-import java.lang.reflect.Proxy
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.kotlin.config.SourceKotlinRootType
@@ -28,6 +27,7 @@ import org.jetbrains.kotlin.platform.TargetPlatform
 import org.jetbrains.kotlin.platform.js.JsPlatforms
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.platform.konan.NativePlatforms
+import java.lang.reflect.Proxy
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -71,7 +71,11 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         PsiTestUtil.addSourceRoot(myModule, root, SourceKotlinRootType, JavaSourceRootProperties("", false))
         myFixture.addFileToProject("src/main/kotlin/demo/Platform.kt", "package demo\nclass Platform")
         myFixture.addFileToProject("src/main/java/demo/JavaFile.java", "package demo; class JavaFile {}")
-        for (platform in listOf(JsPlatforms.defaultJsPlatform, NativePlatforms.unspecifiedNativePlatform, CommonPlatforms.defaultCommonPlatform)) {
+        for (platform in listOf(
+            JsPlatforms.defaultJsPlatform,
+            NativePlatforms.unspecifiedNativePlatform,
+            CommonPlatforms.defaultCommonPlatform,
+        )) {
             facet(myModule, platform)
             val result = collect()
             assertEquals(0, result.files.size, platform.toString())
@@ -130,7 +134,12 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         val commonSource = myFixture.addFileToProject("platform-common/Common.kt", "class Common")
         val result = collect()
         assertEquals(1, result.files.size)
-        assertEquals(jvmSource.virtualFile.url, result.files.single().file.url)
+        assertEquals(
+            jvmSource.virtualFile.url,
+            result.files
+                .single()
+                .file.url,
+        )
         val sourceEligibility = JvmSourceEligibility(ProjectFileIndex.getInstance(project))
         ReadAction.compute<Unit, RuntimeException> {
             assertEquals(SourceExclusion.NON_JVM, sourceEligibility.evaluate(jsSource.virtualFile).exclusion)
@@ -158,7 +167,14 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         val unrelatedRoot = myFixture.tempDirFixture.findOrCreateDir("untracked")
         val notSource = myFixture.addFileToProject("untracked/README.md", "not a source file")
         val fake =
-            { classes: Boolean, librarySources: Boolean, test: Boolean, inSource: Boolean, owner: Module?, root: com.intellij.openapi.vfs.VirtualFile? ->
+            {
+                classes: Boolean,
+                librarySources: Boolean,
+                test: Boolean,
+                inSource: Boolean,
+                owner: Module?,
+                root: com.intellij.openapi.vfs.VirtualFile?,
+                ->
                 Proxy.newProxyInstance(
                     ProjectFileIndex::class.java.classLoader,
                     arrayOf(ProjectFileIndex::class.java),
@@ -174,6 +190,7 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
                     }
                 } as ProjectFileIndex
             }
+
         fun decision(
             classes: Boolean = false,
             librarySources: Boolean = false,
@@ -191,8 +208,14 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         assertEquals(SourceExclusion.NOT_SOURCE, decision(root = null).exclusion)
         assertEquals(SourceExclusion.UNSUPPORTED_ROOT, decision(root = unrelatedRoot).exclusion)
         assertTrue(decision().included)
-        assertEquals(SourceExclusion.NOT_SOURCE, JvmSourceEligibility(fake(false, false, false, true, myModule, sourceRoot)).evaluate(notSource.virtualFile).exclusion)
-        assertEquals(SourceExclusion.NOT_SOURCE, JvmSourceEligibility(fake(false, false, false, true, myModule, sourceRoot)).evaluate(sourceRoot).exclusion)
+        assertEquals(
+            SourceExclusion.NOT_SOURCE,
+            JvmSourceEligibility(fake(false, false, false, true, myModule, sourceRoot)).evaluate(notSource.virtualFile).exclusion,
+        )
+        assertEquals(
+            SourceExclusion.NOT_SOURCE,
+            JvmSourceEligibility(fake(false, false, false, true, myModule, sourceRoot)).evaluate(sourceRoot).exclusion,
+        )
     }
 
     fun testRemovingPlatformFacetInvalidatesScopeRevision() {
@@ -220,7 +243,10 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
         }
     }
 
-    private fun facet(module: Module, target: TargetPlatform?) {
+    private fun facet(
+        module: Module,
+        target: TargetPlatform?,
+    ) {
         val existing = KotlinFacet.get(module)
         if (existing != null) {
             WriteCommandAction.runWriteCommandAction(project) {

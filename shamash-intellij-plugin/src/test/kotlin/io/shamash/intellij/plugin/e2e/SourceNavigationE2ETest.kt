@@ -50,15 +50,15 @@ import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceTarget
-import java.awt.BorderLayout
-import java.awt.event.ActionEvent
-import java.lang.reflect.Proxy
-import java.nio.file.Files
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.kotlin.config.SourceKotlinRootType
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.platform.js.JsPlatforms
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
+import java.awt.BorderLayout
+import java.awt.event.ActionEvent
+import java.lang.reflect.Proxy
+import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JButton
@@ -576,9 +576,12 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         val witness = evidence()
         val index = ProjectFileIndex.getInstance(project)
         val sourceFile = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(witness.reference.fileUrl))
-        val sourcePsi = requireNotNull(PsiDocumentManager.getInstance(project).getPsiFile(
-            requireNotNull(FileDocumentManager.getInstance().getDocument(sourceFile)),
-        ))
+        val sourcePsi =
+            requireNotNull(
+                PsiDocumentManager.getInstance(project).getPsiFile(
+                    requireNotNull(FileDocumentManager.getInstance().getDocument(sourceFile)),
+                ),
+            )
         val before = JvmSourceScopeRevision.getInstance(project).revision
         assertNotNull(navigationSourceLocation(sourcePsi, index))
         val navigation = SourceNavigationService(project)

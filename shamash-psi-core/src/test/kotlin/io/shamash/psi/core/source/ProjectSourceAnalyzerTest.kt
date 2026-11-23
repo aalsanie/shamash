@@ -9,10 +9,10 @@ package io.shamash.psi.core.source
 
 import com.intellij.facet.FacetManager
 import com.intellij.openapi.command.WriteCommandAction
-import com.intellij.openapi.module.JavaModuleType
-import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -25,9 +25,9 @@ import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.platform.js.JsPlatforms
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlin.test.assertFailsWith
 
 class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder<*>>() {
     override fun setUp() {

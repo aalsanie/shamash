@@ -48,8 +48,8 @@ import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.source.ProjectSourceSnapshot
-import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import io.shamash.psi.core.source.SourceGraphSnapshot
+import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Future

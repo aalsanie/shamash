@@ -88,9 +88,10 @@ internal fun SourceCoverage.toAnalysisCoverage(): AnalysisCoverage =
         unresolvedOccurrences = unresolvedOccurrences,
         excludedFiles = excludedFiles,
         excludedReasons = excludedReasons,
-        reason = when {
-            truncated -> "Internal limit or revision change"
-            uncertainFiles > 0 -> "Kotlin target platform is unknown for some source files"
-            else -> null
-        },
+        reason =
+            when {
+                truncated -> "Internal limit or revision change"
+                uncertainFiles > 0 -> "Kotlin target platform is unknown for some source files"
+                else -> null
+            },
     )
