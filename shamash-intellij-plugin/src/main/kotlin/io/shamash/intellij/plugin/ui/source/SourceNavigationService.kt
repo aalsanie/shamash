@@ -32,6 +32,7 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.shamash.psi.core.source.JvmSourceEligibility
+import io.shamash.psi.core.source.SourceEligibility
 import io.shamash.psi.core.source.JvmSourceScopeRevision
 import io.shamash.psi.core.source.SourceDependencyExtractor
 
@@ -188,11 +189,13 @@ internal fun navigationSourceLocation(
     eligibility: JvmSourceEligibility = JvmSourceEligibility(index),
 ): SourceDependencyExtractor.SourceLocation? {
     val file = psiFile.virtualFile ?: return null
-    val result = eligibility.evaluate(file)
-    if (!result.included) return null
-    return SourceDependencyExtractor.SourceLocation(
-        requireNotNull(result.module).name,
-        requireNotNull(result.root).url,
-        file.url,
-    )
+    return when (val result = eligibility.evaluate(file)) {
+        is SourceEligibility.Excluded -> null
+        is SourceEligibility.Included ->
+            SourceDependencyExtractor.SourceLocation(
+                result.module.name,
+                result.root.url,
+                file.url,
+            )
+    }
 }
