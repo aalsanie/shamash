@@ -178,7 +178,8 @@ class SourceGuidanceTest {
     fun exclusionSummaryPrefersCurrentAttemptButFallsBackToStoredEvidence() {
         val facts =
             io.shamash.psi.core.source.ProjectSourceSnapshot(
-                io.shamash.psi.core.source.SourceAnalysisProfile(),
+                io.shamash.psi.core.source
+                    .SourceAnalysisProfile(),
                 emptyList(),
                 emptyList(),
                 emptyList(),

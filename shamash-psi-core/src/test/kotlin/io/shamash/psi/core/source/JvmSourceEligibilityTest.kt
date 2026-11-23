@@ -168,11 +168,26 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
                         val iterator = args!![0] as ContentIterator
                         files.all { iterator.processFile(it) }
                     }
-                    "isInLibraryClasses", "isInLibrarySource", "isInTestSourceContent" -> false
-                    "isInSourceContent" -> true
-                    "getModuleForFile" -> myModule
-                    "getSourceRootForFile" -> root
-                    else -> error("Unexpected index method: ${method.name}")
+
+                    "isInLibraryClasses", "isInLibrarySource", "isInTestSourceContent" -> {
+                        false
+                    }
+
+                    "isInSourceContent" -> {
+                        true
+                    }
+
+                    "getModuleForFile" -> {
+                        myModule
+                    }
+
+                    "getSourceRootForFile" -> {
+                        root
+                    }
+
+                    else -> {
+                        error("Unexpected index method: ${method.name}")
+                    }
                 }
             } as ProjectFileIndex
 
@@ -181,7 +196,12 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
                 ProjectSourceCollector(project, duplicateIndex(listOf(directory, ignored, first, first))).collect(1)
             }
         assertEquals(1, deduplicated.files.size)
-        assertEquals(first.url, deduplicated.files.single().file.url)
+        assertEquals(
+            first.url,
+            deduplicated.files
+                .single()
+                .file.url,
+        )
         assertFalse(deduplicated.truncated)
 
         val limited =
