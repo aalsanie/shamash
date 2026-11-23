@@ -41,7 +41,7 @@ class ProjectSourceCollector(
         var truncated = false
         index.iterateContent { file ->
             ProgressManager.checkCanceled()
-            if (file.isDirectory || file.extension !in setOf("java", "kt") || file.name.endsWith(".kts")) {
+            if (file.isDirectory || file.extension !in setOf("java", "kt")) {
                 return@iterateContent true
             }
             val decision = eligibility.evaluate(file)
