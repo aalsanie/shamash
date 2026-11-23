@@ -55,6 +55,8 @@ internal class ProjectSourceBackend(
                     analyzedFiles = 0,
                     failedFiles = 0,
                     reason = if (uncertain) "UNKNOWN_PLATFORM" else "NO_SOURCE",
+                    excludedFiles = snapshot.coverage.excludedFiles,
+                    excludedReasons = snapshot.coverage.excludedReasons,
                 ),
             )
         }
@@ -67,6 +69,8 @@ internal class ProjectSourceBackend(
                 failedFiles = snapshot.coverage.failedFiles,
                 resolvedOccurrences = snapshot.coverage.resolvedOccurrences,
                 unresolvedOccurrences = snapshot.coverage.unresolvedOccurrences,
+                excludedFiles = snapshot.coverage.excludedFiles,
+                excludedReasons = snapshot.coverage.excludedReasons,
                 reason = when {
                     snapshot.coverage.truncated -> "Internal limit or revision change"
                     snapshot.coverage.uncertainFiles > 0 -> "Kotlin target platform is unknown for some source files"
