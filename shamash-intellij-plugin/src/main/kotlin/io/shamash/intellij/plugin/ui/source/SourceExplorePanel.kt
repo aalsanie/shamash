@@ -279,7 +279,6 @@ internal class SourceExplorePanel(
         switches.add(sort, BorderLayout.EAST)
         relationSearch.emptyText.text = "Search the selected relationship list"
         relationSearch.accessibleContext.accessibleName = "Search all relationships for selected source"
-        val top = JPanel(BorderLayout(0, JBUI.scale(4)))
         val fieldsLayout = GridBagLayout()
         val fields = JPanel(fieldsLayout)
         val switchConstraints =
@@ -298,12 +297,11 @@ internal class SourceExplorePanel(
             }
         fields.add(switches, switchConstraints)
         fields.add(relationSearch, searchConstraints)
-        top.add(toolbar, BorderLayout.NORTH)
-        top.add(fields, BorderLayout.SOUTH)
-        detail.add(top, BorderLayout.NORTH)
+        detail.add(toolbar, BorderLayout.NORTH)
 
         relationList.model = relationModel
         val relationships = JPanel(BorderLayout(0, JBUI.scale(4)))
+        relationships.add(fields, BorderLayout.NORTH)
         relationships.add(JBScrollPane(relationList), BorderLayout.CENTER)
         val footer = JPanel(BorderLayout(0, JBUI.scale(2)))
         relationEmpty.rows = 1
