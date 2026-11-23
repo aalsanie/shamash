@@ -134,7 +134,7 @@ class ProjectSourceAnalyzer(
                 SourceDiagnostic(
                     null,
                     "scope",
-                    "${scope.uncertainFiles} Kotlin source files have unknown platform metadata; JVM coverage is incomplete",
+                    "${scope.uncertainFiles} source files have unknown Kotlin module target metadata; JVM coverage is incomplete",
                 )
         }
         val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
