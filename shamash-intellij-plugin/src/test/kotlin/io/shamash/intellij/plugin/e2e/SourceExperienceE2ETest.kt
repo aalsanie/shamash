@@ -453,6 +453,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                     assertTrue(panel.detailsContent.text.contains(panel.scope.text))
                     assertTrue(panel.scope.text.contains("Project rules not evaluated"))
                     assertViewport("State " + state.phase, panel.findings.findingList)
+                    panel.render(state)
+                    assertEquals(panel.status.text, panel.status.toolTipText)
+                    assertEquals(panel.status.text, panel.status.accessibleContext.accessibleDescription)
                 }
             } finally {
                 Disposer.dispose(panel)
@@ -506,6 +509,7 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
             assertTrue(details.getScrollableUnitIncrement(rect, 1, 1) > 0)
             assertTrue(details.getScrollableBlockIncrement(rect, 1, 1) > 0)
             assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 1, 1), 1, 1) > 0)
+            assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 100, 250), 1, 1) > details.getScrollableUnitIncrement(rect, 1, 1))
             val pager = PageControls()
             pager.update(123)
             assertTrue(pager.previous.parent?.parent === pager)
