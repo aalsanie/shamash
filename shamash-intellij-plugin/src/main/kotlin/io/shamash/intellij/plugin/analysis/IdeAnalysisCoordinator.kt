@@ -18,6 +18,9 @@
 package io.shamash.intellij.plugin.analysis
 
 import com.intellij.ProjectTopics
+import com.intellij.facet.Facet
+import com.intellij.facet.FacetManager
+import com.intellij.facet.FacetManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
@@ -45,6 +48,7 @@ import io.shamash.intellij.plugin.ui.source.SourceUiModel
 import io.shamash.psi.core.config.ValidationError
 import io.shamash.psi.core.engine.EngineError
 import io.shamash.psi.core.source.ProjectSourceSnapshot
+import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import io.shamash.psi.core.source.SourceGraphSnapshot
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
@@ -105,6 +109,16 @@ class IdeAnalysisCoordinator(
             ProjectTopics.PROJECT_ROOTS,
             object : ModuleRootListener {
                 override fun rootsChanged(event: ModuleRootEvent) = this@IdeAnalysisCoordinator.rootsChanged()
+            },
+        )
+        connection.subscribe(
+            FacetManager.FACETS_TOPIC,
+            object : FacetManagerListener {
+                override fun facetAdded(facet: Facet<*>) = kotlinFacetChanged(facet)
+
+                override fun facetRemoved(facet: Facet<*>) = kotlinFacetChanged(facet)
+
+                override fun facetConfigurationChanged(facet: Facet<*>) = kotlinFacetChanged(facet)
             },
         )
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(
@@ -223,6 +237,10 @@ class IdeAnalysisCoordinator(
             cancelWork()
         }
         publishState()
+    }
+
+    private fun kotlinFacetChanged(facet: Facet<*>) {
+        if (facet is KotlinFacet) rootsChanged()
     }
 
     private fun rootsChanged() {
