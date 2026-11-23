@@ -7,6 +7,7 @@
  */
 package io.shamash.psi.core.source
 
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
@@ -17,9 +18,14 @@ import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.kotlin.config.SourceKotlinRootType
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBuilder<*>>() {
     override fun setUp() {
@@ -270,6 +276,66 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertFalse(snapshot.coverage.truncated)
         assertTrue(snapshot.entities.any { it.displayName.contains("Production") })
         assertTrue(snapshot.entities.none { it.displayName.contains("Generated") })
+    }
+
+    fun testUnknownKotlinRootProducesPartialCoverageAndScopeDiagnostic() {
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("additional/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("additional/kotlin/demo/Common.kt", "package demo\nclass Common")
+        java("Regular.java", "package demo; class Regular {}")
+        val snapshot = analyze()
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertEquals(1, snapshot.coverage.uncertainFiles)
+        assertFalse(snapshot.complete)
+        assertEquals(1, snapshot.coverage.excludedReasons[SourceExclusion.UNKNOWN_PLATFORM.name])
+        assertTrue(snapshot.diagnostics.any { it.phase == "scope" })
+        assertTrue(snapshot.entities.any { it.displayName.contains("Regular") })
+        assertFalse(snapshot.entities.any { it.displayName.contains("Common") })
+    }
+
+    fun testExplicitJvmFacetResolvesPreviouslyUncertainKotlinRoot() {
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("additional/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("additional/kotlin/demo/Included.kt", "package demo\nclass Included")
+        assertEquals(1, analyze().coverage.uncertainFiles)
+        val facetManager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+        val facet = facetManager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            facetManager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        val snapshot = analyze()
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertEquals(0, snapshot.coverage.uncertainFiles)
+        assertTrue(snapshot.entities.any { it.displayName.contains("Included") })
+    }
+
+    fun testFacetMutationDuringAssemblyCannotPublishStaleJvmAnalysis() {
+        java("Original.java", "package demo; class Original {}")
+        val service = JvmSourceScopeRevision.getInstance(project)
+        val before = service.revision
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                val manager = FacetManager.getInstance(myModule)
+                val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+                config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+                val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+                WriteCommandAction.runWriteCommandAction(project) {
+                    manager.createModifiableModel().apply {
+                        addFacet(facet)
+                        commit()
+                    }
+                }
+                assertTrue(service.revision > before)
+            }
+        }
+        val snapshot = analyze()
+        assertEquals(0, snapshot.coverage.eligibleFiles)
+        assertEquals(1, snapshot.coverage.excludedReasons[SourceExclusion.NON_JVM.name])
     }
 
     fun testUnrepresentableGenericBoundCannotInventAReferenceOffset() {
