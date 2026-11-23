@@ -22,22 +22,24 @@ import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
+import com.intellij.util.ui.JBUI
 import io.shamash.psi.core.source.SourcePackageDependency
 import io.shamash.psi.core.source.SourcePackageId
 import io.shamash.psi.core.source.SourceTarget
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.FlowLayout
+import java.awt.GridLayout
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import javax.swing.AbstractAction
-import javax.swing.BoxLayout
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
+import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.JPopupMenu
 import javax.swing.KeyStroke
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
@@ -61,6 +63,8 @@ internal class SourceFindingsPanel(
     private val modules = JComboBox<Choice<String>>()
     private val packages = JComboBox<Choice<SourcePackageId>>()
     private val clear = JButton("Clear filters")
+    private val moreFilters = JButton("More filters")
+    internal val filterPopup = JPopupMenu()
     private val listModel = DefaultListModel<SourceUiModel.FindingRow>()
     val findingList =
         sourceList<SourceUiModel.FindingRow>("Package cycle findings") {
@@ -87,24 +91,41 @@ internal class SourceFindingsPanel(
     private val split = JBSplitter(false, 0.42f)
     private val explore = JButton("Explore dependencies")
     private val back = JButton("Back to findings")
+    private var horizontalProportion = 0.42f
+    private var verticalProportion = 0.48f
 
     init {
-        val filters = JPanel(FlowLayout(FlowLayout.LEFT, 6, 3))
+        val filters = JPanel(BorderLayout(JBUI.scale(4), 0))
         search.emptyText.text = "Search findings, packages or declarations"
-        search.columns = 18
+        search.columns = 12
         search.accessibleContext.accessibleName = "Search all package cycle findings"
         modules.accessibleContext.accessibleName = "Filter cycle findings by IDE module"
         packages.accessibleContext.accessibleName = "Filter cycle findings by package"
-        filters.add(search)
-        filters.add(modules)
-        filters.add(packages)
-        filters.add(clear)
+        moreFilters.accessibleContext.accessibleName = "Show module and package filters"
+        val filterActions = JPanel()
+        filterActions.layout = javax.swing.BoxLayout(filterActions, javax.swing.BoxLayout.X_AXIS)
+        filterActions.add(clear)
+        filterActions.add(javax.swing.Box.createHorizontalStrut(JBUI.scale(4)))
+        filterActions.add(moreFilters)
+        filters.add(search, BorderLayout.CENTER)
+        filters.add(filterActions, BorderLayout.EAST)
+        val choices = JPanel(GridLayout(0, 1, 0, JBUI.scale(4)))
+        choices.add(JLabel("IDE module"))
+        choices.add(modules)
+        choices.add(JLabel("Package"))
+        choices.add(packages)
+        filterPopup.add(choices)
+        filterPopup.accessibleContext.accessibleName = "Module and package filters"
+        moreFilters.addActionListener {
+            filterPopup.show(moreFilters, 0, moreFilters.height)
+            modules.requestFocusInWindow()
+        }
 
         val left = JPanel(BorderLayout(0, 4))
         val leftTop = JPanel(BorderLayout())
         leftTop.add(filters, BorderLayout.NORTH)
-        empty.rows = 2
-        leftTop.add(empty, BorderLayout.SOUTH)
+        empty.rows = 1
+        leftTop.add(compactMessageScroll(empty), BorderLayout.SOUTH)
         left.add(leftTop, BorderLayout.NORTH)
         findingList.model = listModel
         left.add(JBScrollPane(findingList), BorderLayout.CENTER)
@@ -113,8 +134,7 @@ internal class SourceFindingsPanel(
         leftBottom.add(explore, BorderLayout.SOUTH)
         left.add(leftBottom, BorderLayout.SOUTH)
 
-        val right = JPanel()
-        right.layout = BoxLayout(right, BoxLayout.Y_AXIS)
+        val right = ScrollableSourceDetailsPanel()
         right.add(back)
         right.add(JBLabel("What we found"))
         right.add(detailsTitle)
@@ -126,11 +146,11 @@ internal class SourceFindingsPanel(
         edgeList.model = edgeModel
         edgeList.visibleRowCount = 5
         val edgesScroll = JBScrollPane(edgeList)
-        edgesScroll.preferredSize = Dimension(200, 125)
+        edgesScroll.preferredSize = Dimension(JBUI.scale(200), edgeList.getFontMetrics(edgeList.font).height * 5 + JBUI.scale(16))
         right.add(edgesScroll)
         right.add(edgePager)
         right.add(evidence)
-        evidence.preferredSize = Dimension(200, 140)
+        evidence.preferredSize = Dimension(JBUI.scale(200), edgeList.getFontMetrics(edgeList.font).height * 5 + JBUI.scale(64))
         right.add(guidance)
         val detailsScroll = JBScrollPane(right)
         detailsScroll.horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER
@@ -144,8 +164,13 @@ internal class SourceFindingsPanel(
                 override fun componentResized(e: ComponentEvent?) {
                     val vertical = width < 560
                     if (split.orientation != vertical) {
+                        if (split.orientation) {
+                            verticalProportion = split.proportion
+                        } else {
+                            horizontalProportion = split.proportion
+                        }
                         split.orientation = vertical
-                        split.proportion = if (vertical) 0.48f else 0.42f
+                        split.proportion = if (vertical) verticalProportion else horizontalProportion
                     }
                 }
             },

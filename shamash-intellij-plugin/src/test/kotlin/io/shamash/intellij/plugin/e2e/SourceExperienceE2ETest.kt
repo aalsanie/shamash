@@ -54,6 +54,8 @@ import java.awt.Component
 import java.awt.Container
 import javax.swing.JButton
 import javax.swing.JComboBox
+import javax.swing.JMenuItem
+import javax.swing.JViewport
 import javax.swing.tree.TreePath
 
 class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
@@ -122,6 +124,9 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 val graph = kotlin.test.assertNotNull(current.sourceGraph)
                 assertEquals(1, graph.cycles.size)
                 assertEquals(1, panel.findings.findingList.model.size)
+                panel.setSize(900, 300)
+                repeat(4) { layoutTree(panel) }
+                assertViewport("Real Java cycle in bottom dock", panel.findings.findingList)
                 panel.tabs.selectedIndex = 1
                 assertTrue(
                     panel.explore.tree.model
@@ -333,6 +338,270 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
+    fun testExplorePreservesSelectionAndPagesLargeRelationshipResults() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                val graph = sampleGraph(30, fanOutFromFirst = true)
+                panel.render(presentation(graph))
+                panel.tabs.selectedIndex = 1
+                val tree = panel.explore.tree
+                val module = tree.model.getChild(tree.model.root, 0)
+                val pkg = tree.model.getChild(module, 0)
+                tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
+                assertTrue(
+                    panel.explore.summaryContent.text
+                        .isNotEmpty(),
+                )
+                val pager = descendants(panel.explore).filterIsInstance<PageControls>().single()
+                assertTrue(pager.isVisible)
+                assertTrue(pager.next.isEnabled)
+                assertEquals(50, panel.explore.relationList.model.size)
+                pager.next.doClick()
+                assertTrue(panel.explore.relationList.model.size in 1..50)
+
+                val sort = descendants(panel.explore).filterIsInstance<JButton>().single { it.text == "Sort: name" }
+                sort.doClick()
+                assertEquals("Sort: most", sort.text)
+                sort.doClick()
+                assertEquals("Sort: name", sort.text)
+
+                val search =
+                    descendants(panel.explore).filterIsInstance<JBTextField>().single {
+                        it.accessibleContext?.accessibleName == "Search all production source declarations"
+                    }
+                search.text = "not a real declaration"
+                assertEquals(0, tree.model.getChildCount(tree.model.root))
+                search.text = ""
+                assertTrue(tree.model.getChildCount(tree.model.root) > 0)
+                assertTrue(
+                    panel.explore.summaryContent.text
+                        .isNotEmpty(),
+                )
+
+                panel.render(presentation(sampleGraph(1)))
+                assertFalse(pager.isVisible)
+                panel.render(
+                    IdeAnalysisState(
+                        phase = AnalysisPhase.UNAVAILABLE,
+                        attemptCoverage = AnalysisCoverage(0, reason = "NO_SOURCE"),
+                    ),
+                )
+                assertEquals(0, tree.model.getChildCount(tree.model.root))
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testCompactDocksKeepFindingsAndEvidenceUsable() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(sampleGraph(2)))
+                for ((width, height) in listOf(900 to 300, 360 to 700)) {
+                    panel.setSize(width, height)
+                    panel.tabs.selectedIndex = 0
+                    repeat(4) { layoutTree(panel) }
+                    panel.findings.dispatchEvent(
+                        java.awt.event.ComponentEvent(panel.findings, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    repeat(4) { layoutTree(panel) }
+                    assertTrue(panel.findings.findingList.model.size > 0)
+                    assertViewport("Findings", panel.findings.findingList)
+                    val findingsEvidence = descendants(panel.findings).filterIsInstance<SourceEvidencePanel>().single()
+                    assertTrue(findingsEvidence.list.model.size > 0)
+
+                    panel.tabs.selectedIndex = 1
+                    repeat(4) { layoutTree(panel) }
+                    panel.explore.dispatchEvent(
+                        java.awt.event.ComponentEvent(panel.explore, java.awt.event.ComponentEvent.COMPONENT_RESIZED),
+                    )
+                    repeat(4) { layoutTree(panel) }
+                    assertViewport("Explore tree", panel.explore.tree)
+                    val relationshipSearch =
+                        descendants(panel.explore).filterIsInstance<JBTextField>().single {
+                            it.accessibleContext?.accessibleName == "Search all relationships for selected source"
+                        }
+                    assertTrue("Explore relationship search must remain usable", relationshipSearch.width >= 100)
+                    val tree = panel.explore.tree
+                    val module = tree.model.getChild(tree.model.root, 0)
+                    val pkg = tree.model.getChild(module, 0)
+                    tree.selectionPath = TreePath(arrayOf(tree.model.root, module, pkg))
+                    assertTrue(
+                        panel.explore.summaryContent.text
+                            .isNotEmpty(),
+                    )
+                    assertEquals(1, panel.explore.summaryPopup.componentCount)
+                    panel.explore.detailTabs.selectedIndex = 0
+                    repeat(4) { layoutTree(panel) }
+                    assertViewport("Relationships", panel.explore.relationList)
+                    panel.explore.relationList.selectedIndex = 0
+                    val evidence = descendants(panel.explore).filterIsInstance<SourceEvidencePanel>().single()
+                    assertTrue(evidence.list.model.size > 0)
+                    panel.explore.detailTabs.selectedIndex = 1
+                    repeat(4) { layoutTree(panel) }
+                    assertViewport("Source evidence", evidence.list)
+                }
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testFirstRunAndErrorStatesKeepHelpActionsAndResultSpace() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                val labels =
+                    panel.helpMenu.components
+                        .filterIsInstance<JMenuItem>()
+                        .map { it.text }
+                assertTrue(labels.contains("Architecture enforcement and CLI — GitHub"))
+                assertTrue(labels.contains("Analysis scope and diagnostics"))
+                assertTrue(labels.contains("About these checks"))
+                assertTrue(panel.detailsPopup.components.any { it is com.intellij.ui.components.JBScrollPane })
+                val states =
+                    listOf(
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            requestGeneration = 1,
+                            phase = AnalysisPhase.WAITING_FOR_INDEX,
+                        ),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            requestGeneration = 1,
+                            phase = AnalysisPhase.EXTRACTING,
+                        ),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            requestGeneration = 1,
+                            phase = AnalysisPhase.BUILDING_GRAPH,
+                        ),
+                        presentation(sampleGraph(1)),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.STALE,
+                            resultRelation = ResultRelation.STALE,
+                        ),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.PARTIAL,
+                            resultRelation = ResultRelation.CURRENT,
+                            diagnostics = listOf("Long source analysis diagnostic ".repeat(20)),
+                        ),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.FAILED,
+                            resultRelation = ResultRelation.PREVIOUS,
+                            diagnostics = listOf("Long failure explanation ".repeat(20)),
+                        ),
+                        IdeAnalysisState<IdeAnalysisCoordinator.SourcePresentation>(
+                            phase = AnalysisPhase.UNAVAILABLE,
+                            attemptCoverage = AnalysisCoverage(0, reason = "NO_SOURCE"),
+                        ),
+                        presentation(sampleGraph(2)).copy(
+                            phase = AnalysisPhase.CANCELLED,
+                            resultRelation = ResultRelation.PREVIOUS,
+                        ),
+                    )
+                for (state in states) {
+                    panel.render(state)
+                    panel.setSize(360, 700)
+                    repeat(4) { layoutTree(panel) }
+                    assertTrue(panel.status.text.isNotEmpty())
+                    assertEquals(panel.status.text, panel.status.toolTipText)
+                    assertTrue(panel.detailsContent.text.contains(panel.scope.text))
+                    assertTrue(panel.scope.text.contains("Project rules not evaluated"))
+                    assertViewport("State " + state.phase, panel.findings.findingList)
+                    panel.render(state)
+                    assertEquals(panel.status.text, panel.status.toolTipText)
+                    assertEquals(panel.status.text, panel.status.accessibleContext.accessibleDescription)
+                }
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testLargeFontsAndLongExplanationsStayScrollable() {
+        runInEdtAndWait {
+            val panel = ShamashSourcePanel(project)
+            try {
+                panel.render(presentation(sampleGraph(101)))
+                panel.status.font = panel.status.font.deriveFont(panel.status.font.size2D * 2f)
+                panel.status.text = "A very long localized source analysis status ".repeat(20)
+                panel.status.toolTipText = panel.status.text
+                panel.detailsContent.text = "An extended analysis explanation ".repeat(100)
+                panel.setSize(360, 700)
+                repeat(4) { layoutTree(panel) }
+                assertViewport("Large-font findings", panel.findings.findingList)
+                assertEquals(panel.status.text, panel.status.toolTipText)
+                val toolbar =
+                    descendants(panel).filterIsInstance<com.intellij.ui.components.JBScrollPane>().single {
+                        it.accessibleContext?.accessibleName == "Source analysis actions"
+                    }
+                toolbar.horizontalScrollBar.value = toolbar.horizontalScrollBar.maximum
+                assertTrue("Help must remain reachable through the toolbar", toolbar.viewport.viewRect.intersects(panel.help.bounds))
+                assertTrue(panel.detailsContent.lineWrap)
+                val scroll =
+                    panel.detailsPopup.components
+                        .filterIsInstance<com.intellij.ui.components.JBScrollPane>()
+                        .single()
+                assertTrue(scroll.preferredSize.height > 0)
+                assertTrue(panel.findings.findingList.model.size > 0)
+                val filterPopup = panel.findings.filterPopup
+                assertEquals(1, filterPopup.componentCount)
+                assertEquals(2, descendants(filterPopup).filterIsInstance<JComboBox<*>>().size)
+            } finally {
+                Disposer.dispose(panel)
+            }
+        }
+    }
+
+    fun testEvidenceCountCollapsesWhenTheSourceListNeedsSpace() {
+        runInEdtAndWait {
+            val evidence = SourceEvidencePanel(project)
+            try {
+                evidence.showEvidence(emptyList(), 0)
+                val count =
+                    (evidence.layout as java.awt.BorderLayout)
+                        .getLayoutComponent(java.awt.BorderLayout.NORTH) as javax.swing.JScrollPane
+
+                evidence.setSize(360, 70)
+                repeat(3) { layoutTree(evidence) }
+                assertFalse(count.isVisible)
+                assertEquals("No retained source references", evidence.list.accessibleContext.accessibleDescription)
+                assertEquals("No retained source references", evidence.list.toolTipText)
+                assertViewport("Compact source evidence", evidence.list)
+
+                evidence.setSize(360, 260)
+                repeat(3) { layoutTree(evidence) }
+                assertTrue(count.isVisible)
+                assertViewport("Expanded source evidence", evidence.list)
+            } finally {
+                evidence.dispose()
+            }
+        }
+    }
+
+    fun testDetailScrollerRemainsUsableWithSmallViewports() {
+        runInEdtAndWait {
+            val details =
+                io.shamash.intellij.plugin.ui.source
+                    .ScrollableSourceDetailsPanel()
+            val rect = java.awt.Rectangle(0, 0, 100, 100)
+            assertTrue(details.getScrollableTracksViewportWidth())
+            assertFalse(details.getScrollableTracksViewportHeight())
+            assertTrue(details.getScrollableUnitIncrement(rect, 1, 1) > 0)
+            assertTrue(details.getScrollableBlockIncrement(rect, 1, 1) > 0)
+            assertTrue(details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 1, 1), 1, 1) > 0)
+            assertTrue(
+                details.getScrollableBlockIncrement(java.awt.Rectangle(0, 0, 100, 250), 1, 1) >
+                    details.getScrollableUnitIncrement(rect, 1, 1),
+            )
+            val pager = PageControls()
+            pager.update(123)
+            assertTrue(pager.previous.parent?.parent === pager)
+            assertTrue(pager.next.parent?.parent === pager)
+        }
+    }
+
     fun testNarrowWindowUsesStackedNativeLayout() {
         runInEdtAndWait {
             val panel = ShamashSourcePanel(project)
@@ -512,7 +781,10 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
-    private fun sampleGraph(cyclePairs: Int): io.shamash.psi.core.source.SourceGraphSnapshot {
+    private fun sampleGraph(
+        cyclePairs: Int,
+        fanOutFromFirst: Boolean = false,
+    ): io.shamash.psi.core.source.SourceGraphSnapshot {
         val nodes =
             (0 until cyclePairs * 2).map { index ->
                 val id =
@@ -534,7 +806,12 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 } else {
                     listOf(a to b, b to a)
                 }
-            }
+            } +
+                if (fanOutFromFirst) {
+                    nodes.drop(2).map { nodes.first().id to it.id }
+                } else {
+                    emptyList()
+                }
         val relationships =
             edges.map { (from, to) ->
                 SourceRelationship(
@@ -565,6 +842,23 @@ class SourceExperienceE2ETest : ShamashPluginE2eTestBase() {
                 true,
             )
         return SourceGraphAnalyzer().analyze(snapshot)
+    }
+
+    private fun layoutTree(parent: Container) {
+        parent.doLayout()
+        parent.components.filterIsInstance<Container>().forEach(::layoutTree)
+    }
+
+    private fun assertViewport(
+        label: String,
+        component: Component,
+    ) {
+        val viewport = component.parent as? JViewport ?: throw AssertionError(label + " must have a scrollable viewport")
+        val ancestry =
+            generateSequence<Component>(viewport) { it.parent }
+                .take(7)
+                .joinToString(" <- ") { it.javaClass.simpleName + it.bounds }
+        assertTrue(label + " must show a readable row; height=" + viewport.height + "; " + ancestry, viewport.height >= 24)
     }
 
     private fun descendants(container: Container): List<Component> =

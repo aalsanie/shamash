@@ -21,10 +21,14 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.Rectangle
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.AbstractAction
+import javax.swing.BoxLayout
 import javax.swing.DefaultListCellRenderer
 import javax.swing.DefaultListModel
 import javax.swing.JButton
@@ -32,6 +36,48 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
+import javax.swing.Scrollable
+
+internal fun compactMessageScroll(
+    text: JBTextArea,
+    rows: Int = 1,
+): JBScrollPane {
+    text.rows = rows
+    return object : JBScrollPane(text) {
+        override fun getPreferredSize(): Dimension =
+            Dimension(JBUI.scale(120), text.getFontMetrics(text.font).height * rows + JBUI.scale(8))
+    }.apply {
+        horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        verticalScrollBarPolicy = JBScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
+        border = JBUI.Borders.empty()
+    }
+}
+
+internal class ScrollableSourceDetailsPanel :
+    JPanel(),
+    Scrollable {
+    init {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+    }
+
+    override fun getPreferredScrollableViewportSize(): Dimension = preferredSize
+
+    override fun getScrollableUnitIncrement(
+        visibleRect: Rectangle,
+        orientation: Int,
+        direction: Int,
+    ): Int = JBUI.scale(20)
+
+    override fun getScrollableBlockIncrement(
+        visibleRect: Rectangle,
+        orientation: Int,
+        direction: Int,
+    ): Int = maxOf(JBUI.scale(20), visibleRect.height - JBUI.scale(20))
+
+    override fun getScrollableTracksViewportWidth(): Boolean = true
+
+    override fun getScrollableTracksViewportHeight(): Boolean = false
+}
 
 internal fun escaped(value: String): String =
     value
@@ -93,8 +139,10 @@ internal class SourceEvidencePanel(
     private val model = DefaultListModel<SourceEvidence>()
     val list = sourceList<SourceEvidence>("Verified source references") { it.label }
     private val count = wrappedText("Select a dependency to inspect source evidence")
+    private val countScroll = compactMessageScroll(count)
     private val outcome = wrappedText("")
     private val open = JButton("Open source")
+    private val controls = JPanel(BorderLayout(JBUI.scale(6), 0))
 
     @Volatile private var generation = 0L
 
@@ -102,15 +150,14 @@ internal class SourceEvidencePanel(
 
     init {
         list.model = model
-        val controls = JPanel(BorderLayout(6, 0))
+        list.accessibleContext.accessibleDescription = count.text
+        list.toolTipText = count.text
+        outcome.rows = 1
+        outcome.toolTipText = outcome.text
         controls.add(open, BorderLayout.WEST)
         controls.add(outcome, BorderLayout.CENTER)
-        val header = JPanel(BorderLayout())
-        count.rows = 2
-        outcome.rows = 2
-        header.add(count, BorderLayout.CENTER)
-        add(header, BorderLayout.NORTH)
-        add(JBScrollPane(list), BorderLayout.CENTER)
+        add(countScroll, BorderLayout.NORTH)
+        add(JBScrollPane(list).apply { border = JBUI.Borders.empty() }, BorderLayout.CENTER)
         add(controls, BorderLayout.SOUTH)
         open.isEnabled = false
         outcome.accessibleContext.accessibleName = "Source navigation result"
@@ -118,6 +165,7 @@ internal class SourceEvidencePanel(
         list.addListSelectionListener {
             generation++
             outcome.text = ""
+            outcome.toolTipText = outcome.text
             open.isEnabled = list.selectedValue != null
         }
         list.inputMap.put(KeyStroke.getKeyStroke("ENTER"), "openSource")
@@ -146,6 +194,7 @@ internal class SourceEvidencePanel(
         references.take(SourceUiModel.MAX_WITNESSES).forEach(model::addElement)
         open.isEnabled = false
         outcome.text = ""
+        outcome.toolTipText = outcome.text
         count.text =
             if (references.isEmpty()) {
                 "No retained source references"
@@ -153,6 +202,15 @@ internal class SourceEvidencePanel(
                 "Showing " + model.size() + " of " + occurrences +
                     " reference occurrences (up to " + SourceUiModel.MAX_WITNESSES + " locations)"
             }
+        count.toolTipText = count.text
+        list.toolTipText = count.text
+        list.accessibleContext.accessibleDescription = count.text
+    }
+
+    override fun doLayout() {
+        countScroll.isVisible =
+            height >= controls.preferredSize.height + countScroll.preferredSize.height + JBUI.scale(28)
+        super.doLayout()
     }
 
     private fun openSelected() {
@@ -161,9 +219,11 @@ internal class SourceEvidencePanel(
         val request = ++generation
         open.isEnabled = false
         outcome.text = "Checking source reference…"
+        outcome.toolTipText = outcome.text
         navigation.openAsync(item, { disposed || generation != request }) { opened ->
             if (disposed || generation != request) return@openAsync
             outcome.text = if (opened) "" else "This source location changed or is unavailable. Analyze again."
+            outcome.toolTipText = outcome.text
             open.isEnabled = true
         }
     }
@@ -174,7 +234,7 @@ internal class SourceEvidencePanel(
     }
 }
 
-internal class PageControls : JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0)) {
+internal class PageControls : JPanel(BorderLayout(JBUI.scale(4), 0)) {
     val previous = JButton("Previous")
     val next = JButton("Next")
     private val label = JBLabel("0 results")
@@ -182,9 +242,14 @@ internal class PageControls : JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEF
         private set
 
     init {
-        add(previous)
-        add(next)
-        add(label)
+        val actions = JPanel()
+        actions.layout = BoxLayout(actions, BoxLayout.X_AXIS)
+        actions.add(previous)
+        actions.add(javax.swing.Box.createHorizontalStrut(JBUI.scale(4)))
+        actions.add(next)
+        add(actions, BorderLayout.WEST)
+        add(label, BorderLayout.CENTER)
+        label.accessibleContext.accessibleName = "Result page status"
         getAccessibleContext().accessibleName = "Result pages"
     }
 
@@ -199,6 +264,8 @@ internal class PageControls : JPanel(java.awt.FlowLayout(java.awt.FlowLayout.LEF
             } else {
                 "Page " + (page + 1) + " of " + count + " · " + total + " total"
             }
+        label.accessibleContext.accessibleDescription = label.text
+        label.toolTipText = label.text
     }
 
     fun change(

@@ -22,13 +22,15 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTabbedPane
+import com.intellij.util.ui.JBUI
 import io.shamash.intellij.plugin.analysis.IdeAnalysisCoordinator
 import io.shamash.intellij.plugin.analysis.IdeAnalysisState
 import io.shamash.intellij.plugin.analysis.ResultRelation
 import io.shamash.intellij.plugin.settings.ShamashSourceMigrationState
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.FlowLayout
+import javax.swing.Box
+import javax.swing.BoxLayout
 import javax.swing.JButton
 import javax.swing.JMenuItem
 import javax.swing.JOptionPane
@@ -48,35 +50,47 @@ class ShamashSourcePanel(
     val help = JButton("Help")
     val status = wrappedText("Understand your project's dependencies")
     val scope = wrappedText(SourceGuidance.SCOPE_LINE)
-    private val firstRun = JPanel(FlowLayout(FlowLayout.LEFT, 6, 2))
-    private val about = JButton("About these checks")
-    private val advanced = JButton("Architecture enforcement and CLI — GitHub")
+    internal val helpMenu = JPopupMenu()
     private val details = wrappedText()
+    internal val detailsPopup = JPopupMenu()
+    internal val detailsContent = wrappedText()
     private var currentModel: SourceUiModel? = null
     private var disposed = false
 
     init {
         ShamashSourceMigrationState.getInstance(project).acknowledge()
-        val toolbar = JPanel(FlowLayout(FlowLayout.LEFT, 8, 3))
+        val toolbar = JPanel()
+        toolbar.layout = BoxLayout(toolbar, BoxLayout.X_AXIS)
         toolbar.add(analyze)
+        toolbar.add(Box.createHorizontalStrut(JBUI.scale(6)))
         toolbar.add(cancel)
+        toolbar.add(Box.createHorizontalStrut(JBUI.scale(6)))
         toolbar.add(help)
-        val statusPanel = JPanel(BorderLayout(0, 3))
-        status.rows = 1
-        scope.rows = 1
-        statusPanel.add(status, BorderLayout.NORTH)
-        details.rows = 3
+        val toolbarScroll =
+            object : JBScrollPane(toolbar) {
+                override fun getPreferredSize(): Dimension =
+                    super.getPreferredSize().apply {
+                        height = analyze.preferredSize.height + JBUI.scale(18)
+                    }
+            }
+        toolbarScroll.verticalScrollBarPolicy = JBScrollPane.VERTICAL_SCROLLBAR_NEVER
+        toolbarScroll.horizontalScrollBarPolicy = JBScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        toolbarScroll.border = JBUI.Borders.empty()
+        toolbarScroll.accessibleContext.accessibleName = "Source analysis actions"
+
+        status.accessibleContext.accessibleName = "Source analysis status"
+        status.toolTipText = status.text
+        val statusScroll = compactMessageScroll(status)
         details.accessibleContext.accessibleName = "Analysis scope and diagnostics"
-        val detailsScroll = JBScrollPane(details)
-        detailsScroll.preferredSize = Dimension(200, 76)
-        statusPanel.add(detailsScroll, BorderLayout.CENTER)
-        statusPanel.add(scope, BorderLayout.SOUTH)
-        val header = JPanel(BorderLayout(0, 4))
-        header.add(toolbar, BorderLayout.NORTH)
-        header.add(statusPanel, BorderLayout.CENTER)
-        firstRun.add(about)
-        firstRun.add(advanced)
-        header.add(firstRun, BorderLayout.SOUTH)
+        detailsContent.accessibleContext.accessibleName = "Analysis scope and diagnostics"
+        val detailsScroll = JBScrollPane(detailsContent)
+        detailsScroll.preferredSize = Dimension(JBUI.scale(360), JBUI.scale(180))
+        detailsPopup.add(detailsScroll)
+        detailsPopup.accessibleContext.accessibleName = "Analysis scope and diagnostics"
+        detailsContent.text = SourceGuidance.FIRST_RUN + "\n\n" + scope.text
+        val header = JPanel(BorderLayout(0, JBUI.scale(2)))
+        header.add(toolbarScroll, BorderLayout.NORTH)
+        header.add(statusScroll, BorderLayout.SOUTH)
         add(header, BorderLayout.NORTH)
 
         tabs.addTab("Findings", findings)
@@ -89,12 +103,24 @@ class ShamashSourcePanel(
         analyze.addActionListener { SourceAnalysisActions.analyze(project) }
         cancel.addActionListener { coordinator.cancel() }
         help.addActionListener { showHelp() }
-        about.addActionListener { showAbout() }
-        advanced.addActionListener { BrowserUtil.browse(SourceGuidance.REPOSITORY_URL) }
         analyze.accessibleContext.accessibleName = "Analyze project source"
         cancel.accessibleContext.accessibleName = "Cancel source analysis"
         help.accessibleContext.accessibleName = "Help and advanced architecture enforcement"
         getAccessibleContext().accessibleName = "Shamash source analysis"
+        helpMenu.accessibleContext.accessibleName = "Shamash Help"
+
+        fun helpItem(
+            label: String,
+            action: () -> Unit,
+        ) {
+            helpMenu.add(JMenuItem(label).apply { addActionListener { action() } })
+        }
+        helpItem("Analysis scope and diagnostics") { showDetails() }
+        helpItem("About these checks") { showAbout() }
+        helpItem("Architecture enforcement and CLI — GitHub") { BrowserUtil.browse(SourceGuidance.REPOSITORY_URL) }
+        helpItem("Plugin license (Apache-2.0)") { BrowserUtil.browse(SourceGuidance.LICENSE_URL) }
+        helpItem("Core dependencies license (AGPL-3.0)") { BrowserUtil.browse(SourceGuidance.CORE_LICENSE_URL) }
+        helpItem("Plugin source") { BrowserUtil.browse(SourceGuidance.SOURCE_URL) }
 
         coordinator.subscribe(this) { next ->
             if (!disposed && !project.isDisposed) render(next)
@@ -106,9 +132,10 @@ class ShamashSourcePanel(
         analyze.isEnabled = !state.active
         analyze.text = if (state.requestGeneration == 0L) "Analyze project" else "Analyze again"
         cancel.isEnabled = state.active
-        firstRun.isVisible = state.phase == io.shamash.intellij.plugin.analysis.AnalysisPhase.IDLE
-        status.text = SourceGuidance.status(state)
-        status.accessibleContext.accessibleDescription = SourceGuidance.status(state)
+        val currentStatus = SourceGuidance.status(state)
+        if (status.text != currentStatus) status.text = currentStatus
+        status.accessibleContext.accessibleDescription = currentStatus
+        status.toolTipText = currentStatus
         val relation =
             when (state.resultRelation) {
                 ResultRelation.PREVIOUS -> " · Previous result"
@@ -126,6 +153,8 @@ class ShamashSourcePanel(
             }
         details.text = SourceGuidance.detailStatus(state) + counts
         scope.text = SourceGuidance.SCOPE_LINE
+        val description = status.text + "\n\n" + details.text + "\n\n" + scope.text
+        if (detailsContent.text != description) detailsContent.text = description
         val next = state.visibleResult?.payload?.uiModel
         if (next !== currentModel) {
             currentModel = next
@@ -135,24 +164,12 @@ class ShamashSourcePanel(
     }
 
     private fun showHelp() {
-        val menu = JPopupMenu()
+        helpMenu.show(help, 0, help.height)
+    }
 
-        fun item(
-            label: String,
-            action: () -> Unit,
-        ) {
-            val entry = JMenuItem(label)
-            entry.addActionListener { action() }
-            menu.add(entry)
-        }
-        item("About these checks") { showAbout() }
-        item("Architecture enforcement and CLI — GitHub") {
-            BrowserUtil.browse(SourceGuidance.REPOSITORY_URL)
-        }
-        item("Plugin license (Apache-2.0)") { BrowserUtil.browse(SourceGuidance.LICENSE_URL) }
-        item("Core dependencies license (AGPL-3.0)") { BrowserUtil.browse(SourceGuidance.CORE_LICENSE_URL) }
-        item("Plugin source") { BrowserUtil.browse(SourceGuidance.SOURCE_URL) }
-        menu.show(help, 0, help.height)
+    private fun showDetails() {
+        detailsPopup.show(help, 0, help.height)
+        detailsContent.requestFocusInWindow()
     }
 
     private fun showAbout() {

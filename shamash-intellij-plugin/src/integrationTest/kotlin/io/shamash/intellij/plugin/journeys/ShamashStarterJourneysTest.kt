@@ -114,6 +114,11 @@ class ShamashStarterJourneysTest {
                     x(xQuery { byAccessibleName("Analyze project source") }).click()
                     x(xQuery { byVisibleText("No supported production source found") })
                         .shouldBe("No-source result must be explicit, not an empty success", present)
+                    x(xQuery { byAccessibleName("Help and advanced architecture enforcement") }).click()
+                    x(xQuery { byVisibleText("Analysis scope and diagnostics") })
+                        .shouldBe("Detailed status must remain accessible through Help", present)
+                    x(xQuery { byVisibleText("Architecture enforcement and CLI — GitHub") })
+                        .shouldBe("The advanced repository action must remain accessible", present)
                 }
             }
         val actualProject = requireNotNull(openedProject) { "Driver did not expose the opened project" }
@@ -244,6 +249,10 @@ class ShamashStarterJourneysTest {
                         "The mixed-language cycle must be represented once: " + findings.items,
                     )
                     x(xQuery { byVisibleText("Explore") }).click()
+                    x(xQuery { byVisibleText("Relationships") })
+                        .shouldBe("Relationship inspection must remain available", present)
+                    x(xQuery { byVisibleText("Source evidence") })
+                        .shouldBe("Evidence inspection must remain available", present)
                     val tree = tree(xQuery { byAccessibleName("IDE module, package and declaration tree") })
                     tree.expandAll(30.seconds)
                     val paths = tree.collectExpandedPaths().map { it.path }
@@ -404,6 +413,8 @@ class ShamashStarterJourneysTest {
                         x(xQuery { byVisibleText("Source analysis complete") })
                             .shouldBe("Both source-reference families must analyze successfully", present)
                     } catch (failure: com.intellij.driver.sdk.WaitForException) {
+                        x(xQuery { byAccessibleName("Help and advanced architecture enforcement") }).click()
+                        x(xQuery { byVisibleText("Analysis scope and diagnostics") }).click()
                         val diagnostics = x(xQuery { byAccessibleName("Analysis scope and diagnostics") })
                         val detail =
                             diagnostics.driver.withContext(OnDispatcher.EDT) {
