@@ -12,6 +12,7 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.roots.ContentIterator
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -148,6 +149,46 @@ class JvmSourceEligibilityTest : CodeInsightFixtureTestCase<EmptyModuleFixtureBu
             assertEquals(SourceExclusion.NON_JVM, sourceEligibility.evaluate(commonSource.virtualFile).exclusion)
             assertTrue(sourceEligibility.evaluate(jvmSource.virtualFile).included)
         }
+    }
+
+    fun testDuplicateIndexEntriesDoNotConsumeFileLimit() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        val first = myFixture.addFileToProject("src/main/java/One.java", "class One {}").virtualFile
+        val second = myFixture.addFileToProject("src/main/java/Two.java", "class Two {}").virtualFile
+        val ignored = myFixture.addFileToProject("src/main/java/notes.txt", "not source").virtualFile
+
+        fun duplicateIndex(files: List<com.intellij.openapi.vfs.VirtualFile>): ProjectFileIndex =
+            Proxy.newProxyInstance(
+                ProjectFileIndex::class.java.classLoader,
+                arrayOf(ProjectFileIndex::class.java),
+            ) { _, method, args ->
+                when (method.name) {
+                    "iterateContent" -> {
+                        val iterator = args!![0] as ContentIterator
+                        files.all { iterator.processFile(it) }
+                    }
+                    "isInLibraryClasses", "isInLibrarySource", "isInTestSourceContent" -> false
+                    "isInSourceContent" -> true
+                    "getModuleForFile" -> myModule
+                    "getSourceRootForFile" -> root
+                    else -> error("Unexpected index method: ${method.name}")
+                }
+            } as ProjectFileIndex
+
+        val deduplicated =
+            ReadAction.compute<ProjectSourceCollector.Selection, RuntimeException> {
+                ProjectSourceCollector(project, duplicateIndex(listOf(ignored, first, first))).collect(1)
+            }
+        assertEquals(1, deduplicated.files.size)
+        assertEquals(first.url, deduplicated.files.single().file.url)
+        assertFalse(deduplicated.truncated)
+
+        val limited =
+            ReadAction.compute<ProjectSourceCollector.Selection, RuntimeException> {
+                ProjectSourceCollector(project, duplicateIndex(listOf(first, first, second))).collect(1)
+            }
+        assertTrue(limited.truncated)
+        assertEquals(listOf(first.url), limited.files.map { it.file.url })
     }
 
     fun testFacetRevisionChangesOnConfigurationAndRemoval() {
