@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -42,6 +43,8 @@ import io.shamash.intellij.plugin.analysis.SourceVfsScope
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.psi.core.config.SchemaResources
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.js.JsPlatforms
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -85,6 +88,45 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(wasVisible, window?.isVisible)
         assertEquals(wasActive, window?.isActive)
         coordinator.cancel()
+    }
+
+    fun testFacetPlatformChangeMarksCompletedSnapshotStale() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject("src/main/java/Source.java", "class Source {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val complete = CountDownLatch(1)
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                complete.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(complete.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        val previous = kotlin.test.assertNotNull(coordinator.state().visibleResult)
+
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                manager.createModifiableModel().apply {
+                    addFacet(facet)
+                    commit()
+                }
+            }
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
     }
 
     fun testCancellationDuringGraphCannotPublishAfterwards() {
