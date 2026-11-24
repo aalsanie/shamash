@@ -31,7 +31,10 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.util.concurrency.AppExecutorUtil
+import io.shamash.psi.core.source.JvmSourceEligibility
+import io.shamash.psi.core.source.JvmSourceScopeRevision
 import io.shamash.psi.core.source.SourceDependencyExtractor
+import io.shamash.psi.core.source.SourceEligibility
 
 internal class SourceNavigationService(
     private val project: Project,
@@ -40,6 +43,7 @@ internal class SourceNavigationService(
         val file: VirtualFile,
         val sourceRevision: Long,
         val rootRevision: Long,
+        val facetRevision: Long = 0L,
     )
 
     fun open(evidence: SourceEvidence): Boolean {
@@ -78,11 +82,14 @@ internal class SourceNavigationService(
             if (!validCandidate(file) || DumbService.isDumb(project)) return@compute null
             val sourceRevision = PsiModificationTracker.getInstance(project).modificationCount
             val rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount
+            val facetRevision = JvmSourceScopeRevision.getInstance(project).revision
             val index = ProjectFileIndex.getInstance(project)
+            val eligibility = JvmSourceEligibility(index)
             val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute null
             val end = reference.offset.toLong() + reference.length.toLong()
             if (end > doc.textLength ||
-                !currentSourceLocation(file, index, doc.modificationStamp).matches(evidence, sourceRevision, rootRevision)
+                !currentSourceLocation(file, index, doc.modificationStamp, eligibility)
+                    .matches(evidence, sourceRevision, rootRevision, facetRevision)
             ) {
                 return@compute null
             }
@@ -94,7 +101,7 @@ internal class SourceNavigationService(
                     owner.sourceRoot,
                     owner.fileUrl,
                 )
-            val extractor = SourceDependencyExtractor { navigationSourceLocation(it, index) }
+            val extractor = SourceDependencyExtractor { navigationSourceLocation(it, index, eligibility) }
             val extracted = extractor.extract(psi, location)
             if (extracted.entities.none { it.id == owner }) return@compute null
             if (extracted.references.none {
@@ -104,7 +111,7 @@ internal class SourceNavigationService(
             ) {
                 return@compute null
             }
-            VerifiedFile(file, sourceRevision, rootRevision)
+            VerifiedFile(file, sourceRevision, rootRevision, facetRevision)
         }
     }
 
@@ -117,8 +124,10 @@ internal class SourceNavigationService(
             ReadAction.compute<Boolean, RuntimeException> {
                 if (!validCandidate(file)) return@compute false
                 val doc = FileDocumentManager.getInstance().getDocument(file) ?: return@compute false
-                currentSourceLocation(file, ProjectFileIndex.getInstance(project), doc.modificationStamp)
-                    .matches(evidence, verified.sourceRevision, verified.rootRevision)
+                val index = ProjectFileIndex.getInstance(project)
+                val scope = JvmSourceEligibility(index)
+                currentSourceLocation(file, index, doc.modificationStamp, scope)
+                    .matches(evidence, verified.sourceRevision, verified.rootRevision, verified.facetRevision)
             }
         if (!current) return false
         OpenFileDescriptor(project, file, evidence.reference.offset).navigate(true)
@@ -131,12 +140,15 @@ internal class SourceNavigationService(
         file: VirtualFile,
         index: ProjectFileIndex,
         documentStamp: Long,
+        eligibility: JvmSourceEligibility = JvmSourceEligibility(index),
     ): CurrentSourceLocation =
         CurrentSourceLocation(
             sourceRevision = PsiModificationTracker.getInstance(project).modificationCount,
             rootRevision = ProjectRootModificationTracker.getInstance(project).modificationCount,
+            facetRevision = JvmSourceScopeRevision.getInstance(project).revision,
             productionSource = index.isInSourceContent(file),
             testSource = index.isInTestSourceContent(file),
+            eligibleSource = eligibility.evaluate(file).included,
             moduleId = index.getModuleForFile(file)?.name,
             sourceRoot = index.getSourceRootForFile(file)?.url,
             documentStamp = documentStamp,
@@ -151,16 +163,21 @@ internal data class CurrentSourceLocation(
     val moduleId: String?,
     val sourceRoot: String?,
     val documentStamp: Long?,
+    val eligibleSource: Boolean = true,
+    val facetRevision: Long = 0L,
 ) {
     fun matches(
         evidence: SourceEvidence,
         expectedSourceRevision: Long,
         expectedRootRevision: Long,
+        expectedFacetRevision: Long = facetRevision,
     ): Boolean =
         sourceRevision == expectedSourceRevision &&
             rootRevision == expectedRootRevision &&
+            facetRevision == expectedFacetRevision &&
             productionSource &&
             !testSource &&
+            eligibleSource &&
             moduleId == evidence.owner.moduleId &&
             sourceRoot == evidence.owner.sourceRoot &&
             documentStamp == evidence.reference.documentStamp
@@ -169,10 +186,20 @@ internal data class CurrentSourceLocation(
 internal fun navigationSourceLocation(
     psiFile: PsiFile,
     index: ProjectFileIndex,
+    eligibility: JvmSourceEligibility = JvmSourceEligibility(index),
 ): SourceDependencyExtractor.SourceLocation? {
     val file = psiFile.virtualFile ?: return null
-    if (!index.isInSourceContent(file) || index.isInTestSourceContent(file)) return null
-    val module = index.getModuleForFile(file) ?: return null
-    val root = index.getSourceRootForFile(file) ?: return null
-    return SourceDependencyExtractor.SourceLocation(module.name, root.url, file.url)
+    return when (val result = eligibility.evaluate(file)) {
+        is SourceEligibility.Excluded -> {
+            null
+        }
+
+        is SourceEligibility.Included -> {
+            SourceDependencyExtractor.SourceLocation(
+                result.module.name,
+                result.root.url,
+                file.url,
+            )
+        }
+    }
 }

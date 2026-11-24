@@ -18,6 +18,9 @@
 package io.shamash.intellij.plugin.analysis
 
 import com.intellij.ProjectTopics
+import com.intellij.facet.Facet
+import com.intellij.facet.FacetManager
+import com.intellij.facet.FacetManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
@@ -105,6 +108,16 @@ class IdeAnalysisCoordinator(
             ProjectTopics.PROJECT_ROOTS,
             object : ModuleRootListener {
                 override fun rootsChanged(event: ModuleRootEvent) = this@IdeAnalysisCoordinator.rootsChanged()
+            },
+        )
+        connection.subscribe(
+            FacetManager.FACETS_TOPIC,
+            object : FacetManagerListener {
+                override fun facetAdded(facet: Facet<*>) = rootsChanged()
+
+                override fun facetRemoved(facet: Facet<*>) = rootsChanged()
+
+                override fun facetConfigurationChanged(facet: Facet<*>) = rootsChanged()
             },
         )
         ApplicationManager.getApplication().messageBus.connect(this).subscribe(

@@ -51,6 +51,7 @@ internal object SourceGuidance {
     const val SCOPE_DETAILS =
         "Analyzes Java and Kotlin JVM production source roots in the imported IntelliJ project. " +
             "Tests, generated and excluded sources, libraries, scripts, and non-JVM roots are excluded. " +
+            "Kotlin target metadata that cannot be established is reported as incomplete, not as a clean JVM scan. " +
             "This is static source evidence, not runtime behavior, architecture enforcement, or a scan of project YAML."
     const val FIRST_RUN =
         "Understand your project's dependencies\n\n" +
@@ -145,6 +146,24 @@ internal object SourceGuidance {
         if (state.phase == AnalysisPhase.UNAVAILABLE && attempt?.reason == "NO_SOURCE") {
             details += "Import a Java/Kotlin JVM module and mark its production source roots in IntelliJ."
         }
+        if (state.phase == AnalysisPhase.UNAVAILABLE && attempt?.reason == "UNKNOWN_PLATFORM") {
+            details += "Kotlin target platform metadata is unavailable; import or configure the JVM target in IntelliJ."
+        }
+        val scopeExclusions =
+            attempt?.excludedReasons?.takeIf { it.isNotEmpty() }
+                ?: result
+                    ?.payload
+                    ?.sourceFacts
+                    ?.coverage
+                    ?.excludedReasons
+                    .orEmpty()
+        scopeExclusions.takeIf { it.isNotEmpty() }?.let { reasons ->
+            val summary =
+                reasons.entries.joinToString(", ") { (reason, count) ->
+                    count.toString() + " " + reason.lowercase().replace('_', ' ') + " source files"
+                }
+            details += "Outside this JVM scope: " + summary
+        }
         if (attempt?.eligibleFiles != null) {
             details += "Analyzed " + (attempt.analyzedFiles ?: 0) + " of " + attempt.eligibleFiles +
                 " supported source files"
@@ -155,7 +174,7 @@ internal object SourceGuidance {
         if (attempt?.failedFiles != null && attempt.failedFiles > 0) {
             details += attempt.failedFiles.toString() + " files could not be analyzed"
         }
-        if (attempt?.reason != null && attempt.reason != "NO_SOURCE") details += attempt.reason
+        if (attempt?.reason != null && attempt.reason !in setOf("NO_SOURCE", "UNKNOWN_PLATFORM")) details += attempt.reason
         if (state.diagnostics.isNotEmpty()) {
             details += state.diagnostics.take(10)
             if (state.diagnostics.size > 10) {

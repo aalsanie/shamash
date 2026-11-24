@@ -7,9 +7,12 @@
  */
 package io.shamash.psi.core.source
 
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.progress.util.ProgressIndicatorBase
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PsiTestUtil
@@ -17,7 +20,12 @@ import com.intellij.testFramework.builders.EmptyModuleFixtureBuilder
 import com.intellij.testFramework.fixtures.CodeInsightFixtureTestCase
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.java.JavaSourceRootType
+import org.jetbrains.kotlin.config.SourceKotlinRootType
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -270,6 +278,155 @@ class ProjectSourceAnalyzerTest : CodeInsightFixtureTestCase<EmptyModuleFixtureB
         assertFalse(snapshot.coverage.truncated)
         assertTrue(snapshot.entities.any { it.displayName.contains("Production") })
         assertTrue(snapshot.entities.none { it.displayName.contains("Generated") })
+    }
+
+    fun testUnknownKotlinRootProducesPartialCoverageAndScopeDiagnostic() {
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("additional/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("additional/kotlin/demo/Common.kt", "package demo\nclass Common")
+        java("Regular.java", "package demo; class Regular {}")
+        val snapshot = analyze()
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertEquals(1, snapshot.coverage.uncertainFiles)
+        assertFalse(snapshot.complete)
+        assertEquals(1, snapshot.coverage.excludedReasons[SourceExclusion.UNKNOWN_PLATFORM.name])
+        assertTrue(snapshot.diagnostics.any { it.phase == "scope" })
+        assertTrue(snapshot.entities.any { it.displayName.contains("Regular") })
+        assertFalse(snapshot.entities.any { it.displayName.contains("Common") })
+    }
+
+    fun testExplicitJvmFacetResolvesPreviouslyUncertainKotlinRoot() {
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("additional/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("additional/kotlin/demo/Included.kt", "package demo\nclass Included")
+        assertEquals(1, analyze().coverage.uncertainFiles)
+        val facetManager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+        val facet = facetManager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            facetManager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        val snapshot = analyze()
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertEquals(0, snapshot.coverage.uncertainFiles)
+        assertTrue(snapshot.entities.any { it.displayName.contains("Included") })
+    }
+
+    fun testJvmReferenceToUnsupportedModuleCannotBecomeInternal() {
+        val jsRoot = myFixture.tempDirFixture.findOrCreateDir("js-module")
+        val js = PsiTestUtil.addModule(project, JavaModuleType.getModuleType(), "js-module", jsRoot)
+        PsiTestUtil.addSourceRoot(js, jsRoot)
+        ModuleRootModificationUtil.addDependency(myModule, js)
+        val manager = FacetManager.getInstance(js)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        myFixture.addFileToProject("js-module/external/External.java", "package external; public class External {}")
+        java("Caller.java", "package demo; class Caller { external.External target; }")
+        val snapshot = analyze()
+        assertEquals(1, snapshot.coverage.eligibleFiles)
+        assertEquals(1, snapshot.coverage.excludedReasons[SourceExclusion.NON_JVM.name])
+        assertTrue(snapshot.entities.none { it.id.moduleId == js.name })
+        assertTrue(snapshot.relationships.none { it.target.moduleId == js.name })
+        assertTrue(snapshot.references.none { (it.target as? SourceTarget.Internal)?.entity?.moduleId == js.name })
+        assertTrue(
+            snapshot.references.any { it.from.signature.contains("Caller") && it.target is SourceTarget.External },
+            snapshot.references.toString(),
+        )
+    }
+
+    fun testPsiModificationDuringAssemblyCannotPublishStaleSource() {
+        val source = java("Original.java", "package demo; class Original {}")
+        val document = requireNotNull(FileDocumentManager.getInstance().getDocument(source.virtualFile))
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                WriteCommandAction.runWriteCommandAction(project) {
+                    document.insertString(document.textLength, "\n// changed during graph assembly")
+                    PsiDocumentManager.getInstance(project).commitDocument(document)
+                }
+            }
+        }
+    }
+
+    fun testRootModificationDuringAssemblyCannotPublishStaleSource() {
+        java("Original.java", "package demo; class Original {}")
+        val otherRoot = myFixture.tempDirFixture.findOrCreateDir("other-production")
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                PsiTestUtil.addSourceRoot(myModule, otherRoot)
+            }
+        }
+    }
+
+    fun testFacetRevisionAloneRejectsInFlightSnapshot() {
+        java("Original.java", "package demo; class Original {}")
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        val scopeRevision = JvmSourceScopeRevision.getInstance(project)
+        val revisionBefore = scopeRevision.revision
+
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                val psiRevision =
+                    com.intellij.psi.util.PsiModificationTracker
+                        .getInstance(project)
+                        .modificationCount
+                val rootRevision =
+                    com.intellij.openapi.roots.ProjectRootModificationTracker
+                        .getInstance(project)
+                        .modificationCount
+                project.messageBus.syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(facet)
+                assertTrue(scopeRevision.revision > revisionBefore)
+                assertEquals(
+                    psiRevision,
+                    com.intellij.psi.util.PsiModificationTracker
+                        .getInstance(project)
+                        .modificationCount,
+                )
+                assertEquals(
+                    rootRevision,
+                    com.intellij.openapi.roots.ProjectRootModificationTracker
+                        .getInstance(project)
+                        .modificationCount,
+                )
+            }
+        }
+    }
+
+    fun testFacetMutationDuringAssemblyCannotPublishStaleJvmAnalysis() {
+        java("Original.java", "package demo; class Original {}")
+        val service = JvmSourceScopeRevision.getInstance(project)
+        val before = service.revision
+        assertFailsWith<SourceRevisionChangedException> {
+            analyze {
+                val manager = FacetManager.getInstance(myModule)
+                val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+                config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+                val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+                WriteCommandAction.runWriteCommandAction(project) {
+                    manager.createModifiableModel().apply {
+                        addFacet(facet)
+                        commit()
+                    }
+                }
+                assertTrue(service.revision > before)
+            }
+        }
+        val snapshot = analyze()
+        assertEquals(0, snapshot.coverage.eligibleFiles)
+        assertEquals(1, snapshot.coverage.excludedReasons[SourceExclusion.NON_JVM.name])
     }
 
     fun testUnrepresentableGenericBoundCannotInventAReferenceOffset() {

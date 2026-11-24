@@ -35,9 +35,11 @@ class ProjectSourceAnalyzer(
         val projectIndex = rootManager.fileIndex
         val psiTracker = PsiModificationTracker.getInstance(project)
         val rootTracker = ProjectRootModificationTracker.getInstance(project)
+        val facetTracker = JvmSourceScopeRevision.getInstance(project)
 
         val initialPsi = psiTracker.modificationCount
         val initialRoots = rootTracker.modificationCount
+        val initialFacets = facetTracker.revision
         var selection: ProjectSourceCollector.Selection? = null
         dumb.runReadActionInSmartMode {
             selection = ProjectSourceCollector(project).collect(profile.maxFiles)
@@ -52,7 +54,10 @@ class ProjectSourceAnalyzer(
         var changed = false
         var truncated = scope.truncated
 
-        fun revisionsMatch(): Boolean = initialPsi == psiTracker.modificationCount && initialRoots == rootTracker.modificationCount
+        fun revisionsMatch(): Boolean =
+            initialRoots == rootTracker.modificationCount &&
+                initialPsi == psiTracker.modificationCount &&
+                initialFacets == facetTracker.revision
 
         val extractor =
             SourceDependencyExtractor { file ->
@@ -124,6 +129,14 @@ class ProjectSourceAnalyzer(
             diagnostics += SourceDiagnostic(null, "limit", "Source analysis reached an internal resource bound")
         }
         val unresolved = relationships.unresolvedOccurrences
+        if (scope.uncertainFiles > 0) {
+            diagnostics +=
+                SourceDiagnostic(
+                    null,
+                    "scope",
+                    "${scope.uncertainFiles} source files have unknown Kotlin module target metadata; JVM coverage is incomplete",
+                )
+        }
         val complete = !truncated && failed == 0 && unresolved == 0L && diagnostics.isEmpty()
         val snapshot =
             ProjectSourceSnapshot(
@@ -144,6 +157,8 @@ class ProjectSourceAnalyzer(
                         unresolvedOccurrences = unresolved,
                         excludedFiles = scope.excluded,
                         truncated = truncated,
+                        excludedReasons = scope.excludedReasons,
+                        uncertainFiles = scope.uncertainFiles,
                     ),
                 complete = complete,
             )

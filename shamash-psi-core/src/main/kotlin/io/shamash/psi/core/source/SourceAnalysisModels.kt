@@ -76,6 +76,8 @@ data class SourceCoverage(
     val unresolvedOccurrences: Long,
     val excludedFiles: Int,
     val truncated: Boolean,
+    val excludedReasons: Map<String, Int> = emptyMap(),
+    val uncertainFiles: Int = 0,
 )
 
 data class SourceRelationship(

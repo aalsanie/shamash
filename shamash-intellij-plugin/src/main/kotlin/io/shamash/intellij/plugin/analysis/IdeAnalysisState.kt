@@ -41,6 +41,8 @@ data class AnalysisCoverage(
     val resolvedOccurrences: Long? = null,
     val unresolvedOccurrences: Long? = null,
     val reason: String? = null,
+    val excludedFiles: Int? = null,
+    val excludedReasons: Map<String, Int> = emptyMap(),
 )
 
 data class AnalysisRequest(

@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -42,12 +43,18 @@ import io.shamash.intellij.plugin.ui.source.SourceEvidenceNavigator
 import io.shamash.intellij.plugin.ui.source.SourceEvidencePanel
 import io.shamash.intellij.plugin.ui.source.SourceNavigationService
 import io.shamash.intellij.plugin.ui.source.navigationSourceLocation
+import io.shamash.psi.core.source.JvmSourceScopeRevision
 import io.shamash.psi.core.source.SourceDependencyExtractor
 import io.shamash.psi.core.source.SourceDependencyKind
 import io.shamash.psi.core.source.SourceEntityId
 import io.shamash.psi.core.source.SourceEntityKind
 import io.shamash.psi.core.source.SourceReference
 import io.shamash.psi.core.source.SourceTarget
+import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.kotlin.config.SourceKotlinRootType
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
 import java.lang.reflect.Proxy
@@ -417,6 +424,28 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         )
     }
 
+    fun testExactNavigationEvidenceRejectsIneligibleSourceAndFacetRevision() {
+        val witness = evidence()
+        val source =
+            CurrentSourceLocation(
+                sourceRevision = 17,
+                rootRevision = 23,
+                facetRevision = 31,
+                productionSource = true,
+                testSource = false,
+                eligibleSource = true,
+                moduleId = witness.owner.moduleId,
+                sourceRoot = witness.owner.sourceRoot,
+                documentStamp = witness.reference.documentStamp,
+            )
+        assertTrue(source.matches(witness, 17, 23, 31))
+        assertFalse(source.copy(eligibleSource = false).matches(witness, 17, 23, 31))
+        assertFalse(source.copy(facetRevision = 32).matches(witness, 17, 23, 31))
+        assertFalse(source.matches(witness, 17, 23, 32))
+        assertFalse(source.copy(productionSource = false).matches(witness, 17, 23, 31))
+        assertFalse(source.copy(testSource = true).matches(witness, 17, 23, 31))
+    }
+
     fun testMissingFileWithMatchingReferenceUrlDoesNotNavigate() {
         val witness = evidence()
         val missing = "file:///shamash-missing-source-never-created.java"
@@ -535,6 +564,74 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
         }
     }
 
+    fun testGeneratedKotlinSourceIsNotNavigable() {
+        val generated = myFixture.tempDirFixture.findOrCreateDir("generated/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, generated, SourceKotlinRootType, JavaSourceRootProperties("", true))
+        val source = myFixture.addFileToProject("generated/kotlin/demo/Generated.kt", "package demo\nclass Generated")
+        val index = ProjectFileIndex.getInstance(project)
+        assertNull(navigationSourceLocation(source, index))
+        val file = source.virtualFile
+        val stamp = requireNotNull(FileDocumentManager.getInstance().getDocument(file)).modificationStamp
+        assertFalse(SourceNavigationService(project).currentSourceLocation(file, index, stamp).eligibleSource)
+    }
+
+    fun testExplicitJvmKotlinFacetAllowsNavigationScope() {
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        val source = myFixture.addFileToProject("src/main/kotlin/demo/Supported.kt", "package demo\nclass Supported")
+        assertNull(navigationSourceLocation(source, ProjectFileIndex.getInstance(project)))
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        assertNotNull(navigationSourceLocation(source, ProjectFileIndex.getInstance(project)))
+    }
+
+    fun testFacetChangeInvalidatesNavigationAndExcludesTargets() {
+        val witness = evidence()
+        val index = ProjectFileIndex.getInstance(project)
+        val sourceFile = requireNotNull(VirtualFileManager.getInstance().findFileByUrl(witness.reference.fileUrl))
+        val sourcePsi =
+            requireNotNull(
+                PsiDocumentManager.getInstance(project).getPsiFile(
+                    requireNotNull(FileDocumentManager.getInstance().getDocument(sourceFile)),
+                ),
+            )
+        val before = JvmSourceScopeRevision.getInstance(project).revision
+        assertNotNull(navigationSourceLocation(sourcePsi, index))
+        val navigation = SourceNavigationService(project)
+        val stamp = requireNotNull(FileDocumentManager.getInstance().getDocument(sourceFile)).modificationStamp
+        val previous = navigation.currentSourceLocation(sourceFile, index, stamp)
+
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        WriteCommandAction.runWriteCommandAction(project) {
+            manager.createModifiableModel().apply {
+                addFacet(facet)
+                commit()
+            }
+        }
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+        assertTrue(JvmSourceScopeRevision.getInstance(project).revision > before)
+        assertNull(navigationSourceLocation(sourcePsi, index))
+        assertFalse(navigation.open(witness))
+        val next = navigation.currentSourceLocation(sourceFile, index, stamp)
+        assertFalse(next.eligibleSource)
+        assertTrue(previous.matches(witness, previous.sourceRevision, previous.rootRevision, previous.facetRevision))
+        assertFalse(next.matches(witness, next.sourceRevision, next.rootRevision, next.facetRevision))
+        assertFalse(next.matches(witness, previous.sourceRevision, previous.rootRevision, previous.facetRevision))
+        assertFalse(previous.matches(witness, previous.sourceRevision, previous.rootRevision, next.facetRevision))
+    }
+
     fun testNavigationSourceLocationRejectsUnsupportedRootsAndMissingIndexMetadata() {
         val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
         PsiTestUtil.addSourceRoot(myModule, root)
@@ -564,6 +661,7 @@ class SourceNavigationE2ETest : ShamashPluginE2eTestBase() {
                 arrayOf(ProjectFileIndex::class.java),
             ) { _, method, _ ->
                 when (method.name) {
+                    "isInLibraryClasses", "isInLibrarySource" -> false
                     "isInSourceContent" -> inSource
                     "isInTestSourceContent" -> inTests
                     "getModuleForFile" -> module

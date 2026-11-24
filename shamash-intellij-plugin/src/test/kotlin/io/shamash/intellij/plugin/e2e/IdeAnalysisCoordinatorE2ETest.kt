@@ -17,6 +17,7 @@
  */
 package io.shamash.intellij.plugin.e2e
 
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -42,6 +43,10 @@ import io.shamash.intellij.plugin.analysis.SourceVfsScope
 import io.shamash.intellij.plugin.psi.ui.actions.RunPsiScanAction
 import io.shamash.psi.core.config.SchemaResources
 import org.jetbrains.jps.model.java.JavaSourceRootProperties
+import org.jetbrains.kotlin.config.SourceKotlinRootType
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.js.JsPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -85,6 +90,73 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(wasVisible, window?.isVisible)
         assertEquals(wasActive, window?.isActive)
         coordinator.cancel()
+    }
+
+    fun testFacetPlatformChangeMarksCompletedSnapshotStale() {
+        val root = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, root)
+        myFixture.addFileToProject("src/main/java/Source.java", "class Source {}")
+        val coordinator = IdeAnalysisCoordinator.getInstance(project)
+        val complete = CountDownLatch(1)
+        kotlin.test.assertNotNull(
+            coordinator.analyze { _, _ ->
+                complete.countDown()
+                AnalysisOutcome.Complete(
+                    IdeAnalysisCoordinator.SourcePresentation(),
+                    AnalysisCoverage(eligibleFiles = 1, analyzedFiles = 1),
+                )
+            },
+        )
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertTrue(complete.await(10, TimeUnit.SECONDS))
+        awaitTerminal()
+        assertEquals(AnalysisPhase.COMPLETED, coordinator.state().phase)
+        val previous = kotlin.test.assertNotNull(coordinator.state().visibleResult)
+
+        val manager = FacetManager.getInstance(myModule)
+        val config = KotlinFacetType.INSTANCE.createDefaultConfiguration()
+        config.settings.targetPlatform = JsPlatforms.defaultJsPlatform
+        val facet = manager.createFacet(KotlinFacetType.INSTANCE, "Kotlin", config, null)
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                manager.createModifiableModel().apply {
+                    addFacet(facet)
+                    commit()
+                }
+            }
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertEquals(ResultRelation.STALE, coordinator.state().resultRelation)
+        assertEquals(previous, coordinator.state().visibleResult)
+
+        val afterAddition = completeInjected(coordinator)
+        val revisionAfterAddition = coordinator.state().rootRevision
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                facet.configuration.settings.targetPlatform = JvmPlatforms.defaultJvmPlatform
+                project.messageBus.syncPublisher(FacetManager.FACETS_TOPIC).facetConfigurationChanged(facet)
+            }
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertTrue(coordinator.state().rootRevision > revisionAfterAddition)
+        assertEquals(afterAddition, coordinator.state().visibleResult)
+
+        val afterConfiguration = completeInjected(coordinator)
+        val revisionAfterConfiguration = coordinator.state().rootRevision
+        runInEdtAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                manager.createModifiableModel().apply {
+                    removeFacet(facet)
+                    commit()
+                }
+            }
+        }
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+        assertEquals(AnalysisPhase.STALE, coordinator.state().phase)
+        assertTrue(coordinator.state().rootRevision > revisionAfterConfiguration)
+        assertEquals(afterConfiguration, coordinator.state().visibleResult)
     }
 
     fun testCancellationDuringGraphCannotPublishAfterwards() {
@@ -424,6 +496,30 @@ class IdeAnalysisCoordinatorE2ETest : ShamashPluginE2eTestBase() {
         assertEquals(disk, Files.readAllBytes(Path.of(source.virtualFile.path)).toList())
         assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
         assertTrue(state.diagnostics.none { it.contains("No PSI configuration found") })
+    }
+
+    fun testKnownJvmSourceWithUnknownKotlinTargetIsPartialNotClean() {
+        val javaRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/java")
+        PsiTestUtil.addSourceRoot(myModule, javaRoot)
+        val kotlinRoot = myFixture.tempDirFixture.findOrCreateDir("src/main/kotlin")
+        PsiTestUtil.addSourceRoot(myModule, kotlinRoot, SourceKotlinRootType, JavaSourceRootProperties("", false))
+        myFixture.addFileToProject("src/main/java/demo/JvmService.java", "package demo; public class JvmService {}")
+        myFixture.addFileToProject("src/main/kotlin/demo/Unknown.kt", "package demo\nclass Unknown")
+        IndexingTestUtil.waitUntilIndexesAreReady(project)
+
+        fire(RunPsiScanAction())
+        awaitTerminal()
+        val state = IdeAnalysisCoordinator.getInstance(project).state()
+        assertEquals(AnalysisPhase.PARTIAL, state.phase)
+        val result = kotlin.test.assertNotNull(state.visibleResult)
+        val facts = kotlin.test.assertNotNull(result.payload?.sourceFacts)
+        assertEquals(1, facts.coverage.eligibleFiles)
+        assertEquals(1, facts.coverage.uncertainFiles)
+        assertTrue(facts.entities.any { it.id.signature == "demo.JvmService" })
+        assertTrue(facts.entities.none { it.id.signature == "demo.Unknown" })
+        assertTrue(state.attemptCoverage?.reason?.contains("unknown") == true)
+        assertEquals(1, state.attemptCoverage?.excludedReasons?.get("UNKNOWN_PLATFORM"))
+        assertTrue(state.diagnostics.any { it.contains("unknown") })
     }
 
     fun testJavaAndKotlinPackagesWithMutualReferencesProduceOneVerifiedCycle() {
